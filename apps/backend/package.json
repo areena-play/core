@@ -1,0 +1,9 @@
+{
+  "name": "@areena/backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "nodemon src/server.ts",
+    "start": "pm2 start dist/server.js -i max"
+  }
+}
