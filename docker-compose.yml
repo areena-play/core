@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------
+  # 1. DATABASE (PostgreSQL)
+  # ----------------------------------------
+  db:
+    image: postgres:15-alpine
+    container_name: areena-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - areena_pg_data:/var/lib/postgresql/data
+
+  # ----------------------------------------
+  # 2. CACHE & PUB/SUB (Redis)
+  # ----------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: areena-redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  # ----------------------------------------
+  # 3. LOCAL FILE STORAGE (MinIO S3 Emulator)
+  # ----------------------------------------
+  s3:
+    image: minio/minio:latest
+    container_name: areena-minio
+    restart: always
+    ports:
+      - "9000:9000" # S3 API Port
+      - "9001:9001" # Web Dashboard
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASS}
+    command: server /data --console-address ":9001"
+    volumes:
+      - areena_s3_data:/data
+
+  # ----------------------------------------
+  # 4. EXPRESS API BACKEND
+  # ----------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: areena-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT}:${BACKEND_PORT}"
+    environment:
+      # We construct the Docker-internal DB URL here using the .env variables.
+      # It strictly uses '@db:5432' instead of localhost so the containers can talk.
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@db:5432/${DB_NAME}?schema=public
+      - REDIS_URL=${REDIS_URL_DOCKER}
+      - S3_ENDPOINT=http://s3:9000
+      - AWS_REGION=${MINIO_REGION}
+      - AWS_ACCESS_KEY_ID=${MINIO_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_PASS}
+      - AWS_BUCKET_NAME=${MINIO_BUCKET_NAME}
+      - PORT=${BACKEND_PORT}
+    depends_on:
+      - db
+      - redis
+      - s3
+
+  # ----------------------------------------
+  # 5. WEBSOCKET SERVER
+  # ----------------------------------------
+  websocket:
+    build:
+      context: .
+      dockerfile: apps/websocket-server/Dockerfile
+    container_name: areena-websocket
+    restart: unless-stopped
+    ports:
+      - "${WS_PORT}:${WS_PORT}"
+    environment:
+      - REDIS_URL=${REDIS_URL_DOCKER}
+      - PORT=${WS_PORT}
+    depends_on:
+      - redis
+
+# ----------------------------------------
+# PERSISTENT VOLUMES
+# ----------------------------------------
+volumes:
+  areena_pg_data:
+  areena_s3_data:

@@ -1,0 +1,9 @@
+{
+  "name": "@areena/websocket-server",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "nodemon src/server.ts",
+    "start": "node dist/server.js"
+  }
+}
