@@ -1,0 +1,67 @@
+name: Deploy Backend & WebSocket to VPS
+
+# 1. Trigger the workflow only when code is pushed to the main branch
+on:
+  push:
+    branches:
+      - main
+    # Only trigger if backend or shared code changes (saves minutes if you only updated the frontend)
+    paths:
+      - 'apps/backend/**'
+      - 'apps/websocket-server/**'
+      - 'packages/**'
+      - '.github/workflows/deploy.yml'
+
+jobs:
+  deploy:
+    name: Deploy to Infomaniak VPS
+    runs-on: ubuntu-latest
+    # TODO: Remove when ready to deploy!
+    if: false
+
+    steps:
+      - name: 🚀 Executing SSH Deployment Script
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script_stop: true # Fails the action if any command below fails
+          script: |
+            # 1. Navigate to the project folder on your VPS
+            # (Change this path if you clone it somewhere else on the VPS)
+            cd /var/www/areena-monorepo
+
+            # 2. Pull the latest code from GitHub
+            echo "📥 Pulling latest code..."
+            git fetch --all
+            git reset --hard origin/main
+            git pull origin main
+
+            # 3. Create/Update the Production .env file
+            # (GitHub injects the secret into the VPS securely)
+            echo "🔐 Writing production environment variables..."
+            echo "${{ secrets.PRODUCTION_ENV }}" > .env
+
+            # 4. Install dependencies for the whole monorepo
+            echo "📦 Installing NPM packages..."
+            npm install --production=false
+
+            # 5. Generate Prisma Client & Run Database Migrations
+            echo "🗄️ Updating Database Schema..."
+            cd apps/backend
+            npx prisma generate
+            npx prisma migrate deploy
+            cd ../..
+
+            # 6. Build TypeScript into JavaScript (if using TS)
+            echo "🔨 Building Backend and WebSocket Server..."
+            npm run build --workspace=@areena/backend --if-present
+            npm run build --workspace=@areena/websocket-server --if-present
+
+            # 7. Restart the Node applications using PM2
+            # (Assuming you started them on the VPS using PM2)
+            echo "🔄 Restarting PM2 Clusters..."
+            pm2 reload all
+            
+            echo "✅ Deployment Successful!"
