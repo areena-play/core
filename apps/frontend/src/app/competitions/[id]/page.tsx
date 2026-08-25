@@ -320,7 +320,7 @@ export default function CompetitionDetailPage() {
                                     {t('competitions.registeredTeams')}:
                                 </span>
                                 <div className="font-bold text-slate-900 dark:text-white mt-0.5">
-                                    {activeCategory.teams?.length || 0} Teams
+                                    {t('competitions.registeredCount', { count: activeCategory.teams?.length || 0 })}
                                 </div>
                             </div>
                         </div>
@@ -436,7 +436,7 @@ export default function CompetitionDetailPage() {
                                     >
                                         <div className="flex items-center justify-between pb-2 sm:pb-3 border-b border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                                             <span className="font-semibold text-slate-700 dark:text-slate-300">
-                                                {t('competitions.round')} {enc.round}
+                                                {t('competitions.roundNumber', { round: enc.round })}
                                             </span>
                                             <span
                                                 className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${

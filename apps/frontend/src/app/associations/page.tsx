@@ -199,7 +199,9 @@ export default function AssociationsPage() {
                                                     {sub.name}
                                                 </h4>
                                                 <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                                    {t('associations.affiliatedClubs')}: {sub.clubAssociations?.length || 0}
+                                                    {t('associations.affiliatedClubsCount', {
+                                                        count: sub.clubAssociations?.length || 0,
+                                                    })}
                                                 </div>
                                             </div>
                                         );

@@ -71,7 +71,7 @@ export default function CommunicationsPage() {
             };
 
             const result = await api.sendBroadcast(payload);
-            setSuccessMsg(`Broadcast message dispatched successfully to ${result.recipientCount} recipients.`);
+            setSuccessMsg(t('communications.broadcastSuccess', { count: result.recipientCount }));
             fetchMessages();
             setSubject('');
             setBody('');
@@ -300,10 +300,14 @@ export default function CommunicationsPage() {
 
                                 <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
                                     <span>
-                                        Sent by: {m.sender?.firstName} {m.sender?.lastName}
+                                        {t('communications.sentBy', {
+                                            sender: `${m.sender?.firstName || ''} ${m.sender?.lastName || ''}`.trim() || 'Federation Admin',
+                                        })}
                                     </span>
                                     <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                                        {m._count?.recipients || 0} Delivered
+                                        {t('communications.deliveredCount', {
+                                            count: m._count?.recipients || 0,
+                                        })}
                                     </span>
                                 </div>
                             </div>

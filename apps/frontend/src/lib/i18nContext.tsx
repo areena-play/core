@@ -4,15 +4,33 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { SupportedLocale, SUPPORTED_LOCALES, LOCALES, LocaleInfo } from '@areena/shared';
 import { translations } from './i18n';
 
+export type TranslationParams = Record<string, any>;
+
 interface I18nContextType {
     locale: SupportedLocale;
     setLocale: (locale: SupportedLocale) => void;
-    t: (key: string, params?: Record<string, string | number>) => string;
+    t: (key: string, params?: TranslationParams, defaultValue?: string) => string;
+    formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
+    formatDate: (date: Date | string | number, options?: Intl.DateTimeFormatOptions) => string;
     locales: Record<SupportedLocale, LocaleInfo>;
     supportedLocales: SupportedLocale[];
 }
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
+
+function resolveNestedKey(obj: any, path: string): string | undefined {
+    if (!obj || typeof obj !== 'object') return undefined;
+    const keys = path.split('.');
+    let current: any = obj;
+    for (const k of keys) {
+        if (current && typeof current === 'object' && k in current) {
+            current = current[k];
+        } else {
+            return undefined;
+        }
+    }
+    return typeof current === 'string' ? current : undefined;
+}
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
     const [locale, setLocaleState] = useState<SupportedLocale>('en');
@@ -39,49 +57,86 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
         document.documentElement.lang = newLocale;
     };
 
-    const t = (key: string, params?: Record<string, string | number>): string => {
-        const keys = key.split('.');
+    const formatNumber = (value: number, options?: Intl.NumberFormatOptions): string => {
+        try {
+            return new Intl.NumberFormat(locale, options).format(value);
+        } catch {
+            return String(value);
+        }
+    };
+
+    const formatDate = (date: Date | string | number, options?: Intl.DateTimeFormatOptions): string => {
+        try {
+            const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
+            return new Intl.DateTimeFormat(locale, options).format(d);
+        } catch {
+            return String(date);
+        }
+    };
+
+    const t = (key: string, params?: TranslationParams, defaultValue?: string): string => {
         const activeDict = translations[locale] || translations.en;
         const fallbackDict = translations.en;
 
-        let val: any = activeDict;
-        for (const k of keys) {
-            if (val && typeof val === 'object' && k in val) {
-                val = val[k];
+        let template: string | undefined;
+
+        // 1. Context check (e.g. context: 'coach', context: 'female')
+        if (params && params.context) {
+            const contextKey = `${key}_${params.context}`;
+            template = resolveNestedKey(activeDict, contextKey) || resolveNestedKey(fallbackDict, contextKey);
+        }
+
+        // 2. Pluralization check (e.g. count: 0, count: 1, count: 5)
+        if (!template && params && typeof params.count === 'number') {
+            const count = params.count;
+            let pluralKey: string | undefined;
+            if (count === 0) {
+                pluralKey = `${key}_zero`;
+            } else if (count === 1) {
+                pluralKey = `${key}_one`;
             } else {
-                val = undefined;
-                break;
+                pluralKey = `${key}_other`;
+            }
+
+            if (pluralKey) {
+                template = resolveNestedKey(activeDict, pluralKey) || resolveNestedKey(fallbackDict, pluralKey);
             }
         }
 
-        // Fallback to English if key missing
-        if (val === undefined) {
-            let fallbackVal: any = fallbackDict;
-            for (const k of keys) {
-                if (fallbackVal && typeof fallbackVal === 'object' && k in fallbackVal) {
-                    fallbackVal = fallbackVal[k];
-                } else {
-                    fallbackVal = undefined;
-                    break;
+        // 3. Direct Key Resolution
+        if (!template) {
+            template = resolveNestedKey(activeDict, key) || resolveNestedKey(fallbackDict, key);
+        }
+
+        // 4. Default value fallback
+        if (!template) {
+            template = defaultValue !== undefined ? defaultValue : key;
+        }
+
+        if (typeof template !== 'string') {
+            return String(template ?? key);
+        }
+
+        // 5. Interpolate context variables
+        if (params && typeof params === 'object') {
+            // Replace {{var}}, {var}, %{var}, and :var patterns
+            return template.replace(/(?:\{\{|\{|\%\{|:)([a-zA-Z0-9_]+)(?:\}\}|\})?/g, (match, varName) => {
+                if (varName in params) {
+                    const val = params[varName];
+                    if (val === null || val === undefined) return '';
+                    if (typeof val === 'number') {
+                        return formatNumber(val);
+                    }
+                    if (val instanceof Date) {
+                        return formatDate(val);
+                    }
+                    return String(val);
                 }
-            }
-            val = fallbackVal;
+                return match;
+            });
         }
 
-        if (typeof val !== 'string') {
-            return key; // return key as fallback
-        }
-
-        // Variable interpolation e.g. {name}
-        if (params) {
-            let interpolated = val;
-            for (const [pKey, pVal] of Object.entries(params)) {
-                interpolated = interpolated.replace(new RegExp(`\\{${pKey}\\}`, 'g'), String(pVal));
-            }
-            return interpolated;
-        }
-
-        return val;
+        return template;
     };
 
     return (
@@ -90,6 +145,8 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
                 locale,
                 setLocale,
                 t,
+                formatNumber,
+                formatDate,
                 locales: LOCALES,
                 supportedLocales: SUPPORTED_LOCALES,
             }}
@@ -106,4 +163,3 @@ export function useI18n() {
     }
     return context;
 }
-
