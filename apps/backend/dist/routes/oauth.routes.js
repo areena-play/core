@@ -81,7 +81,9 @@ router.post('/clients/:id/approve', auth_1.authenticateToken, async (req, res, n
             const topLevel = await prisma_1.prisma.association.findFirst({ where: { isTopLevel: true } });
             const isTopAdmin = topLevel && req.user.associationRoles.some((r) => r.associationId === topLevel.id);
             if (!isTopAdmin) {
-                return res.status(403).json({ error: 'Only main association administrators can grant enhanced API access rights' });
+                return res
+                    .status(403)
+                    .json({ error: 'Only main association administrators can grant enhanced API access rights' });
             }
         }
         const { approvedScopes, status } = req.body;
@@ -89,7 +91,12 @@ router.post('/clients/:id/approve', auth_1.authenticateToken, async (req, res, n
             where: { id: req.params.id },
             data: {
                 status: status || 'APPROVED',
-                allowedScopes: approvedScopes || ['read:public', 'read:calendar', 'read:competitions', 'read:members_full'],
+                allowedScopes: approvedScopes || [
+                    'read:public',
+                    'read:calendar',
+                    'read:competitions',
+                    'read:members_full',
+                ],
                 approvedByUserId: req.user.id,
             },
         });
@@ -104,10 +111,17 @@ router.post('/token', async (req, res, next) => {
     try {
         const { grant_type, client_id, client_secret } = req.body;
         if (grant_type !== 'client_credentials') {
-            return res.status(400).json({ error: 'unsupported_grant_type', error_description: "Grant type must be 'client_credentials'" });
+            return res
+                .status(400)
+                .json({
+                error: 'unsupported_grant_type',
+                error_description: "Grant type must be 'client_credentials'",
+            });
         }
         if (!client_id || !client_secret) {
-            return res.status(400).json({ error: 'invalid_request', error_description: 'client_id and client_secret are required' });
+            return res
+                .status(400)
+                .json({ error: 'invalid_request', error_description: 'client_id and client_secret are required' });
         }
         const client = await prisma_1.prisma.oAuthClient.findUnique({
             where: { clientId: client_id },
@@ -116,7 +130,9 @@ router.post('/token', async (req, res, next) => {
             return res.status(401).json({ error: 'invalid_client', error_description: 'Client not found' });
         }
         if (client.status !== 'APPROVED') {
-            return res.status(403).json({ error: 'unauthorized_client', error_description: 'Client is pending approval or revoked' });
+            return res
+                .status(403)
+                .json({ error: 'unauthorized_client', error_description: 'Client is pending approval or revoked' });
         }
         const validSecret = await bcryptjs_1.default.compare(client_secret, client.clientSecretHash);
         if (!validSecret) {

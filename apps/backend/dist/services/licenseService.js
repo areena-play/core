@@ -65,7 +65,9 @@ class LicenseService {
                         userId: data.userId,
                         type: shared_1.LicenseType.PLAYER_REGULAR,
                         seasonId: data.seasonId,
-                        status: { in: [shared_1.LicenseStatus.APPROVED, shared_1.LicenseStatus.PENDING_CLUB, shared_1.LicenseStatus.PENDING_ASSOCIATION] },
+                        status: {
+                            in: [shared_1.LicenseStatus.APPROVED, shared_1.LicenseStatus.PENDING_CLUB, shared_1.LicenseStatus.PENDING_ASSOCIATION],
+                        },
                     },
                 });
                 if (existingRegular) {
@@ -97,7 +99,8 @@ class LicenseService {
             const rules = association?.rules || {};
             const autoApproveDomestic = rules.autoApproveDomesticTCards !== false; // default true
             // If user is from Switzerland/domestic or matches rules
-            if (autoApproveDomestic && user.country.toLowerCase() === (association?.code === 'CH' ? 'switzerland' : 'switzerland')) {
+            if (autoApproveDomestic &&
+                user.country.toLowerCase() === (association?.code === 'CH' ? 'switzerland' : 'switzerland')) {
                 initialStatus = shared_1.LicenseStatus.APPROVED;
                 autoApproved = true;
             }
@@ -184,9 +187,9 @@ class LicenseService {
         });
         // If approved and user doesn't have a license ID yet, assign one
         if (data.approved && !license.user.licenseId) {
-            const topAssociation = await prisma_1.prisma.association.findFirst({
+            const topAssociation = (await prisma_1.prisma.association.findFirst({
                 where: { isTopLevel: true },
-            }) || license.association;
+            })) || license.association;
             const newLicenseId = await this.generateLicenseId(topAssociation.id);
             await prisma_1.prisma.user.update({
                 where: { id: license.userId },

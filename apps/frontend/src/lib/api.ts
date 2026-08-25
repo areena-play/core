@@ -1,219 +1,227 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 class ApiClient {
-  private getToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('areena_token');
-  }
-
-  async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const token = this.getToken();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...((options.headers as Record<string, string>) || {}),
-    };
-
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers,
-    });
-
-    if (!res.ok) {
-      let errorMessage = `HTTP Error ${res.status}`;
-      try {
-        const errorData = await res.json();
-        errorMessage = errorData.error || errorData.message || errorMessage;
-      } catch {}
-      throw new Error(errorMessage);
+    private getToken(): string | null {
+        if (typeof window === 'undefined') return null;
+        return localStorage.getItem('areena_token');
     }
 
-    return res.json();
-  }
+    async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+        const token = this.getToken();
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...((options.headers as Record<string, string>) || {}),
+        };
 
-  // Auth
-  login(body: any) {
-    return this.request('/auth/login', { method: 'POST', body: JSON.stringify(body) });
-  }
+        const res = await fetch(`${API_BASE}${endpoint}`, {
+            ...options,
+            headers,
+        });
 
-  register(body: any) {
-    return this.request('/auth/register', { method: 'POST', body: JSON.stringify(body) });
-  }
+        if (!res.ok) {
+            let errorMessage = `HTTP Error ${res.status}`;
+            try {
+                const errorData = await res.json();
+                errorMessage = errorData.error || errorData.message || errorMessage;
+            } catch {}
+            throw new Error(errorMessage);
+        }
 
-  getMe() {
-    return this.request('/auth/me');
-  }
+        return res.json();
+    }
 
-  updateProfile(body: any) {
-    return this.request('/auth/profile', { method: 'PUT', body: JSON.stringify(body) });
-  }
+    // Auth
+    login(body: any) {
+        return this.request('/auth/login', { method: 'POST', body: JSON.stringify(body) });
+    }
 
-  getUsers(query: string = '') {
-    return this.request(`/auth/users?q=${encodeURIComponent(query)}`);
-  }
+    register(body: any) {
+        return this.request('/auth/register', { method: 'POST', body: JSON.stringify(body) });
+    }
 
-  // Associations & Hierarchy
-  getAssociations() {
-    return this.request('/associations');
-  }
+    getMe() {
+        return this.request('/auth/me');
+    }
 
-  getAssociation(id: string) {
-    return this.request(`/associations/${id}`);
-  }
+    updateProfile(body: any) {
+        return this.request('/auth/profile', { method: 'PUT', body: JSON.stringify(body) });
+    }
 
-  getAssociationRules(id: string) {
-    return this.request(`/associations/${id}/rules`);
-  }
+    getUsers(query: string = '') {
+        return this.request(`/auth/users?q=${encodeURIComponent(query)}`);
+    }
 
-  createAssociation(body: any) {
-    return this.request('/associations', { method: 'POST', body: JSON.stringify(body) });
-  }
+    // Associations & Hierarchy
+    getAssociations() {
+        return this.request('/associations');
+    }
 
-  updateLicenseIdTemplate(associationId: string, body: any) {
-    return this.request(`/associations/${associationId}/settings/license-template`, {
-      method: 'PUT',
-      body: JSON.stringify(body),
-    });
-  }
+    getAssociation(id: string) {
+        return this.request(`/associations/${id}`);
+    }
 
-  createSeason(associationId: string, body: any) {
-    return this.request(`/associations/${associationId}/seasons`, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    });
-  }
+    getAssociationRules(id: string) {
+        return this.request(`/associations/${id}/rules`);
+    }
 
-  getSeasons(associationId: string) {
-    return this.request(`/associations/${associationId}/seasons`);
-  }
+    createAssociation(body: any) {
+        return this.request('/associations', { method: 'POST', body: JSON.stringify(body) });
+    }
 
-  // Clubs
-  getClubs() {
-    return this.request('/clubs');
-  }
+    updateLicenseIdTemplate(associationId: string, body: any) {
+        return this.request(`/associations/${associationId}/settings/license-template`, {
+            method: 'PUT',
+            body: JSON.stringify(body),
+        });
+    }
 
-  getClub(id: string) {
-    return this.request(`/clubs/${id}`);
-  }
+    createSeason(associationId: string, body: any) {
+        return this.request(`/associations/${associationId}/seasons`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
 
-  createClub(body: any) {
-    return this.request('/clubs', { method: 'POST', body: JSON.stringify(body) });
-  }
+    getSeasons(associationId: string) {
+        return this.request(`/associations/${associationId}/seasons`);
+    }
 
-  // Licenses
-  getLicenses(params: Record<string, string> = {}) {
-    const qs = new URLSearchParams(params).toString();
-    return this.request(`/licenses${qs ? `?${qs}` : ''}`);
-  }
+    // Clubs
+    getClubs() {
+        return this.request('/clubs');
+    }
 
-  applyLicense(body: any) {
-    return this.request('/licenses/apply', { method: 'POST', body: JSON.stringify(body) });
-  }
+    getClub(id: string) {
+        return this.request(`/clubs/${id}`);
+    }
 
-  approveLicense(licenseId: string, body: any) {
-    return this.request(`/licenses/${licenseId}/approval`, { method: 'POST', body: JSON.stringify(body) });
-  }
+    createClub(body: any) {
+        return this.request('/clubs', { method: 'POST', body: JSON.stringify(body) });
+    }
 
-  updateUserLicenseId(userId: string, licenseId: string) {
-    return this.request(`/licenses/user/${userId}/license-id`, {
-      method: 'PUT',
-      body: JSON.stringify({ licenseId }),
-    });
-  }
+    // Licenses
+    getLicenses(params: Record<string, string> = {}) {
+        const qs = new URLSearchParams(params).toString();
+        return this.request(`/licenses${qs ? `?${qs}` : ''}`);
+    }
 
-  getRefresherCourses() {
-    return this.request('/licenses/courses');
-  }
+    applyLicense(body: any) {
+        return this.request('/licenses/apply', { method: 'POST', body: JSON.stringify(body) });
+    }
 
-  createRefresherCourse(body: any) {
-    return this.request('/licenses/courses', { method: 'POST', body: JSON.stringify(body) });
-  }
+    approveLicense(licenseId: string, body: any) {
+        return this.request(`/licenses/${licenseId}/approval`, { method: 'POST', body: JSON.stringify(body) });
+    }
 
-  attestCourseAttendance(courseId: string, body: any) {
-    return this.request(`/licenses/courses/${courseId}/attest`, { method: 'POST', body: JSON.stringify(body) });
-  }
+    updateUserLicenseId(userId: string, licenseId: string) {
+        return this.request(`/licenses/user/${userId}/license-id`, {
+            method: 'PUT',
+            body: JSON.stringify({ licenseId }),
+        });
+    }
 
-  // Competitions (Leagues & Tournaments)
-  getCompetitions(params: Record<string, string> = {}) {
-    const qs = new URLSearchParams(params).toString();
-    return this.request(`/competitions${qs ? `?${qs}` : ''}`);
-  }
+    getRefresherCourses() {
+        return this.request('/licenses/courses');
+    }
 
-  getCompetition(id: string) {
-    return this.request(`/competitions/${id}`);
-  }
+    createRefresherCourse(body: any) {
+        return this.request('/licenses/courses', { method: 'POST', body: JSON.stringify(body) });
+    }
 
-  getLiveEncounters() {
-    return this.request('/competitions/live');
-  }
+    attestCourseAttendance(courseId: string, body: any) {
+        return this.request(`/licenses/courses/${courseId}/attest`, { method: 'POST', body: JSON.stringify(body) });
+    }
 
-  createCompetition(body: any) {
-    return this.request('/competitions', { method: 'POST', body: JSON.stringify(body) });
-  }
+    // Competitions (Leagues & Tournaments)
+    getCompetitions(params: Record<string, string> = {}) {
+        const qs = new URLSearchParams(params).toString();
+        return this.request(`/competitions${qs ? `?${qs}` : ''}`);
+    }
 
-  createCategory(competitionId: string, body: any) {
-    return this.request(`/competitions/${competitionId}/categories`, { method: 'POST', body: JSON.stringify(body) });
-  }
+    getCompetition(id: string) {
+        return this.request(`/competitions/${id}`);
+    }
 
-  registerTeam(categoryId: string, body: any) {
-    return this.request(`/competitions/categories/${categoryId}/teams`, { method: 'POST', body: JSON.stringify(body) });
-  }
+    getLiveEncounters() {
+        return this.request('/competitions/live');
+    }
 
-  generateGroups(categoryId: string, body: any) {
-    return this.request(`/competitions/categories/${categoryId}/generate-groups`, { method: 'POST', body: JSON.stringify(body) });
-  }
+    createCompetition(body: any) {
+        return this.request('/competitions', { method: 'POST', body: JSON.stringify(body) });
+    }
 
-  getEncounter(id: string) {
-    return this.request(`/competitions/encounters/${id}`);
-  }
+    createCategory(competitionId: string, body: any) {
+        return this.request(`/competitions/${competitionId}/categories`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
 
-  updateMatchScore(matchId: string, body: any) {
-    return this.request(`/competitions/matches/${matchId}/score`, { method: 'PUT', body: JSON.stringify(body) });
-  }
+    registerTeam(categoryId: string, body: any) {
+        return this.request(`/competitions/categories/${categoryId}/teams`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
 
-  // Calendar
-  getCalendarEvents(params: Record<string, string> = {}) {
-    const qs = new URLSearchParams(params).toString();
-    return this.request(`/calendar${qs ? `?${qs}` : ''}`);
-  }
+    generateGroups(categoryId: string, body: any) {
+        return this.request(`/competitions/categories/${categoryId}/generate-groups`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
 
-  createCalendarEvent(body: any) {
-    return this.request('/calendar', { method: 'POST', body: JSON.stringify(body) });
-  }
+    getEncounter(id: string) {
+        return this.request(`/competitions/encounters/${id}`);
+    }
 
-  // Communications
-  sendBroadcast(body: any) {
-    return this.request('/messages/broadcast', { method: 'POST', body: JSON.stringify(body) });
-  }
+    updateMatchScore(matchId: string, body: any) {
+        return this.request(`/competitions/matches/${matchId}/score`, { method: 'PUT', body: JSON.stringify(body) });
+    }
 
-  getMessages() {
-    return this.request('/messages');
-  }
+    // Calendar
+    getCalendarEvents(params: Record<string, string> = {}) {
+        const qs = new URLSearchParams(params).toString();
+        return this.request(`/calendar${qs ? `?${qs}` : ''}`);
+    }
 
-  // OAuth / Developer Portal
-  getOAuthClients() {
-    return this.request('/oauth/clients');
-  }
+    createCalendarEvent(body: any) {
+        return this.request('/calendar', { method: 'POST', body: JSON.stringify(body) });
+    }
 
-  createOAuthClient(body: any) {
-    return this.request('/oauth/clients', { method: 'POST', body: JSON.stringify(body) });
-  }
+    // Communications
+    sendBroadcast(body: any) {
+        return this.request('/messages/broadcast', { method: 'POST', body: JSON.stringify(body) });
+    }
 
-  approveOAuthClient(clientId: string, body: any) {
-    return this.request(`/oauth/clients/${clientId}/approve`, { method: 'POST', body: JSON.stringify(body) });
-  }
+    getMessages() {
+        return this.request('/messages');
+    }
 
-  requestOAuthToken(body: any) {
-    return this.request('/oauth/token', { method: 'POST', body: JSON.stringify(body) });
-  }
+    // OAuth / Developer Portal
+    getOAuthClients() {
+        return this.request('/oauth/clients');
+    }
 
-  // Protected OAuth API Tester
-  fetchOAuthApi(endpoint: string, token: string) {
-    return fetch(`${API_BASE}/oauth${endpoint}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then((res) => res.json());
-  }
+    createOAuthClient(body: any) {
+        return this.request('/oauth/clients', { method: 'POST', body: JSON.stringify(body) });
+    }
+
+    approveOAuthClient(clientId: string, body: any) {
+        return this.request(`/oauth/clients/${clientId}/approve`, { method: 'POST', body: JSON.stringify(body) });
+    }
+
+    requestOAuthToken(body: any) {
+        return this.request('/oauth/token', { method: 'POST', body: JSON.stringify(body) });
+    }
+
+    // Protected OAuth API Tester
+    fetchOAuthApi(endpoint: string, token: string) {
+        return fetch(`${API_BASE}/oauth${endpoint}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        }).then((res) => res.json());
+    }
 }
 
 export const api = new ApiClient();
-

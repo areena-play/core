@@ -62,7 +62,18 @@ class BroadcastService {
             }
             else if (data.targetRole === 'PLAYER') {
                 const playerUserIds = (await prisma_1.prisma.license.findMany({
-                    where: { type: { in: ['PLAYER_REGULAR', 'PLAYER_TCARD', 'PLAYER_WOMEN', 'PLAYER_JUNIOR', 'PLAYER_SENIOR'] }, status: 'APPROVED' },
+                    where: {
+                        type: {
+                            in: [
+                                'PLAYER_REGULAR',
+                                'PLAYER_TCARD',
+                                'PLAYER_WOMEN',
+                                'PLAYER_JUNIOR',
+                                'PLAYER_SENIOR',
+                            ],
+                        },
+                        status: 'APPROVED',
+                    },
                     select: { userId: true },
                 })).map((l) => l.userId);
                 recipientUsers = recipientUsers.filter((u) => playerUserIds.includes(u.id));

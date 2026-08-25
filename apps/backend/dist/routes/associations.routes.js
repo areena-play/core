@@ -52,7 +52,7 @@ router.get('/:id/rules', async (req, res, next) => {
 // POST /associations - Create sub-association
 router.post('/', auth_1.authenticateToken, auth_1.requireSuperAdmin, (0, validate_1.validate)(shared_1.createAssociationSchema), async (req, res, next) => {
     try {
-        const { name, shortName, code, level, isTopLevel, parentAssociationIds, rules, licenseIdTemplate, regionDigit } = req.body;
+        const { name, shortName, code, level, isTopLevel, parentAssociationIds, rules, licenseIdTemplate, regionDigit, } = req.body;
         const existingCode = await prisma_1.prisma.association.findUnique({ where: { code } });
         if (existingCode) {
             return res.status(400).json({ error: `Association with code '${code}' already exists` });
@@ -94,7 +94,9 @@ router.put('/:id/settings/license-template', auth_1.authenticateToken, (0, valid
         // Must be super admin or main association admin
         const isMainAdmin = req.user?.isSuperAdmin || req.user?.associationRoles.some((r) => r.associationId === targetAssoc.id);
         if (!isMainAdmin) {
-            return res.status(403).json({ error: 'Only main association administrators can update the license ID template' });
+            return res
+                .status(403)
+                .json({ error: 'Only main association administrators can update the license ID template' });
         }
         const { licenseIdTemplate, counter } = req.body;
         const updated = await prisma_1.prisma.association.update({

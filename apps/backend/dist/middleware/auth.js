@@ -67,7 +67,10 @@ function optionalAuth(req, res, next) {
                     lastName: user.lastName,
                     isSuperAdmin: user.isSuperAdmin,
                     licenseId: user.licenseId,
-                    associationRoles: user.associationRoles.map((r) => ({ associationId: r.associationId, role: r.role })),
+                    associationRoles: user.associationRoles.map((r) => ({
+                        associationId: r.associationId,
+                        role: r.role,
+                    })),
                     clubRoles: user.clubRoles.map((r) => ({ clubId: r.clubId, role: r.role })),
                 };
             }

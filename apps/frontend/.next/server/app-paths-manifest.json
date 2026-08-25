@@ -1,8 +1,23 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/calendar/page": "app/calendar/page.js",
-  "/competitions/page": "app/competitions/page.js",
+  "/apple-icon.png/route": "app/apple-icon.png/route.js",
+  "/associations/settings/page": "app/associations/settings/page.js",
+  "/auth/register/page": "app/auth/register/page.js",
   "/auth/login/page": "app/auth/login/page.js",
+  "/associations/page": "app/associations/page.js",
+  "/calendar/page": "app/calendar/page.js",
+  "/communications/page": "app/communications/page.js",
   "/competitions/[id]/encounter/[encounterId]/page": "app/competitions/[id]/encounter/[encounterId]/page.js",
-  "/competitions/[id]/page": "app/competitions/[id]/page.js"
+  "/icon.png/route": "app/icon.png/route.js",
+  "/icon.svg/route": "app/icon.svg/route.js",
+  "/competitions/[id]/page": "app/competitions/[id]/page.js",
+  "/developers/page": "app/developers/page.js",
+  "/licenses/apply/page": "app/licenses/apply/page.js",
+  "/competitions/page": "app/competitions/page.js",
+  "/licenses/approvals/page": "app/licenses/approvals/page.js",
+  "/licenses/page": "app/licenses/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/page": "app/page.js",
+  "/licenses/refresher-courses/page": "app/licenses/refresher-courses/page.js",
+  "/profile/page": "app/profile/page.js"
 }

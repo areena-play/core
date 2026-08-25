@@ -39,7 +39,9 @@ function requireOAuthScope(requiredScope) {
         if (!req.oauth) {
             return res.status(401).json({ error: 'OAuth authentication required' });
         }
-        const hasScope = req.oauth.scopes.includes(requiredScope) || req.oauth.scopes.includes('*') || req.oauth.scopes.includes('admin:*');
+        const hasScope = req.oauth.scopes.includes(requiredScope) ||
+            req.oauth.scopes.includes('*') ||
+            req.oauth.scopes.includes('admin:*');
         if (!hasScope) {
             return res.status(403).json({
                 error: `Insufficient OAuth scope. Required scope: ${requiredScope}`,

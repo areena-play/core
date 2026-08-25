@@ -25,12 +25,12 @@ app.use(morgan('dev'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    service: 'areena-backend',
-    version: '1.0.0',
-    timestamp: new Date().toISOString(),
-  });
+    res.json({
+        status: 'ok',
+        service: 'areena-backend',
+        version: '1.0.0',
+        timestamp: new Date().toISOString(),
+    });
 });
 
 // Mount Routes
@@ -50,9 +50,8 @@ app.use(errorHandler);
 const PORT = config.port;
 
 app.listen(PORT, () => {
-  console.log(`[AREENA Backend] Server listening on port ${PORT}`);
-  console.log(`[AREENA Backend] Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`[AREENA Backend] Server listening on port ${PORT}`);
+    console.log(`[AREENA Backend] Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
 export default app;
-

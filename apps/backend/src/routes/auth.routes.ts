@@ -11,208 +11,214 @@ const router = Router();
 
 // POST /auth/register
 router.post('/register', validate(registerSchema), async (req, res, next) => {
-  try {
-    const { email, password, firstName, lastName, phone, street, postalCode, city, country, birthDate, gender } = req.body;
+    try {
+        const { email, password, firstName, lastName, phone, street, postalCode, city, country, birthDate, gender } =
+            req.body;
 
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      return res.status(400).json({ error: 'A user with this email already exists' });
+        const existing = await prisma.user.findUnique({ where: { email } });
+        if (existing) {
+            return res.status(400).json({ error: 'A user with this email already exists' });
+        }
+
+        const passwordHash = await bcrypt.hash(password, 10);
+
+        const user = await prisma.user.create({
+            data: {
+                email,
+                passwordHash,
+                firstName,
+                lastName,
+                phone,
+                street,
+                postalCode,
+                city,
+                country: country || 'Switzerland',
+                birthDate: birthDate ? new Date(birthDate) : null,
+                gender: gender || null,
+            },
+        });
+
+        const token = jwt.sign({ userId: user.id }, config.jwtSecret, { expiresIn: '7d' });
+
+        res.status(201).json({
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                phone: user.phone,
+                street: user.street,
+                postalCode: user.postalCode,
+                city: user.city,
+                country: user.country,
+                birthDate: user.birthDate,
+                gender: user.gender,
+                licenseId: user.licenseId,
+                eloPoints: user.eloPoints,
+                rank: user.rank,
+                isSuperAdmin: user.isSuperAdmin,
+            },
+        });
+    } catch (err) {
+        next(err);
     }
-
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    const user = await prisma.user.create({
-      data: {
-        email,
-        passwordHash,
-        firstName,
-        lastName,
-        phone,
-        street,
-        postalCode,
-        city,
-        country: country || 'Switzerland',
-        birthDate: birthDate ? new Date(birthDate) : null,
-        gender: gender || null,
-      },
-    });
-
-    const token = jwt.sign({ userId: user.id }, config.jwtSecret, { expiresIn: '7d' });
-
-    res.status(201).json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone: user.phone,
-        street: user.street,
-        postalCode: user.postalCode,
-        city: user.city,
-        country: user.country,
-        birthDate: user.birthDate,
-        gender: user.gender,
-        licenseId: user.licenseId,
-        eloPoints: user.eloPoints,
-        rank: user.rank,
-        isSuperAdmin: user.isSuperAdmin,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
 });
 
 // POST /auth/login
 router.post('/login', validate(loginSchema), async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
+    try {
+        const { email, password } = req.body;
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: {
-        associationRoles: { include: { association: true } },
-        clubRoles: { include: { club: true } },
-        licenses: { include: { club: true, association: true, season: true } },
-      },
-    });
+        const user = await prisma.user.findUnique({
+            where: { email },
+            include: {
+                associationRoles: { include: { association: true } },
+                clubRoles: { include: { club: true } },
+                licenses: { include: { club: true, association: true, season: true } },
+            },
+        });
 
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
+
+        const match = await bcrypt.compare(password, user.passwordHash);
+        if (!match) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
+
+        const token = jwt.sign({ userId: user.id }, config.jwtSecret, { expiresIn: '7d' });
+
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                phone: user.phone,
+                street: user.street,
+                postalCode: user.postalCode,
+                city: user.city,
+                country: user.country,
+                birthDate: user.birthDate,
+                gender: user.gender,
+                licenseId: user.licenseId,
+                eloPoints: user.eloPoints,
+                rank: user.rank,
+                isSuperAdmin: user.isSuperAdmin,
+                associationRoles: user.associationRoles,
+                clubRoles: user.clubRoles,
+                licenses: user.licenses,
+            },
+        });
+    } catch (err) {
+        next(err);
     }
-
-    const match = await bcrypt.compare(password, user.passwordHash);
-    if (!match) {
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
-
-    const token = jwt.sign({ userId: user.id }, config.jwtSecret, { expiresIn: '7d' });
-
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone: user.phone,
-        street: user.street,
-        postalCode: user.postalCode,
-        city: user.city,
-        country: user.country,
-        birthDate: user.birthDate,
-        gender: user.gender,
-        licenseId: user.licenseId,
-        eloPoints: user.eloPoints,
-        rank: user.rank,
-        isSuperAdmin: user.isSuperAdmin,
-        associationRoles: user.associationRoles,
-        clubRoles: user.clubRoles,
-        licenses: user.licenses,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
 });
 
 // GET /auth/me
 router.get('/me', authenticateToken, async (req: AuthRequest, res: Response, next) => {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.id },
-      include: {
-        associationRoles: { include: { association: true } },
-        clubRoles: { include: { club: true } },
-        licenses: { include: { club: true, association: true, season: true } },
-        courseAttendances: { include: { course: true } },
-      },
-    });
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: req.user!.id },
+            include: {
+                associationRoles: { include: { association: true } },
+                clubRoles: { include: { club: true } },
+                licenses: { include: { club: true, association: true, season: true } },
+                courseAttendances: { include: { course: true } },
+            },
+        });
 
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        res.json(user);
+    } catch (err) {
+        next(err);
     }
-
-    res.json(user);
-  } catch (err) {
-    next(err);
-  }
 });
 
 // PUT /auth/profile
-router.put('/profile', authenticateToken, validate(updateProfileSchema), async (req: AuthRequest, res: Response, next) => {
-  try {
-    const { firstName, lastName, phone, street, postalCode, city, country, birthDate, gender, avatarUrl } = req.body;
+router.put(
+    '/profile',
+    authenticateToken,
+    validate(updateProfileSchema),
+    async (req: AuthRequest, res: Response, next) => {
+        try {
+            const { firstName, lastName, phone, street, postalCode, city, country, birthDate, gender, avatarUrl } =
+                req.body;
 
-    const updated = await prisma.user.update({
-      where: { id: req.user!.id },
-      data: {
-        ...(firstName ? { firstName } : {}),
-        ...(lastName ? { lastName } : {}),
-        ...(phone ? { phone } : {}),
-        ...(street ? { street } : {}),
-        ...(postalCode ? { postalCode } : {}),
-        ...(city ? { city } : {}),
-        ...(country ? { country } : {}),
-        ...(birthDate !== undefined ? { birthDate: birthDate ? new Date(birthDate) : null } : {}),
-        ...(gender !== undefined ? { gender } : {}),
-        ...(avatarUrl !== undefined ? { avatarUrl } : {}),
-      },
-    });
+            const updated = await prisma.user.update({
+                where: { id: req.user!.id },
+                data: {
+                    ...(firstName ? { firstName } : {}),
+                    ...(lastName ? { lastName } : {}),
+                    ...(phone ? { phone } : {}),
+                    ...(street ? { street } : {}),
+                    ...(postalCode ? { postalCode } : {}),
+                    ...(city ? { city } : {}),
+                    ...(country ? { country } : {}),
+                    ...(birthDate !== undefined ? { birthDate: birthDate ? new Date(birthDate) : null } : {}),
+                    ...(gender !== undefined ? { gender } : {}),
+                    ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+                },
+            });
 
-    res.json(updated);
-  } catch (err) {
-    next(err);
-  }
-});
+            res.json(updated);
+        } catch (err) {
+            next(err);
+        }
+    },
+);
 
 // GET /auth/users (Member directory search)
 router.get('/users', authenticateToken, async (req: AuthRequest, res: Response, next) => {
-  try {
-    const query = (req.query.q as string) || '';
-    const users = await prisma.user.findMany({
-      where: query
-        ? {
-            OR: [
-              { firstName: { contains: query, mode: 'insensitive' } },
-              { lastName: { contains: query, mode: 'insensitive' } },
-              { email: { contains: query, mode: 'insensitive' } },
-              { licenseId: { contains: query, mode: 'insensitive' } },
-            ],
-          }
-        : {},
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        phone: true,
-        city: true,
-        country: true,
-        licenseId: true,
-        eloPoints: true,
-        rank: true,
-        avatarUrl: true,
-        licenses: {
-          select: {
-            id: true,
-            type: true,
-            status: true,
-            validUntil: true,
-            club: { select: { id: true, name: true } },
-          },
-        },
-      },
-      take: 50,
-      orderBy: { lastName: 'asc' },
-    });
+    try {
+        const query = (req.query.q as string) || '';
+        const users = await prisma.user.findMany({
+            where: query
+                ? {
+                      OR: [
+                          { firstName: { contains: query, mode: 'insensitive' } },
+                          { lastName: { contains: query, mode: 'insensitive' } },
+                          { email: { contains: query, mode: 'insensitive' } },
+                          { licenseId: { contains: query, mode: 'insensitive' } },
+                      ],
+                  }
+                : {},
+            select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                phone: true,
+                city: true,
+                country: true,
+                licenseId: true,
+                eloPoints: true,
+                rank: true,
+                avatarUrl: true,
+                licenses: {
+                    select: {
+                        id: true,
+                        type: true,
+                        status: true,
+                        validUntil: true,
+                        club: { select: { id: true, name: true } },
+                    },
+                },
+            },
+            take: 50,
+            orderBy: { lastName: 'asc' },
+        });
 
-    res.json(users);
-  } catch (err) {
-    next(err);
-  }
+        res.json(users);
+    } catch (err) {
+        next(err);
+    }
 });
 
 export default router;
-

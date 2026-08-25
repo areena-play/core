@@ -31,7 +31,7 @@ class CompetitionService {
                     const awayTeamId = round % 2 === 1 ? teamIds[j] : teamIds[i];
                     // Advance date slightly per round/match
                     const matchDate = new Date(scheduledDate);
-                    matchDate.setDate(matchDate.getDate() + (round - 1) * 7 + (i + j) % 3);
+                    matchDate.setDate(matchDate.getDate() + (round - 1) * 7 + ((i + j) % 3));
                     const encounter = await prisma_1.prisma.encounter.create({
                         data: {
                             categoryId,
@@ -238,10 +238,34 @@ class CompetitionService {
         const standingsMap = new Map();
         for (const enc of encounters) {
             if (!standingsMap.has(enc.homeTeamId)) {
-                standingsMap.set(enc.homeTeamId, { played: 0, won: 0, drawn: 0, lost: 0, matchesWon: 0, matchesLost: 0, setsWon: 0, setsLost: 0, pointsWon: 0, pointsLost: 0, tablePoints: 0 });
+                standingsMap.set(enc.homeTeamId, {
+                    played: 0,
+                    won: 0,
+                    drawn: 0,
+                    lost: 0,
+                    matchesWon: 0,
+                    matchesLost: 0,
+                    setsWon: 0,
+                    setsLost: 0,
+                    pointsWon: 0,
+                    pointsLost: 0,
+                    tablePoints: 0,
+                });
             }
             if (!standingsMap.has(enc.awayTeamId)) {
-                standingsMap.set(enc.awayTeamId, { played: 0, won: 0, drawn: 0, lost: 0, matchesWon: 0, matchesLost: 0, setsWon: 0, setsLost: 0, pointsWon: 0, pointsLost: 0, tablePoints: 0 });
+                standingsMap.set(enc.awayTeamId, {
+                    played: 0,
+                    won: 0,
+                    drawn: 0,
+                    lost: 0,
+                    matchesWon: 0,
+                    matchesLost: 0,
+                    setsWon: 0,
+                    setsLost: 0,
+                    pointsWon: 0,
+                    pointsLost: 0,
+                    tablePoints: 0,
+                });
             }
             const home = standingsMap.get(enc.homeTeamId);
             const away = standingsMap.get(enc.awayTeamId);

@@ -20,7 +20,9 @@ router.get('/', auth_1.authenticateToken, async (req, res, next) => {
                 ...(status ? { status: status } : {}),
             },
             include: {
-                user: { select: { id: true, firstName: true, lastName: true, email: true, licenseId: true, country: true } },
+                user: {
+                    select: { id: true, firstName: true, lastName: true, email: true, licenseId: true, country: true },
+                },
                 club: { select: { id: true, name: true, code: true } },
                 association: { select: { id: true, name: true, code: true } },
                 season: { select: { id: true, name: true } },
@@ -43,7 +45,9 @@ router.post('/apply', auth_1.authenticateToken, (0, validate_1.validate)(shared_
             if (clubId) {
                 const isClubAdmin = req.user.clubRoles.some((r) => r.clubId === clubId);
                 if (!isClubAdmin) {
-                    return res.status(403).json({ error: 'Only a club admin or the user themself can apply for this license' });
+                    return res
+                        .status(403)
+                        .json({ error: 'Only a club admin or the user themself can apply for this license' });
                 }
             }
         }
@@ -79,7 +83,8 @@ router.post('/:id/approval', auth_1.authenticateToken, (0, validate_1.validate)(
                 canApprove = req.user.clubRoles.some((r) => r.clubId === license.clubId);
             }
             if (license.status === 'PENDING_ASSOCIATION' || license.status === 'PENDING_CLUB') {
-                canApprove = canApprove || req.user.associationRoles.some((r) => r.associationId === license.associationId);
+                canApprove =
+                    canApprove || req.user.associationRoles.some((r) => r.associationId === license.associationId);
             }
         }
         if (!canApprove) {
@@ -105,7 +110,9 @@ router.put('/user/:userId/license-id', auth_1.authenticateToken, async (req, res
             const topLevelAssoc = await prisma_1.prisma.association.findFirst({ where: { isTopLevel: true } });
             const isTopAdmin = topLevelAssoc && req.user.associationRoles.some((r) => r.associationId === topLevelAssoc.id);
             if (!isTopAdmin) {
-                return res.status(403).json({ error: 'Only main association administrators can manually change a user license ID' });
+                return res
+                    .status(403)
+                    .json({ error: 'Only main association administrators can manually change a user license ID' });
             }
         }
         const { licenseId } = req.body;
@@ -133,7 +140,9 @@ router.get('/courses', async (req, res, next) => {
             include: {
                 association: true,
                 instructor: { select: { id: true, firstName: true, lastName: true, email: true } },
-                attendances: { include: { user: { select: { id: true, firstName: true, lastName: true, licenseId: true } } } },
+                attendances: {
+                    include: { user: { select: { id: true, firstName: true, lastName: true, licenseId: true } } },
+                },
             },
             orderBy: { date: 'desc' },
         });

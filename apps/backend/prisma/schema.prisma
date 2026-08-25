@@ -188,11 +188,11 @@ model AssociationHierarchy {
 }
 
 model UserAssociationRole {
-  id            String      @id @default(uuid())
+  id            String   @id @default(uuid())
   userId        String
   associationId String
-  role          String      @default("ADMIN") // ADMIN, PRESIDENT, SECRETARY, REFEREE_HEAD, COACH_HEAD
-  createdAt     DateTime    @default(now())
+  role          String   @default("ADMIN") // ADMIN, PRESIDENT, SECRETARY, REFEREE_HEAD, COACH_HEAD
+  createdAt     DateTime @default(now())
 
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
@@ -291,17 +291,17 @@ model License {
 }
 
 model RefresherCourse {
-  id                     String     @id @default(uuid())
-  associationId          String
-  title                  String
-  type                   CourseType
-  instructorId           String
-  location               String
-  date                   DateTime
-  durationHours          Int        @default(4)
-  validityExtensionMonths Int       @default(12)
-  createdAt              DateTime   @default(now())
-  updatedAt              DateTime   @updatedAt
+  id                      String     @id @default(uuid())
+  associationId           String
+  title                   String
+  type                    CourseType
+  instructorId            String
+  location                String
+  date                    DateTime
+  durationHours           Int        @default(4)
+  validityExtensionMonths Int        @default(12)
+  createdAt               DateTime   @default(now())
+  updatedAt               DateTime   @updatedAt
 
   association Association        @relation(fields: [associationId], references: [id], onDelete: Cascade)
   instructor  User               @relation("CourseInstructor", fields: [instructorId], references: [id], onDelete: Cascade)
@@ -309,16 +309,16 @@ model RefresherCourse {
 }
 
 model CourseAttendance {
-  id                 String    @id @default(uuid())
-  courseId           String
-  userId             String
-  licenseId          String?
-  attested           Boolean   @default(false)
-  attestedAt         DateTime?
-  attestedByUserId   String?
-  notes              String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id               String    @id @default(uuid())
+  courseId         String
+  userId           String
+  licenseId        String?
+  attested         Boolean   @default(false)
+  attestedAt       DateTime?
+  attestedByUserId String?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   course     RefresherCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
   user       User            @relation("UserCourseAttendance", fields: [userId], references: [id], onDelete: Cascade)
@@ -364,10 +364,10 @@ model Category {
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 
-  competition  Competition                @relation(fields: [competitionId], references: [id], onDelete: Cascade)
-  groups       CompetitionGroup[]
-  encounters   Encounter[]
-  teams        TeamCategoryRegistration[]
+  competition Competition                @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  groups      CompetitionGroup[]
+  encounters  Encounter[]
+  teams       TeamCategoryRegistration[]
 }
 
 model Team {
@@ -469,22 +469,22 @@ model Encounter {
 }
 
 model Match {
-  id            String      @id @default(uuid())
+  id            String          @id @default(uuid())
   encounterId   String
   orderIndex    Int
-  matchType     MatchType   @default(SINGLE)
+  matchType     MatchType       @default(SINGLE)
   label         String?
   homePlayer1Id String?
   homePlayer2Id String?
   awayPlayer1Id String?
   awayPlayer2Id String?
-  sets          Json        @default("[]")
-  homeWonSets   Int         @default(0)
-  awayWonSets   Int         @default(0)
-  winner        MatchWinner @default(PENDING)
+  sets          Json            @default("[]")
+  homeWonSets   Int             @default(0)
+  awayWonSets   Int             @default(0)
+  winner        MatchWinner     @default(PENDING)
   status        EncounterStatus @default(SCHEDULED)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   encounter   Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
   homePlayer1 User?     @relation("HomePlayer1", fields: [homePlayer1Id], references: [id], onDelete: SetNull)
@@ -494,7 +494,7 @@ model Match {
 }
 
 model CalendarEvent {
-  id            String      @id @default(uuid())
+  id            String    @id @default(uuid())
   title         String
   description   String?
   eventType     EventType
@@ -505,9 +505,9 @@ model CalendarEvent {
   startDate     DateTime
   endDate       DateTime
   location      String?
-  isPublic      Boolean     @default(true)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  isPublic      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   association Association? @relation(fields: [associationId], references: [id], onDelete: SetNull)
   club        Club?        @relation(fields: [clubId], references: [id], onDelete: SetNull)

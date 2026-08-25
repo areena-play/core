@@ -8,8 +8,7 @@ const ioredis_1 = __importDefault(require("ioredis"));
 const env_1 = require("./env");
 exports.redis = new ioredis_1.default(env_1.config.redisUrl, {
     retryStrategy(times) {
-        const delay = Math.min(times * 100, 3000);
-        return delay;
+        return Math.min(times * 100, 3000);
     },
     maxRetriesPerRequest: null,
     lazyConnect: true,
@@ -18,8 +17,8 @@ exports.redisPub = new ioredis_1.default(env_1.config.redisUrl, {
     lazyConnect: true,
 });
 exports.redis.on('error', (err) => {
-    console.warn('[Redis] Client error (operating in offline fallback mode if unavailable):', err.message);
+    console.warn('[Redis] Client error:', err.message);
 });
 exports.redisPub.on('error', (err) => {
-    console.warn('[Redis Pub] Client error (operating in offline fallback mode if unavailable):', err.message);
+    console.warn('[Redis Pub] Client error:', err.message);
 });
