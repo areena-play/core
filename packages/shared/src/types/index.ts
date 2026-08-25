@@ -1,3 +1,5 @@
+export * from './i18n';
+
 export enum AssociationLevel {
     NATIONAL = 'NATIONAL',
     REGIONAL = 'REGIONAL',
