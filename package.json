@@ -1,0 +1,23 @@
+{
+  "name": "areena-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev:backend": "npm run dev --workspace=@areena/backend",
+    "dev:frontend": "npm run dev --workspace=@areena/frontend",
+    "dev:ws": "npm run dev --workspace=@areena/websocket-server",
+    "prisma:generate": "npm run prisma:generate --workspace=@areena/backend",
+    "prisma:migrate": "npm run prisma:migrate --workspace=@areena/backend",
+    "prisma:seed": "npm run prisma:seed --workspace=@areena/backend"
+  },
+  "devDependencies": {
+    "@types/pngjs": "^6.0.5",
+    "pngjs": "^7.0.0",
+    "typescript": "^5.4.5"
+  }
+}

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ----------------------------------------
   # 1. DATABASE (PostgreSQL)
@@ -9,13 +7,18 @@ services:
     container_name: areena-postgres
     restart: always
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASS}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER:-areena_admin}
+      POSTGRES_PASSWORD: ${DB_PASS:-supersecretpassword}
+      POSTGRES_DB: ${DB_NAME:-areena_db}
     ports:
       - "5432:5432"
     volumes:
       - areena_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-areena_admin} -d ${DB_NAME:-areena_db}"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
 
   # ----------------------------------------
   # 2. CACHE & PUB/SUB (Redis)
@@ -38,8 +41,8 @@ services:
       - "9000:9000" # S3 API Port
       - "9001:9001" # Web Dashboard
     environment:
-      MINIO_ROOT_USER: ${MINIO_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_PASS}
+      MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASS:-minioadmin}
     command: server /data --console-address ":9001"
     volumes:
       - areena_s3_data:/data
@@ -54,22 +57,25 @@ services:
     container_name: areena-backend
     restart: unless-stopped
     ports:
-      - "${BACKEND_PORT}:${BACKEND_PORT}"
+      - "4000:4000"
     environment:
-      # We construct the Docker-internal DB URL here using the .env variables.
-      # It strictly uses '@db:5432' instead of localhost so the containers can talk.
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@db:5432/${DB_NAME}?schema=public
-      - REDIS_URL=${REDIS_URL_DOCKER}
+      - DATABASE_URL=postgresql://${DB_USER:-areena_admin}:${DB_PASS:-supersecretpassword}@db:5432/${DB_NAME:-areena_db}?schema=public
+      - REDIS_URL=redis://redis:6379
       - S3_ENDPOINT=http://s3:9000
-      - AWS_REGION=${MINIO_REGION}
-      - AWS_ACCESS_KEY_ID=${MINIO_USER}
-      - AWS_SECRET_ACCESS_KEY=${MINIO_PASS}
-      - AWS_BUCKET_NAME=${MINIO_BUCKET_NAME}
-      - PORT=${BACKEND_PORT}
+      - AWS_REGION=${MINIO_REGION:-eu-central-2}
+      - AWS_ACCESS_KEY_ID=${MINIO_USER:-minioadmin}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_PASS:-minioadmin}
+      - AWS_BUCKET_NAME=${MINIO_BUCKET_NAME:-areena-local-storage}
+      - PORT=4000
+      - BACKEND_PORT=4000
+      - JWT_SECRET=areena_jwt_secret_dev_key_2026
     depends_on:
-      - db
-      - redis
-      - s3
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      s3:
+        condition: service_started
 
   # ----------------------------------------
   # 5. WEBSOCKET SERVER
@@ -81,12 +87,33 @@ services:
     container_name: areena-websocket
     restart: unless-stopped
     ports:
-      - "${WS_PORT}:${WS_PORT}"
+      - "5000:5000"
     environment:
-      - REDIS_URL=${REDIS_URL_DOCKER}
-      - PORT=${WS_PORT}
+      - REDIS_URL=redis://redis:6379
+      - PORT=5000
     depends_on:
       - redis
+
+  # ----------------------------------------
+  # 6. FRONTEND (Next.js)
+  # ----------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:4000
+        NEXT_PUBLIC_WS_URL: ws://localhost:5000
+    container_name: areena-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+      - NEXT_PUBLIC_WS_URL=ws://localhost:5000
+    depends_on:
+      - backend
+      - websocket
 
 # ----------------------------------------
 # PERSISTENT VOLUMES
