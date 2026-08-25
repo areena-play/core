@@ -103,47 +103,53 @@ export default function EncounterScoreSheetPage() {
     };
 
     if (loading) {
-        return <div className="flex h-64 items-center justify-center text-slate-400">Loading match sheet...</div>;
+        return (
+            <div className="flex h-64 items-center justify-center text-slate-500 dark:text-slate-400">
+                Loading match sheet...
+            </div>
+        );
     }
 
     if (!encounter) {
         return (
-            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-8 text-center text-slate-300">
+            <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/50 p-8 text-center text-slate-700 dark:text-slate-300">
                 Encounter not found.
             </div>
         );
     }
 
     return (
-        <div className="space-y-8 pb-16">
+        <div className="space-y-6 md:space-y-8 pb-16">
             {/* Back link */}
             <Link
                 href={`/competitions/${competitionId}`}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
             >
                 <ChevronLeft className="h-4 w-4" />
-                Back to Competition Standings
+                <span>Back to Competition Standings</span>
             </Link>
 
             {/* Encounter Header Scoreboard */}
-            <div className="relative overflow-hidden rounded-2xl border border-red-900/40 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 p-6 md:p-8 shadow-2xl">
-                <div className="flex items-center justify-between text-xs text-slate-400 pb-4 border-b border-slate-800">
-                    <div className="flex items-center gap-2">
-                        <span className="font-bold text-red-500">{encounter.category?.competition?.name}</span>
+            <div className="relative overflow-hidden rounded-2xl border border-red-200 bg-white dark:border-red-900/40 dark:bg-gradient-to-b dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-5 sm:p-6 md:p-8 shadow-sm dark:shadow-2xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400 pb-3 sm:pb-4 border-b border-slate-200 dark:border-slate-800">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-bold text-red-600 dark:text-red-500">
+                            {encounter.category?.competition?.name}
+                        </span>
                         <span>•</span>
                         <span>{encounter.category?.name}</span>
                         <span>•</span>
                         <span>Round {encounter.round}</span>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
                         <span
                             className={`rounded px-2.5 py-0.5 text-xs font-bold uppercase ${
                                 encounter.status === 'LIVE'
-                                    ? 'bg-red-950 text-red-400 border border-red-800 animate-pulse'
+                                    ? 'bg-red-100 text-red-700 border border-red-300 dark:bg-red-950 dark:text-red-400 dark:border-red-800 animate-pulse'
                                     : encounter.status === 'FINISHED'
-                                      ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                                      : 'bg-slate-800 text-slate-300'
+                                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800'
+                                      : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                             }`}
                         >
                             {encounter.status}
@@ -152,35 +158,43 @@ export default function EncounterScoreSheetPage() {
                 </div>
 
                 {/* Big Match Scoreboard */}
-                <div className="my-6 grid grid-cols-1 items-center gap-6 md:grid-cols-3">
+                <div className="my-4 sm:my-6 grid grid-cols-1 items-center gap-4 sm:gap-6 md:grid-cols-3">
                     {/* Home Team */}
                     <div className="text-center md:text-right">
-                        <h2 className="text-2xl font-black text-white md:text-3xl">{encounter.homeTeam?.name}</h2>
-                        <p className="mt-1 text-xs text-slate-400">Home Team</p>
+                        <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white md:text-3xl">
+                            {encounter.homeTeam?.name}
+                        </h2>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Home Team</p>
                     </div>
 
                     {/* Center Score */}
                     <div className="flex flex-col items-center justify-center">
-                        <div className="flex items-center gap-4 rounded-2xl bg-slate-950 px-6 py-3 border border-slate-800 shadow-inner">
-                            <span className="font-mono text-4xl font-extrabold text-white">{encounter.homeScore}</span>
-                            <span className="text-2xl font-bold text-slate-600">:</span>
-                            <span className="font-mono text-4xl font-extrabold text-white">{encounter.awayScore}</span>
+                        <div className="flex items-center gap-3 sm:gap-4 rounded-2xl bg-slate-100 dark:bg-slate-950 px-5 py-2.5 sm:px-6 sm:py-3 border border-slate-200 dark:border-slate-800 shadow-inner">
+                            <span className="font-mono text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
+                                {encounter.homeScore}
+                            </span>
+                            <span className="text-xl sm:text-2xl font-bold text-slate-400 dark:text-slate-600">:</span>
+                            <span className="font-mono text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
+                                {encounter.awayScore}
+                            </span>
                         </div>
-                        <span className="mt-2 text-[11px] font-mono text-slate-400 uppercase tracking-widest">
+                        <span className="mt-2 text-[10px] sm:text-[11px] font-mono text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                             Total Matches Won
                         </span>
                     </div>
 
                     {/* Away Team */}
                     <div className="text-center md:text-left">
-                        <h2 className="text-2xl font-black text-white md:text-3xl">{encounter.awayTeam?.name}</h2>
-                        <p className="mt-1 text-xs text-slate-400">Away Team</p>
+                        <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white md:text-3xl">
+                            {encounter.awayTeam?.name}
+                        </h2>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Away Team</p>
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-center gap-6 pt-4 border-t border-slate-800 text-xs text-slate-400">
+                <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 pt-3 sm:pt-4 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                     <span className="flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5 text-slate-500" />
+                        <Calendar className="h-3.5 w-3.5 text-slate-400" />
                         {format(new Date(encounter.scheduledAt), 'PPPP p')}
                     </span>
                     {encounter.location && (
@@ -194,58 +208,59 @@ export default function EncounterScoreSheetPage() {
 
             {/* Official Match Sheet / Matches List */}
             <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                            <Trophy className="h-5 w-5 text-red-500" />
-                            Official Match Sheet (Davis Cup Decomposition)
-                        </h3>
-                        <p className="text-xs text-slate-400">
-                            Individual singles and doubles rubbers contributing to the encounter score.
-                        </p>
-                    </div>
+                <div>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <Trophy className="h-5 w-5 text-red-500" />
+                        <span>Official Match Sheet (Davis Cup Rubbers)</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Individual singles and doubles rubbers contributing to the encounter score.
+                    </p>
                 </div>
 
-                <div className="rounded-xl border border-slate-800 bg-slate-950 overflow-hidden shadow">
-                    <table className="w-full text-left text-xs">
-                        <thead className="border-b border-slate-800 bg-slate-900/80 text-slate-400 font-bold uppercase tracking-wider">
+                <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 overflow-x-auto shadow-sm">
+                    <table className="w-full text-left text-xs min-w-[650px]">
+                        <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                             <tr>
-                                <th className="px-4 py-3">Match</th>
-                                <th className="px-4 py-3">Type</th>
-                                <th className="px-4 py-3">Home Player</th>
-                                <th className="px-4 py-3">Away Player</th>
-                                <th className="px-4 py-3 text-center">Sets Breakdown</th>
-                                <th className="px-3 py-3 text-center">Sets Score</th>
-                                <th className="px-3 py-3 text-center">Status</th>
-                                <th className="px-4 py-3 text-right">Action</th>
+                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">Match</th>
+                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">Type</th>
+                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">Home Player</th>
+                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">Away Player</th>
+                                <th className="px-3 py-2.5 sm:px-4 sm:py-3 text-center">Sets Breakdown</th>
+                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">Sets Score</th>
+                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">Status</th>
+                                <th className="px-3 py-2.5 sm:px-4 sm:py-3 text-right">Action</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/60">
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60">
                             {encounter.matches?.map((m: any) => {
                                 const sets = (m.sets as Array<{ home: number; away: number }>) || [];
                                 return (
-                                    <tr key={m.id} className="hover:bg-slate-900/40 transition">
-                                        <td className="px-4 py-3 font-semibold text-slate-300">
+                                    <tr
+                                        key={m.id}
+                                        className="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition"
+                                    >
+                                        <td className="px-3 py-2.5 sm:px-4 sm:py-3 font-semibold text-slate-700 dark:text-slate-300">
                                             {m.label || `Match ${m.orderIndex}`}
                                         </td>
-                                        <td className="px-4 py-3">
-                                            <span className="rounded bg-slate-800 px-2 py-0.5 text-[10px] font-mono text-slate-300">
+                                        <td className="px-3 py-2.5 sm:px-4 sm:py-3">
+                                            <span className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-mono text-slate-700 dark:text-slate-300">
                                                 {m.matchType}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 font-medium text-white">
+                                        <td className="px-3 py-2.5 sm:px-4 sm:py-3 font-medium text-slate-900 dark:text-white">
                                             {m.homePlayer1
                                                 ? `${m.homePlayer1.firstName} ${m.homePlayer1.lastName}`
                                                 : 'Home Player'}
                                             {m.homePlayer2 && ` / ${m.homePlayer2.firstName} ${m.homePlayer2.lastName}`}
                                         </td>
-                                        <td className="px-4 py-3 font-medium text-white">
+                                        <td className="px-3 py-2.5 sm:px-4 sm:py-3 font-medium text-slate-900 dark:text-white">
                                             {m.awayPlayer1
                                                 ? `${m.awayPlayer1.firstName} ${m.awayPlayer1.lastName}`
                                                 : 'Away Player'}
                                             {m.awayPlayer2 && ` / ${m.awayPlayer2.firstName} ${m.awayPlayer2.lastName}`}
                                         </td>
-                                        <td className="px-4 py-3 text-center font-mono">
+                                        <td className="px-3 py-2.5 sm:px-4 sm:py-3 text-center font-mono">
                                             {sets.length > 0 ? (
                                                 <div className="flex items-center justify-center gap-1.5 flex-wrap">
                                                     {sets.map((s, idx) => (
@@ -253,10 +268,10 @@ export default function EncounterScoreSheetPage() {
                                                             key={idx}
                                                             className={`rounded px-1.5 py-0.5 text-[11px] ${
                                                                 s.home > s.away
-                                                                    ? 'bg-red-950 text-red-300 border border-red-800/40 font-bold'
+                                                                    ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 border border-red-300 dark:border-red-800/40 font-bold'
                                                                     : s.away > s.home
-                                                                      ? 'bg-slate-800 text-slate-300'
-                                                                      : 'bg-slate-900 text-slate-400'
+                                                                      ? 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
+                                                                      : 'bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-400'
                                                             }`}
                                                         >
                                                             {s.home}:{s.away}
@@ -264,32 +279,32 @@ export default function EncounterScoreSheetPage() {
                                                     ))}
                                                 </div>
                                             ) : (
-                                                <span className="text-slate-500">-</span>
+                                                <span className="text-slate-400">-</span>
                                             )}
                                         </td>
-                                        <td className="px-3 py-3 text-center font-mono font-bold text-sm text-white">
+                                        <td className="px-2 py-2.5 sm:px-3 sm:py-3 text-center font-mono font-bold text-sm text-slate-900 dark:text-white">
                                             {m.homeWonSets} : {m.awayWonSets}
                                         </td>
-                                        <td className="px-3 py-3 text-center">
+                                        <td className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">
                                             <span
                                                 className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
                                                     m.status === 'FINISHED'
-                                                        ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/40'
+                                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800/40'
                                                         : m.status === 'LIVE'
-                                                          ? 'bg-red-950 text-red-400 border border-red-800/40 animate-pulse'
-                                                          : 'bg-slate-800 text-slate-400'
+                                                          ? 'bg-red-100 text-red-800 border border-red-300 dark:bg-red-950 dark:text-red-400 dark:border-red-800/40 animate-pulse'
+                                                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                                                 }`}
                                             >
                                                 {m.status}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 text-right">
+                                        <td className="px-3 py-2.5 sm:px-4 sm:py-3 text-right">
                                             <button
                                                 onClick={() => openScoringModal(m)}
-                                                className="inline-flex items-center gap-1 rounded-lg bg-slate-800 hover:bg-red-600 hover:text-white px-2.5 py-1 text-[11px] font-semibold text-slate-200 transition"
+                                                className="inline-flex items-center gap-1 rounded-lg bg-slate-100 hover:bg-red-600 hover:text-white dark:bg-slate-800 dark:hover:bg-red-600 dark:hover:text-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition shadow-sm"
                                             >
                                                 <Edit3 className="h-3 w-3" />
-                                                <span>Referee Score</span>
+                                                <span>Score</span>
                                             </button>
                                         </td>
                                     </tr>
@@ -302,21 +317,24 @@ export default function EncounterScoreSheetPage() {
 
             {/* Referee Match Scoring Modal */}
             {activeScoringMatch && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-                    <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+                    <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
+                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                             <div>
-                                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                     <Flame className="h-4 w-4 text-red-500" />
-                                    Live Scoring: {activeScoringMatch.label || `Match ${activeScoringMatch.orderIndex}`}
+                                    <span>
+                                        Live Scoring:{' '}
+                                        {activeScoringMatch.label || `Match ${activeScoringMatch.orderIndex}`}
+                                    </span>
                                 </h3>
-                                <p className="text-[11px] text-slate-400">
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400">
                                     Enter points per set. Live standings and encounter score update immediately.
                                 </p>
                             </div>
                             <button
                                 onClick={() => setActiveScoringMatch(null)}
-                                className="text-slate-400 hover:text-white"
+                                className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
                             >
                                 ✕
                             </button>
@@ -324,16 +342,16 @@ export default function EncounterScoreSheetPage() {
 
                         <form onSubmit={handleSubmitScore} className="space-y-4 text-xs">
                             <div className="space-y-2">
-                                <div className="grid grid-cols-12 gap-2 text-[11px] font-bold text-slate-400 uppercase">
-                                    <div className="col-span-2">Set</div>
-                                    <div className="col-span-4 text-center">Home Points</div>
-                                    <div className="col-span-4 text-center">Away Points</div>
-                                    <div className="col-span-2"></div>
+                                <div className="grid grid-cols-12 gap-2 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">
+                                    <div className="col-span-3 sm:col-span-2">Set</div>
+                                    <div className="col-span-4 text-center">Home Pts</div>
+                                    <div className="col-span-4 text-center">Away Pts</div>
+                                    <div className="col-span-1 sm:col-span-2"></div>
                                 </div>
 
                                 {setsInput.map((set, idx) => (
                                     <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                                        <div className="col-span-2 font-mono font-bold text-slate-300">
+                                        <div className="col-span-3 sm:col-span-2 font-mono font-bold text-slate-700 dark:text-slate-300">
                                             Set {idx + 1}
                                         </div>
                                         <div className="col-span-4">
@@ -342,7 +360,7 @@ export default function EncounterScoreSheetPage() {
                                                 min={0}
                                                 value={set.home}
                                                 onChange={(e) => handleSetChange(idx, 'home', Number(e.target.value))}
-                                                className="w-full text-center rounded-lg border border-slate-800 bg-slate-950 px-2 py-1.5 font-mono text-sm text-white focus:border-red-500 focus:outline-none"
+                                                className="w-full text-center rounded-lg border border-slate-300 bg-slate-50 px-2 py-2 font-mono text-base font-bold text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                             />
                                         </div>
                                         <div className="col-span-4">
@@ -351,15 +369,15 @@ export default function EncounterScoreSheetPage() {
                                                 min={0}
                                                 value={set.away}
                                                 onChange={(e) => handleSetChange(idx, 'away', Number(e.target.value))}
-                                                className="w-full text-center rounded-lg border border-slate-800 bg-slate-950 px-2 py-1.5 font-mono text-sm text-white focus:border-red-500 focus:outline-none"
+                                                className="w-full text-center rounded-lg border border-slate-300 bg-slate-50 px-2 py-2 font-mono text-base font-bold text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                             />
                                         </div>
-                                        <div className="col-span-2 text-right">
+                                        <div className="col-span-1 sm:col-span-2 text-right">
                                             {setsInput.length > 1 && (
                                                 <button
                                                     type="button"
                                                     onClick={() => handleRemoveSet(idx)}
-                                                    className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-red-400"
+                                                    className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800 dark:hover:text-red-400"
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </button>
@@ -369,32 +387,32 @@ export default function EncounterScoreSheetPage() {
                                 ))}
                             </div>
 
-                            <div className="flex items-center justify-between pt-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
                                 <button
                                     type="button"
                                     onClick={handleAddSet}
-                                    className="inline-flex items-center gap-1 text-xs font-semibold text-red-400 hover:text-red-300"
+                                    className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 dark:text-red-400 hover:underline"
                                 >
                                     <Plus className="h-3.5 w-3.5" />
-                                    Add Another Set
+                                    <span>Add Another Set</span>
                                 </button>
 
-                                <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-300">
+                                <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-700 dark:text-slate-300">
                                     <input
                                         type="checkbox"
                                         checked={isFinishedMatch}
                                         onChange={(e) => setIsFinishedMatch(e.target.checked)}
-                                        className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-red-600 focus:ring-red-500"
+                                        className="h-4 w-4 rounded border-slate-300 bg-slate-100 text-red-600 focus:ring-red-500 dark:border-slate-700 dark:bg-slate-950"
                                     />
                                     <span>Mark Match as Finished</span>
                                 </label>
                             </div>
 
-                            <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
+                            <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
                                 <button
                                     type="button"
                                     onClick={() => setActiveScoringMatch(null)}
-                                    className="rounded-lg bg-slate-800 px-4 py-2 font-semibold text-slate-300 hover:bg-slate-700"
+                                    className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                                 >
                                     Cancel
                                 </button>

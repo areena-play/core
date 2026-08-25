@@ -157,87 +157,94 @@ export default function CompetitionDetailPage() {
     };
 
     if (loading) {
-        return <div className="flex h-64 items-center justify-center text-slate-400">Loading competition data...</div>;
+        return (
+            <div className="flex h-64 items-center justify-center text-slate-500 dark:text-slate-400">
+                Loading competition data...
+            </div>
+        );
     }
 
     if (!competition) {
         return (
-            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-8 text-center text-slate-300">
+            <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/50 p-8 text-center text-slate-700 dark:text-slate-300">
                 Competition not found.
             </div>
         );
     }
 
     return (
-        <div className="space-y-8 pb-16">
+        <div className="space-y-6 md:space-y-8 pb-16">
             {/* Competition Header */}
-            <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 p-6 md:p-8 shadow-xl">
+            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-gradient-to-r dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-5 sm:p-6 md:p-8 shadow-sm dark:shadow-xl">
                 <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
                     <div className="space-y-2">
                         <div className="flex items-center gap-2">
                             <span
                                 className={`rounded px-2.5 py-0.5 text-xs font-bold uppercase ${
                                     competition.type === 'LEAGUE'
-                                        ? 'bg-red-950 text-red-400 border border-red-800/50'
-                                        : 'bg-blue-950 text-blue-400 border border-blue-800/50'
+                                        ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-400 border border-red-200 dark:border-red-800/50'
+                                        : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50'
                                 }`}
                             >
                                 {competition.type}
                             </span>
-                            <span className="rounded bg-slate-800 px-2.5 py-0.5 text-xs font-medium text-slate-300">
+                            <span className="rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2.5 py-0.5 text-xs font-medium">
                                 {competition.status.replace('_', ' ')}
                             </span>
                         </div>
 
-                        <h1 className="text-2xl font-extrabold text-white md:text-3xl">{competition.name}</h1>
+                        <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white md:text-3xl">
+                            {competition.name}
+                        </h1>
 
-                        <div className="flex flex-wrap gap-4 text-xs text-slate-400 pt-1">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 pt-1">
                             <span className="flex items-center gap-1.5">
                                 <Shield className="h-4 w-4 text-red-500" />
                                 {competition.association?.name}
                             </span>
                             <span className="flex items-center gap-1.5">
-                                <Calendar className="h-4 w-4 text-slate-500" />
+                                <Calendar className="h-4 w-4 text-slate-400" />
                                 {format(new Date(competition.startDate), 'MMM dd, yyyy')} -{' '}
                                 {format(new Date(competition.endDate), 'MMM dd, yyyy')}
                             </span>
                             {competition.location && (
                                 <span className="flex items-center gap-1.5">
-                                    <MapPin className="h-4 w-4 text-slate-500" />
+                                    <MapPin className="h-4 w-4 text-slate-400" />
                                     {competition.location}
                                 </span>
                             )}
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-2">
                         <button
                             onClick={() => setShowAddCatModal(true)}
-                            className="inline-flex items-center gap-2 rounded-lg bg-slate-800 border border-slate-700 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700 transition"
+                            className="inline-flex items-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-3.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition shadow-sm"
                         >
                             <Plus className="h-4 w-4" />
-                            Add Category
+                            <span>Add Category</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* Category Tabs */}
+            {/* Category Tabs & Controls */}
             <div className="space-y-6">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2 overflow-x-auto">
-                    <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+                    {/* Horizontally scrollable category buttons */}
+                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none max-w-full">
                         {competition.categories?.map((cat: any) => (
                             <button
                                 key={cat.id}
                                 onClick={() => setActiveCategoryId(cat.id)}
-                                className={`rounded-lg px-4 py-2 text-xs font-bold transition flex items-center gap-2 ${
+                                className={`rounded-lg px-3.5 py-2 text-xs font-bold transition flex items-center gap-2 flex-shrink-0 ${
                                     activeCategoryId === cat.id
                                         ? 'bg-red-600 text-white shadow'
-                                        : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-white'
+                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
                                 }`}
                             >
                                 <span>{cat.name}</span>
-                                <span className="rounded bg-black/30 px-1.5 py-0.5 text-[10px]">
+                                <span className="rounded bg-black/20 px-1.5 py-0.5 text-[10px]">
                                     {cat.teamSize === 1
                                         ? '1v1'
                                         : cat.teamSize === 2
@@ -249,13 +256,13 @@ export default function CompetitionDetailPage() {
                     </div>
 
                     {activeCategory && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <button
                                 onClick={() => setShowAddTeamModal(true)}
-                                className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-700 transition"
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 px-3 py-1.5 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition"
                             >
                                 <Users className="h-3.5 w-3.5" />
-                                Register Team
+                                <span>Register Team</span>
                             </button>
                             {activeCategory.groups?.length === 0 && (
                                 <button
@@ -263,7 +270,7 @@ export default function CompetitionDetailPage() {
                                     className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 transition shadow"
                                 >
                                     <Play className="h-3.5 w-3.5" />
-                                    Generate Round-Robin Schedule
+                                    <span>Generate Round-Robin</span>
                                 </button>
                             )}
                         </div>
@@ -274,93 +281,104 @@ export default function CompetitionDetailPage() {
                 {activeCategory ? (
                     <div className="space-y-8">
                         {/* Category Meta Rules Banner */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-4 text-xs">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 text-xs shadow-sm">
                             <div>
-                                <span className="text-slate-400">Team Size:</span>
-                                <div className="font-bold text-white mt-0.5">
+                                <span className="text-slate-500 dark:text-slate-400">Team Size:</span>
+                                <div className="font-bold text-slate-900 dark:text-white mt-0.5">
                                     {activeCategory.teamSize === 1
                                         ? 'Singles (1v1)'
                                         : activeCategory.teamSize === 2
                                           ? 'Doubles (2v2)'
-                                          : `Team (${activeCategory.teamSize}v${activeCategory.teamSize} Davis Cup Format)`}
+                                          : `Team (${activeCategory.teamSize}v${activeCategory.teamSize} Davis Cup)`}
                                 </div>
                             </div>
                             <div>
-                                <span className="text-slate-400">Min Elo Rating:</span>
-                                <div className="font-bold text-white mt-0.5">
+                                <span className="text-slate-500 dark:text-slate-400">Min Elo Rating:</span>
+                                <div className="font-bold text-slate-900 dark:text-white mt-0.5">
                                     {activeCategory.minElo ? `${activeCategory.minElo} Elo` : 'Open / Unrestricted'}
                                 </div>
                             </div>
                             <div>
-                                <span className="text-slate-400">Encounter Structure:</span>
-                                <div className="font-bold text-white mt-0.5">
+                                <span className="text-slate-500 dark:text-slate-400">Encounter Structure:</span>
+                                <div className="font-bold text-slate-900 dark:text-white mt-0.5">
                                     {Array.isArray(activeCategory.encounterFormat) &&
                                     activeCategory.encounterFormat.length > 0
-                                        ? `${activeCategory.encounterFormat.length} Individual Matches / Encounter`
+                                        ? `${activeCategory.encounterFormat.length} Matches / Encounter`
                                         : '1 Match'}
                                 </div>
                             </div>
                             <div>
-                                <span className="text-slate-400">Registered Teams:</span>
-                                <div className="font-bold text-white mt-0.5">
+                                <span className="text-slate-500 dark:text-slate-400">Registered Teams:</span>
+                                <div className="font-bold text-slate-900 dark:text-white mt-0.5">
                                     {activeCategory.teams?.length || 0} Teams
                                 </div>
                             </div>
                         </div>
 
-                        {/* Standings Table */}
+                        {/* Standings Table with Responsive Horizontal Scroll */}
                         {activeCategory.groups?.map((grp: any) => (
                             <div key={grp.id} className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                                    <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                         <Trophy className="h-4 w-4 text-red-500" />
-                                        {grp.name} Standings Table
+                                        <span>{grp.name} Standings</span>
                                     </h3>
-                                    <span className="text-xs text-slate-400">
+                                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
                                         2 pts for Win, 1 pt for Draw, 0 for Loss
                                     </span>
                                 </div>
 
-                                <div className="rounded-xl border border-slate-800 bg-slate-950 overflow-hidden shadow">
-                                    <table className="w-full text-left text-xs">
-                                        <thead className="border-b border-slate-800 bg-slate-900/80 text-slate-400 font-bold uppercase tracking-wider">
+                                <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 overflow-x-auto shadow-sm">
+                                    <table className="w-full text-left text-xs min-w-[600px]">
+                                        <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                                             <tr>
-                                                <th className="px-4 py-3">#</th>
-                                                <th className="px-4 py-3">Team / Club</th>
-                                                <th className="px-3 py-3 text-center">Played</th>
-                                                <th className="px-3 py-3 text-center">W</th>
-                                                <th className="px-3 py-3 text-center">D</th>
-                                                <th className="px-3 py-3 text-center">L</th>
-                                                <th className="px-3 py-3 text-center">Matches</th>
-                                                <th className="px-3 py-3 text-center">Sets</th>
-                                                <th className="px-4 py-3 text-right font-extrabold text-white">
+                                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">#</th>
+                                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">Team / Club</th>
+                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">P</th>
+                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">W</th>
+                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">D</th>
+                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">L</th>
+                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">Matches</th>
+                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">Sets</th>
+                                                <th className="px-3 py-2.5 sm:px-4 sm:py-3 text-right font-extrabold text-slate-900 dark:text-white">
                                                     Points
                                                 </th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-slate-800/60">
+                                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60">
                                             {grp.standings?.map((st: any, idx: number) => (
-                                                <tr key={st.id} className="hover:bg-slate-900/40 transition">
-                                                    <td className="px-4 py-3 font-bold text-slate-400">{idx + 1}</td>
-                                                    <td className="px-4 py-3 font-semibold text-white flex items-center gap-2">
-                                                        <span className="h-2 w-2 rounded-full bg-red-500" />
-                                                        {st.team?.name}
+                                                <tr
+                                                    key={st.id}
+                                                    className="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition"
+                                                >
+                                                    <td className="px-3 py-2.5 sm:px-4 sm:py-3 font-bold text-slate-400">
+                                                        {idx + 1}
                                                     </td>
-                                                    <td className="px-3 py-3 text-center text-slate-300">
+                                                    <td className="px-3 py-2.5 sm:px-4 sm:py-3 font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                                                        <span className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />
+                                                        <span className="truncate max-w-[160px] sm:max-w-none">
+                                                            {st.team?.name}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-2 py-2.5 sm:px-3 sm:py-3 text-center text-slate-700 dark:text-slate-300">
                                                         {st.played}
                                                     </td>
-                                                    <td className="px-3 py-3 text-center font-bold text-emerald-400">
+                                                    <td className="px-2 py-2.5 sm:px-3 sm:py-3 text-center font-bold text-emerald-600 dark:text-emerald-400">
                                                         {st.won}
                                                     </td>
-                                                    <td className="px-3 py-3 text-center text-slate-400">{st.drawn}</td>
-                                                    <td className="px-3 py-3 text-center text-red-400">{st.lost}</td>
-                                                    <td className="px-3 py-3 text-center font-mono text-slate-300">
+                                                    <td className="px-2 py-2.5 sm:px-3 sm:py-3 text-center text-slate-500 dark:text-slate-400">
+                                                        {st.drawn}
+                                                    </td>
+                                                    <td className="px-2 py-2.5 sm:px-3 sm:py-3 text-center text-red-600 dark:text-red-400">
+                                                        {st.lost}
+                                                    </td>
+                                                    <td className="px-2 py-2.5 sm:px-3 sm:py-3 text-center font-mono text-slate-700 dark:text-slate-300">
                                                         {st.matchesWon} : {st.matchesLost}
                                                     </td>
-                                                    <td className="px-3 py-3 text-center font-mono text-slate-400">
+                                                    <td className="px-2 py-2.5 sm:px-3 sm:py-3 text-center font-mono text-slate-500 dark:text-slate-400">
                                                         {st.setsWon} : {st.setsLost}
                                                     </td>
-                                                    <td className="px-4 py-3 text-right font-extrabold text-white text-sm font-mono">
+                                                    <td className="px-3 py-2.5 sm:px-4 sm:py-3 text-right font-extrabold text-slate-900 dark:text-white text-sm font-mono">
                                                         {st.tablePoints}
                                                     </td>
                                                 </tr>
@@ -371,61 +389,67 @@ export default function CompetitionDetailPage() {
                             </div>
                         ))}
 
-                        {/* Encounters & Match Days */}
+                        {/* Encounters & Match Days Grid */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                     <Calendar className="h-4 w-4 text-red-500" />
-                                    Scheduled & Live Encounters
+                                    <span>Scheduled & Live Encounters</span>
                                 </h3>
-                                <span className="text-xs text-slate-400">
-                                    Click any encounter to open match score sheet
+                                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                                    Click encounter to open score sheet
                                 </span>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                                 {activeCategory.encounters?.map((enc: any) => (
                                     <Link
                                         key={enc.id}
                                         href={`/competitions/${competitionId}/encounter/${enc.id}`}
-                                        className="flex flex-col justify-between rounded-xl border border-slate-800 bg-slate-900/80 p-5 hover:border-red-500/40 transition group shadow-sm"
+                                        className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 sm:p-5 hover:border-red-500/40 dark:border-slate-800 dark:bg-slate-900/80 dark:hover:border-red-500/40 transition group shadow-sm"
                                     >
-                                        <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-xs text-slate-400">
-                                            <span className="font-semibold text-slate-300">Round {enc.round}</span>
+                                        <div className="flex items-center justify-between pb-2 sm:pb-3 border-b border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+                                            <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                                Round {enc.round}
+                                            </span>
                                             <span
                                                 className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
                                                     enc.status === 'LIVE'
-                                                        ? 'bg-red-950 text-red-400 border border-red-800 animate-pulse'
+                                                        ? 'bg-red-100 text-red-700 border border-red-300 dark:bg-red-950 dark:text-red-400 dark:border-red-800 animate-pulse'
                                                         : enc.status === 'FINISHED'
-                                                          ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                                                          : 'bg-slate-800 text-slate-300'
+                                                          ? 'bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800'
+                                                          : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                                                 }`}
                                             >
                                                 {enc.status}
                                             </span>
                                         </div>
 
-                                        <div className="my-4 flex items-center justify-between gap-4">
+                                        <div className="my-3 sm:my-4 flex items-center justify-between gap-2 sm:gap-4">
                                             {/* Home Team */}
                                             <div className="flex-1 text-right">
-                                                <div className="font-bold text-white group-hover:text-red-400 transition text-sm">
+                                                <div className="font-bold text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition text-xs sm:text-sm truncate">
                                                     {enc.homeTeam?.name}
                                                 </div>
                                             </div>
 
                                             {/* Score Badge */}
-                                            <div className="flex items-center gap-1.5 rounded-lg bg-slate-950 px-3 py-1.5 border border-slate-800 font-mono font-extrabold text-base">
+                                            <div className="flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-950 px-2.5 py-1 sm:px-3 sm:py-1.5 border border-slate-200 dark:border-slate-800 font-mono font-extrabold text-sm sm:text-base flex-shrink-0">
                                                 <span
                                                     className={
-                                                        enc.homeScore > enc.awayScore ? 'text-red-500' : 'text-white'
+                                                        enc.homeScore > enc.awayScore
+                                                            ? 'text-red-600 dark:text-red-500'
+                                                            : 'text-slate-900 dark:text-white'
                                                     }
                                                 >
                                                     {enc.homeScore}
                                                 </span>
-                                                <span className="text-slate-600">:</span>
+                                                <span className="text-slate-400 dark:text-slate-600">:</span>
                                                 <span
                                                     className={
-                                                        enc.awayScore > enc.homeScore ? 'text-red-500' : 'text-white'
+                                                        enc.awayScore > enc.homeScore
+                                                            ? 'text-red-600 dark:text-red-500'
+                                                            : 'text-slate-900 dark:text-white'
                                                     }
                                                 >
                                                     {enc.awayScore}
@@ -434,16 +458,16 @@ export default function CompetitionDetailPage() {
 
                                             {/* Away Team */}
                                             <div className="flex-1 text-left">
-                                                <div className="font-bold text-white group-hover:text-red-400 transition text-sm">
+                                                <div className="font-bold text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition text-xs sm:text-sm truncate">
                                                     {enc.awayTeam?.name}
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center justify-between pt-2 text-xs text-slate-400 border-t border-slate-800/80">
+                                        <div className="flex items-center justify-between pt-2 text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800/80">
                                             <span>{enc.matches?.length || 0} Matches Defined</span>
-                                            <span className="flex items-center gap-1 text-red-400 font-semibold group-hover:underline">
-                                                Open Score Sheet <ArrowRight className="h-3 w-3" />
+                                            <span className="flex items-center gap-1 text-red-600 dark:text-red-400 font-semibold group-hover:underline">
+                                                Score Sheet <ArrowRight className="h-3 w-3" />
                                             </span>
                                         </div>
                                     </Link>
@@ -452,7 +476,7 @@ export default function CompetitionDetailPage() {
                         </div>
                     </div>
                 ) : (
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-8 text-center text-slate-400">
+                    <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/40 p-8 text-center text-slate-500 dark:text-slate-400">
                         No categories defined yet. Click "Add Category" to get started.
                     </div>
                 )}
@@ -460,13 +484,15 @@ export default function CompetitionDetailPage() {
 
             {/* Add Category Modal */}
             {showAddCatModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-                    <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                            <h3 className="text-base font-bold text-white">Add Competition Category</h3>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
+                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                                Add Competition Category
+                            </h3>
                             <button
                                 onClick={() => setShowAddCatModal(false)}
-                                className="text-slate-400 hover:text-white"
+                                className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
                             >
                                 ✕
                             </button>
@@ -474,20 +500,24 @@ export default function CompetitionDetailPage() {
 
                         <form onSubmit={handleCreateCategory} className="space-y-3 text-xs">
                             <div>
-                                <label className="font-semibold text-slate-300">Category Name</label>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                    Category Name
+                                </label>
                                 <input
                                     type="text"
                                     required
                                     placeholder="e.g. Men's Team Division A (3v3)"
                                     value={catName}
                                     onChange={(e) => setCatName(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label className="font-semibold text-slate-300">Format Template</label>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        Format Template
+                                    </label>
                                     <select
                                         value={catFormatType}
                                         onChange={(e) => {
@@ -496,7 +526,7 @@ export default function CompetitionDetailPage() {
                                             else if (e.target.value === 'DOUBLES_2V2') setCatTeamSize(2);
                                             else setCatTeamSize(1);
                                         }}
-                                        className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                     >
                                         <option value="DAVIS_3V3">3v3 Davis Cup (10 Matches: 9S + 1D)</option>
                                         <option value="DOUBLES_2V2">2v2 Doubles + Singles (3 Matches)</option>
@@ -505,52 +535,56 @@ export default function CompetitionDetailPage() {
                                 </div>
 
                                 <div>
-                                    <label className="font-semibold text-slate-300">Team Size</label>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">Team Size</label>
                                     <input
                                         type="number"
                                         min={1}
                                         value={catTeamSize}
                                         onChange={(e) => setCatTeamSize(Number(e.target.value))}
-                                        className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                     />
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label className="font-semibold text-slate-300">Min Elo Rating (Optional)</label>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        Min Elo Rating (Optional)
+                                    </label>
                                     <input
                                         type="number"
                                         placeholder="e.g. 1500"
                                         value={catMinElo}
                                         onChange={(e) => setCatMinElo(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="font-semibold text-slate-300">Rounds per Group</label>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        Rounds per Group
+                                    </label>
                                     <input
                                         type="number"
                                         min={1}
                                         value={catRounds}
                                         onChange={(e) => setCatRounds(Number(e.target.value))}
-                                        className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                     />
                                 </div>
                             </div>
 
-                            <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+                            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
                                 <button
                                     type="button"
                                     onClick={() => setShowAddCatModal(false)}
-                                    className="rounded-lg bg-slate-800 px-4 py-2 font-semibold text-slate-300 hover:bg-slate-700"
+                                    className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700"
+                                    className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
                                 >
                                     Create Category
                                 </button>
@@ -562,13 +596,15 @@ export default function CompetitionDetailPage() {
 
             {/* Register Team Modal */}
             {showAddTeamModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-                    <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                            <h3 className="text-base font-bold text-white">Register Team for {activeCategory?.name}</h3>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
+                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                                Register Team for {activeCategory?.name}
+                            </h3>
                             <button
                                 onClick={() => setShowAddTeamModal(false)}
-                                className="text-slate-400 hover:text-white"
+                                className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
                             >
                                 ✕
                             </button>
@@ -576,23 +612,25 @@ export default function CompetitionDetailPage() {
 
                         <form onSubmit={handleRegisterTeam} className="space-y-3 text-xs">
                             <div>
-                                <label className="font-semibold text-slate-300">Team Name</label>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">Team Name</label>
                                 <input
                                     type="text"
                                     required
                                     placeholder="e.g. TTC Young Stars Zurich 2"
                                     value={teamName}
                                     onChange={(e) => setTeamName(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                 />
                             </div>
 
                             <div>
-                                <label className="font-semibold text-slate-300">Affiliated Club (Optional)</label>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                    Affiliated Club (Optional)
+                                </label>
                                 <select
                                     value={selectedClubId}
                                     onChange={(e) => setSelectedClubId(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                 >
                                     <option value="">No Club (Independent / Tournament Team)</option>
                                     {clubs.map((c) => (
@@ -603,17 +641,17 @@ export default function CompetitionDetailPage() {
                                 </select>
                             </div>
 
-                            <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+                            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
                                 <button
                                     type="button"
                                     onClick={() => setShowAddTeamModal(false)}
-                                    className="rounded-lg bg-slate-800 px-4 py-2 font-semibold text-slate-300 hover:bg-slate-700"
+                                    className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700"
+                                    className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
                                 >
                                     Register Team
                                 </button>
