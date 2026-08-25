@@ -118,4 +118,5 @@ export interface EncounterFormatItem {
     awayPlayer2Slot?: number;
     label?: string;
 }
+export * from './i18n';
 //# sourceMappingURL=index.d.ts.map

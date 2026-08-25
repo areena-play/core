@@ -7,12 +7,14 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useTheme } from '@/lib/themeContext';
+import { useI18n } from '@/lib/i18nContext';
 import { UserPlus, AlertCircle } from 'lucide-react';
 
 export default function RegisterPage() {
     const router = useRouter();
     const { login } = useAuth();
     const { resolvedTheme } = useTheme();
+    const { t } = useI18n();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -63,9 +65,9 @@ export default function RegisterPage() {
                     <div className="relative h-12 w-40 mx-auto">
                         <Image key={logoSrc} src={logoSrc} alt="AREENA Logo" fill priority className="object-contain" />
                     </div>
-                    <h1 className="text-xl font-bold text-slate-900 dark:text-white">Create Member Account</h1>
+                    <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('auth.registerTitle')}</h1>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Register to apply for licenses, enter tournaments, or manage clubs and referee certifications.
+                        {t('auth.registerSubtitle')}
                     </p>
                 </div>
 
@@ -80,7 +82,9 @@ export default function RegisterPage() {
                     <form onSubmit={handleSubmit} className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">First Name</label>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                    {t('profile.firstName')}
+                                </label>
                                 <input
                                     type="text"
                                     required
@@ -91,7 +95,9 @@ export default function RegisterPage() {
                                 />
                             </div>
                             <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">Last Name</label>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                    {t('profile.lastName')}
+                                </label>
                                 <input
                                     type="text"
                                     required
@@ -105,7 +111,7 @@ export default function RegisterPage() {
 
                         <div>
                             <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                Email Address (serves as Username)
+                                {t('common.email')}
                             </label>
                             <input
                                 type="email"
@@ -119,7 +125,7 @@ export default function RegisterPage() {
 
                         <div>
                             <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                Password (min 8 characters)
+                                {t('auth.password')}
                             </label>
                             <input
                                 type="password"
@@ -133,7 +139,9 @@ export default function RegisterPage() {
                         </div>
 
                         <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">Phone Number</label>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                {t('profile.phone')}
+                            </label>
                             <input
                                 type="text"
                                 required
@@ -146,7 +154,7 @@ export default function RegisterPage() {
 
                         <div>
                             <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                Street & House Number
+                                {t('profile.street')}
                             </label>
                             <input
                                 type="text"
@@ -160,7 +168,9 @@ export default function RegisterPage() {
 
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">Postal Code</label>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                    {t('profile.postalCode')}
+                                </label>
                                 <input
                                     type="text"
                                     required
@@ -171,7 +181,9 @@ export default function RegisterPage() {
                                 />
                             </div>
                             <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">City</label>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                    {t('profile.city')}
+                                </label>
                                 <input
                                     type="text"
                                     required
@@ -184,7 +196,9 @@ export default function RegisterPage() {
                         </div>
 
                         <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">Country</label>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                {t('profile.country')}
+                            </label>
                             <input
                                 type="text"
                                 required
@@ -201,16 +215,19 @@ export default function RegisterPage() {
                                 className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 py-2.5 font-semibold text-white hover:bg-red-700 disabled:opacity-50 shadow transition"
                             >
                                 <UserPlus className="h-4 w-4" />
-                                <span>{loading ? 'Registering Account...' : 'Register Account'}</span>
+                                <span>{loading ? t('common.loading') : t('auth.registerButton')}</span>
                             </button>
                         </div>
                     </form>
                 </div>
 
                 <div className="text-center text-xs text-slate-500 dark:text-slate-400">
-                    Already registered?{' '}
-                    <Link href="/auth/login" className="text-red-600 dark:text-red-400 font-semibold hover:underline">
-                        Sign In Here
+                    {t('auth.hasAccount')}{' '}
+                    <Link
+                        href="/auth/login"
+                        className="text-red-600 dark:text-red-400 font-semibold hover:underline"
+                    >
+                        {t('auth.loginButton')}
                     </Link>
                 </div>
             </div>

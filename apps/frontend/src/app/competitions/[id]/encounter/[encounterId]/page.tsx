@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
+import { useI18n } from '@/lib/i18nContext';
 import { useWebSocket } from '@/lib/useWebSocket';
 import {
     Trophy,
@@ -26,6 +27,7 @@ export default function EncounterScoreSheetPage() {
     const competitionId = params.id as string;
     const encounterId = params.encounterId as string;
     const { user } = useAuth();
+    const { t } = useI18n();
 
     const [encounter, setEncounter] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
@@ -105,7 +107,7 @@ export default function EncounterScoreSheetPage() {
     if (loading) {
         return (
             <div className="flex h-64 items-center justify-center text-slate-500 dark:text-slate-400">
-                Loading match sheet...
+                {t('common.loading')}
             </div>
         );
     }
@@ -126,7 +128,7 @@ export default function EncounterScoreSheetPage() {
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
             >
                 <ChevronLeft className="h-4 w-4" />
-                <span>Back to Competition Standings</span>
+                <span>{t('competitions.backToStandings')}</span>
             </Link>
 
             {/* Encounter Header Scoreboard */}
@@ -139,7 +141,9 @@ export default function EncounterScoreSheetPage() {
                         <span>•</span>
                         <span>{encounter.category?.name}</span>
                         <span>•</span>
-                        <span>Round {encounter.round}</span>
+                        <span>
+                            {t('competitions.round')} {encounter.round}
+                        </span>
                     </div>
 
                     <div className="flex items-center gap-2 self-start sm:self-auto">
@@ -164,7 +168,9 @@ export default function EncounterScoreSheetPage() {
                         <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white md:text-3xl">
                             {encounter.homeTeam?.name}
                         </h2>
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Home Team</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            {t('competitions.homePlayer')}
+                        </p>
                     </div>
 
                     {/* Center Score */}
@@ -179,7 +185,7 @@ export default function EncounterScoreSheetPage() {
                             </span>
                         </div>
                         <span className="mt-2 text-[10px] sm:text-[11px] font-mono text-slate-500 dark:text-slate-400 uppercase tracking-widest">
-                            Total Matches Won
+                            {t('competitions.totalMatchesWon')}
                         </span>
                     </div>
 
@@ -188,7 +194,9 @@ export default function EncounterScoreSheetPage() {
                         <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white md:text-3xl">
                             {encounter.awayTeam?.name}
                         </h2>
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Away Team</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            {t('competitions.awayPlayer')}
+                        </p>
                     </div>
                 </div>
 
@@ -211,10 +219,10 @@ export default function EncounterScoreSheetPage() {
                 <div>
                     <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                         <Trophy className="h-5 w-5 text-red-500" />
-                        <span>Official Match Sheet (Davis Cup Rubbers)</span>
+                        <span>{t('competitions.officialMatchSheet')}</span>
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Individual singles and doubles rubbers contributing to the encounter score.
+                        {t('competitions.scoringInstruction')}
                     </p>
                 </div>
 
@@ -222,14 +230,18 @@ export default function EncounterScoreSheetPage() {
                     <table className="w-full text-left text-xs min-w-[650px]">
                         <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                             <tr>
-                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">Match</th>
-                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">Type</th>
-                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">Home Player</th>
-                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">Away Player</th>
-                                <th className="px-3 py-2.5 sm:px-4 sm:py-3 text-center">Sets Breakdown</th>
-                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">Sets Score</th>
-                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">Status</th>
-                                <th className="px-3 py-2.5 sm:px-4 sm:py-3 text-right">Action</th>
+                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">{t('competitions.matches')}</th>
+                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">{t('competitions.matchType')}</th>
+                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">{t('competitions.homePlayer')}</th>
+                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">{t('competitions.awayPlayer')}</th>
+                                <th className="px-3 py-2.5 sm:px-4 sm:py-3 text-center">
+                                    {t('competitions.setsBreakdown')}
+                                </th>
+                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">
+                                    {t('competitions.setsScore')}
+                                </th>
+                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">{t('common.status')}</th>
+                                <th className="px-3 py-2.5 sm:px-4 sm:py-3 text-right">{t('common.actions')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60">
@@ -304,7 +316,7 @@ export default function EncounterScoreSheetPage() {
                                                 className="inline-flex items-center gap-1 rounded-lg bg-slate-100 hover:bg-red-600 hover:text-white dark:bg-slate-800 dark:hover:bg-red-600 dark:hover:text-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition shadow-sm"
                                             >
                                                 <Edit3 className="h-3 w-3" />
-                                                <span>Score</span>
+                                                <span>{t('competitions.refereeScore')}</span>
                                             </button>
                                         </td>
                                     </tr>
@@ -324,12 +336,12 @@ export default function EncounterScoreSheetPage() {
                                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                     <Flame className="h-4 w-4 text-red-500" />
                                     <span>
-                                        Live Scoring:{' '}
+                                        {t('competitions.liveScoring')}:{' '}
                                         {activeScoringMatch.label || `Match ${activeScoringMatch.orderIndex}`}
                                     </span>
                                 </h3>
                                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                    Enter points per set. Live standings and encounter score update immediately.
+                                    {t('competitions.scoringInstruction')}
                                 </p>
                             </div>
                             <button
@@ -344,8 +356,8 @@ export default function EncounterScoreSheetPage() {
                             <div className="space-y-2">
                                 <div className="grid grid-cols-12 gap-2 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">
                                     <div className="col-span-3 sm:col-span-2">Set</div>
-                                    <div className="col-span-4 text-center">Home Pts</div>
-                                    <div className="col-span-4 text-center">Away Pts</div>
+                                    <div className="col-span-4 text-center">{t('competitions.homePoints')}</div>
+                                    <div className="col-span-4 text-center">{t('competitions.awayPoints')}</div>
                                     <div className="col-span-1 sm:col-span-2"></div>
                                 </div>
 
@@ -394,7 +406,7 @@ export default function EncounterScoreSheetPage() {
                                     className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 dark:text-red-400 hover:underline"
                                 >
                                     <Plus className="h-3.5 w-3.5" />
-                                    <span>Add Another Set</span>
+                                    <span>{t('competitions.addSet')}</span>
                                 </button>
 
                                 <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-700 dark:text-slate-300">
@@ -404,7 +416,7 @@ export default function EncounterScoreSheetPage() {
                                         onChange={(e) => setIsFinishedMatch(e.target.checked)}
                                         className="h-4 w-4 rounded border-slate-300 bg-slate-100 text-red-600 focus:ring-red-500 dark:border-slate-700 dark:bg-slate-950"
                                     />
-                                    <span>Mark Match as Finished</span>
+                                    <span>{t('competitions.markFinished')}</span>
                                 </label>
                             </div>
 
@@ -414,14 +426,14 @@ export default function EncounterScoreSheetPage() {
                                     onClick={() => setActiveScoringMatch(null)}
                                     className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                                 >
-                                    Cancel
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={submitting}
                                     className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50 shadow"
                                 >
-                                    {submitting ? 'Submitting...' : 'Save & Publish Live Score'}
+                                    {submitting ? t('common.submitting') : t('competitions.saveAndPublish')}
                                 </button>
                             </div>
                         </form>

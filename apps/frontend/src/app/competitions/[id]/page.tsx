@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
+import { useI18n } from '@/lib/i18nContext';
 import { useWebSocket } from '@/lib/useWebSocket';
 import {
     Trophy,
@@ -27,6 +28,7 @@ export default function CompetitionDetailPage() {
     const params = useParams();
     const competitionId = params.id as string;
     const { user } = useAuth();
+    const { t } = useI18n();
 
     const [competition, setCompetition] = useState<any | null>(null);
     const [activeCategoryId, setActiveCategoryId] = useState<string>('');
@@ -159,7 +161,7 @@ export default function CompetitionDetailPage() {
     if (loading) {
         return (
             <div className="flex h-64 items-center justify-center text-slate-500 dark:text-slate-400">
-                Loading competition data...
+                {t('common.loading')}
             </div>
         );
     }
@@ -222,7 +224,7 @@ export default function CompetitionDetailPage() {
                             className="inline-flex items-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-3.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition shadow-sm"
                         >
                             <Plus className="h-4 w-4" />
-                            <span>Add Category</span>
+                            <span>{t('competitions.addCategory')}</span>
                         </button>
                     </div>
                 </div>
@@ -262,7 +264,7 @@ export default function CompetitionDetailPage() {
                                 className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 px-3 py-1.5 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition"
                             >
                                 <Users className="h-3.5 w-3.5" />
-                                <span>Register Team</span>
+                                <span>{t('competitions.registerTeam')}</span>
                             </button>
                             {activeCategory.groups?.length === 0 && (
                                 <button
@@ -270,7 +272,7 @@ export default function CompetitionDetailPage() {
                                     className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 transition shadow"
                                 >
                                     <Play className="h-3.5 w-3.5" />
-                                    <span>Generate Round-Robin</span>
+                                    <span>{t('competitions.generateSchedule')}</span>
                                 </button>
                             )}
                         </div>
@@ -283,7 +285,9 @@ export default function CompetitionDetailPage() {
                         {/* Category Meta Rules Banner */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 text-xs shadow-sm">
                             <div>
-                                <span className="text-slate-500 dark:text-slate-400">Team Size:</span>
+                                <span className="text-slate-500 dark:text-slate-400">
+                                    {t('competitions.teamSize')}:
+                                </span>
                                 <div className="font-bold text-slate-900 dark:text-white mt-0.5">
                                     {activeCategory.teamSize === 1
                                         ? 'Singles (1v1)'
@@ -293,13 +297,17 @@ export default function CompetitionDetailPage() {
                                 </div>
                             </div>
                             <div>
-                                <span className="text-slate-500 dark:text-slate-400">Min Elo Rating:</span>
+                                <span className="text-slate-500 dark:text-slate-400">
+                                    {t('competitions.minElo')}:
+                                </span>
                                 <div className="font-bold text-slate-900 dark:text-white mt-0.5">
                                     {activeCategory.minElo ? `${activeCategory.minElo} Elo` : 'Open / Unrestricted'}
                                 </div>
                             </div>
                             <div>
-                                <span className="text-slate-500 dark:text-slate-400">Encounter Structure:</span>
+                                <span className="text-slate-500 dark:text-slate-400">
+                                    {t('competitions.encounterStructure')}:
+                                </span>
                                 <div className="font-bold text-slate-900 dark:text-white mt-0.5">
                                     {Array.isArray(activeCategory.encounterFormat) &&
                                     activeCategory.encounterFormat.length > 0
@@ -308,7 +316,9 @@ export default function CompetitionDetailPage() {
                                 </div>
                             </div>
                             <div>
-                                <span className="text-slate-500 dark:text-slate-400">Registered Teams:</span>
+                                <span className="text-slate-500 dark:text-slate-400">
+                                    {t('competitions.registeredTeams')}:
+                                </span>
                                 <div className="font-bold text-slate-900 dark:text-white mt-0.5">
                                     {activeCategory.teams?.length || 0} Teams
                                 </div>
@@ -321,7 +331,9 @@ export default function CompetitionDetailPage() {
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                                     <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                         <Trophy className="h-4 w-4 text-red-500" />
-                                        <span>{grp.name} Standings</span>
+                                        <span>
+                                            {grp.name} {t('competitions.standings')}
+                                        </span>
                                     </h3>
                                     <span className="text-[11px] text-slate-500 dark:text-slate-400">
                                         2 pts for Win, 1 pt for Draw, 0 for Loss
@@ -333,15 +345,29 @@ export default function CompetitionDetailPage() {
                                         <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                                             <tr>
                                                 <th className="px-3 py-2.5 sm:px-4 sm:py-3">#</th>
-                                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">Team / Club</th>
-                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">P</th>
-                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">W</th>
-                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">D</th>
-                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">L</th>
-                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">Matches</th>
-                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">Sets</th>
+                                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">
+                                                    {t('common.club')} / Team
+                                                </th>
+                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">
+                                                    {t('competitions.played')}
+                                                </th>
+                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">
+                                                    {t('competitions.won')}
+                                                </th>
+                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">
+                                                    {t('competitions.drawn')}
+                                                </th>
+                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">
+                                                    {t('competitions.lost')}
+                                                </th>
+                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">
+                                                    {t('competitions.matches')}
+                                                </th>
+                                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">
+                                                    {t('competitions.sets')}
+                                                </th>
                                                 <th className="px-3 py-2.5 sm:px-4 sm:py-3 text-right font-extrabold text-slate-900 dark:text-white">
-                                                    Points
+                                                    {t('competitions.points')}
                                                 </th>
                                             </tr>
                                         </thead>
@@ -394,10 +420,10 @@ export default function CompetitionDetailPage() {
                             <div className="flex items-center justify-between">
                                 <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                     <Calendar className="h-4 w-4 text-red-500" />
-                                    <span>Scheduled & Live Encounters</span>
+                                    <span>{t('competitions.scheduledEncounters')}</span>
                                 </h3>
                                 <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                                    Click encounter to open score sheet
+                                    {t('competitions.openScoreSheet')}
                                 </span>
                             </div>
 
@@ -410,7 +436,7 @@ export default function CompetitionDetailPage() {
                                     >
                                         <div className="flex items-center justify-between pb-2 sm:pb-3 border-b border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                                             <span className="font-semibold text-slate-700 dark:text-slate-300">
-                                                Round {enc.round}
+                                                {t('competitions.round')} {enc.round}
                                             </span>
                                             <span
                                                 className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
@@ -465,9 +491,11 @@ export default function CompetitionDetailPage() {
                                         </div>
 
                                         <div className="flex items-center justify-between pt-2 text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800/80">
-                                            <span>{enc.matches?.length || 0} Matches Defined</span>
+                                            <span>
+                                                {enc.matches?.length || 0} {t('competitions.matches')}
+                                            </span>
                                             <span className="flex items-center gap-1 text-red-600 dark:text-red-400 font-semibold group-hover:underline">
-                                                Score Sheet <ArrowRight className="h-3 w-3" />
+                                                {t('competitions.scoreSheet')} <ArrowRight className="h-3 w-3" />
                                             </span>
                                         </div>
                                     </Link>
@@ -477,7 +505,7 @@ export default function CompetitionDetailPage() {
                     </div>
                 ) : (
                     <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/40 p-8 text-center text-slate-500 dark:text-slate-400">
-                        No categories defined yet. Click "Add Category" to get started.
+                        {t('competitions.subtitle')}
                     </div>
                 )}
             </div>
@@ -488,7 +516,7 @@ export default function CompetitionDetailPage() {
                     <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
                         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                             <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                                Add Competition Category
+                                {t('competitions.addCategory')}
                             </h3>
                             <button
                                 onClick={() => setShowAddCatModal(false)}
@@ -501,7 +529,7 @@ export default function CompetitionDetailPage() {
                         <form onSubmit={handleCreateCategory} className="space-y-3 text-xs">
                             <div>
                                 <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    Category Name
+                                    {t('competitions.category')} {t('common.name')}
                                 </label>
                                 <input
                                     type="text"
@@ -516,7 +544,7 @@ export default function CompetitionDetailPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        Format Template
+                                        {t('competitions.matchType')}
                                     </label>
                                     <select
                                         value={catFormatType}
@@ -535,7 +563,9 @@ export default function CompetitionDetailPage() {
                                 </div>
 
                                 <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">Team Size</label>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('competitions.teamSize')}
+                                    </label>
                                     <input
                                         type="number"
                                         min={1}
@@ -549,7 +579,7 @@ export default function CompetitionDetailPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        Min Elo Rating (Optional)
+                                        {t('competitions.minElo')}
                                     </label>
                                     <input
                                         type="number"
@@ -562,7 +592,7 @@ export default function CompetitionDetailPage() {
 
                                 <div>
                                     <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        Rounds per Group
+                                        {t('competitions.round')}
                                     </label>
                                     <input
                                         type="number"
@@ -580,13 +610,13 @@ export default function CompetitionDetailPage() {
                                     onClick={() => setShowAddCatModal(false)}
                                     className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                                 >
-                                    Cancel
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
                                 >
-                                    Create Category
+                                    {t('competitions.addCategory')}
                                 </button>
                             </div>
                         </form>
@@ -600,7 +630,7 @@ export default function CompetitionDetailPage() {
                     <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
                         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                             <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                                Register Team for {activeCategory?.name}
+                                {t('competitions.registerTeam')} ({activeCategory?.name})
                             </h3>
                             <button
                                 onClick={() => setShowAddTeamModal(false)}
@@ -612,7 +642,9 @@ export default function CompetitionDetailPage() {
 
                         <form onSubmit={handleRegisterTeam} className="space-y-3 text-xs">
                             <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">Team Name</label>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                    Team {t('common.name')}
+                                </label>
                                 <input
                                     type="text"
                                     required
@@ -625,7 +657,7 @@ export default function CompetitionDetailPage() {
 
                             <div>
                                 <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    Affiliated Club (Optional)
+                                    {t('common.club')}
                                 </label>
                                 <select
                                     value={selectedClubId}
@@ -647,13 +679,13 @@ export default function CompetitionDetailPage() {
                                     onClick={() => setShowAddTeamModal(false)}
                                     className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                                 >
-                                    Cancel
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
                                 >
-                                    Register Team
+                                    {t('competitions.registerTeam')}
                                 </button>
                             </div>
                         </form>

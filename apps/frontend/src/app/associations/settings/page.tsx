@@ -3,11 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
+import { useI18n } from '@/lib/i18nContext';
 import { Sliders, Shield, CheckCircle2, AlertCircle, Sparkles, ChevronLeft, Key } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AssociationSettingsPage() {
     const { user } = useAuth();
+    const { t } = useI18n();
     const [topAssoc, setTopAssoc] = useState<any | null>(null);
     const [template, setTemplate] = useState('{regionDigit}{year2}{counter3}');
     const [counter, setCounter] = useState(1);
@@ -20,7 +22,8 @@ export default function AssociationSettingsPage() {
         async function loadAssoc() {
             try {
                 const data = await api.getAssociations();
-                const top = data.associations?.find((a: any) => a.isTopLevel) || data.associations?.[0];
+                const top =
+                    data.associations?.find((a: any) => a.isTopLevel) || data.associations?.[0];
                 if (top) {
                     setTopAssoc(top);
                     setTemplate(top.licenseIdTemplate || '{regionDigit}{year2}{counter3}');
@@ -79,102 +82,105 @@ export default function AssociationSettingsPage() {
         <div className="max-w-2xl mx-auto space-y-6 pb-16">
             <Link
                 href="/associations"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-white transition"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
             >
                 <ChevronLeft className="h-4 w-4" />
-                Back to Association Hierarchy
+                <span>{t('common.back')}</span>
             </Link>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 md:p-8 shadow-xl space-y-6">
+            <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 p-5 sm:p-6 md:p-8 shadow-xl space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                         <Sliders className="h-6 w-6 text-red-500" />
-                        Main Association Settings
+                        <span>{t('associations.settingsTitle')}</span>
                     </h1>
-                    <p className="text-xs text-slate-400 mt-1">
-                        Configure federation-wide parameters, rule overrides, and the automated License ID generation
-                        engine.
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        {t('associations.settingsSubtitle')}
                     </p>
                 </div>
 
                 {errorMsg && (
-                    <div className="flex items-start gap-2.5 rounded-xl border border-red-800 bg-red-950/80 p-4 text-xs text-red-300">
-                        <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-2.5 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/80 p-4 text-xs text-red-700 dark:text-red-300">
+                        <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
                         <div>{errorMsg}</div>
                     </div>
                 )}
 
                 {successMsg && (
-                    <div className="flex items-start gap-2.5 rounded-xl border border-emerald-800 bg-emerald-950/80 p-4 text-xs text-emerald-300">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/80 p-4 text-xs text-emerald-700 dark:text-emerald-300">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" />
                         <div>{successMsg}</div>
                     </div>
                 )}
 
                 <form onSubmit={handleSave} className="space-y-6 text-xs">
                     {/* License ID Engine Settings */}
-                    <div className="space-y-4 rounded-xl border border-slate-800 bg-slate-950 p-5">
-                        <div className="flex items-center gap-2 font-bold text-sm text-white">
+                    <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 p-4 sm:p-5">
+                        <div className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
                             <Key className="h-4 w-4 text-red-500" />
-                            <span>License ID Format Generator Pattern</span>
+                            <span>{t('associations.licenseTemplate')}</span>
                         </div>
-                        <p className="text-slate-400 text-[11px]">
+                        <p className="text-slate-500 dark:text-slate-400 text-[11px]">
                             Every new user issued their first official license receives a unique License ID generated
                             from this pattern.
                         </p>
 
                         <div>
-                            <label className="font-semibold text-slate-300">Pattern Template</label>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                Pattern Template
+                            </label>
                             <input
                                 type="text"
                                 required
                                 value={template}
                                 onChange={(e) => setTemplate(e.target.value)}
-                                className="mt-1 w-full font-mono rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white focus:border-red-500 focus:outline-none"
+                                className="mt-1 w-full font-mono rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
                             />
-                            <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-slate-400">
+                            <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
                                 <span>Available tokens:</span>
-                                <code className="rounded bg-slate-800 px-1 py-0.5 text-red-400 font-mono">
+                                <code className="rounded bg-slate-200 dark:bg-slate-800 px-1 py-0.5 text-red-600 dark:text-red-400 font-mono">
                                     &#123;regionDigit&#125;
                                 </code>
-                                <code className="rounded bg-slate-800 px-1 py-0.5 text-red-400 font-mono">
+                                <code className="rounded bg-slate-200 dark:bg-slate-800 px-1 py-0.5 text-red-600 dark:text-red-400 font-mono">
                                     &#123;regionCode&#125;
                                 </code>
-                                <code className="rounded bg-slate-800 px-1 py-0.5 text-red-400 font-mono">
+                                <code className="rounded bg-slate-200 dark:bg-slate-800 px-1 py-0.5 text-red-600 dark:text-red-400 font-mono">
                                     &#123;year2&#125;
                                 </code>
-                                <code className="rounded bg-slate-800 px-1 py-0.5 text-red-400 font-mono">
+                                <code className="rounded bg-slate-200 dark:bg-slate-800 px-1 py-0.5 text-red-600 dark:text-red-400 font-mono">
                                     &#123;year4&#125;
                                 </code>
-                                <code className="rounded bg-slate-800 px-1 py-0.5 text-red-400 font-mono">
+                                <code className="rounded bg-slate-200 dark:bg-slate-800 px-1 py-0.5 text-red-600 dark:text-red-400 font-mono">
                                     &#123;counter3&#125;
                                 </code>
-                                <code className="rounded bg-slate-800 px-1 py-0.5 text-red-400 font-mono">
+                                <code className="rounded bg-slate-200 dark:bg-slate-800 px-1 py-0.5 text-red-600 dark:text-red-400 font-mono">
                                     &#123;counter4&#125;
                                 </code>
                             </div>
                         </div>
 
                         <div>
-                            <label className="font-semibold text-slate-300">Next Sequence Counter</label>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                Next Sequence Counter
+                            </label>
                             <input
                                 type="number"
                                 min={1}
                                 value={counter}
                                 onChange={(e) => setCounter(Number(e.target.value))}
-                                className="mt-1 w-full font-mono rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white focus:border-red-500 focus:outline-none"
+                                className="mt-1 w-full font-mono rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
                             />
                         </div>
 
                         {/* Live Preview Box */}
-                        <div className="rounded-xl border border-red-900/40 bg-red-950/20 p-4 space-y-1">
-                            <div className="text-[10px] font-bold uppercase tracking-wider text-red-400">
+                        <div className="rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/20 p-4 space-y-1">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">
                                 Live Generated ID Preview:
                             </div>
-                            <div className="font-mono text-2xl font-black text-white tracking-widest">
+                            <div className="font-mono text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-widest">
                                 {computePreview()}
                             </div>
-                            <p className="text-[11px] text-slate-400">
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
                                 Example for regional sub-association (Digit 1 = CH, 2 = Zurich, etc.), year 2026,
                                 sequence counter #{counter}.
                             </p>
@@ -187,7 +193,7 @@ export default function AssociationSettingsPage() {
                             disabled={saving}
                             className="rounded-lg bg-red-600 px-5 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50 shadow"
                         >
-                            {saving ? 'Saving...' : 'Save Association Settings'}
+                            {saving ? t('common.saving') : t('common.save')}
                         </button>
                     </div>
                 </form>

@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/authContext';
 import { useTheme } from '@/lib/themeContext';
+import { useI18n } from '@/lib/i18nContext';
 import { useWebSocket } from '@/lib/useWebSocket';
+import { SupportedLocale } from '@areena/shared';
 import {
     Menu,
     X,
@@ -25,13 +27,19 @@ import {
     Radio,
     Sun,
     Moon,
+    Globe,
+    ChevronDown,
 } from 'lucide-react';
 
 export function Navbar() {
     const { user, logout } = useAuth();
     const { isConnected } = useWebSocket();
     const { theme, resolvedTheme, setTheme } = useTheme();
+    const { locale, setLocale, t, locales, supportedLocales } = useI18n();
+
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+    const langDropdownRef = useRef<HTMLDivElement>(null);
     const pathname = usePathname();
 
     const toggleTheme = () => {
@@ -42,20 +50,31 @@ export function Navbar() {
         }
     };
 
+    // Close lang dropdown on outside click
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (langDropdownRef.current && !langDropdownRef.current.contains(event.target as Node)) {
+                setLangDropdownOpen(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     const logoSrc = resolvedTheme === 'dark' ? '/areena-logo-dark.png' : '/areena-logo.png';
 
     const navItems = [
-        { label: 'Dashboard', href: '/', icon: LayoutDashboard },
-        { label: 'Master Calendar', href: '/calendar', icon: Calendar },
-        { label: 'Competitions & Leagues', href: '/competitions', icon: Trophy },
-        { label: 'License Hub', href: '/licenses', icon: Award },
-        { label: 'Refresher Courses', href: '/licenses/refresher-courses', icon: GraduationCap },
-        { label: 'Approvals Queue', href: '/licenses/approvals', icon: CheckSquare },
-        { label: 'Associations & Clubs', href: '/associations', icon: Network },
-        { label: 'Association Settings', href: '/associations/settings', icon: Sliders },
-        { label: 'Communications', href: '/communications', icon: Mail },
-        { label: 'Developer API (OAuth)', href: '/developers', icon: Code2 },
-        { label: 'My Profile', href: '/profile', icon: User },
+        { label: t('nav.dashboard'), href: '/', icon: LayoutDashboard },
+        { label: t('nav.calendar'), href: '/calendar', icon: Calendar },
+        { label: t('nav.competitions'), href: '/competitions', icon: Trophy },
+        { label: t('nav.licenses'), href: '/licenses', icon: Award },
+        { label: t('nav.refresherCourses'), href: '/licenses/refresher-courses', icon: GraduationCap },
+        { label: t('nav.approvals'), href: '/licenses/approvals', icon: CheckSquare },
+        { label: t('nav.associations'), href: '/associations', icon: Network },
+        { label: t('nav.associationSettings'), href: '/associations/settings', icon: Sliders },
+        { label: t('nav.communications'), href: '/communications', icon: Mail },
+        { label: t('nav.developerApi'), href: '/developers', icon: Code2 },
+        { label: t('nav.profile'), href: '/profile', icon: User },
     ];
 
     return (
@@ -88,12 +107,12 @@ export function Navbar() {
                         </Link>
 
                         <span className="hidden text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 lg:inline-block border-l border-slate-300 dark:border-slate-700 pl-4">
-                            Sports Association Management
+                            {t('nav.sportsManagement')}
                         </span>
                     </div>
 
-                    {/* Right: Live Connection, Theme Toggle, Notifications & User Info */}
-                    <div className="flex items-center gap-2 sm:gap-4">
+                    {/* Right: Live Connection, Language Selector, Theme Toggle & User Info */}
+                    <div className="flex items-center gap-1.5 sm:gap-3">
                         {/* WebSocket Status Indicator */}
                         <div
                             className={`flex items-center gap-1.5 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] sm:text-xs font-medium ${
@@ -108,7 +127,53 @@ export function Navbar() {
                                 }`}
                             />
                             <Radio className="h-3 w-3" />
-                            <span className="hidden sm:inline">{isConnected ? 'Live Sync' : 'Reconnecting...'}</span>
+                            <span className="hidden sm:inline">
+                                {isConnected ? t('nav.liveSync') : t('nav.reconnecting')}
+                            </span>
+                        </div>
+
+                        {/* Language Selector Dropdown (Desktop) */}
+                        <div className="relative hidden sm:block" ref={langDropdownRef}>
+                            <button
+                                onClick={() => setLangDropdownOpen(!langDropdownOpen)}
+                                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                            >
+                                <span className="text-sm leading-none">{locales[locale].flag}</span>
+                                <span className="font-semibold uppercase tracking-wider text-[11px]">
+                                    {locales[locale].code}
+                                </span>
+                                <ChevronDown className="h-3 w-3 text-slate-400" />
+                            </button>
+
+                            {langDropdownOpen && (
+                                <div className="absolute right-0 mt-2 w-40 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-1.5 shadow-xl z-50 animate-in fade-in-50 zoom-in-95">
+                                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                        {t('nav.language')}
+                                    </div>
+                                    {supportedLocales.map((loc) => (
+                                        <button
+                                            key={loc}
+                                            onClick={() => {
+                                                setLocale(loc);
+                                                setLangDropdownOpen(false);
+                                            }}
+                                            className={`w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs text-left transition ${
+                                                locale === loc
+                                                    ? 'bg-red-50 text-red-600 font-bold dark:bg-red-950/50 dark:text-red-400'
+                                                    : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                                            }`}
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <span className="text-sm leading-none">{locales[loc].flag}</span>
+                                                <span>{locales[loc].nativeLabel}</span>
+                                            </span>
+                                            <span className="font-mono text-[10px] uppercase text-slate-400">
+                                                {loc}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Quick Theme Toggle Button */}
@@ -148,15 +213,15 @@ export function Navbar() {
                                             {user.firstName} {user.lastName}
                                         </div>
                                         <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[120px]">
-                                            {user.isSuperAdmin ? 'Super Admin' : user.email}
+                                            {user.isSuperAdmin ? t('nav.superAdmin') : user.email}
                                         </div>
                                     </div>
                                 </Link>
 
                                 <button
                                     onClick={logout}
-                                    title="Log out"
-                                    aria-label="Log out"
+                                    title={t('nav.logOut')}
+                                    aria-label={t('nav.logOut')}
                                     className="rounded-lg p-1.5 sm:p-2 text-slate-500 hover:bg-slate-100 hover:text-red-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-red-400 transition"
                                 >
                                     <LogOut className="h-4 w-4" />
@@ -168,13 +233,13 @@ export function Navbar() {
                                     href="/auth/login"
                                     className="rounded-lg px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white transition"
                                 >
-                                    Sign In
+                                    {t('nav.signIn')}
                                 </Link>
                                 <Link
                                     href="/auth/register"
                                     className="rounded-lg bg-red-600 px-3 py-1 text-xs font-medium text-white shadow hover:bg-red-700 transition"
                                 >
-                                    Register
+                                    {t('nav.register')}
                                 </Link>
                             </div>
                         )}
@@ -214,6 +279,29 @@ export function Navbar() {
                                 </button>
                             </div>
 
+                            {/* Language Switcher in Mobile Drawer */}
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900 p-2.5 space-y-1.5">
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                    {t('nav.language')}
+                                </div>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                    {supportedLocales.map((loc) => (
+                                        <button
+                                            key={loc}
+                                            onClick={() => setLocale(loc)}
+                                            className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs transition ${
+                                                locale === loc
+                                                    ? 'bg-white shadow text-red-600 font-bold dark:bg-slate-800 dark:text-red-400'
+                                                    : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-800/60'
+                                            }`}
+                                        >
+                                            <span className="text-sm">{locales[loc].flag}</span>
+                                            <span className="truncate">{locales[loc].nativeLabel}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
                             {/* User Summary if logged in */}
                             {user && (
                                 <div className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900 p-3 space-y-1">
@@ -242,7 +330,7 @@ export function Navbar() {
                             {/* Navigation List */}
                             <nav className="space-y-1">
                                 <div className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                    Navigation
+                                    {t('nav.navigation')}
                                 </div>
                                 {navItems.map((item) => {
                                     const isActive =
@@ -276,7 +364,7 @@ export function Navbar() {
                         {/* Drawer Footer */}
                         <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
                             <div className="flex items-center justify-between text-xs">
-                                <span className="text-slate-500 dark:text-slate-400">Theme</span>
+                                <span className="text-slate-500 dark:text-slate-400">{t('nav.theme')}</span>
                                 <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-900 p-0.5">
                                     <button
                                         onClick={() => setTheme('light')}
@@ -286,7 +374,7 @@ export function Navbar() {
                                                 : 'text-slate-500'
                                         }`}
                                     >
-                                        Light
+                                        {t('common.light')}
                                     </button>
                                     <button
                                         onClick={() => setTheme('dark')}
@@ -296,7 +384,7 @@ export function Navbar() {
                                                 : 'text-slate-500'
                                         }`}
                                     >
-                                        Dark
+                                        {t('common.dark')}
                                     </button>
                                 </div>
                             </div>
@@ -310,7 +398,7 @@ export function Navbar() {
                                     className="w-full flex items-center justify-center gap-2 rounded-lg bg-slate-100 text-red-600 hover:bg-red-50 dark:bg-slate-900 dark:text-red-400 dark:hover:bg-red-950/40 py-2 text-xs font-semibold transition"
                                 >
                                     <LogOut className="h-4 w-4" />
-                                    <span>Log Out</span>
+                                    <span>{t('nav.logOut')}</span>
                                 </button>
                             ) : (
                                 <div className="grid grid-cols-2 gap-2">
@@ -319,14 +407,14 @@ export function Navbar() {
                                         onClick={() => setMobileMenuOpen(false)}
                                         className="rounded-lg border border-slate-300 dark:border-slate-700 py-2 text-center text-xs font-semibold text-slate-800 dark:text-slate-200"
                                     >
-                                        Sign In
+                                        {t('nav.signIn')}
                                     </Link>
                                     <Link
                                         href="/auth/register"
                                         onClick={() => setMobileMenuOpen(false)}
                                         className="rounded-lg bg-red-600 py-2 text-center text-xs font-semibold text-white shadow"
                                     >
-                                        Register
+                                        {t('nav.register')}
                                     </Link>
                                 </div>
                             )}

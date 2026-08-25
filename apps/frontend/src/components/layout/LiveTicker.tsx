@@ -4,10 +4,12 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useWebSocket } from '@/lib/useWebSocket';
+import { useI18n } from '@/lib/i18nContext';
 import { Flame } from 'lucide-react';
 
 export function LiveTicker() {
     const [encounters, setEncounters] = useState<any[]>([]);
+    const { t } = useI18n();
 
     const fetchLive = async () => {
         try {
@@ -33,7 +35,7 @@ export function LiveTicker() {
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 overflow-x-auto scrollbar-none">
                 <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-red-600 dark:text-red-400 flex-shrink-0">
                     <Flame className="h-4 w-4 text-red-500 animate-pulse" />
-                    <span>Live Matches</span>
+                    <span>{t('competitions.liveScoring')}</span>
                 </div>
 
                 <div className="flex items-center gap-4 overflow-x-auto py-0.5">

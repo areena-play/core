@@ -16,24 +16,24 @@ import {
     CheckSquare,
     GraduationCap,
 } from 'lucide-react';
-import { useAuth } from '@/lib/authContext';
+import { useI18n } from '@/lib/i18nContext';
 
 export function Sidebar() {
     const pathname = usePathname();
-    const { user } = useAuth();
+    const { t } = useI18n();
 
     const navItems = [
-        { label: 'Dashboard', href: '/', icon: LayoutDashboard },
-        { label: 'Master Calendar', href: '/calendar', icon: Calendar },
-        { label: 'Competitions & Leagues', href: '/competitions', icon: Trophy },
-        { label: 'License Hub', href: '/licenses', icon: Award },
-        { label: 'Refresher Courses', href: '/licenses/refresher-courses', icon: GraduationCap },
-        { label: 'Approvals Queue', href: '/licenses/approvals', icon: CheckSquare },
-        { label: 'Associations & Clubs', href: '/associations', icon: Network },
-        { label: 'Association Settings', href: '/associations/settings', icon: Sliders },
-        { label: 'Communications', href: '/communications', icon: Mail },
-        { label: 'Developer API (OAuth)', href: '/developers', icon: Code2 },
-        { label: 'My Profile', href: '/profile', icon: User },
+        { label: t('nav.dashboard'), href: '/', icon: LayoutDashboard },
+        { label: t('nav.calendar'), href: '/calendar', icon: Calendar },
+        { label: t('nav.competitions'), href: '/competitions', icon: Trophy },
+        { label: t('nav.licenses'), href: '/licenses', icon: Award },
+        { label: t('nav.refresherCourses'), href: '/licenses/refresher-courses', icon: GraduationCap },
+        { label: t('nav.approvals'), href: '/licenses/approvals', icon: CheckSquare },
+        { label: t('nav.associations'), href: '/associations', icon: Network },
+        { label: t('nav.associationSettings'), href: '/associations/settings', icon: Sliders },
+        { label: t('nav.communications'), href: '/communications', icon: Mail },
+        { label: t('nav.developerApi'), href: '/developers', icon: Code2 },
+        { label: t('nav.profile'), href: '/profile', icon: User },
     ];
 
     return (
@@ -41,7 +41,7 @@ export function Sidebar() {
             <div className="flex h-full flex-col justify-between p-4">
                 <nav className="space-y-1">
                     <div className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        Platform Navigation
+                        {t('nav.navigation')}
                     </div>
                     {navItems.map((item) => {
                         const isActive =
@@ -61,7 +61,7 @@ export function Sidebar() {
                                 <Icon
                                     className={`h-4 w-4 ${isActive ? 'text-red-600 dark:text-red-500' : 'text-slate-400'}`}
                                 />
-                                {item.label}
+                                <span>{item.label}</span>
                             </Link>
                         );
                     })}
@@ -71,7 +71,7 @@ export function Sidebar() {
                 <div className="rounded-xl border border-slate-200 bg-slate-100/70 dark:border-slate-800/80 dark:bg-slate-900/50 p-3 text-xs text-slate-600 dark:text-slate-400">
                     <div className="font-semibold text-slate-900 dark:text-slate-300">AREENA Core v1.0</div>
                     <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-500">
-                        Unified National & Regional Federation Platform
+                        {t('nav.sportsManagement')}
                     </div>
                 </div>
             </div>

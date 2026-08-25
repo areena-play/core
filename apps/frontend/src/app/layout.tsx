@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/lib/authContext';
 import { ThemeProvider } from '@/lib/themeContext';
+import { I18nProvider } from '@/lib/i18nContext';
 import { Navbar } from '@/components/layout/Navbar';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { LiveTicker } from '@/components/layout/LiveTicker';
@@ -25,16 +26,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <html lang="en" className="dark">
             <body className="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col antialiased selection:bg-red-600 selection:text-white transition-colors duration-200">
                 <ThemeProvider>
-                    <AuthProvider>
-                        <Navbar />
-                        <LiveTicker />
-                        <div className="flex flex-1 overflow-hidden">
-                            <Sidebar />
-                            <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50 dark:bg-gradient-to-b dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-                                <div className="mx-auto max-w-7xl">{children}</div>
-                            </main>
-                        </div>
-                    </AuthProvider>
+                    <I18nProvider>
+                        <AuthProvider>
+                            <Navbar />
+                            <LiveTicker />
+                            <div className="flex flex-1 overflow-hidden">
+                                <Sidebar />
+                                <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50 dark:bg-gradient-to-b dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+                                    <div className="mx-auto max-w-7xl">{children}</div>
+                                </main>
+                            </div>
+                        </AuthProvider>
+                    </I18nProvider>
                 </ThemeProvider>
             </body>
         </html>

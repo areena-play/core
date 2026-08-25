@@ -7,12 +7,14 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useTheme } from '@/lib/themeContext';
+import { useI18n } from '@/lib/i18nContext';
 import { LogIn, AlertCircle, Sparkles } from 'lucide-react';
 
 export default function LoginPage() {
     const router = useRouter();
     const { login } = useAuth();
     const { resolvedTheme } = useTheme();
+    const { t } = useI18n();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -50,9 +52,9 @@ export default function LoginPage() {
                     <div className="relative h-12 w-40 mx-auto">
                         <Image key={logoSrc} src={logoSrc} alt="AREENA Logo" fill priority className="object-contain" />
                     </div>
-                    <h1 className="text-xl font-bold text-slate-900 dark:text-white">Sign In to AREENA</h1>
+                    <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('auth.loginTitle')}</h1>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Access your federation portal, license credentials, and tournament entries.
+                        {t('auth.loginSubtitle')}
                     </p>
                 </div>
 
@@ -68,7 +70,7 @@ export default function LoginPage() {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                Email Address (Username)
+                                {t('common.email')}
                             </label>
                             <input
                                 type="email"
@@ -81,7 +83,9 @@ export default function LoginPage() {
                         </div>
 
                         <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">Password</label>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                {t('auth.password')}
+                            </label>
                             <input
                                 type="password"
                                 required
@@ -98,7 +102,7 @@ export default function LoginPage() {
                             className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 py-2.5 font-semibold text-white hover:bg-red-700 disabled:opacity-50 shadow transition"
                         >
                             <LogIn className="h-4 w-4" />
-                            <span>{loading ? 'Signing in...' : 'Sign In'}</span>
+                            <span>{loading ? t('common.loading') : t('auth.loginButton')}</span>
                         </button>
                     </form>
 
@@ -106,7 +110,7 @@ export default function LoginPage() {
                     <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-slate-800">
                         <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
                             <Sparkles className="h-3 w-3 text-red-500" />
-                            Quick Demo Accounts:
+                            {t('auth.demoAccounts')}:
                         </span>
                         <div className="grid grid-cols-2 gap-2">
                             <button
@@ -156,12 +160,12 @@ export default function LoginPage() {
                 </div>
 
                 <div className="text-center text-xs text-slate-500 dark:text-slate-400">
-                    Don't have an account yet?{' '}
+                    {t('auth.noAccount')}{' '}
                     <Link
                         href="/auth/register"
                         className="text-red-600 dark:text-red-400 font-semibold hover:underline"
                     >
-                        Register for Free
+                        {t('auth.registerButton')}
                     </Link>
                 </div>
             </div>

@@ -4,11 +4,13 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
+import { useI18n } from '@/lib/i18nContext';
 import { Trophy, Plus, Filter, Calendar, MapPin, Users, ChevronRight, Shield, Search } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function CompetitionsPage() {
     const { user } = useAuth();
+    const { t } = useI18n();
     const [competitions, setCompetitions] = useState<any[]>([]);
     const [associations, setAssociations] = useState<any[]>([]);
     const [typeFilter, setTypeFilter] = useState<string>('');
@@ -84,64 +86,65 @@ export default function CompetitionsPage() {
         }
     };
 
-    const filteredComps = competitions.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+    const filteredComps = competitions.filter((c) =>
+        c.name.toLowerCase().includes(search.toLowerCase()),
+    );
 
     return (
         <div className="space-y-6 pb-12">
             {/* Header */}
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                         <Trophy className="h-6 w-6 text-red-500" />
-                        Competitions & Leagues
+                        <span>{t('competitions.title')}</span>
                     </h1>
-                    <p className="text-sm text-slate-400">
-                        Unified competition engine supporting long-running national/regional leagues and multi-category
-                        tournaments.
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                        {t('competitions.subtitle')}
                     </p>
                 </div>
 
                 {user && (
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition shadow"
+                        className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-red-700 transition shadow self-start sm:self-auto"
                     >
                         <Plus className="h-4 w-4" />
-                        <span>Create Competition</span>
+                        <span>{t('competitions.createCompetition')}</span>
                     </button>
                 )}
             </div>
 
             {/* Filter Bar */}
-            <div className="flex flex-col gap-4 rounded-xl border border-slate-800 bg-slate-900/80 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-1 flex-wrap items-center gap-3">
-                    <div className="relative flex-1 min-w-[200px]">
-                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+            <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/80 sm:flex-row sm:items-center sm:justify-between shadow-sm">
+                <div className="flex flex-1 flex-wrap items-center gap-2.5 sm:gap-3">
+                    <div className="relative flex-1 min-w-[180px]">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                         <input
                             type="text"
-                            placeholder="Search leagues & tournaments..."
+                            placeholder={t('common.search')}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full rounded-lg border border-slate-800 bg-slate-950 pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:border-red-500 focus:outline-none"
+                            className="w-full rounded-lg border border-slate-300 bg-slate-50 pl-9 pr-3 py-2 text-xs text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white placeholder-slate-400 focus:border-red-500 focus:outline-none"
                         />
                     </div>
 
                     <select
                         value={typeFilter}
                         onChange={(e) => setTypeFilter(e.target.value)}
-                        className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white focus:border-red-500 focus:outline-none"
+                        className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                     >
-                        <option value="">All Types (Leagues & Tournaments)</option>
-                        <option value="LEAGUE">🛡️ Leagues Only</option>
-                        <option value="TOURNAMENT">🏆 Tournaments Only</option>
+                        <option value="">{t('competitions.filterType')}</option>
+                        <option value="LEAGUE">🛡️ {t('competitions.filterLeague')}</option>
+                        <option value="TOURNAMENT">🏆 {t('competitions.filterTournament')}</option>
                     </select>
 
                     <select
                         value={assocFilter}
                         onChange={(e) => setAssocFilter(e.target.value)}
-                        className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white focus:border-red-500 focus:outline-none"
+                        className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                     >
-                        <option value="">All Organizing Associations</option>
+                        <option value="">{t('calendar.allAssociations')}</option>
                         {associations.map((a) => (
                             <option key={a.id} value={a.id}>
                                 {a.name} ({a.code})
@@ -152,9 +155,9 @@ export default function CompetitionsPage() {
                     <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white focus:border-red-500 focus:outline-none"
+                        className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                     >
-                        <option value="">All Statuses</option>
+                        <option value="">{t('competitions.filterStatus')}</option>
                         <option value="REGISTRATION_OPEN">Registration Open</option>
                         <option value="IN_PROGRESS">In Progress</option>
                         <option value="COMPLETED">Completed</option>
@@ -163,44 +166,44 @@ export default function CompetitionsPage() {
             </div>
 
             {/* Competitions Grid */}
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
                 {filteredComps.map((comp) => (
                     <div
                         key={comp.id}
-                        className="flex flex-col justify-between rounded-xl border border-slate-800 bg-slate-900/70 p-5 hover:border-slate-700 transition group shadow-sm"
+                        className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 sm:p-5 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/70 dark:hover:border-slate-700 transition group shadow-sm"
                     >
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
                                 <span
                                     className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
                                         comp.type === 'LEAGUE'
-                                            ? 'bg-red-950 text-red-400 border border-red-800/50'
-                                            : 'bg-blue-950 text-blue-400 border border-blue-800/50'
+                                            ? 'bg-red-100 text-red-800 dark:bg-red-950 text-red-400 border border-red-300 dark:border-red-800/50'
+                                            : 'bg-blue-100 text-blue-800 dark:bg-blue-950 text-blue-400 border border-blue-300 dark:border-blue-800/50'
                                     }`}
                                 >
                                     {comp.type}
                                 </span>
-                                <span className="rounded bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-300">
+                                <span className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
                                     {comp.status.replace('_', ' ')}
                                 </span>
                             </div>
 
                             <div>
-                                <h3 className="text-lg font-bold text-white group-hover:text-red-400 transition line-clamp-1">
+                                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition line-clamp-1">
                                     {comp.name}
                                 </h3>
-                                <p className="mt-1 text-xs text-slate-400 line-clamp-2">
+                                <p className="mt-1 text-xs text-slate-600 dark:text-slate-400 line-clamp-2">
                                     {comp.description || 'Championship competition organized by the federation.'}
                                 </p>
                             </div>
 
-                            <div className="space-y-1.5 border-t border-slate-800 pt-3 text-xs text-slate-400">
+                            <div className="space-y-1.5 border-t border-slate-200 dark:border-slate-800 pt-3 text-xs text-slate-500 dark:text-slate-400">
                                 <div className="flex items-center gap-1.5">
-                                    <Shield className="h-3.5 w-3.5 text-slate-500" />
+                                    <Shield className="h-3.5 w-3.5 text-slate-400" />
                                     <span className="truncate">{comp.association?.name}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                    <Calendar className="h-3.5 w-3.5 text-slate-500" />
+                                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
                                     <span>
                                         {format(new Date(comp.startDate), 'MMM yyyy')} -{' '}
                                         {format(new Date(comp.endDate), 'MMM yyyy')}
@@ -215,13 +218,15 @@ export default function CompetitionsPage() {
                             </div>
                         </div>
 
-                        <div className="mt-5 pt-3 border-t border-slate-800/80 flex items-center justify-between">
-                            <span className="text-xs text-slate-400">{comp.categories?.length || 0} Categories</span>
+                        <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between">
+                            <span className="text-xs text-slate-500 dark:text-slate-400">
+                                {comp.categories?.length || 0} {t('competitions.categories')}
+                            </span>
                             <Link
                                 href={`/competitions/${comp.id}`}
-                                className="inline-flex items-center gap-1 text-xs font-semibold text-red-400 hover:text-red-300"
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 dark:text-red-400 hover:underline"
                             >
-                                <span>Details & Standings</span>
+                                <span>{t('competitions.standings')}</span>
                                 <ChevronRight className="h-3.5 w-3.5" />
                             </Link>
                         </div>
@@ -231,47 +236,51 @@ export default function CompetitionsPage() {
 
             {/* Create Competition Modal */}
             {showCreateModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-                    <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+                    <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
+                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                            <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                 <Trophy className="h-5 w-5 text-red-500" />
-                                Create New Competition
+                                <span>{t('competitions.createCompetition')}</span>
                             </h3>
                             <button
                                 onClick={() => setShowCreateModal(false)}
-                                className="text-slate-400 hover:text-white"
+                                className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
                             >
                                 ✕
                             </button>
                         </div>
 
                         {errorMsg && (
-                            <div className="rounded-lg bg-red-950/80 border border-red-800 p-3 text-xs text-red-300">
+                            <div className="rounded-lg bg-red-50 dark:bg-red-950/80 border border-red-200 dark:border-red-800 p-3 text-xs text-red-700 dark:text-red-300">
                                 {errorMsg}
                             </div>
                         )}
 
                         <form onSubmit={handleCreate} className="space-y-3 text-xs">
                             <div>
-                                <label className="font-semibold text-slate-300">Competition Name</label>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                    {t('common.name')}
+                                </label>
                                 <input
                                     type="text"
                                     required
                                     placeholder="e.g. Swiss National League B 2026"
                                     value={formName}
                                     onChange={(e) => setFormName(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label className="font-semibold text-slate-300">Type</label>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('competitions.matchType')}
+                                    </label>
                                     <select
                                         value={formType}
                                         onChange={(e) => setFormType(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                     >
                                         <option value="LEAGUE">🛡️ League (Long-running)</option>
                                         <option value="TOURNAMENT">🏆 Tournament</option>
@@ -279,11 +288,13 @@ export default function CompetitionsPage() {
                                 </div>
 
                                 <div>
-                                    <label className="font-semibold text-slate-300">Organizing Association</label>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('common.association')}
+                                    </label>
                                     <select
                                         value={formAssocId}
                                         onChange={(e) => setFormAssocId(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                     >
                                         {associations.map((a) => (
                                             <option key={a.id} value={a.id}>
@@ -295,64 +306,72 @@ export default function CompetitionsPage() {
                             </div>
 
                             <div>
-                                <label className="font-semibold text-slate-300">Description</label>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                    {t('common.details')}
+                                </label>
                                 <textarea
                                     rows={2}
                                     placeholder="Competition rules, description, and eligibility..."
                                     value={formDesc}
                                     onChange={(e) => setFormDesc(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label className="font-semibold text-slate-300">Start Date</label>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('common.date')} Start
+                                    </label>
                                     <input
                                         type="date"
                                         required
                                         value={formStartDate}
                                         onChange={(e) => setFormStartDate(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                     />
                                 </div>
                                 <div>
-                                    <label className="font-semibold text-slate-300">End Date</label>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('common.date')} End
+                                    </label>
                                     <input
                                         type="date"
                                         required
                                         value={formEndDate}
                                         onChange={(e) => setFormEndDate(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                     />
                                 </div>
                             </div>
 
                             <div>
-                                <label className="font-semibold text-slate-300">Location / Venue</label>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                    {t('common.location')}
+                                </label>
                                 <input
                                     type="text"
                                     placeholder="e.g. National Sports Complex / Regional Arenas"
                                     value={formLocation}
                                     onChange={(e) => setFormLocation(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                 />
                             </div>
 
-                            <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+                            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
                                 <button
                                     type="button"
                                     onClick={() => setShowCreateModal(false)}
-                                    className="rounded-lg bg-slate-800 px-4 py-2 font-semibold text-slate-300 hover:bg-slate-700"
+                                    className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                                 >
-                                    Cancel
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={creating}
-                                    className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                                    className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50 shadow"
                                 >
-                                    {creating ? 'Creating...' : 'Create Competition'}
+                                    {creating ? t('common.submitting') : t('competitions.createCompetition')}
                                 </button>
                             </div>
                         </form>
