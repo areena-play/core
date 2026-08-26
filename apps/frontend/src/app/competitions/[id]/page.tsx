@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { useWebSocket } from '@/lib/useWebSocket';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import {
     Trophy,
     Users,
@@ -512,185 +513,189 @@ export default function CompetitionDetailPage() {
 
             {/* Add Category Modal */}
             {showAddCatModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
-                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                                {t('competitions.addCategory')}
-                            </h3>
-                            <button
-                                onClick={() => setShowAddCatModal(false)}
-                                className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
-                            >
-                                ✕
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleCreateCategory} className="space-y-3 text-xs">
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('competitions.category')} {t('common.name')}
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="e.g. Men's Team Division A (3v3)"
-                                    value={catName}
-                                    onChange={(e) => setCatName(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('competitions.matchType')}
-                                    </label>
-                                    <select
-                                        value={catFormatType}
-                                        onChange={(e) => {
-                                            setCatFormatType(e.target.value);
-                                            if (e.target.value === 'DAVIS_3V3') setCatTeamSize(3);
-                                            else if (e.target.value === 'DOUBLES_2V2') setCatTeamSize(2);
-                                            else setCatTeamSize(1);
-                                        }}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    >
-                                        <option value="DAVIS_3V3">3v3 Davis Cup (10 Matches: 9S + 1D)</option>
-                                        <option value="DOUBLES_2V2">2v2 Doubles + Singles (3 Matches)</option>
-                                        <option value="SINGLES_1V1">1v1 Singles Match</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('competitions.teamSize')}
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        value={catTeamSize}
-                                        onChange={(e) => setCatTeamSize(Number(e.target.value))}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('competitions.minElo')}
-                                    </label>
-                                    <input
-                                        type="number"
-                                        placeholder="e.g. 1500"
-                                        value={catMinElo}
-                                        onChange={(e) => setCatMinElo(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('competitions.round')}
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        value={catRounds}
-                                        onChange={(e) => setCatRounds(Number(e.target.value))}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAddCatModal(false)}
-                                    className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                                >
-                                    {t('common.cancel')}
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
-                                >
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                                <h3 className="text-base font-bold text-slate-900 dark:text-white">
                                     {t('competitions.addCategory')}
+                                </h3>
+                                <button
+                                    onClick={() => setShowAddCatModal(false)}
+                                    className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
+                                >
+                                    ✕
                                 </button>
                             </div>
-                        </form>
+
+                            <form onSubmit={handleCreateCategory} className="space-y-3 text-xs">
+                                <div>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('competitions.category')} {t('common.name')}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="e.g. Men's Team Division A (3v3)"
+                                        value={catName}
+                                        onChange={(e) => setCatName(e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {t('competitions.matchType')}
+                                        </label>
+                                        <select
+                                            value={catFormatType}
+                                            onChange={(e) => {
+                                                setCatFormatType(e.target.value);
+                                                if (e.target.value === 'DAVIS_3V3') setCatTeamSize(3);
+                                                else if (e.target.value === 'DOUBLES_2V2') setCatTeamSize(2);
+                                                else setCatTeamSize(1);
+                                            }}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        >
+                                            <option value="DAVIS_3V3">3v3 Davis Cup (10 Matches: 9S + 1D)</option>
+                                            <option value="DOUBLES_2V2">2v2 Doubles + Singles (3 Matches)</option>
+                                            <option value="SINGLES_1V1">1v1 Singles Match</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {t('competitions.teamSize')}
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            value={catTeamSize}
+                                            onChange={(e) => setCatTeamSize(Number(e.target.value))}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {t('competitions.minElo')}
+                                        </label>
+                                        <input
+                                            type="number"
+                                            placeholder="e.g. 1500"
+                                            value={catMinElo}
+                                            onChange={(e) => setCatMinElo(e.target.value)}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {t('competitions.round')}
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            value={catRounds}
+                                            onChange={(e) => setCatRounds(Number(e.target.value))}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddCatModal(false)}
+                                        className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                    >
+                                        {t('common.cancel')}
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
+                                    >
+                                        {t('competitions.addCategory')}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
+                </ModalPortal>
             )}
 
             {/* Register Team Modal */}
             {showAddTeamModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
-                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                                {t('competitions.registerTeam')} ({activeCategory?.name})
-                            </h3>
-                            <button
-                                onClick={() => setShowAddTeamModal(false)}
-                                className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
-                            >
-                                ✕
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleRegisterTeam} className="space-y-3 text-xs">
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    Team {t('common.name')}
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="e.g. TTC Young Stars Zurich 2"
-                                    value={teamName}
-                                    onChange={(e) => setTeamName(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('common.club')}
-                                </label>
-                                <select
-                                    value={selectedClubId}
-                                    onChange={(e) => setSelectedClubId(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                >
-                                    <option value="">No Club (Independent / Tournament Team)</option>
-                                    {clubs.map((c) => (
-                                        <option key={c.id} value={c.id}>
-                                            {c.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                                    {t('competitions.registerTeam')} ({activeCategory?.name})
+                                </h3>
                                 <button
-                                    type="button"
                                     onClick={() => setShowAddTeamModal(false)}
-                                    className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                    className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
                                 >
-                                    {t('common.cancel')}
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
-                                >
-                                    {t('competitions.registerTeam')}
+                                    ✕
                                 </button>
                             </div>
-                        </form>
+
+                            <form onSubmit={handleRegisterTeam} className="space-y-3 text-xs">
+                                <div>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        Team {t('common.name')}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="e.g. TTC Young Stars Zurich 2"
+                                        value={teamName}
+                                        onChange={(e) => setTeamName(e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('common.club')}
+                                    </label>
+                                    <select
+                                        value={selectedClubId}
+                                        onChange={(e) => setSelectedClubId(e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    >
+                                        <option value="">No Club (Independent / Tournament Team)</option>
+                                        {clubs.map((c) => (
+                                            <option key={c.id} value={c.id}>
+                                                {c.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddTeamModal(false)}
+                                        className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                    >
+                                        {t('common.cancel')}
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
+                                    >
+                                        {t('competitions.registerTeam')}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
+                </ModalPortal>
             )}
         </div>
     );

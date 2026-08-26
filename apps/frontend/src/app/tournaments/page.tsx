@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { Trophy, Plus, Filter, Calendar, MapPin, Users, ChevronRight, Shield, Search } from 'lucide-react';
 import { format } from 'date-fns';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 
 export default function TournamentsPage() {
     const { user } = useAuth();
@@ -236,147 +237,149 @@ export default function TournamentsPage() {
 
             {/* Create Competition Modal */}
             {showCreateModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
-                    <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                            <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                <Trophy className="h-5 w-5 text-red-500" />
-                                <span>{t('competitions.createCompetition')}</span>
-                            </h3>
-                            <button
-                                onClick={() => setShowCreateModal(false)}
-                                className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
-                            >
-                                ✕
-                            </button>
-                        </div>
-
-                        {errorMsg && (
-                            <div className="rounded-lg bg-red-50 dark:bg-red-950/80 border border-red-200 dark:border-red-800 p-3 text-xs text-red-700 dark:text-red-300">
-                                {errorMsg}
-                            </div>
-                        )}
-
-                        <form onSubmit={handleCreate} className="space-y-3 text-xs">
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('common.name')}
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="e.g. Swiss National League B 2026"
-                                    value={formName}
-                                    onChange={(e) => setFormName(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('competitions.matchType')}
-                                    </label>
-                                    <select
-                                        value={formType}
-                                        onChange={(e) => setFormType(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    >
-                                        <option value="LEAGUE">🛡️ League (Long-running)</option>
-                                        <option value="TOURNAMENT">🏆 Tournament</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('common.association')}
-                                    </label>
-                                    <select
-                                        value={formAssocId}
-                                        onChange={(e) => setFormAssocId(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    >
-                                        {associations.map((a) => (
-                                            <option key={a.id} value={a.id}>
-                                                {a.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('common.details')}
-                                </label>
-                                <textarea
-                                    rows={2}
-                                    placeholder="Competition rules, description, and eligibility..."
-                                    value={formDesc}
-                                    onChange={(e) => setFormDesc(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('common.date')} Start
-                                    </label>
-                                    <input
-                                        type="date"
-                                        required
-                                        value={formStartDate}
-                                        onChange={(e) => setFormStartDate(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('common.date')} End
-                                    </label>
-                                    <input
-                                        type="date"
-                                        required
-                                        value={formEndDate}
-                                        onChange={(e) => setFormEndDate(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('common.location')}
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. National Sports Complex / Regional Arenas"
-                                    value={formLocation}
-                                    onChange={(e) => setFormLocation(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+                        <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    <Trophy className="h-5 w-5 text-red-500" />
+                                    <span>{t('competitions.createCompetition')}</span>
+                                </h3>
                                 <button
-                                    type="button"
                                     onClick={() => setShowCreateModal(false)}
-                                    className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                    className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
                                 >
-                                    {t('common.cancel')}
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={creating}
-                                    className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50 shadow"
-                                >
-                                    {creating ? t('common.submitting') : t('competitions.createCompetition')}
+                                    ✕
                                 </button>
                             </div>
-                        </form>
+
+                            {errorMsg && (
+                                <div className="rounded-lg bg-red-50 dark:bg-red-950/80 border border-red-200 dark:border-red-800 p-3 text-xs text-red-700 dark:text-red-300">
+                                    {errorMsg}
+                                </div>
+                            )}
+
+                            <form onSubmit={handleCreate} className="space-y-3 text-xs">
+                                <div>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('common.name')}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="e.g. Swiss National League B 2026"
+                                        value={formName}
+                                        onChange={(e) => setFormName(e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {t('competitions.matchType')}
+                                        </label>
+                                        <select
+                                            value={formType}
+                                            onChange={(e) => setFormType(e.target.value)}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        >
+                                            <option value="LEAGUE">🛡️ League (Long-running)</option>
+                                            <option value="TOURNAMENT">🏆 Tournament</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {t('common.association')}
+                                        </label>
+                                        <select
+                                            value={formAssocId}
+                                            onChange={(e) => setFormAssocId(e.target.value)}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        >
+                                            {associations.map((a) => (
+                                                <option key={a.id} value={a.id}>
+                                                    {a.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('common.details')}
+                                    </label>
+                                    <textarea
+                                        rows={2}
+                                        placeholder="Competition rules, description, and eligibility..."
+                                        value={formDesc}
+                                        onChange={(e) => setFormDesc(e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {t('common.date')} Start
+                                        </label>
+                                        <input
+                                            type="date"
+                                            required
+                                            value={formStartDate}
+                                            onChange={(e) => setFormStartDate(e.target.value)}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {t('common.date')} End
+                                        </label>
+                                        <input
+                                            type="date"
+                                            required
+                                            value={formEndDate}
+                                            onChange={(e) => setFormEndDate(e.target.value)}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('common.location')}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. National Sports Complex / Regional Arenas"
+                                        value={formLocation}
+                                        onChange={(e) => setFormLocation(e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCreateModal(false)}
+                                        className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                    >
+                                        {t('common.cancel')}
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={creating}
+                                        className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50 shadow"
+                                    >
+                                        {creating ? t('common.submitting') : t('competitions.createCompetition')}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
+                </ModalPortal>
             )}
         </div>
     );

@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { useWebSocket } from '@/lib/useWebSocket';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import {
     Trophy,
     Calendar,
@@ -329,116 +330,118 @@ export default function EncounterScoreSheetPage() {
 
             {/* Referee Match Scoring Modal */}
             {activeScoringMatch && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
-                    <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                            <div>
-                                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                    <Flame className="h-4 w-4 text-red-500" />
-                                    <span>
-                                        {t('competitions.liveScoring')}:{' '}
-                                        {activeScoringMatch.label || `Match ${activeScoringMatch.orderIndex}`}
-                                    </span>
-                                </h3>
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                    {t('competitions.scoringInstruction')}
-                                </p>
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+                        <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                                <div>
+                                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                        <Flame className="h-4 w-4 text-red-500" />
+                                        <span>
+                                            {t('competitions.liveScoring')}:{' '}
+                                            {activeScoringMatch.label || `Match ${activeScoringMatch.orderIndex}`}
+                                        </span>
+                                    </h3>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                        {t('competitions.scoringInstruction')}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setActiveScoringMatch(null)}
+                                    className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
+                                >
+                                    ✕
+                                </button>
                             </div>
-                            <button
-                                onClick={() => setActiveScoringMatch(null)}
-                                className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
-                            >
-                                ✕
-                            </button>
-                        </div>
 
-                        <form onSubmit={handleSubmitScore} className="space-y-4 text-xs">
-                            <div className="space-y-2">
-                                <div className="grid grid-cols-12 gap-2 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">
-                                    <div className="col-span-3 sm:col-span-2">Set</div>
-                                    <div className="col-span-4 text-center">{t('competitions.homePoints')}</div>
-                                    <div className="col-span-4 text-center">{t('competitions.awayPoints')}</div>
-                                    <div className="col-span-1 sm:col-span-2"></div>
+                            <form onSubmit={handleSubmitScore} className="space-y-4 text-xs">
+                                <div className="space-y-2">
+                                    <div className="grid grid-cols-12 gap-2 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">
+                                        <div className="col-span-3 sm:col-span-2">Set</div>
+                                        <div className="col-span-4 text-center">{t('competitions.homePoints')}</div>
+                                        <div className="col-span-4 text-center">{t('competitions.awayPoints')}</div>
+                                        <div className="col-span-1 sm:col-span-2"></div>
+                                    </div>
+
+                                    {setsInput.map((set, idx) => (
+                                        <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                                            <div className="col-span-3 sm:col-span-2 font-mono font-bold text-slate-700 dark:text-slate-300">
+                                                Set {idx + 1}
+                                            </div>
+                                            <div className="col-span-4">
+                                                <input
+                                                    type="number"
+                                                    min={0}
+                                                    value={set.home}
+                                                    onChange={(e) => handleSetChange(idx, 'home', Number(e.target.value))}
+                                                    className="w-full text-center rounded-lg border border-slate-300 bg-slate-50 px-2 py-2 font-mono text-base font-bold text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                                />
+                                            </div>
+                                            <div className="col-span-4">
+                                                <input
+                                                    type="number"
+                                                    min={0}
+                                                    value={set.away}
+                                                    onChange={(e) => handleSetChange(idx, 'away', Number(e.target.value))}
+                                                    className="w-full text-center rounded-lg border border-slate-300 bg-slate-50 px-2 py-2 font-mono text-base font-bold text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                                />
+                                            </div>
+                                            <div className="col-span-1 sm:col-span-2 text-right">
+                                                {setsInput.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveSet(idx)}
+                                                        className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800 dark:hover:text-red-400"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
 
-                                {setsInput.map((set, idx) => (
-                                    <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                                        <div className="col-span-3 sm:col-span-2 font-mono font-bold text-slate-700 dark:text-slate-300">
-                                            Set {idx + 1}
-                                        </div>
-                                        <div className="col-span-4">
-                                            <input
-                                                type="number"
-                                                min={0}
-                                                value={set.home}
-                                                onChange={(e) => handleSetChange(idx, 'home', Number(e.target.value))}
-                                                className="w-full text-center rounded-lg border border-slate-300 bg-slate-50 px-2 py-2 font-mono text-base font-bold text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                            />
-                                        </div>
-                                        <div className="col-span-4">
-                                            <input
-                                                type="number"
-                                                min={0}
-                                                value={set.away}
-                                                onChange={(e) => handleSetChange(idx, 'away', Number(e.target.value))}
-                                                className="w-full text-center rounded-lg border border-slate-300 bg-slate-50 px-2 py-2 font-mono text-base font-bold text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                            />
-                                        </div>
-                                        <div className="col-span-1 sm:col-span-2 text-right">
-                                            {setsInput.length > 1 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleRemoveSet(idx)}
-                                                    className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800 dark:hover:text-red-400"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={handleAddSet}
+                                        className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 dark:text-red-400 hover:underline"
+                                    >
+                                        <Plus className="h-3.5 w-3.5" />
+                                        <span>{t('competitions.addSet')}</span>
+                                    </button>
 
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
-                                <button
-                                    type="button"
-                                    onClick={handleAddSet}
-                                    className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 dark:text-red-400 hover:underline"
-                                >
-                                    <Plus className="h-3.5 w-3.5" />
-                                    <span>{t('competitions.addSet')}</span>
-                                </button>
+                                    <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-700 dark:text-slate-300">
+                                        <input
+                                            type="checkbox"
+                                            checked={isFinishedMatch}
+                                            onChange={(e) => setIsFinishedMatch(e.target.checked)}
+                                            className="h-4 w-4 rounded border-slate-300 bg-slate-100 text-red-600 focus:ring-red-500 dark:border-slate-700 dark:bg-slate-950"
+                                        />
+                                        <span>{t('competitions.markFinished')}</span>
+                                    </label>
+                                </div>
 
-                                <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-700 dark:text-slate-300">
-                                    <input
-                                        type="checkbox"
-                                        checked={isFinishedMatch}
-                                        onChange={(e) => setIsFinishedMatch(e.target.checked)}
-                                        className="h-4 w-4 rounded border-slate-300 bg-slate-100 text-red-600 focus:ring-red-500 dark:border-slate-700 dark:bg-slate-950"
-                                    />
-                                    <span>{t('competitions.markFinished')}</span>
-                                </label>
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
-                                <button
-                                    type="button"
-                                    onClick={() => setActiveScoringMatch(null)}
-                                    className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                                >
-                                    {t('common.cancel')}
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={submitting}
-                                    className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50 shadow"
-                                >
-                                    {submitting ? t('common.submitting') : t('competitions.saveAndPublish')}
-                                </button>
-                            </div>
-                        </form>
+                                <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveScoringMatch(null)}
+                                        className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                    >
+                                        {t('common.cancel')}
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={submitting}
+                                        className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50 shadow"
+                                    >
+                                        {submitting ? t('common.submitting') : t('competitions.saveAndPublish')}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
+                </ModalPortal>
             )}
         </div>
     );

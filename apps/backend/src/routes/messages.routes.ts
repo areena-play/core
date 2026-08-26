@@ -1,9 +1,10 @@
 import { Router, Response } from 'express';
 import { prisma } from '../config/prisma';
 import { validate } from '../middleware/validate';
-import { createBroadcastSchema } from '@areena/shared';
+import { createBroadcastSchema, AuditCategory } from '@areena/shared';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { BroadcastService } from '../services/broadcastService';
+import { AuditService } from '../services/auditService';
 
 const router = Router();
 
@@ -39,8 +40,39 @@ router.post(
                 targetRole,
             });
 
+            // Trace communication action in immutable audit log
+            await AuditService.record({
+                req,
+                action: 'COMMUNICATION_BROADCAST',
+                category: AuditCategory.COMMUNICATION,
+                entityType: 'BroadcastMessage',
+                entityId: result.message.id,
+                associationId,
+                clubId,
+                description: `Broadcast ${channel.toLowerCase()} message "${subject}" dispatched to ${result.recipientCount} recipient(s)`,
+                status: 'SUCCESS',
+                metadata: {
+                    subject,
+                    recipientCount: result.recipientCount,
+                    channel,
+                    targetRole: targetRole || 'ALL',
+                    bodySnippet: body.slice(0, 100),
+                },
+            });
+
             res.status(201).json(result);
         } catch (err: any) {
+            await AuditService.record({
+                req,
+                action: 'COMMUNICATION_BROADCAST',
+                category: AuditCategory.COMMUNICATION,
+                entityType: 'BroadcastMessage',
+                associationId: req.body?.associationId,
+                clubId: req.body?.clubId,
+                description: `Failed to dispatch broadcast message "${req.body?.subject || ''}": ${err.message}`,
+                status: 'FAILURE',
+                metadata: { error: err.message },
+            });
             res.status(400).json({ error: err.message });
         }
     },

@@ -4,8 +4,9 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../config/prisma';
 import { config } from '../config/env';
 import { validate } from '../middleware/validate';
-import { registerSchema, loginSchema, updateProfileSchema } from '@areena/shared';
+import { registerSchema, loginSchema, updateProfileSchema, AuditCategory } from '@areena/shared';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { AuditService } from '../services/auditService';
 
 const router = Router();
 
@@ -39,6 +40,24 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
         });
 
         const token = jwt.sign({ userId: user.id }, config.jwtSecret, { expiresIn: '7d' });
+
+        await AuditService.record({
+            req,
+            userId: user.id,
+            userEmail: user.email,
+            userName: `${user.firstName} ${user.lastName}`,
+            action: 'AUTH_REGISTER',
+            category: AuditCategory.AUTH,
+            entityType: 'User',
+            entityId: user.id,
+            description: `New user registration for ${user.firstName} ${user.lastName} (${user.email})`,
+            status: 'SUCCESS',
+            metadata: {
+                email: user.email,
+                country: user.country,
+                city: user.city,
+            },
+        });
 
         res.status(201).json({
             token,
@@ -80,15 +99,55 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
         });
 
         if (!user) {
+            await AuditService.record({
+                req,
+                userEmail: email,
+                action: 'AUTH_LOGIN_FAILED',
+                category: AuditCategory.SECURITY,
+                description: `Failed login attempt for email ${email} (Account not found)`,
+                status: 'FAILURE',
+                metadata: { email, reason: 'USER_NOT_FOUND' },
+            });
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
         const match = await bcrypt.compare(password, user.passwordHash);
         if (!match) {
+            await AuditService.record({
+                req,
+                userId: user.id,
+                userEmail: user.email,
+                userName: `${user.firstName} ${user.lastName}`,
+                action: 'AUTH_LOGIN_FAILED',
+                category: AuditCategory.SECURITY,
+                entityType: 'User',
+                entityId: user.id,
+                description: `Failed login attempt for ${user.email} (Incorrect password)`,
+                status: 'FAILURE',
+                metadata: { email, reason: 'INVALID_PASSWORD' },
+            });
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
         const token = jwt.sign({ userId: user.id }, config.jwtSecret, { expiresIn: '7d' });
+
+        await AuditService.record({
+            req,
+            userId: user.id,
+            userEmail: user.email,
+            userName: `${user.firstName} ${user.lastName}`,
+            action: 'AUTH_LOGIN',
+            category: AuditCategory.AUTH,
+            entityType: 'User',
+            entityId: user.id,
+            description: `User ${user.firstName} ${user.lastName} (${user.email}) signed in`,
+            status: 'SUCCESS',
+            metadata: {
+                isSuperAdmin: user.isSuperAdmin,
+                associationRoleCount: user.associationRoles.length,
+                clubRoleCount: user.clubRoles.length,
+            },
+        });
 
         res.json({
             token,

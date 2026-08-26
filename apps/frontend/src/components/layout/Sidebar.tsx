@@ -21,6 +21,7 @@ import {
     ArrowLeft,
     Sparkles,
     Receipt,
+    Activity,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18nContext';
 import { useMainView } from '@/lib/mainViewContext';
@@ -169,6 +170,7 @@ export function Sidebar() {
                     ...(isAssocAdmin
                         ? [
                               { label: t('nav.finances'), href: isSubAssoc ? `/association/${entityId}/billing` : '/associations/billing', icon: Receipt },
+                              { label: t('nav.auditLogs'), href: isSubAssoc ? `/association/${entityId}/audit-logs` : '/associations/audit-logs', icon: Activity },
                               { label: t('nav.associationSettings'), href: '/associations/settings', icon: Sliders },
                           ]
                         : []),

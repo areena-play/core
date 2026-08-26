@@ -20,6 +20,7 @@ const messages_routes_1 = __importDefault(require("./routes/messages.routes"));
 const oauth_routes_1 = __importDefault(require("./routes/oauth.routes"));
 const upload_routes_1 = __importDefault(require("./routes/upload.routes"));
 const invoices_routes_1 = __importDefault(require("./routes/invoices.routes"));
+const audit_routes_1 = __importDefault(require("./routes/audit.routes"));
 const app = (0, express_1.default)();
 // Middlewares
 app.use((0, cors_1.default)({ origin: '*', credentials: true }));
@@ -46,6 +47,7 @@ app.use('/messages', messages_routes_1.default);
 app.use('/oauth', oauth_routes_1.default);
 app.use('/upload', upload_routes_1.default);
 app.use('/invoices', invoices_routes_1.default);
+app.use('/audit-logs', audit_routes_1.default);
 // Global Error Handler
 app.use(errorHandler_1.errorHandler);
 const PORT = env_1.config.port;

@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { Network, Shield, Plus, ChevronRight, Info, Sliders, ExternalLink, MapPin, Mail, Phone } from 'lucide-react';
 import Link from 'next/link';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 
 export default function AssociationsPage() {
     const { user } = useAuth();
@@ -319,169 +320,170 @@ export default function AssociationsPage() {
 
             {/* Add Club Modal */}
             {showClubModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
-                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                                {t('common.add')} {t('common.club')}
-                            </h3>
-                            <button
-                                onClick={() => setShowClubModal(false)}
-                                className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
-                            >
-                                ✕
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleCreateClub} className="space-y-3 text-xs">
-                            <div className="grid grid-cols-3 gap-2">
-                                <div className="col-span-2">
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('common.club')} {t('common.name')}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="e.g. TTC Zurich Affoltern"
-                                        value={clubName}
-                                        onChange={(e) => setClubName(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">Code</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="TCA"
-                                        value={clubCode}
-                                        onChange={(e) => setClubCode(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('profile.street')}
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="e.g. Fronwaldstrasse 115"
-                                    value={clubAddress}
-                                    onChange={(e) => setClubAddress(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('profile.city')}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="Zurich"
-                                        value={clubCity}
-                                        onChange={(e) => setClubCity(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('profile.postalCode')}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="8046"
-                                        value={clubPostalCode}
-                                        onChange={(e) => setClubPostalCode(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('common.email')}
-                                    </label>
-                                    <input
-                                        type="email"
-                                        required
-                                        placeholder="info@tca.ch"
-                                        value={clubEmail}
-                                        onChange={(e) => setClubEmail(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('profile.phone')}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="+41 44 123 45 67"
-                                        value={clubPhone}
-                                        onChange={(e) => setClubPhone(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    Parent Sub-Associations (Multi-Select DAG)
-                                </label>
-                                <div className="mt-1 max-h-32 overflow-y-auto rounded-lg border border-slate-300 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 p-2 space-y-1">
-                                    {hierarchy.associations?.map((a: any) => (
-                                        <label
-                                            key={a.id}
-                                            className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedAssocIds.includes(a.id)}
-                                                onChange={(e) => {
-                                                    if (e.target.checked)
-                                                        setSelectedAssocIds([...selectedAssocIds, a.id]);
-                                                    else
-                                                        setSelectedAssocIds(
-                                                            selectedAssocIds.filter((id) => id !== a.id),
-                                                        );
-                                                }}
-                                                className="rounded border-slate-300 bg-slate-100 text-red-600 focus:ring-red-500 dark:border-slate-700 dark:bg-slate-900"
-                                            />
-                                            <span>
-                                                {a.name} ({a.code})
-                                            </span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                                    {t('common.add')} {t('common.club')}
+                                </h3>
                                 <button
-                                    type="button"
                                     onClick={() => setShowClubModal(false)}
-                                    className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                    className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
                                 >
-                                    {t('common.cancel')}
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
-                                >
-                                    {t('common.save')}
+                                    ✕
                                 </button>
                             </div>
-                        </form>
+
+                            <form onSubmit={handleCreateClub} className="space-y-3 text-xs">
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="col-span-2">
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {t('common.club')} {t('common.name')}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            placeholder="e.g. TTC Zurich Affoltern"
+                                            value={clubName}
+                                            onChange={(e) => setClubName(e.target.value)}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">Code</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            placeholder="TCA"
+                                            value={clubCode}
+                                            onChange={(e) => setClubCode(e.target.value)}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('profile.street')}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="e.g. Fronwaldstrasse 115"
+                                        value={clubAddress}
+                                        onChange={(e) => setClubAddress(e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {t('profile.city')}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            placeholder="Zurich"
+                                            value={clubCity}
+                                            onChange={(e) => setClubCity(e.target.value)}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {t('profile.postalCode')}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            placeholder="8046"
+                                            value={clubPostalCode}
+                                            onChange={(e) => setClubPostalCode(e.target.value)}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {t('common.email')}
+                                        </label>
+                                        <input
+                                            type="email"
+                                            placeholder="info@club.ch"
+                                            value={clubEmail}
+                                            onChange={(e) => setClubEmail(e.target.value)}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {t('profile.phone')}
+                                        </label>
+                                        <input
+                                            type="tel"
+                                            placeholder="+41 44 123 45 67"
+                                            value={clubPhone}
+                                            onChange={(e) => setClubPhone(e.target.value)}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        Parent Sub-Associations (Multi-Select DAG)
+                                    </label>
+                                    <div className="mt-1 max-h-32 overflow-y-auto rounded-lg border border-slate-300 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 p-2 space-y-1">
+                                        {hierarchy.associations?.map((a: any) => (
+                                            <label
+                                                key={a.id}
+                                                className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedAssocIds.includes(a.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedAssocIds([...selectedAssocIds, a.id]);
+                                                        } else {
+                                                            setSelectedAssocIds(
+                                                                selectedAssocIds.filter((id) => id !== a.id),
+                                                            );
+                                                        }
+                                                    }}
+                                                    className="rounded border-slate-300 text-red-600 focus:ring-red-500"
+                                                />
+                                                <span>
+                                                    {a.name} ({a.shortName})
+                                                </span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowClubModal(false)}
+                                        className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                    >
+                                        {t('common.cancel')}
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
+                                    >
+                                        {t('common.save')}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
+                </ModalPortal>
             )}
         </div>
     );

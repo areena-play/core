@@ -208,3 +208,19 @@ export const bexioConfigSchema = z.object({
     autoSync: z.boolean().default(true),
 });
 
+export const auditLogQuerySchema = z.object({
+    associationId: z.string().uuid().optional(),
+    clubId: z.string().uuid().optional(),
+    tournamentId: z.string().uuid().optional(),
+    userId: z.string().uuid().optional(),
+    category: z.string().optional(),
+    action: z.string().optional(),
+    status: z.string().optional(),
+    search: z.string().optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().positive().max(200).default(50),
+});
+
+

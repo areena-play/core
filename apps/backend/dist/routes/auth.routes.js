@@ -11,6 +11,7 @@ const env_1 = require("../config/env");
 const validate_1 = require("../middleware/validate");
 const shared_1 = require("@areena/shared");
 const auth_1 = require("../middleware/auth");
+const auditService_1 = require("../services/auditService");
 const router = (0, express_1.Router)();
 // POST /auth/register
 router.post('/register', (0, validate_1.validate)(shared_1.registerSchema), async (req, res, next) => {
@@ -37,6 +38,23 @@ router.post('/register', (0, validate_1.validate)(shared_1.registerSchema), asyn
             },
         });
         const token = jsonwebtoken_1.default.sign({ userId: user.id }, env_1.config.jwtSecret, { expiresIn: '7d' });
+        await auditService_1.AuditService.record({
+            req,
+            userId: user.id,
+            userEmail: user.email,
+            userName: `${user.firstName} ${user.lastName}`,
+            action: 'AUTH_REGISTER',
+            category: shared_1.AuditCategory.AUTH,
+            entityType: 'User',
+            entityId: user.id,
+            description: `New user registration for ${user.firstName} ${user.lastName} (${user.email})`,
+            status: 'SUCCESS',
+            metadata: {
+                email: user.email,
+                country: user.country,
+                city: user.city,
+            },
+        });
         res.status(201).json({
             token,
             user: {
@@ -75,13 +93,52 @@ router.post('/login', (0, validate_1.validate)(shared_1.loginSchema), async (req
             },
         });
         if (!user) {
+            await auditService_1.AuditService.record({
+                req,
+                userEmail: email,
+                action: 'AUTH_LOGIN_FAILED',
+                category: shared_1.AuditCategory.SECURITY,
+                description: `Failed login attempt for email ${email} (Account not found)`,
+                status: 'FAILURE',
+                metadata: { email, reason: 'USER_NOT_FOUND' },
+            });
             return res.status(401).json({ error: 'Invalid email or password' });
         }
         const match = await bcryptjs_1.default.compare(password, user.passwordHash);
         if (!match) {
+            await auditService_1.AuditService.record({
+                req,
+                userId: user.id,
+                userEmail: user.email,
+                userName: `${user.firstName} ${user.lastName}`,
+                action: 'AUTH_LOGIN_FAILED',
+                category: shared_1.AuditCategory.SECURITY,
+                entityType: 'User',
+                entityId: user.id,
+                description: `Failed login attempt for ${user.email} (Incorrect password)`,
+                status: 'FAILURE',
+                metadata: { email, reason: 'INVALID_PASSWORD' },
+            });
             return res.status(401).json({ error: 'Invalid email or password' });
         }
         const token = jsonwebtoken_1.default.sign({ userId: user.id }, env_1.config.jwtSecret, { expiresIn: '7d' });
+        await auditService_1.AuditService.record({
+            req,
+            userId: user.id,
+            userEmail: user.email,
+            userName: `${user.firstName} ${user.lastName}`,
+            action: 'AUTH_LOGIN',
+            category: shared_1.AuditCategory.AUTH,
+            entityType: 'User',
+            entityId: user.id,
+            description: `User ${user.firstName} ${user.lastName} (${user.email}) signed in`,
+            status: 'SUCCESS',
+            metadata: {
+                isSuperAdmin: user.isSuperAdmin,
+                associationRoleCount: user.associationRoles.length,
+                clubRoleCount: user.clubRoles.length,
+            },
+        });
         res.json({
             token,
             user: {

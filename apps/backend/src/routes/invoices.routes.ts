@@ -8,8 +8,10 @@ import {
     bexioConfigSchema,
     InvoiceStatus,
     InvoiceCategory,
+    AuditCategory,
 } from '@areena/shared';
 import { BexioService } from '../services/bexioService';
+import { AuditService } from '../services/auditService';
 
 const router = Router();
 
@@ -391,12 +393,63 @@ router.post('/', authenticateToken, validate(createInvoiceSchema), async (req: A
                         lineItems: true,
                     },
                 });
+
+                await AuditService.record({
+                    req,
+                    action: 'INVOICE_CREATE',
+                    category: AuditCategory.FINANCE,
+                    entityType: 'Invoice',
+                    entityId: invoice.id,
+                    associationId: invoice.associationId,
+                    clubId: invoice.clubId,
+                    description: `Created invoice #${invoiceNumber} for ${recipientName} (${invoice.currency} ${invoice.totalAmount.toFixed(2)}) & synced to Bexio (#${syncRes.bexioId})`,
+                    status: 'SUCCESS',
+                    metadata: {
+                        invoiceNumber,
+                        recipientName,
+                        totalAmount: invoice.totalAmount,
+                        currency: invoice.currency,
+                        category: invoice.category,
+                        bexioId: syncRes.bexioId,
+                    },
+                });
+
                 return res.status(201).json(updated);
             }
         }
 
+        await AuditService.record({
+            req,
+            action: 'INVOICE_CREATE',
+            category: AuditCategory.FINANCE,
+            entityType: 'Invoice',
+            entityId: invoice.id,
+            associationId: invoice.associationId,
+            clubId: invoice.clubId,
+            description: `Created invoice #${invoiceNumber} for ${recipientName} (${invoice.currency} ${invoice.totalAmount.toFixed(2)})`,
+            status: 'SUCCESS',
+            metadata: {
+                invoiceNumber,
+                recipientName,
+                totalAmount: invoice.totalAmount,
+                currency: invoice.currency,
+                category: invoice.category,
+            },
+        });
+
         res.status(201).json(invoice);
-    } catch (err) {
+    } catch (err: any) {
+        await AuditService.record({
+            req,
+            action: 'INVOICE_CREATE',
+            category: AuditCategory.FINANCE,
+            entityType: 'Invoice',
+            associationId: req.body?.associationId,
+            clubId: req.body?.clubId,
+            description: `Failed to create invoice: ${err.message}`,
+            status: 'FAILURE',
+            metadata: { error: err.message },
+        });
         next(err);
     }
 });
@@ -422,6 +475,24 @@ router.post('/:id/send', authenticateToken, async (req: AuthRequest, res: Respon
                 lineItems: true,
                 recipientClub: true,
                 recipientUser: true,
+            },
+        });
+
+        await AuditService.record({
+            req,
+            action: 'INVOICE_SEND',
+            category: AuditCategory.FINANCE,
+            entityType: 'Invoice',
+            entityId: invoice.id,
+            associationId: invoice.associationId,
+            clubId: invoice.clubId,
+            description: `Issued invoice #${invoice.invoiceNumber} to ${invoice.recipientName} (${invoice.currency} ${invoice.totalAmount.toFixed(2)})`,
+            status: 'SUCCESS',
+            metadata: {
+                invoiceNumber: invoice.invoiceNumber,
+                recipientName: invoice.recipientName,
+                totalAmount: invoice.totalAmount,
+                dueDate: invoice.dueDate,
             },
         });
 
@@ -451,6 +522,23 @@ router.post('/:id/pay', authenticateToken, async (req: AuthRequest, res: Respons
             },
             include: {
                 lineItems: true,
+            },
+        });
+
+        await AuditService.record({
+            req,
+            action: 'INVOICE_PAY',
+            category: AuditCategory.FINANCE,
+            entityType: 'Invoice',
+            entityId: invoice.id,
+            associationId: invoice.associationId,
+            clubId: invoice.clubId,
+            description: `Settled payment for invoice #${invoice.invoiceNumber} (${invoice.currency} ${invoice.totalAmount.toFixed(2)})`,
+            status: 'SUCCESS',
+            metadata: {
+                invoiceNumber: invoice.invoiceNumber,
+                totalAmount: invoice.totalAmount,
+                paidAt: new Date(),
             },
         });
 
@@ -496,6 +584,24 @@ router.post('/:id/sync-bexio', authenticateToken, async (req: AuthRequest, res: 
                 },
                 include: { lineItems: true },
             });
+
+            await AuditService.record({
+                req,
+                action: 'BEXIO_SYNC',
+                category: AuditCategory.FINANCE,
+                entityType: 'Invoice',
+                entityId: invoice.id,
+                associationId: invoice.associationId,
+                clubId: invoice.clubId,
+                description: `Synchronized invoice #${invoice.invoiceNumber} with Bexio (Bexio ID #${syncResult.bexioId})`,
+                status: 'SUCCESS',
+                metadata: {
+                    invoiceNumber: invoice.invoiceNumber,
+                    bexioId: syncResult.bexioId,
+                    syncedAt: syncResult.bexioSyncedAt,
+                },
+            });
+
             return res.json({ success: true, invoice: updated, syncResult });
         } else {
             await prisma.invoice.update({
@@ -504,6 +610,23 @@ router.post('/:id/sync-bexio', authenticateToken, async (req: AuthRequest, res: 
                     bexioSyncStatus: 'FAILED',
                 },
             });
+
+            await AuditService.record({
+                req,
+                action: 'BEXIO_SYNC',
+                category: AuditCategory.FINANCE,
+                entityType: 'Invoice',
+                entityId: invoice.id,
+                associationId: invoice.associationId,
+                clubId: invoice.clubId,
+                description: `Failed to synchronize invoice #${invoice.invoiceNumber} with Bexio: ${syncResult.error}`,
+                status: 'FAILURE',
+                metadata: {
+                    invoiceNumber: invoice.invoiceNumber,
+                    error: syncResult.error,
+                },
+            });
+
             return res.status(400).json({ success: false, error: syncResult.error });
         }
     } catch (err: any) {

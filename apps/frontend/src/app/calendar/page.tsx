@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { useI18n } from '@/lib/i18nContext';
 import { Calendar as CalendarIcon, Filter, MapPin, Clock, ChevronLeft, ChevronRight, List, Grid } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 
 export default function CalendarPage() {
     const { t } = useI18n();
@@ -346,66 +347,68 @@ export default function CalendarPage() {
 
             {/* Event Details Modal */}
             {selectedEvent && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-                    <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xl space-y-4 dark:border-slate-700 dark:bg-slate-900">
-                        <div className="flex items-start justify-between">
-                            <span
-                                className={`rounded border px-2.5 py-1 text-xs font-bold uppercase ${getEventBadgeClass(
-                                    selectedEvent.eventType,
-                                )}`}
-                            >
-                                {selectedEvent.eventType.replace('_', ' ')}
-                            </span>
-                            <button
-                                onClick={() => setSelectedEvent(null)}
-                                className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white text-lg font-bold"
-                            >
-                                ✕
-                            </button>
-                        </div>
-
-                        <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
-                            {selectedEvent.title}
-                        </h3>
-                        {selectedEvent.description && (
-                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-                                {selectedEvent.description}
-                            </p>
-                        )}
-
-                        <div className="space-y-2 border-t border-slate-200 dark:border-slate-800 pt-3 text-xs text-slate-700 dark:text-slate-300">
-                            <div className="flex items-center gap-2">
-                                <Clock className="h-4 w-4 text-slate-400" />
-                                <span>
-                                    <strong>Start:</strong> {format(new Date(selectedEvent.startDate), 'PPpp')}
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+                        <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xl space-y-4 dark:border-slate-700 dark:bg-slate-900">
+                            <div className="flex items-start justify-between">
+                                <span
+                                    className={`rounded border px-2.5 py-1 text-xs font-bold uppercase ${getEventBadgeClass(
+                                        selectedEvent.eventType,
+                                    )}`}
+                                >
+                                    {selectedEvent.eventType.replace('_', ' ')}
                                 </span>
+                                <button
+                                    onClick={() => setSelectedEvent(null)}
+                                    className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white text-lg font-bold"
+                                >
+                                    ✕
+                                </button>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Clock className="h-4 w-4 text-slate-400" />
-                                <span>
-                                    <strong>End:</strong> {format(new Date(selectedEvent.endDate), 'PPpp')}
-                                </span>
-                            </div>
-                            {selectedEvent.location && (
+
+                            <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                                {selectedEvent.title}
+                            </h3>
+                            {selectedEvent.description && (
+                                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+                                    {selectedEvent.description}
+                                </p>
+                            )}
+
+                            <div className="space-y-2 border-t border-slate-200 dark:border-slate-800 pt-3 text-xs text-slate-700 dark:text-slate-300">
                                 <div className="flex items-center gap-2">
-                                    <MapPin className="h-4 w-4 text-red-500" />
+                                    <Clock className="h-4 w-4 text-slate-400" />
                                     <span>
-                                        <strong>Location:</strong> {selectedEvent.location}
+                                        <strong>Start:</strong> {format(new Date(selectedEvent.startDate), 'PPpp')}
                                     </span>
                                 </div>
-                            )}
-                        </div>
+                                <div className="flex items-center gap-2">
+                                    <Clock className="h-4 w-4 text-slate-400" />
+                                    <span>
+                                        <strong>End:</strong> {format(new Date(selectedEvent.endDate), 'PPpp')}
+                                    </span>
+                                </div>
+                                {selectedEvent.location && (
+                                    <div className="flex items-center gap-2">
+                                        <MapPin className="h-4 w-4 text-red-500" />
+                                        <span>
+                                            <strong>Location:</strong> {selectedEvent.location}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
 
-                        <div className="flex justify-end pt-2">
-                            <button
-                                onClick={() => setSelectedEvent(null)}
-                                className="rounded-lg bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700 px-4 py-2 text-xs font-semibold"
-                            >
-                                {t('common.close')}
-                            </button>
+                            <div className="flex justify-end pt-2">
+                                <button
+                                    onClick={() => setSelectedEvent(null)}
+                                    className="rounded-lg bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700 px-4 py-2 text-xs font-semibold"
+                                >
+                                    {t('common.close')}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </ModalPortal>
             )}
         </div>
     );

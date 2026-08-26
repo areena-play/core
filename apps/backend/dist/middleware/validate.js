@@ -2,10 +2,18 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.validate = validate;
 const zod_1 = require("zod");
-function validate(schema) {
+function validate(schema, target = 'body') {
     return (req, res, next) => {
         try {
-            req.body = schema.parse(req.body);
+            if (target === 'query') {
+                req.query = schema.parse(req.query);
+            }
+            else if (target === 'params') {
+                req.params = schema.parse(req.params);
+            }
+            else {
+                req.body = schema.parse(req.body);
+            }
             next();
         }
         catch (err) {

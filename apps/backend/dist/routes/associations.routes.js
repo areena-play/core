@@ -12,6 +12,7 @@ const s3Service_1 = require("../services/s3Service");
 const env_1 = require("../config/env");
 const shared_1 = require("@areena/shared");
 const hierarchyService_1 = require("../services/hierarchyService");
+const auditService_1 = require("../services/auditService");
 const router = (0, express_1.Router)();
 const uploadLogo = (0, multer_1.default)({
     storage: multer_1.default.memoryStorage(),
@@ -112,6 +113,21 @@ router.post('/', auth_1.authenticateToken, auth_1.requireSuperAdmin, (0, validat
                 })),
             });
         }
+        await auditService_1.AuditService.record({
+            req,
+            action: 'ASSOCIATION_CREATE',
+            category: shared_1.AuditCategory.GOVERNANCE,
+            entityType: 'Association',
+            entityId: association.id,
+            associationId: association.id,
+            description: `Created sub-association "${association.name}" (${association.code})`,
+            status: 'SUCCESS',
+            metadata: {
+                name: association.name,
+                code: association.code,
+                level: association.level,
+            },
+        });
         res.status(201).json(association);
     }
     catch (err) {
@@ -143,6 +159,19 @@ router.put('/:id/settings', auth_1.authenticateToken, (0, validate_1.validate)(s
                 ...(licenseIdTemplate ? { licenseIdTemplate } : {}),
                 ...(counter !== undefined ? { licenseCounter: counter } : {}),
                 ...(regionDigit !== undefined ? { regionDigit } : {}),
+            },
+        });
+        await auditService_1.AuditService.record({
+            req,
+            action: 'ASSOCIATION_SETTINGS_UPDATE',
+            category: shared_1.AuditCategory.GOVERNANCE,
+            entityType: 'Association',
+            entityId: updated.id,
+            associationId: updated.id,
+            description: `Updated settings for association "${updated.name}" (${updated.code})`,
+            status: 'SUCCESS',
+            metadata: {
+                updatedFields: Object.keys(req.body),
             },
         });
         res.json(updated);
@@ -217,6 +246,20 @@ router.post('/:id/logo', auth_1.authenticateToken, uploadLogo.single('logo'), as
                 logoUrl: uploadResult.fileUrl,
             },
         });
+        await auditService_1.AuditService.record({
+            req,
+            action: 'ASSOCIATION_LOGO_UPLOAD',
+            category: shared_1.AuditCategory.GOVERNANCE,
+            entityType: 'Association',
+            entityId: updated.id,
+            associationId: updated.id,
+            description: `Uploaded official logo for association "${updated.name}" (${updated.code})`,
+            status: 'SUCCESS',
+            metadata: {
+                fileUrl: uploadResult.fileUrl,
+                s3Key: uploadResult.key,
+            },
+        });
         res.status(200).json({
             success: true,
             logoUrl: uploadResult.fileUrl,
@@ -257,6 +300,19 @@ router.delete('/:id/logo', auth_1.authenticateToken, async (req, res, next) => {
             where: { id: req.params.id },
             data: {
                 logoUrl: null,
+            },
+        });
+        await auditService_1.AuditService.record({
+            req,
+            action: 'ASSOCIATION_LOGO_DELETE',
+            category: shared_1.AuditCategory.GOVERNANCE,
+            entityType: 'Association',
+            entityId: updated.id,
+            associationId: updated.id,
+            description: `Deleted official logo for association "${updated.name}" (${updated.code})`,
+            status: 'SUCCESS',
+            metadata: {
+                previousLogoUrl: targetAssoc.logoUrl,
             },
         });
         res.json({ success: true, association: updated });

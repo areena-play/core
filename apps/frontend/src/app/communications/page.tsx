@@ -4,9 +4,10 @@ import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
-import { Mail, Send, Users, CheckCircle2, AlertCircle, MessageSquare, Clock, Shield, Smartphone } from 'lucide-react';
+import { Mail, Send, Users, CheckCircle2, AlertCircle, MessageSquare, Clock, Shield, Smartphone, Activity } from 'lucide-react';
 import { format } from 'date-fns';
 import { AccessDenied } from '@/components/auth/AccessDenied';
+import { AuditTrailViewer } from '@/components/audit/AuditTrailViewer';
 
 export default function CommunicationsPage() {
     const { user } = useAuth();
@@ -15,6 +16,7 @@ export default function CommunicationsPage() {
     const [associations, setAssociations] = useState<any[]>([]);
     const [clubs, setClubs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'messages' | 'audit'>('messages');
 
     // Form
     const [subject, setSubject] = useState('');
@@ -101,18 +103,61 @@ export default function CommunicationsPage() {
 
     return (
         <div className="space-y-6 md:space-y-8 pb-16">
-            {/* Header */}
-            <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <Mail className="h-6 w-6 text-red-500" />
-                    <span>{t('communications.title')}</span>
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                    {t('communications.subtitle')}
-                </p>
+            {/* Header & Tabs */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <Mail className="h-6 w-6 text-red-500" />
+                        <span>{t('communications.title')}</span>
+                    </h1>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                        {t('communications.subtitle')}
+                    </p>
+                </div>
+
+                {/* Tab Switcher */}
+                {canBroadcast && (
+                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <button
+                            onClick={() => setActiveTab('messages')}
+                            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                                activeTab === 'messages'
+                                    ? 'bg-white shadow text-slate-900 dark:bg-slate-900 dark:text-white'
+                                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                            }`}
+                        >
+                            <Send className="h-3.5 w-3.5 text-red-500" />
+                            <span>Broadcast Hub</span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('audit')}
+                            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                                activeTab === 'audit'
+                                    ? 'bg-white shadow text-slate-900 dark:bg-slate-900 dark:text-white'
+                                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                            }`}
+                        >
+                            <Activity className="h-3.5 w-3.5 text-blue-500" />
+                            <span>Audit & Delivery Trail</span>
+                        </button>
+                    </div>
+                )}
             </div>
 
+            {/* Contextual Audit Trail View */}
+            {activeTab === 'audit' && (
+                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-6 shadow-xl space-y-6">
+                    <AuditTrailViewer
+                        category="COMMUNICATION"
+                        title={t('audit.commTrailTitle')}
+                        subtitle={t('audit.commTrailSubtitle')}
+                        compact={true}
+                    />
+                </div>
+            )}
+
             {/* Compose & History Grid */}
+            {activeTab === 'messages' && (
             <div className={canBroadcast ? 'grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8' : 'max-w-3xl space-y-6'}>
                 {/* Left 2 Cols: Compose Form (Admins / Officials Only) */}
                 {canBroadcast && (
@@ -334,6 +379,7 @@ export default function CommunicationsPage() {
                     </div>
                 </div>
             </div>
+            )}
         </div>
     );
 }

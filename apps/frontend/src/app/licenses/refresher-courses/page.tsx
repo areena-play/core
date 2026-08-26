@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { GraduationCap, Calendar, MapPin, Clock, CheckCircle2, Plus, Award, Users, Shield } from 'lucide-react';
 import { format } from 'date-fns';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 
 export default function RefresherCoursesPage() {
     const { user } = useAuth();
@@ -225,227 +226,231 @@ export default function RefresherCoursesPage() {
 
             {/* Create Course Modal */}
             {showCreateModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                                {t('common.add')} Refresher Course
-                            </h3>
-                            <button
-                                onClick={() => setShowCreateModal(false)}
-                                className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
-                            >
-                                ✕
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleCreateCourse} className="space-y-3 text-xs">
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('common.name')}
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="e.g. National Coach Continuing Education 2026"
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                />
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                                    {t('common.add')} Refresher Course
+                                </h3>
+                                <button
+                                    onClick={() => setShowCreateModal(false)}
+                                    className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
+                                >
+                                    ✕
+                                </button>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <form onSubmit={handleCreateCourse} className="space-y-3 text-xs">
                                 <div>
                                     <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('licenses.type')}
-                                    </label>
-                                    <select
-                                        value={type}
-                                        onChange={(e) => setType(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    >
-                                        <option value="COACH_REFRESHER">Coach Refresher</option>
-                                        <option value="REFEREE_REFRESHER">Referee Refresher</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('common.association')}
-                                    </label>
-                                    <select
-                                        value={associationId}
-                                        onChange={(e) => setAssociationId(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    >
-                                        {associations.map((a) => (
-                                            <option key={a.id} value={a.id}>
-                                                {a.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('common.date')} & Time
+                                        {t('common.name')}
                                     </label>
                                     <input
-                                        type="datetime-local"
+                                        type="text"
                                         required
-                                        value={date}
-                                        onChange={(e) => setDate(e.target.value)}
+                                        placeholder="e.g. National Coach Continuing Education 2026"
+                                        value={title}
+                                        onChange={(e) => setTitle(e.target.value)}
                                         className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                     />
                                 </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {t('licenses.type')}
+                                        </label>
+                                        <select
+                                            value={type}
+                                            onChange={(e) => setType(e.target.value)}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        >
+                                            <option value="COACH_REFRESHER">Coach Refresher</option>
+                                            <option value="REFEREE_REFRESHER">Referee Refresher</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {t('common.association')}
+                                        </label>
+                                        <select
+                                            value={associationId}
+                                            onChange={(e) => setAssociationId(e.target.value)}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        >
+                                            {associations.map((a) => (
+                                                <option key={a.id} value={a.id}>
+                                                    {a.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {t('common.date')} & Time
+                                        </label>
+                                        <input
+                                            type="datetime-local"
+                                            required
+                                            value={date}
+                                            onChange={(e) => setDate(e.target.value)}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            Duration (Hours)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            value={durationHours}
+                                            onChange={(e) => setDurationHours(Number(e.target.value))}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
                                 <div>
                                     <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        Duration (Hours)
+                                        {t('common.location')}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="e.g. National Sports Center, Magglingen"
+                                        value={location}
+                                        onChange={(e) => setLocation(e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('licenses.validity')} Extension (Months)
                                     </label>
                                     <input
                                         type="number"
                                         min={1}
-                                        value={durationHours}
-                                        onChange={(e) => setDurationHours(Number(e.target.value))}
+                                        value={validityMonths}
+                                        onChange={(e) => setValidityMonths(Number(e.target.value))}
                                         className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                     />
                                 </div>
-                            </div>
 
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('common.location')}
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="e.g. National Sports Center, Magglingen"
-                                    value={location}
-                                    onChange={(e) => setLocation(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('licenses.validity')} Extension (Months)
-                                </label>
-                                <input
-                                    type="number"
-                                    min={1}
-                                    value={validityMonths}
-                                    onChange={(e) => setValidityMonths(Number(e.target.value))}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowCreateModal(false)}
-                                    className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                                >
-                                    {t('common.cancel')}
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
-                                >
-                                    {t('common.save')}
-                                </button>
-                            </div>
-                        </form>
+                                <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCreateModal(false)}
+                                        className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                    >
+                                        {t('common.cancel')}
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
+                                    >
+                                        {t('common.save')}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
+                </ModalPortal>
             )}
 
             {/* Attest Attendance Modal */}
             {showAttestModal && selectedCourse && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                            <div>
-                                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                                    Attest Course Attendance
-                                </h3>
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                    {selectedCourse.title}
-                                </p>
-                            </div>
-                            <button
-                                onClick={() => setShowAttestModal(false)}
-                                className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
-                            >
-                                ✕
-                            </button>
-                        </div>
-
-                        {attestSuccess && (
-                            <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 p-3 text-xs text-emerald-700 dark:text-emerald-300">
-                                {attestSuccess}
-                            </div>
-                        )}
-
-                        <form onSubmit={handleAttest} className="space-y-3 text-xs">
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('licenses.holder')}
-                                </label>
-                                <select
-                                    required
-                                    value={attestUserId}
-                                    onChange={(e) => setAttestUserId(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                >
-                                    <option value="">Select Coach or Referee...</option>
-                                    {allUsers.map((u) => (
-                                        <option key={u.id} value={u.id}>
-                                            {u.firstName} {u.lastName} ({u.email}){' '}
-                                            {u.licenseId ? `- ID: ${u.licenseId}` : ''}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('common.details')}
-                                </label>
-                                <textarea
-                                    rows={2}
-                                    placeholder="e.g. Attended full seminar and passed all technical assessments."
-                                    value={attestNotes}
-                                    onChange={(e) => setAttestNotes(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 text-[11px] text-slate-600 dark:text-slate-400">
-                                ⚡ Attesting this course will automatically extend the member's license validity by{' '}
-                                <strong>{selectedCourse.validityExtensionMonths} months</strong>.
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                                <div>
+                                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                                        Attest Course Attendance
+                                    </h3>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                        {selectedCourse.title}
+                                    </p>
+                                </div>
                                 <button
-                                    type="button"
                                     onClick={() => setShowAttestModal(false)}
-                                    className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                    className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
                                 >
-                                    {t('common.cancel')}
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={attesting}
-                                    className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50 shadow"
-                                >
-                                    {attesting ? t('common.saving') : t('common.save')}
+                                    ✕
                                 </button>
                             </div>
-                        </form>
+
+                            {attestSuccess && (
+                                <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+                                    {attestSuccess}
+                                </div>
+                            )}
+
+                            <form onSubmit={handleAttest} className="space-y-3 text-xs">
+                                <div>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('licenses.holder')}
+                                    </label>
+                                    <select
+                                        required
+                                        value={attestUserId}
+                                        onChange={(e) => setAttestUserId(e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    >
+                                        <option value="">Select Coach or Referee...</option>
+                                        {allUsers.map((u) => (
+                                            <option key={u.id} value={u.id}>
+                                                {u.firstName} {u.lastName} ({u.email}){' '}
+                                                {u.licenseId ? `- ID: ${u.licenseId}` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('common.details')}
+                                    </label>
+                                    <textarea
+                                        rows={2}
+                                        placeholder="e.g. Attended full seminar and passed all technical assessments."
+                                        value={attestNotes}
+                                        onChange={(e) => setAttestNotes(e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div className="rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 text-[11px] text-slate-600 dark:text-slate-400">
+                                    ⚡ Attesting this course will automatically extend the member's license validity by{' '}
+                                    <strong>{selectedCourse.validityExtensionMonths} months</strong>.
+                                </div>
+
+                                <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAttestModal(false)}
+                                        className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                    >
+                                        {t('common.cancel')}
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={attesting}
+                                        className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50 shadow"
+                                    >
+                                        {attesting ? t('common.saving') : t('common.save')}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
+                </ModalPortal>
             )}
         </div>
     );

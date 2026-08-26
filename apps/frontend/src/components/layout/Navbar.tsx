@@ -36,6 +36,11 @@ import {
     Building2,
     Flame,
     ArrowUpRight,
+    Layers,
+    Users,
+    ArrowLeft,
+    Receipt,
+    Activity,
 } from 'lucide-react';
 
 export function Navbar() {
@@ -43,7 +48,7 @@ export function Navbar() {
     const { isConnected } = useWebSocket();
     const { theme, resolvedTheme, setTheme } = useTheme();
     const { locale, setLocale, t, locales, supportedLocales } = useI18n();
-    const { activeView, entityMeta, currentViewMeta } = useMainView();
+    const { activeView, entityId, entityMeta, currentViewMeta } = useMainView();
 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -93,9 +98,178 @@ export function Navbar() {
     const logoSrc = resolvedTheme === 'dark' ? '/areena-logo-dark.png' : '/areena-logo.png';
     const CurrentViewIcon = currentViewMeta.icon;
 
+    const isAssocAdmin =
+        user?.isSuperAdmin ||
+        user?.associationRoles?.some((r: any) =>
+            ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
+        );
+
+    const isApprover =
+        isAssocAdmin ||
+        user?.clubRoles?.some((r: any) =>
+            ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
+        );
+
+    const getNavSections = () => {
+        if (activeView === 'tournament' && entityId) {
+            return [
+                {
+                    sectionTitle: 'Tournament Hub',
+                    items: [
+                        {
+                            label: t('tournamentWorkspace.overview'),
+                            href: `/tournament/${entityId}`,
+                            icon: Trophy,
+                        },
+                        {
+                            label: t('tournamentWorkspace.categories'),
+                            href: `/tournament/${entityId}#categories`,
+                            icon: Layers,
+                        },
+                        {
+                            label: t('tournamentWorkspace.teams'),
+                            href: `/tournament/${entityId}#teams`,
+                            icon: Users,
+                        },
+                    ],
+                },
+                {
+                    sectionTitle: 'Match Center & Scoring',
+                    items: [
+                        {
+                            label: t('tournamentWorkspace.encounters'),
+                            href: `/tournament/${entityId}#encounters`,
+                            icon: Calendar,
+                        },
+                        {
+                            label: t('tournamentWorkspace.courts'),
+                            href: `/tournament/${entityId}#encounters`,
+                            icon: Flame,
+                            badge: 'LIVE',
+                        },
+                        {
+                            label: t('tournamentWorkspace.standings'),
+                            href: `/tournament/${entityId}#standings`,
+                            icon: Trophy,
+                        },
+                    ],
+                },
+                {
+                    sectionTitle: 'Navigation',
+                    items: [
+                        {
+                            label: t('nav.backToTournaments'),
+                            href: '/tournaments',
+                            icon: ArrowLeft,
+                        },
+                    ],
+                },
+            ];
+        }
+
+        if (activeView === 'club' && entityId) {
+            return [
+                {
+                    sectionTitle: 'Club Management',
+                    items: [
+                        {
+                            label: t('clubWorkspace.overview'),
+                            href: `/club/${entityId}`,
+                            icon: Shield,
+                        },
+                        {
+                            label: t('clubWorkspace.members'),
+                            href: `/club/${entityId}#members`,
+                            icon: Users,
+                        },
+                        {
+                            label: t('clubWorkspace.teams'),
+                            href: `/club/${entityId}#teams`,
+                            icon: Trophy,
+                        },
+                    ],
+                },
+                {
+                    sectionTitle: 'Club Activities',
+                    items: [
+                        {
+                            label: t('clubWorkspace.calendar'),
+                            href: `/calendar?clubId=${entityId}`,
+                            icon: Calendar,
+                        },
+                        {
+                            label: t('clubWorkspace.communications'),
+                            href: `/communications?clubId=${entityId}`,
+                            icon: Mail,
+                        },
+                    ],
+                },
+                {
+                    sectionTitle: 'Navigation',
+                    items: [
+                        {
+                            label: t('nav.backToAssociation'),
+                            href: '/associations',
+                            icon: ArrowLeft,
+                        },
+                    ],
+                },
+            ];
+        }
+
+        // Default: Association Workspace
+        const isSubAssoc = pathname.startsWith('/association/') && entityId && entityId !== 'main';
+        const assocOverviewHref = isSubAssoc ? `/association/${entityId}` : '/';
+        const tournamentsHref = isSubAssoc ? `/association/${entityId}/tournaments` : '/tournaments';
+
+        return [
+            {
+                sectionTitle: 'Federation Governance',
+                items: [
+                    { label: t('nav.dashboard'), href: assocOverviewHref, icon: LayoutDashboard },
+                    { label: t('nav.tournaments'), href: tournamentsHref, icon: Trophy },
+                    { label: t('nav.associations'), href: '/associations', icon: Network },
+                    ...(isAssocAdmin
+                        ? [
+                              { label: t('nav.finances'), href: isSubAssoc ? `/association/${entityId}/billing` : '/associations/billing', icon: Receipt },
+                              { label: t('nav.auditLogs'), href: isSubAssoc ? `/association/${entityId}/audit-logs` : '/associations/audit-logs', icon: Activity },
+                              { label: t('nav.associationSettings'), href: '/associations/settings', icon: Sliders },
+                          ]
+                        : []),
+                    { label: t('nav.calendar'), href: '/calendar', icon: Calendar },
+                ],
+            },
+            {
+                sectionTitle: 'Licensing & Education',
+                items: [
+                    { label: t('nav.licenses'), href: '/licenses', icon: Award },
+                    ...(isApprover
+                        ? [{ label: t('nav.approvals'), href: '/licenses/approvals', icon: CheckSquare }]
+                        : []),
+                    { label: t('nav.refresherCourses'), href: '/licenses/refresher-courses', icon: GraduationCap },
+                ],
+            },
+            {
+                sectionTitle: 'Operations & API',
+                items: [
+                    { label: t('nav.communications'), href: '/communications', icon: Mail },
+                    { label: t('nav.developerApi'), href: '/developers', icon: Code2 },
+                ],
+            },
+        ];
+    };
+
+    const sections = getNavSections();
+
+    const headerTitle =
+        entityMeta?.title ||
+        (activeView === 'association' ? (mainAssoc?.name || 'Swiss Table Tennis Federation') : t(currentViewMeta.labelKey));
+    const headerBadge = entityMeta?.badge || t(currentViewMeta.badgeKey);
+    const headerDesc = entityMeta?.subtitle || t(currentViewMeta.descKey);
+
     return (
         <>
-            <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-950/80 backdrop-blur-md transition-colors duration-200">
+            <header className="sticky top-0 z-30 w-full border-b border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-950/80 backdrop-blur-md transition-colors duration-200">
                 <div className="flex h-16 items-center justify-between px-3 sm:px-6">
                     {/* Left: Mobile Menu Toggle, Brand Logo & Entity Breadcrumb */}
                     <div className="flex items-center gap-2 sm:gap-4 lg:gap-6">
@@ -434,82 +608,107 @@ export function Navbar() {
                     />
 
                     {/* Drawer Content */}
-                    <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 shadow-2xl p-4 flex flex-col justify-between overflow-y-auto">
-                        <div className="space-y-4">
-                            {/* Drawer Header */}
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                                <div className="relative h-8 w-28">
-                                    <Image
-                                        key={logoSrc}
-                                        src={logoSrc}
-                                        alt="AREENA Logo"
-                                        fill
-                                        priority
-                                        className="object-contain"
-                                    />
+                    <div className="fixed inset-y-0 left-0 w-80 max-w-[85vw] bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col justify-between overflow-hidden">
+                        {/* Top Bar: Logo & Close Button */}
+                        <div className="p-4 pb-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 flex-shrink-0 bg-white/95 dark:bg-slate-950/95">
+                            <div className="relative h-8 w-28">
+                                <Image
+                                    key={logoSrc}
+                                    src={logoSrc}
+                                    alt="AREENA Logo"
+                                    fill
+                                    priority
+                                    className="object-contain"
+                                />
+                            </div>
+                            <button
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition"
+                                aria-label="Close navigation"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {/* Scrollable Navigation Body */}
+                        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-5">
+                            {/* Active Workspace Header Card */}
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60 p-3 space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span
+                                        className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase border ${currentViewMeta.badgeColor}`}
+                                    >
+                                        {headerBadge}
+                                    </span>
+                                    <div
+                                        className={`flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br ${currentViewMeta.gradientBg} text-white shadow-xs`}
+                                    >
+                                        <CurrentViewIcon className="h-3.5 w-3.5" />
+                                    </div>
                                 </div>
-                                <button
-                                    onClick={() => setMobileMenuOpen(false)}
-                                    className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-                                >
-                                    <X className="h-5 w-5" />
-                                </button>
+                                <div>
+                                    <h3 className="font-bold text-xs text-slate-900 dark:text-white leading-tight line-clamp-1">
+                                        {headerTitle}
+                                    </h3>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
+                                        {headerDesc}
+                                    </p>
+                                </div>
                             </div>
 
-                            {/* User Summary if logged in */}
-                            {user && (
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900 p-3 space-y-2">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 font-bold text-white text-xs">
-                                            {user.firstName[0]}
-                                            {user.lastName[0]}
+                            {/* Regular Navigation Sections */}
+                            <nav className="space-y-4">
+                                {sections.map((section, idx) => (
+                                    <div key={idx} className="space-y-1">
+                                        <div className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                            {section.sectionTitle}
                                         </div>
-                                        <div className="overflow-hidden flex-1">
-                                            <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                                                {user.firstName} {user.lastName}
-                                            </div>
-                                            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                                                {user.email}
-                                            </div>
-                                        </div>
-                                    </div>
+                                        {section.items.map((item, itemIdx) => {
+                                            const isActive =
+                                                pathname === item.href ||
+                                                (item.href !== '/' &&
+                                                    !item.href.includes('#') &&
+                                                    pathname.startsWith(item.href));
+                                            const Icon = item.icon;
 
-                                    {/* Mobile accessible links */}
-                                    <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-1">
-                                        {user.isSuperAdmin && (
-                                            <Link
-                                                href="/"
-                                                onClick={() => setMobileMenuOpen(false)}
-                                                className="flex items-center gap-2 text-xs font-semibold text-red-600 dark:text-red-400 py-1"
-                                            >
-                                                <Network className="h-3.5 w-3.5" />
-                                                <span>{t('userMenu.topFederation')}</span>
-                                            </Link>
-                                        )}
-                                        <Link
-                                            href="/tournaments"
-                                            onClick={() => setMobileMenuOpen(false)}
-                                            className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 py-1"
-                                        >
-                                            <Trophy className="h-3.5 w-3.5 text-amber-500" />
-                                            <span>{t('userMenu.myTournaments')}</span>
-                                        </Link>
-                                        <Link
-                                            href="/licenses"
-                                            onClick={() => setMobileMenuOpen(false)}
-                                            className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 py-1"
-                                        >
-                                            <Award className="h-3.5 w-3.5 text-emerald-500" />
-                                            <span>{t('userMenu.myLicenses')}</span>
-                                        </Link>
+                                            return (
+                                                <Link
+                                                    key={`${item.href}-${itemIdx}`}
+                                                    href={item.href}
+                                                    onClick={() => setMobileMenuOpen(false)}
+                                                    className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition ${
+                                                        isActive
+                                                            ? 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-600/10 dark:text-red-500 dark:border-red-500/20 font-bold'
+                                                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-200'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        <Icon
+                                                            className={`h-4 w-4 ${
+                                                                isActive
+                                                                    ? 'text-red-600 dark:text-red-500'
+                                                                    : 'text-slate-400'
+                                                            }`}
+                                                        />
+                                                        <span>{item.label}</span>
+                                                    </div>
+                                                    {item.badge && (
+                                                        <span className="rounded bg-red-600 px-1.5 py-0.2 text-[9px] font-extrabold text-white animate-pulse">
+                                                            {item.badge}
+                                                        </span>
+                                                    )}
+                                                </Link>
+                                            );
+                                        })}
                                     </div>
-                                </div>
-                            )}
+                                ))}
+                            </nav>
 
                             {/* Language Switcher in Mobile Drawer */}
-                            <div className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900 p-2.5 space-y-1.5">
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                    {t('nav.language')}
+                            <div className="rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60 p-2.5 space-y-1.5">
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                                    <Globe className="h-3 w-3" />
+                                    <span>{t('nav.language')}</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-1.5">
                                     {supportedLocales.map((loc) => (
@@ -518,7 +717,7 @@ export function Navbar() {
                                             onClick={() => setLocale(loc)}
                                             className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs transition ${
                                                 locale === loc
-                                                    ? 'bg-white shadow text-red-600 font-bold dark:bg-slate-800 dark:text-red-400'
+                                                    ? 'bg-white shadow text-red-600 font-bold dark:bg-slate-800 dark:text-red-400 border border-slate-200/80 dark:border-slate-700'
                                                     : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-800/60'
                                             }`}
                                         >
@@ -530,63 +729,30 @@ export function Navbar() {
                             </div>
                         </div>
 
-                        {/* Drawer Footer */}
-                        <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
-                            <div className="flex items-center justify-between text-xs">
-                                <span className="text-slate-500 dark:text-slate-400">{t('nav.theme')}</span>
-                                <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-900 p-0.5">
-                                    <button
-                                        onClick={() => setTheme('light')}
-                                        className={`rounded px-2 py-1 text-[11px] ${
-                                            theme === 'light'
-                                                ? 'bg-white shadow text-red-600 font-bold'
-                                                : 'text-slate-500'
-                                        }`}
-                                    >
-                                        {t('common.light')}
-                                    </button>
-                                    <button
-                                        onClick={() => setTheme('dark')}
-                                        className={`rounded px-2 py-1 text-[11px] ${
-                                            theme === 'dark'
-                                                ? 'bg-slate-800 shadow text-red-400 font-bold'
-                                                : 'text-slate-500'
-                                        }`}
-                                    >
-                                        {t('common.dark')}
-                                    </button>
+                        {/* Sticky Fixed Bottom AREENA Tag & Impressum Link */}
+                        <div className="flex-shrink-0 p-3 border-t border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xs">
+                            <Link
+                                href="/impressum"
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="group block rounded-xl border border-slate-200 bg-slate-50/80 hover:border-red-500/40 hover:bg-red-50/40 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-red-500/40 dark:hover:bg-red-950/20 p-2.5 transition"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5 font-black text-xs text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition">
+                                        <Sparkles className="h-3.5 w-3.5 text-red-500" />
+                                        <span>AREENA</span>
+                                    </div>
+                                    <span className="text-[9px] font-mono text-slate-400">v1.0</span>
                                 </div>
-                            </div>
-
-                            {user ? (
-                                <button
-                                    onClick={() => {
-                                        setMobileMenuOpen(false);
-                                        logout();
-                                    }}
-                                    className="w-full flex items-center justify-center gap-2 rounded-lg bg-slate-100 text-red-600 hover:bg-red-50 dark:bg-slate-900 dark:text-red-400 dark:hover:bg-red-950/40 py-2 text-xs font-semibold transition"
-                                >
-                                    <LogOut className="h-4 w-4" />
-                                    <span>{t('nav.logOut')}</span>
-                                </button>
-                            ) : (
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Link
-                                        href="/auth/login"
-                                        onClick={() => setMobileMenuOpen(false)}
-                                        className="rounded-lg border border-slate-300 dark:border-slate-700 py-2 text-center text-xs font-semibold text-slate-800 dark:text-slate-200"
-                                    >
-                                        {t('nav.signIn')}
-                                    </Link>
-                                    <Link
-                                        href="/auth/register"
-                                        onClick={() => setMobileMenuOpen(false)}
-                                        className="rounded-lg bg-red-600 py-2 text-center text-xs font-semibold text-white shadow"
-                                    >
-                                        {t('nav.register')}
-                                    </Link>
+                                <div className="mt-1 text-[9.5px] leading-tight text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300">
+                                    Advanced Resource and Event Engine for Next-gen Associations
                                 </div>
-                            )}
+                                <div className="mt-1.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-[9px] text-slate-400">
+                                    <span>© {new Date().getFullYear()} AREENA</span>
+                                    <span className="text-red-600 dark:text-red-400 font-semibold group-hover:underline">
+                                        Impressum ↗
+                                    </span>
+                                </div>
+                            </Link>
                         </div>
                     </div>
                 </div>

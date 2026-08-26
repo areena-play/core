@@ -16,6 +16,7 @@ import messageRoutes from './routes/messages.routes';
 import oauthRoutes from './routes/oauth.routes';
 import uploadRoutes from './routes/upload.routes';
 import invoiceRoutes from './routes/invoices.routes';
+import auditRoutes from './routes/audit.routes';
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use('/messages', messageRoutes);
 app.use('/oauth', oauthRoutes);
 app.use('/upload', uploadRoutes);
 app.use('/invoices', invoiceRoutes);
+app.use('/audit-logs', auditRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

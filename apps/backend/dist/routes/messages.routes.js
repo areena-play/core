@@ -6,6 +6,7 @@ const validate_1 = require("../middleware/validate");
 const shared_1 = require("@areena/shared");
 const auth_1 = require("../middleware/auth");
 const broadcastService_1 = require("../services/broadcastService");
+const auditService_1 = require("../services/auditService");
 const router = (0, express_1.Router)();
 // POST /messages/broadcast - Send broadcast communication
 router.post('/broadcast', auth_1.authenticateToken, (0, validate_1.validate)(shared_1.createBroadcastSchema), async (req, res, next) => {
@@ -31,9 +32,39 @@ router.post('/broadcast', auth_1.authenticateToken, (0, validate_1.validate)(sha
             channel,
             targetRole,
         });
+        // Trace communication action in immutable audit log
+        await auditService_1.AuditService.record({
+            req,
+            action: 'COMMUNICATION_BROADCAST',
+            category: shared_1.AuditCategory.COMMUNICATION,
+            entityType: 'BroadcastMessage',
+            entityId: result.message.id,
+            associationId,
+            clubId,
+            description: `Broadcast ${channel.toLowerCase()} message "${subject}" dispatched to ${result.recipientCount} recipient(s)`,
+            status: 'SUCCESS',
+            metadata: {
+                subject,
+                recipientCount: result.recipientCount,
+                channel,
+                targetRole: targetRole || 'ALL',
+                bodySnippet: body.slice(0, 100),
+            },
+        });
         res.status(201).json(result);
     }
     catch (err) {
+        await auditService_1.AuditService.record({
+            req,
+            action: 'COMMUNICATION_BROADCAST',
+            category: shared_1.AuditCategory.COMMUNICATION,
+            entityType: 'BroadcastMessage',
+            associationId: req.body?.associationId,
+            clubId: req.body?.clubId,
+            description: `Failed to dispatch broadcast message "${req.body?.subject || ''}": ${err.message}`,
+            status: 'FAILURE',
+            metadata: { error: err.message },
+        });
         res.status(400).json({ error: err.message });
     }
 });

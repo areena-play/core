@@ -37,9 +37,9 @@ export function PageTitleManager() {
         // Dynamic entity context (e.g. specific Tournament, Club, or Sub-Association)
         if (entityMeta?.title) {
             if (pathname.includes('/encounter/')) {
-                pageName = `Match Score Sheet | ${entityMeta.title}`;
+                pageName = `Match Score Sheet – ${entityMeta.title}`;
             } else if (pathname.endsWith('/tournaments')) {
-                pageName = `Tournaments | ${entityMeta.title}`;
+                pageName = `Tournaments – ${entityMeta.title}`;
             } else {
                 pageName = entityMeta.title;
             }
@@ -57,6 +57,8 @@ export function PageTitleManager() {
                 pageName = t('associations.settingsTitle', undefined, 'Association Settings');
             } else if (pathname === '/associations/billing' || pathname.endsWith('/billing')) {
                 pageName = t('billing.title', undefined, 'Finances & Invoicing');
+            } else if (pathname === '/associations/audit-logs' || pathname.endsWith('/audit-logs')) {
+                pageName = t('audit.title', undefined, 'Audit & Activity Trail');
             } else if (pathname === '/licenses') {
                 pageName = t('nav.licenses', undefined, 'Licenses');
             } else if (pathname === '/licenses/apply') {
@@ -93,7 +95,7 @@ export function PageTitleManager() {
             }
         }
 
-        const divider = '|';
+        const divider = '–';
         document.title = `AREENA ${divider} ${mainAssocShort} ${divider} ${pageName}`;
     }, [pathname, entityMeta, mainAssocShort, t]);
 

@@ -11,8 +11,8 @@ import { PageTitleManager } from '@/components/layout/PageTitleManager';
 
 export const metadata: Metadata = {
     title: {
-        template: 'AREENA | %s',
-        default: 'AREENA | STTV | Sports Association Platform',
+        template: 'AREENA – %s',
+        default: 'AREENA',
     },
     description:
         'Next-generation web platform for national and regional sports federations, leagues, tournaments, and licenses.',

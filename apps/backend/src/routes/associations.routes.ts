@@ -9,8 +9,10 @@ import {
     createAssociationSchema,
     updateLicenseIdTemplateSchema,
     updateAssociationSettingsSchema,
+    AuditCategory,
 } from '@areena/shared';
 import { HierarchyService } from '../services/hierarchyService';
+import { AuditService } from '../services/auditService';
 
 const router = Router();
 const uploadLogo = multer({
@@ -133,6 +135,22 @@ router.post(
                 });
             }
 
+            await AuditService.record({
+                req,
+                action: 'ASSOCIATION_CREATE',
+                category: AuditCategory.GOVERNANCE,
+                entityType: 'Association',
+                entityId: association.id,
+                associationId: association.id,
+                description: `Created sub-association "${association.name}" (${association.code})`,
+                status: 'SUCCESS',
+                metadata: {
+                    name: association.name,
+                    code: association.code,
+                    level: association.level,
+                },
+            });
+
             res.status(201).json(association);
         } catch (err) {
             next(err);
@@ -175,6 +193,20 @@ router.put(
                     ...(licenseIdTemplate ? { licenseIdTemplate } : {}),
                     ...(counter !== undefined ? { licenseCounter: counter } : {}),
                     ...(regionDigit !== undefined ? { regionDigit } : {}),
+                },
+            });
+
+            await AuditService.record({
+                req,
+                action: 'ASSOCIATION_SETTINGS_UPDATE',
+                category: AuditCategory.GOVERNANCE,
+                entityType: 'Association',
+                entityId: updated.id,
+                associationId: updated.id,
+                description: `Updated settings for association "${updated.name}" (${updated.code})`,
+                status: 'SUCCESS',
+                metadata: {
+                    updatedFields: Object.keys(req.body),
                 },
             });
 
@@ -278,6 +310,21 @@ router.post(
                 },
             });
 
+            await AuditService.record({
+                req,
+                action: 'ASSOCIATION_LOGO_UPLOAD',
+                category: AuditCategory.GOVERNANCE,
+                entityType: 'Association',
+                entityId: updated.id,
+                associationId: updated.id,
+                description: `Uploaded official logo for association "${updated.name}" (${updated.code})`,
+                status: 'SUCCESS',
+                metadata: {
+                    fileUrl: uploadResult.fileUrl,
+                    s3Key: uploadResult.key,
+                },
+            });
+
             res.status(200).json({
                 success: true,
                 logoUrl: uploadResult.fileUrl,
@@ -324,6 +371,20 @@ router.delete('/:id/logo', authenticateToken, async (req: AuthRequest, res: Resp
             where: { id: req.params.id },
             data: {
                 logoUrl: null,
+            },
+        });
+
+        await AuditService.record({
+            req,
+            action: 'ASSOCIATION_LOGO_DELETE',
+            category: AuditCategory.GOVERNANCE,
+            entityType: 'Association',
+            entityId: updated.id,
+            associationId: updated.id,
+            description: `Deleted official logo for association "${updated.name}" (${updated.code})`,
+            status: 'SUCCESS',
+            metadata: {
+                previousLogoUrl: targetAssoc.logoUrl,
             },
         });
 

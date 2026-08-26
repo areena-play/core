@@ -141,6 +141,7 @@ model User {
   approvedOAuthClients OAuthClient[]         @relation("ApprovedByAdmin")
   oauthTokens          OAuthToken[]
   invoicesReceived     Invoice[]             @relation("InvoiceRecipientUser")
+  auditLogs            AuditLog[]            @relation("UserAuditLogs")
 
   // Matches where user is player
   homeMatchesP1 Match[] @relation("HomePlayer1")
@@ -176,6 +177,7 @@ model Association {
   broadcastMessages BroadcastMessage[]
   invoicesIssued    Invoice[]             @relation("AssociationInvoices")
   bexioConfig       BexioConfig?
+  auditLogs         AuditLog[]            @relation("AssociationAuditLogs")
 }
 
 model AssociationHierarchy {
@@ -227,6 +229,7 @@ model Club {
   invoicesIssued    Invoice[]             @relation("ClubInvoices")
   invoicesReceived  Invoice[]             @relation("ClubInvoicesReceived")
   bexioConfig       BexioConfig?
+  auditLogs         AuditLog[]            @relation("ClubAuditLogs")
 }
 
 model ClubAssociation {
@@ -688,3 +691,51 @@ model BexioConfig {
   association Association? @relation(fields: [associationId], references: [id], onDelete: Cascade)
   club        Club?        @relation(fields: [clubId], references: [id], onDelete: Cascade)
 }
+
+// ----------------------------------------
+// AUDIT TRAIL & TRACEABILITY LOGGING
+// ----------------------------------------
+
+enum AuditCategory {
+  AUTH
+  GOVERNANCE
+  FINANCE
+  COMMUNICATION
+  LICENSING
+  TOURNAMENT
+  CLUB
+  DEVELOPER
+  SECURITY
+}
+
+model AuditLog {
+  id            String        @id @default(uuid())
+  userId        String?
+  userEmail     String
+  userName      String?
+  action        String
+  category      AuditCategory @default(GOVERNANCE)
+  entityType    String?
+  entityId      String?
+  associationId String?
+  clubId        String?
+  tournamentId  String?
+  description   String
+  status        String        @default("SUCCESS") // SUCCESS, FAILURE, WARNING
+  ipAddress     String        @default("127.0.0.1")
+  userAgent     String        @default("Unknown")
+  metadata      Json          @default("{}")
+  createdAt     DateTime      @default(now())
+
+  user        User?        @relation("UserAuditLogs", fields: [userId], references: [id], onDelete: SetNull)
+  association Association? @relation("AssociationAuditLogs", fields: [associationId], references: [id], onDelete: SetNull)
+  club        Club?        @relation("ClubAuditLogs", fields: [clubId], references: [id], onDelete: SetNull)
+
+  @@index([associationId])
+  @@index([clubId])
+  @@index([userId])
+  @@index([category])
+  @@index([action])
+  @@index([createdAt])
+}
+

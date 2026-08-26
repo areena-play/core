@@ -1,9 +1,10 @@
 import { Router, Response } from 'express';
 import { prisma } from '../config/prisma';
 import { validate } from '../middleware/validate';
-import { applyLicenseSchema, approveLicenseSchema } from '@areena/shared';
+import { applyLicenseSchema, approveLicenseSchema, AuditCategory } from '@areena/shared';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { LicenseService } from '../services/licenseService';
+import { AuditService } from '../services/auditService';
 
 const router = Router();
 
@@ -72,6 +73,25 @@ router.post(
                 notes,
             });
 
+            await AuditService.record({
+                req,
+                action: 'LICENSE_APPLY',
+                category: AuditCategory.LICENSING,
+                entityType: 'License',
+                entityId: license.id,
+                associationId,
+                clubId,
+                description: `Applied for ${type} license for user #${targetUserId.slice(0, 8)}`,
+                status: 'SUCCESS',
+                metadata: {
+                    type,
+                    targetUserId,
+                    seasonId,
+                    clubId,
+                    associationId,
+                },
+            });
+
             res.status(201).json(license);
         } catch (err: any) {
             res.status(400).json({ error: err.message });
@@ -115,6 +135,25 @@ router.post(
                 approvedByUserId: req.user!.id,
                 approved,
                 rejectionReason,
+            });
+
+            await AuditService.record({
+                req,
+                action: approved ? 'LICENSE_APPROVE' : 'LICENSE_REJECT',
+                category: AuditCategory.LICENSING,
+                entityType: 'License',
+                entityId: license.id,
+                associationId: license.associationId,
+                clubId: license.clubId,
+                description: `${approved ? 'Approved' : 'Rejected'} ${license.type} license (Status: ${updated.status})${rejectionReason ? ` - Reason: ${rejectionReason}` : ''}`,
+                status: 'SUCCESS',
+                metadata: {
+                    approved,
+                    rejectionReason: rejectionReason || null,
+                    licenseType: license.type,
+                    targetUserId: license.userId,
+                    newStatus: updated.status,
+                },
             });
 
             res.json(updated);

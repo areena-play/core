@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { AccessDenied } from '@/components/auth/AccessDenied';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import {
     Receipt,
     Plus,
@@ -789,55 +790,56 @@ export function BillingDashboard({ associationId, isSubAssociation = false }: Bi
 
             {/* CREATE INVOICE MODAL */}
             {showCreateModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
-                    <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 sm:p-8 shadow-2xl space-y-6 my-8 max-h-[90vh] overflow-y-auto">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                            <div>
-                                <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                                    <Receipt className="h-5 w-5 text-red-500" />
-                                    <span>{t('billing.modalTitle')}</span>
-                                </h2>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    {t('billing.modalSubtitle')}
-                                </p>
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+                        <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 sm:p-8 shadow-2xl space-y-6 my-8 max-h-[90vh] overflow-y-auto">
+                            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                                <div>
+                                    <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                        <Receipt className="h-5 w-5 text-red-500" />
+                                        <span>{t('billing.modalTitle')}</span>
+                                    </h2>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                        {t('billing.modalSubtitle')}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setShowCreateModal(false)}
+                                    className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
                             </div>
-                            <button
-                                onClick={() => setShowCreateModal(false)}
-                                className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
 
-                        {/* Quick Templates */}
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                                {t('billing.templates')}
-                            </label>
-                            <div className="flex flex-wrap gap-2 text-xs">
-                                <button
-                                    type="button"
-                                    onClick={() => applyTemplate('CLUB_ANNUAL')}
-                                    className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 px-3 py-1.5 font-semibold text-slate-700 dark:text-slate-300 hover:border-red-500 transition"
-                                >
-                                    🏢 {t('billing.templateClubAnnual')}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => applyTemplate('LICENSE_BUNDLE')}
-                                    className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 px-3 py-1.5 font-semibold text-slate-700 dark:text-slate-300 hover:border-red-500 transition"
-                                >
-                                    🎫 {t('billing.templateLicenseBundle')}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => applyTemplate('TOURNAMENT_ENTRY')}
-                                    className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 px-3 py-1.5 font-semibold text-slate-700 dark:text-slate-300 hover:border-red-500 transition"
-                                >
-                                    🏆 {t('billing.templateTournamentEntry')}
-                                </button>
+                            {/* Quick Templates */}
+                            <div className="space-y-2">
+                                <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                    {t('billing.templates')}
+                                </label>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                    <button
+                                        type="button"
+                                        onClick={() => applyTemplate('CLUB_ANNUAL')}
+                                        className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 px-3 py-1.5 font-semibold text-slate-700 dark:text-slate-300 hover:border-red-500 transition"
+                                    >
+                                        🏢 {t('billing.templateClubAnnual')}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => applyTemplate('LICENSE_BUNDLE')}
+                                        className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 px-3 py-1.5 font-semibold text-slate-700 dark:text-slate-300 hover:border-red-500 transition"
+                                    >
+                                        🎫 {t('billing.templateLicenseBundle')}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => applyTemplate('TOURNAMENT_ENTRY')}
+                                        className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 px-3 py-1.5 font-semibold text-slate-700 dark:text-slate-300 hover:border-red-500 transition"
+                                    >
+                                        🏆 {t('billing.templateTournamentEntry')}
+                                    </button>
+                                </div>
                             </div>
-                        </div>
 
                         <form onSubmit={handleCreateInvoice} className="space-y-5 text-xs">
                             {/* Recipient Selector */}
@@ -1090,22 +1092,24 @@ export function BillingDashboard({ associationId, isSubAssociation = false }: Bi
                         </form>
                     </div>
                 </div>
-            )}
+            </ModalPortal>
+        )}
 
             {/* BEXIO CONFIG MODAL */}
             {showBexioModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-                    <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 sm:p-8 shadow-2xl space-y-5">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                            <div>
-                                <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                                    <Sliders className="h-5 w-5 text-emerald-500" />
-                                    <span>{t('bexio.title')}</span>
-                                </h2>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    {t('bexio.subtitle')}
-                                </p>
-                            </div>
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+                        <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 sm:p-8 shadow-2xl space-y-5">
+                            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                                <div>
+                                    <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                        <Sliders className="h-5 w-5 text-emerald-500" />
+                                        <span>{t('bexio.title')}</span>
+                                    </h2>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                        {t('bexio.subtitle')}
+                                    </p>
+                                </div>
                             <button
                                 onClick={() => setShowBexioModal(false)}
                                 className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -1219,22 +1223,24 @@ export function BillingDashboard({ associationId, isSubAssociation = false }: Bi
                         </form>
                     </div>
                 </div>
-            )}
+            </ModalPortal>
+        )}
 
             {/* SWISS QR-BILL & INVOICE VIEWER MODAL */}
             {selectedInvoice && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
-                    <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 sm:p-8 shadow-2xl space-y-6 my-8 max-h-[90vh] overflow-y-auto">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                            <div>
-                                <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                                    <FileText className="h-5 w-5 text-red-500" />
-                                    <span>{selectedInvoice.invoiceNumber}</span>
-                                </h2>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    {selectedInvoice.recipientName} • Issued {format(new Date(selectedInvoice.issueDate), 'PPP')}
-                                </p>
-                            </div>
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+                        <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 sm:p-8 shadow-2xl space-y-6 my-8 max-h-[90vh] overflow-y-auto">
+                            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                                <div>
+                                    <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                        <FileText className="h-5 w-5 text-red-500" />
+                                        <span>{selectedInvoice.invoiceNumber}</span>
+                                    </h2>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                        {selectedInvoice.recipientName} • Issued {format(new Date(selectedInvoice.issueDate), 'PPP')}
+                                    </p>
+                                </div>
                             <button
                                 onClick={() => setSelectedInvoice(null)}
                                 className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -1372,7 +1378,8 @@ export function BillingDashboard({ associationId, isSubAssociation = false }: Bi
                         </div>
                     </div>
                 </div>
-            )}
+            </ModalPortal>
+        )}
         </div>
     );
 }

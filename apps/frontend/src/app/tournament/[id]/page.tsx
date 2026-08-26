@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { useMainView } from '@/lib/mainViewContext';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 import {
     Trophy,
     Calendar,
@@ -487,175 +488,179 @@ export default function SingleTournamentPage() {
 
             {/* Create Category Modal */}
             {showAddCatModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-2xl space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                            <h3 className="font-bold text-slate-900 dark:text-white text-base">
-                                {t('competitions.addCategory')}
-                            </h3>
-                            <button onClick={() => setShowAddCatModal(false)}>✕</button>
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-2xl space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                                <h3 className="font-bold text-slate-900 dark:text-white text-base">
+                                    {t('competitions.addCategory')}
+                                </h3>
+                                <button onClick={() => setShowAddCatModal(false)}>✕</button>
+                            </div>
+
+                            <form onSubmit={handleCreateCategory} className="space-y-3 text-xs">
+                                <div>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('common.name')}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="e.g. Men's Singles Open A"
+                                        value={catName}
+                                        onChange={(e) => setCatName(e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            Gender
+                                        </label>
+                                        <select
+                                            value={catGender}
+                                            onChange={(e) => setCatGender(e.target.value)}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        >
+                                            <option value="ALL">Mixed / All</option>
+                                            <option value="MEN">Men Only</option>
+                                            <option value="WOMEN">Women Only</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            Team Size
+                                        </label>
+                                        <select
+                                            value={catTeamSize}
+                                            onChange={(e) => setCatTeamSize(Number(e.target.value))}
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        >
+                                            <option value="1">1 (Singles 1v1)</option>
+                                            <option value="2">2 (Doubles 2v2)</option>
+                                            <option value="3">3 (Davis Cup 3v3)</option>
+                                            <option value="4">4 (Team 4v4)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            Min Elo
+                                        </label>
+                                        <input
+                                            type="number"
+                                            placeholder="0"
+                                            value={catMinElo || ''}
+                                            onChange={(e) =>
+                                                setCatMinElo(e.target.value ? Number(e.target.value) : undefined)
+                                            }
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            Max Elo
+                                        </label>
+                                        <input
+                                            type="number"
+                                            placeholder="3000"
+                                            value={catMaxElo || ''}
+                                            onChange={(e) =>
+                                                setCatMaxElo(e.target.value ? Number(e.target.value) : undefined)
+                                            }
+                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddCatModal(false)}
+                                        className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                    >
+                                        {t('common.cancel')}
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
+                                    >
+                                        {t('common.create')}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-
-                        <form onSubmit={handleCreateCategory} className="space-y-3 text-xs">
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('common.name')}
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="e.g. Men's Singles Open A"
-                                    value={catName}
-                                    onChange={(e) => setCatName(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        Gender
-                                    </label>
-                                    <select
-                                        value={catGender}
-                                        onChange={(e) => setCatGender(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    >
-                                        <option value="ALL">Mixed / All</option>
-                                        <option value="MEN">Men Only</option>
-                                        <option value="WOMEN">Women Only</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        Team Size
-                                    </label>
-                                    <select
-                                        value={catTeamSize}
-                                        onChange={(e) => setCatTeamSize(Number(e.target.value))}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    >
-                                        <option value="1">1 (Singles 1v1)</option>
-                                        <option value="2">2 (Doubles 2v2)</option>
-                                        <option value="3">3 (Davis Cup 3v3)</option>
-                                        <option value="4">4 (Team 4v4)</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        Min Elo
-                                    </label>
-                                    <input
-                                        type="number"
-                                        placeholder="Optional"
-                                        value={catMinElo || ''}
-                                        onChange={(e) =>
-                                            setCatMinElo(e.target.value ? Number(e.target.value) : undefined)
-                                        }
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        Max Elo
-                                    </label>
-                                    <input
-                                        type="number"
-                                        placeholder="Optional"
-                                        value={catMaxElo || ''}
-                                        onChange={(e) =>
-                                            setCatMaxElo(e.target.value ? Number(e.target.value) : undefined)
-                                        }
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAddCatModal(false)}
-                                    className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                                >
-                                    {t('common.cancel')}
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
-                                >
-                                    {t('common.create')}
-                                </button>
-                            </div>
-                        </form>
                     </div>
-                </div>
+                </ModalPortal>
             )}
 
             {/* Register Team Modal */}
             {showAddTeamModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-2xl space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                            <h3 className="font-bold text-slate-900 dark:text-white text-base">
-                                {t('competitions.registerTeam')}
-                            </h3>
-                            <button onClick={() => setShowAddTeamModal(false)}>✕</button>
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-2xl space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                                <h3 className="font-bold text-slate-900 dark:text-white text-base">
+                                    {t('competitions.registerTeam')}
+                                </h3>
+                                <button onClick={() => setShowAddTeamModal(false)}>✕</button>
+                            </div>
+
+                            <form onSubmit={handleRegisterTeam} className="space-y-3 text-xs">
+                                <div>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        Team Name / Player
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="e.g. TTC Young Stars 1"
+                                        value={teamName}
+                                        onChange={(e) => setTeamName(e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('common.club')}
+                                    </label>
+                                    <select
+                                        value={teamClubId}
+                                        onChange={(e) => setTeamClubId(e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    >
+                                        <option value="">Independent / No Club</option>
+                                        {clubs.map((c) => (
+                                            <option key={c.id} value={c.id}>
+                                                {c.name} ({c.city})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddTeamModal(false)}
+                                        className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                    >
+                                        {t('common.cancel')}
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
+                                    >
+                                        {t('common.submit')}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-
-                        <form onSubmit={handleRegisterTeam} className="space-y-3 text-xs">
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    Team Name / Player
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="e.g. TTC Young Stars 1"
-                                    value={teamName}
-                                    onChange={(e) => setTeamName(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('common.club')}
-                                </label>
-                                <select
-                                    value={teamClubId}
-                                    onChange={(e) => setTeamClubId(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                >
-                                    <option value="">Independent / No Club</option>
-                                    {clubs.map((c) => (
-                                        <option key={c.id} value={c.id}>
-                                            {c.name} ({c.city})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAddTeamModal(false)}
-                                    className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                                >
-                                    {t('common.cancel')}
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
-                                >
-                                    {t('common.submit')}
-                                </button>
-                            </div>
-                        </form>
                     </div>
-                </div>
+                </ModalPortal>
             )}
         </div>
     );
