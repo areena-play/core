@@ -20,6 +20,7 @@ import {
     Flame,
     ArrowLeft,
     Sparkles,
+    Receipt,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18nContext';
 import { useMainView } from '@/lib/mainViewContext';
@@ -166,7 +167,10 @@ export function Sidebar() {
                     { label: t('nav.tournaments'), href: tournamentsHref, icon: Trophy },
                     { label: t('nav.associations'), href: '/associations', icon: Network },
                     ...(isAssocAdmin
-                        ? [{ label: t('nav.associationSettings'), href: '/associations/settings', icon: Sliders }]
+                        ? [
+                              { label: t('nav.finances'), href: isSubAssoc ? `/association/${entityId}/billing` : '/associations/billing', icon: Receipt },
+                              { label: t('nav.associationSettings'), href: '/associations/settings', icon: Sliders },
+                          ]
                         : []),
                     { label: t('nav.calendar'), href: '/calendar', icon: Calendar },
                 ],

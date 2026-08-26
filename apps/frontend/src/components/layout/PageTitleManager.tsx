@@ -55,6 +55,8 @@ export function PageTitleManager() {
                 pageName = t('nav.associations', undefined, 'Associations');
             } else if (pathname === '/associations/settings') {
                 pageName = t('associations.settingsTitle', undefined, 'Association Settings');
+            } else if (pathname === '/associations/billing' || pathname.endsWith('/billing')) {
+                pageName = t('billing.title', undefined, 'Finances & Invoicing');
             } else if (pathname === '/licenses') {
                 pageName = t('nav.licenses', undefined, 'Licenses');
             } else if (pathname === '/licenses/apply') {

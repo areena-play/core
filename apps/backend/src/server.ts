@@ -15,6 +15,7 @@ import calendarRoutes from './routes/calendar.routes';
 import messageRoutes from './routes/messages.routes';
 import oauthRoutes from './routes/oauth.routes';
 import uploadRoutes from './routes/upload.routes';
+import invoiceRoutes from './routes/invoices.routes';
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use('/calendar', calendarRoutes);
 app.use('/messages', messageRoutes);
 app.use('/oauth', oauthRoutes);
 app.use('/upload', uploadRoutes);
+app.use('/invoices', invoiceRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

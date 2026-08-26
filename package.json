@@ -7,7 +7,7 @@
         "apps/*"
     ],
     "scripts": {
-        "build": "npm run build --workspaces --if-present",
+        "build": "npm run build --workspace=@areena/shared && npm run build --workspaces --if-present",
         "dev:backend": "npm run dev --workspace=@areena/backend",
         "dev:frontend": "npm run dev --workspace=@areena/frontend",
         "dev:ws": "npm run dev --workspace=@areena/websocket-server",
