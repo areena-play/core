@@ -64,6 +64,15 @@ export const updateLicenseIdTemplateSchema = z.object({
     counter: z.number().int().nonnegative().optional(),
 });
 
+export const updateAssociationSettingsSchema = z.object({
+    name: z.string().min(2).optional(),
+    shortName: z.string().min(1).optional(),
+    logoUrl: z.string().optional().nullable(),
+    licenseIdTemplate: z.string().min(3).optional(),
+    counter: z.number().int().nonnegative().optional(),
+    regionDigit: z.number().int().min(1).max(9).optional(),
+});
+
 export const createAssociationSchema = z.object({
     name: z.string().min(2),
     shortName: z.string().min(1),

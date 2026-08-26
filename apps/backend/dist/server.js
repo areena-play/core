@@ -8,6 +8,7 @@ const cors_1 = __importDefault(require("cors"));
 const morgan_1 = __importDefault(require("morgan"));
 const env_1 = require("./config/env");
 const errorHandler_1 = require("./middleware/errorHandler");
+const s3_1 = require("./config/s3");
 // Route imports
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 const associations_routes_1 = __importDefault(require("./routes/associations.routes"));
@@ -49,5 +50,8 @@ const PORT = env_1.config.port;
 app.listen(PORT, () => {
     console.log(`[AREENA Backend] Server listening on port ${PORT}`);
     console.log(`[AREENA Backend] Environment: ${process.env.NODE_ENV || 'development'}`);
+    (0, s3_1.ensureBucketExists)().catch((err) => {
+        console.warn(`[AREENA S3] Bucket initialization notice: ${err.message}`);
+    });
 });
 exports.default = app;

@@ -4,11 +4,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useTheme } from '@/lib/themeContext';
 import { useI18n } from '@/lib/i18nContext';
+import { useMainView } from '@/lib/mainViewContext';
 import { useWebSocket } from '@/lib/useWebSocket';
-import { SupportedLocale } from '@areena/shared';
 import {
     Menu,
     X,
@@ -29,6 +30,12 @@ import {
     Moon,
     Globe,
     ChevronDown,
+    ChevronRight,
+    Shield,
+    Sparkles,
+    Building2,
+    Flame,
+    ArrowUpRight,
 } from 'lucide-react';
 
 export function Navbar() {
@@ -36,9 +43,13 @@ export function Navbar() {
     const { isConnected } = useWebSocket();
     const { theme, resolvedTheme, setTheme } = useTheme();
     const { locale, setLocale, t, locales, supportedLocales } = useI18n();
+    const { activeView, entityMeta, currentViewMeta } = useMainView();
 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+
+    const userMenuRef = useRef<HTMLDivElement>(null);
     const langDropdownRef = useRef<HTMLDivElement>(null);
     const pathname = usePathname();
 
@@ -50,9 +61,27 @@ export function Navbar() {
         }
     };
 
-    // Close lang dropdown on outside click
+    const [mainAssoc, setMainAssoc] = useState<any | null>(null);
+
+    useEffect(() => {
+        async function loadMainAssoc() {
+            try {
+                const data = await api.getAssociations();
+                const top = data.associations?.find((a: any) => a.isTopLevel) || data.associations?.[0];
+                if (top) {
+                    setMainAssoc(top);
+                }
+            } catch {}
+        }
+        loadMainAssoc();
+    }, []);
+
+    // Close dropdowns on outside click
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
+            if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+                setUserMenuOpen(false);
+            }
             if (langDropdownRef.current && !langDropdownRef.current.contains(event.target as Node)) {
                 setLangDropdownOpen(false);
             }
@@ -62,27 +91,14 @@ export function Navbar() {
     }, []);
 
     const logoSrc = resolvedTheme === 'dark' ? '/areena-logo-dark.png' : '/areena-logo.png';
-
-    const navItems = [
-        { label: t('nav.dashboard'), href: '/', icon: LayoutDashboard },
-        { label: t('nav.calendar'), href: '/calendar', icon: Calendar },
-        { label: t('nav.competitions'), href: '/competitions', icon: Trophy },
-        { label: t('nav.licenses'), href: '/licenses', icon: Award },
-        { label: t('nav.refresherCourses'), href: '/licenses/refresher-courses', icon: GraduationCap },
-        { label: t('nav.approvals'), href: '/licenses/approvals', icon: CheckSquare },
-        { label: t('nav.associations'), href: '/associations', icon: Network },
-        { label: t('nav.associationSettings'), href: '/associations/settings', icon: Sliders },
-        { label: t('nav.communications'), href: '/communications', icon: Mail },
-        { label: t('nav.developerApi'), href: '/developers', icon: Code2 },
-        { label: t('nav.profile'), href: '/profile', icon: User },
-    ];
+    const CurrentViewIcon = currentViewMeta.icon;
 
     return (
         <>
             <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-950/80 backdrop-blur-md transition-colors duration-200">
                 <div className="flex h-16 items-center justify-between px-3 sm:px-6">
-                    {/* Left: Mobile Menu Button & Brand Logo */}
-                    <div className="flex items-center gap-2 sm:gap-6">
+                    {/* Left: Mobile Menu Toggle, Brand Logo & Entity Breadcrumb */}
+                    <div className="flex items-center gap-2 sm:gap-4 lg:gap-6">
                         {/* Mobile Hamburger Toggle */}
                         <button
                             type="button"
@@ -106,12 +122,41 @@ export function Navbar() {
                             </div>
                         </Link>
 
-                        <span className="hidden text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 lg:inline-block border-l border-slate-300 dark:border-slate-700 pl-4">
-                            {t('nav.sportsManagement')}
-                        </span>
+                        {/* Breadcrumb / Main Association Name or Custom Logo */}
+                        {entityMeta && activeView !== 'association' ? (
+                            <div className="hidden md:flex items-center gap-2 text-xs border-l border-slate-300 dark:border-slate-700 pl-4">
+                                <Link
+                                    href="/"
+                                    className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
+                                >
+                                    {mainAssoc?.shortName || mainAssoc?.name || 'Federation'}
+                                </Link>
+                                <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                                <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white max-w-[240px] lg:max-w-md truncate">
+                                    <CurrentViewIcon className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+                                    <span className="truncate">{entityMeta.title}</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="hidden lg:flex items-center border-l border-slate-300 dark:border-slate-700 pl-4">
+                                {mainAssoc?.logoUrl ? (
+                                    <div className="relative h-8 max-w-[140px] flex items-center">
+                                        <img
+                                            src={mainAssoc.logoUrl}
+                                            alt={mainAssoc.name}
+                                            className="h-7 max-w-[140px] object-contain"
+                                        />
+                                    </div>
+                                ) : (
+                                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 tracking-wide max-w-sm truncate">
+                                        {mainAssoc?.name || ''}
+                                    </span>
+                                )}
+                            </div>
+                        )}
                     </div>
 
-                    {/* Right: Live Connection, Language Selector, Theme Toggle & User Info */}
+                    {/* Right: Live Connection, Language Selector, Theme Toggle & Enhanced User Menu */}
                     <div className="flex items-center gap-1.5 sm:gap-3">
                         {/* WebSocket Status Indicator */}
                         <div
@@ -179,7 +224,7 @@ export function Navbar() {
                         {/* Quick Theme Toggle Button */}
                         <button
                             onClick={toggleTheme}
-                            title={`Current theme: ${theme} (Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'})`}
+                            title={`Current theme: ${theme}`}
                             className="rounded-lg p-1.5 sm:p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition"
                         >
                             {resolvedTheme === 'dark' ? (
@@ -189,43 +234,175 @@ export function Navbar() {
                             )}
                         </button>
 
+                        {/* Integrated User Profile & Role-Aware Menu Dropdown */}
                         {user ? (
-                            <div className="flex items-center gap-2 sm:gap-3">
-                                {/* License Badge */}
-                                {user.licenseId && (
-                                    <div className="hidden xl:flex items-center gap-1 rounded-md bg-red-100 dark:bg-red-950/60 border border-red-300 dark:border-red-800/40 px-2 py-0.5 text-xs font-mono text-red-800 dark:text-red-300">
-                                        <Award className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-                                        <span>LIC #{user.licenseId}</span>
-                                    </div>
-                                )}
-
-                                {/* User Profile Link */}
-                                <Link
-                                    href="/profile"
-                                    className="flex items-center gap-2 rounded-lg bg-slate-100 border border-slate-200 dark:bg-slate-900 dark:border-slate-800 p-1 sm:px-3 sm:py-1.5 text-sm hover:border-slate-300 dark:hover:border-slate-700 transition"
+                            <div className="relative" ref={userMenuRef}>
+                                <button
+                                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                                    className="flex items-center gap-2 rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-900 dark:border-slate-800 p-1 sm:px-2.5 sm:py-1.5 text-xs hover:border-slate-300 dark:hover:border-slate-700 transition"
                                 >
-                                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-red-600 font-bold text-white text-xs">
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-600 font-bold text-white text-xs shadow-xs">
                                         {user.firstName[0]}
                                         {user.lastName[0]}
                                     </div>
                                     <div className="hidden text-left md:block">
-                                        <div className="font-medium text-slate-900 dark:text-slate-200 leading-tight text-xs">
+                                        <div className="font-bold text-slate-900 dark:text-slate-200 leading-tight text-xs">
                                             {user.firstName} {user.lastName}
                                         </div>
-                                        <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[120px]">
-                                            {user.isSuperAdmin ? t('nav.superAdmin') : user.email}
+                                        <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[110px]">
+                                            {user.isSuperAdmin
+                                                ? t('userMenu.roleSuperAdmin')
+                                                : (user.associationRoles?.length ?? 0) > 0
+                                                  ? t('userMenu.roleAssocAdmin')
+                                                  : (user.clubRoles?.length ?? 0) > 0
+                                                    ? t('userMenu.roleClubAdmin')
+                                                    : user.email}
                                         </div>
                                     </div>
-                                </Link>
-
-                                <button
-                                    onClick={logout}
-                                    title={t('nav.logOut')}
-                                    aria-label={t('nav.logOut')}
-                                    className="rounded-lg p-1.5 sm:p-2 text-slate-500 hover:bg-slate-100 hover:text-red-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-red-400 transition"
-                                >
-                                    <LogOut className="h-4 w-4" />
+                                    <ChevronDown className="h-3 w-3 text-slate-400 hidden sm:inline" />
                                 </button>
+
+                                {/* User Menu Popover */}
+                                {userMenuOpen && (
+                                    <div className="absolute right-0 mt-2 w-72 sm:w-80 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl z-50 dark:border-slate-800 dark:bg-slate-900 animate-in fade-in-50 zoom-in-95">
+                                        {/* User Identity Header Card */}
+                                        <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800/80 dark:bg-slate-950/60 mb-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-600 font-bold text-white text-sm shadow">
+                                                    {user.firstName[0]}
+                                                    {user.lastName[0]}
+                                                </div>
+                                                <div className="overflow-hidden flex-1">
+                                                    <div className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                                                        {user.firstName} {user.lastName}
+                                                    </div>
+                                                    <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                                        {user.email}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {user.licenseId && (
+                                                <div className="mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+                                                    <span className="text-slate-500 font-mono">License:</span>
+                                                    <span className="font-mono font-bold text-red-600 dark:text-red-400">
+                                                        #{user.licenseId}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* My Workspaces & Accessible Pages */}
+                                        <div className="space-y-1">
+                                            <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                                {t('userMenu.myWorkspaces')}
+                                            </div>
+
+                                            {/* Super Admin Top Federation Link */}
+                                            {user.isSuperAdmin && (
+                                                <Link
+                                                    href="/"
+                                                    onClick={() => setUserMenuOpen(false)}
+                                                    className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        <Network className="h-4 w-4 text-red-500" />
+                                                        <span>{t('userMenu.topFederation')}</span>
+                                                    </div>
+                                                    <span className="rounded bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400 text-[10px] px-1.5 py-0.2 font-bold">
+                                                        Admin
+                                                    </span>
+                                                </Link>
+                                            )}
+
+                                            {/* Association Admin Links */}
+                                            {user.associationRoles?.map((r: any) => (
+                                                <Link
+                                                    key={r.associationId}
+                                                    href={`/association/${r.associationId}`}
+                                                    onClick={() => setUserMenuOpen(false)}
+                                                    className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        <Network className="h-4 w-4 text-red-500" />
+                                                        <span>Association #{r.associationId.slice(0, 8)}</span>
+                                                    </div>
+                                                    <span className="rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] px-1.5 py-0.2 font-mono font-bold">
+                                                        {r.role}
+                                                    </span>
+                                                </Link>
+                                            ))}
+
+                                            {/* Club Admin Links */}
+                                            {user.clubRoles?.map((r: any) => (
+                                                <Link
+                                                    key={r.clubId}
+                                                    href={`/club/${r.clubId}`}
+                                                    onClick={() => setUserMenuOpen(false)}
+                                                    className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        <Shield className="h-4 w-4 text-blue-500" />
+                                                        <span>Club Portal</span>
+                                                    </div>
+                                                    <span className="rounded bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400 text-[10px] px-1.5 py-0.2 font-bold">
+                                                        {r.role}
+                                                    </span>
+                                                </Link>
+                                            ))}
+
+                                            {/* Tournaments Link */}
+                                            <Link
+                                                href="/tournaments"
+                                                onClick={() => setUserMenuOpen(false)}
+                                                className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                            >
+                                                <Trophy className="h-4 w-4 text-amber-500" />
+                                                <span>{t('userMenu.myTournaments')}</span>
+                                            </Link>
+
+                                            {/* Licenses Link */}
+                                            <Link
+                                                href="/licenses"
+                                                onClick={() => setUserMenuOpen(false)}
+                                                className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                            >
+                                                <Award className="h-4 w-4 text-emerald-500" />
+                                                <span>{t('userMenu.myLicenses')}</span>
+                                            </Link>
+                                        </div>
+
+                                        {/* Account & Profile */}
+                                        <div className="space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800 mt-2">
+                                            <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                                {t('userMenu.account')}
+                                            </div>
+
+                                            <Link
+                                                href="/profile"
+                                                onClick={() => setUserMenuOpen(false)}
+                                                className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                            >
+                                                <User className="h-4 w-4 text-slate-400" />
+                                                <span>{t('userMenu.myProfile')}</span>
+                                            </Link>
+                                        </div>
+
+                                        {/* Integrated Sign Out Button */}
+                                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 mt-2">
+                                            <button
+                                                onClick={() => {
+                                                    setUserMenuOpen(false);
+                                                    logout();
+                                                }}
+                                                className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 transition"
+                                            >
+                                                <LogOut className="h-4 w-4 text-red-500" />
+                                                <span>{t('nav.logOut')}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <div className="flex items-center gap-1.5 sm:gap-2">
@@ -279,6 +456,56 @@ export function Navbar() {
                                 </button>
                             </div>
 
+                            {/* User Summary if logged in */}
+                            {user && (
+                                <div className="rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900 p-3 space-y-2">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 font-bold text-white text-xs">
+                                            {user.firstName[0]}
+                                            {user.lastName[0]}
+                                        </div>
+                                        <div className="overflow-hidden flex-1">
+                                            <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                                                {user.firstName} {user.lastName}
+                                            </div>
+                                            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                                                {user.email}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Mobile accessible links */}
+                                    <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-1">
+                                        {user.isSuperAdmin && (
+                                            <Link
+                                                href="/"
+                                                onClick={() => setMobileMenuOpen(false)}
+                                                className="flex items-center gap-2 text-xs font-semibold text-red-600 dark:text-red-400 py-1"
+                                            >
+                                                <Network className="h-3.5 w-3.5" />
+                                                <span>{t('userMenu.topFederation')}</span>
+                                            </Link>
+                                        )}
+                                        <Link
+                                            href="/tournaments"
+                                            onClick={() => setMobileMenuOpen(false)}
+                                            className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 py-1"
+                                        >
+                                            <Trophy className="h-3.5 w-3.5 text-amber-500" />
+                                            <span>{t('userMenu.myTournaments')}</span>
+                                        </Link>
+                                        <Link
+                                            href="/licenses"
+                                            onClick={() => setMobileMenuOpen(false)}
+                                            className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 py-1"
+                                        >
+                                            <Award className="h-3.5 w-3.5 text-emerald-500" />
+                                            <span>{t('userMenu.myLicenses')}</span>
+                                        </Link>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Language Switcher in Mobile Drawer */}
                             <div className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900 p-2.5 space-y-1.5">
                                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -301,64 +528,6 @@ export function Navbar() {
                                     ))}
                                 </div>
                             </div>
-
-                            {/* User Summary if logged in */}
-                            {user && (
-                                <div className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900 p-3 space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 font-bold text-white text-xs">
-                                            {user.firstName[0]}
-                                            {user.lastName[0]}
-                                        </div>
-                                        <div className="overflow-hidden">
-                                            <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                                                {user.firstName} {user.lastName}
-                                            </div>
-                                            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                                                {user.email}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {user.licenseId && (
-                                        <div className="pt-1 text-[11px] font-mono font-bold text-red-600 dark:text-red-400">
-                                            License #{user.licenseId}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Navigation List */}
-                            <nav className="space-y-1">
-                                <div className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                    {t('nav.navigation')}
-                                </div>
-                                {navItems.map((item) => {
-                                    const isActive =
-                                        pathname === item.href ||
-                                        (item.href !== '/' && pathname.startsWith(item.href));
-                                    const Icon = item.icon;
-
-                                    return (
-                                        <Link
-                                            key={item.href}
-                                            href={item.href}
-                                            onClick={() => setMobileMenuOpen(false)}
-                                            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition ${
-                                                isActive
-                                                    ? 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-600/10 dark:text-red-500 dark:border-red-500/20 font-semibold'
-                                                    : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900'
-                                            }`}
-                                        >
-                                            <Icon
-                                                className={`h-4 w-4 ${
-                                                    isActive ? 'text-red-600 dark:text-red-500' : 'text-slate-400'
-                                                }`}
-                                            />
-                                            <span>{item.label}</span>
-                                        </Link>
-                                    );
-                                })}
-                            </nav>
                         </div>
 
                         {/* Drawer Footer */}

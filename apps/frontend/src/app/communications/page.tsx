@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { Mail, Send, Users, CheckCircle2, AlertCircle, MessageSquare, Clock, Shield, Smartphone } from 'lucide-react';
 import { format } from 'date-fns';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 
 export default function CommunicationsPage() {
     const { user } = useAuth();
@@ -82,6 +83,22 @@ export default function CommunicationsPage() {
         }
     };
 
+    if (!user) {
+        return (
+            <AccessDenied
+                title="Communications Restricted"
+                description="An authenticated AREENA user account is required to view federation circulars, bulletins, and internal communications."
+                requiredRole="Authenticated Member"
+                returnHref="/"
+            />
+        );
+    }
+
+    const canBroadcast =
+        user.isSuperAdmin ||
+        (user.associationRoles && user.associationRoles.length > 0) ||
+        (user.clubRoles && user.clubRoles.length > 0);
+
     return (
         <div className="space-y-6 md:space-y-8 pb-16">
             {/* Header */}
@@ -96,14 +113,15 @@ export default function CommunicationsPage() {
             </div>
 
             {/* Compose & History Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-                {/* Left 2 Cols: Compose Form */}
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 p-5 sm:p-6 md:p-8 shadow-xl space-y-6">
-                        <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <Send className="h-4 w-4 text-red-500" />
-                            <span>{t('communications.compose')}</span>
-                        </h2>
+            <div className={canBroadcast ? 'grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8' : 'max-w-3xl space-y-6'}>
+                {/* Left 2 Cols: Compose Form (Admins / Officials Only) */}
+                {canBroadcast && (
+                    <div className="lg:col-span-2 space-y-6">
+                        <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 p-5 sm:p-6 md:p-8 shadow-xl space-y-6">
+                            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <Send className="h-4 w-4 text-red-500" />
+                                <span>{t('communications.compose')}</span>
+                            </h2>
 
                         {errorMsg && (
                             <div className="flex items-start gap-2.5 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/80 p-4 text-xs text-red-700 dark:text-red-300">
@@ -272,6 +290,7 @@ export default function CommunicationsPage() {
                         </form>
                     </div>
                 </div>
+                )}
 
                 {/* Right Col: Sent Messages Log */}
                 <div className="space-y-4">

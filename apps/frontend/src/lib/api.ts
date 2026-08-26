@@ -69,6 +69,38 @@ class ApiClient {
         return this.request('/associations', { method: 'POST', body: JSON.stringify(body) });
     }
 
+    updateAssociationSettings(associationId: string, body: any) {
+        return this.request(`/associations/${associationId}/settings`, {
+            method: 'PUT',
+            body: JSON.stringify(body),
+        });
+    }
+
+    uploadAssociationLogo(associationId: string, file: File) {
+        const formData = new FormData();
+        formData.append('logo', file);
+        const token = this.getToken();
+        return fetch(`${API_BASE}/associations/${associationId}/logo`, {
+            method: 'POST',
+            headers: {
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: formData,
+        }).then(async (res) => {
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || `Logo upload failed with status ${res.status}`);
+            }
+            return res.json();
+        });
+    }
+
+    deleteAssociationLogo(associationId: string) {
+        return this.request(`/associations/${associationId}/logo`, {
+            method: 'DELETE',
+        });
+    }
+
     updateLicenseIdTemplate(associationId: string, body: any) {
         return this.request(`/associations/${associationId}/settings/license-template`, {
             method: 'PUT',

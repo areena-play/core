@@ -6,6 +6,7 @@ export const de: TranslationDictionary = {
         dashboard: 'Übersicht',
         calendar: 'Gesamtkalender',
         competitions: 'Wettbewerbe & Ligen',
+        tournaments: 'Turniere & Ligen',
         licenses: 'Lizenzverwaltung',
         refresherCourses: 'Fortbildungskurse',
         approvals: 'Genehmigungen',
@@ -24,6 +25,74 @@ export const de: TranslationDictionary = {
         navigation: 'Navigation',
         theme: 'Design',
         language: 'Sprache',
+        backToAssociation: 'Zurück zum Verband',
+        backToTournaments: 'Zurück zur Turnierübersicht',
+    },
+
+    // Main Views / Workspaces
+    mainViews: {
+        workspace: 'Arbeitsbereich',
+        switchWorkspace: 'Arbeitsbereich wechseln',
+        association: 'Verbands-Arbeitsbereich',
+        associationShort: 'Verband',
+        associationDesc: 'Dach- und Regionalverbands-Führung, Regel-DAG und Lizenzwesen',
+        associationBadge: 'Verband',
+        tournament: 'Turnier-Arbeitsbereich',
+        tournamentShort: 'Turnier',
+        tournamentDesc: 'Kategorienverwaltung, Teamauslosung, Schiedsrichter-Live-Scoring und Ranglisten',
+        tournamentBadge: 'Turnier',
+        club: 'Vereins-Arbeitsbereich',
+        clubShort: 'Verein',
+        clubDesc: 'Vereinsverwaltung, Spielerkader, Lizenzpässe und gemeldete Ligamannschaften',
+        clubBadge: 'Vereinsportal',
+        switchingTo: '{view} wird geladen...',
+        loadingWorkspace: 'Arbeitsbereich und Berechtigungen werden geladen...',
+    },
+
+    // Tournament Workspace Sidebar & Sections
+    tournamentWorkspace: {
+        title: 'Turnier-Arbeitsbereich',
+        overview: 'Turnierübersicht',
+        categories: 'Kategorien & Spielklassen',
+        teams: 'Spieler & Mannschaften',
+        encounters: 'Begegnungen & Spielplan',
+        courts: 'Tische & Live-Scoring',
+        standings: 'Tabelle & Rangliste',
+        courtOverview: 'Tisch- / Court-Zuteilung',
+        allCourts: 'Alle aktiven Spieltische',
+        manageSchedule: 'Spielplan verwalten',
+        liveScoring: 'Live-Punkteerfassung',
+    },
+
+    // Club Workspace Sidebar & Sections
+    clubWorkspace: {
+        title: 'Vereins-Arbeitsbereich',
+        overview: 'Vereinsübersicht',
+        members: 'Vereinsmitglieder & Lizenzen',
+        teams: 'Gemeldete Ligamannschaften',
+        calendar: 'Vereinstermine & Spielplan',
+        communications: 'Vereinsmitteilungen',
+        registeredPlayersCount: '{count} Gemeldete Spieler',
+        activeLeagueTeamsCount: '{count} Aktive Ligamannschaften',
+    },
+
+    // User Menu & Accessible Pages
+    userMenu: {
+        myWorkspaces: 'Meine Bereiche & Zugänge',
+        topFederation: 'Schweizerischer Dachverband',
+        managedAssociations: 'Verwaltete Verbände',
+        managedClubs: 'Verwaltete Vereine',
+        myTournaments: 'Meine Turniere & Ligen',
+        myLicenses: 'Meine Lizenzen & Nachweise',
+        myProfile: 'Mein Profil & Einstellungen',
+        account: 'Konto',
+        signedInAs: 'Angemeldet als',
+        roleSuperAdmin: 'Super-Administrator',
+        roleAssocAdmin: 'Verbandsadministrator',
+        roleClubAdmin: 'Vereinsvorstand / Manager',
+        roleCoach: 'Zertifizierter Trainer',
+        rolePlayer: 'Aktiver Spieler',
+        roleReferee: 'Nationaler Schiedsrichter',
     },
 
     // Common / Actions

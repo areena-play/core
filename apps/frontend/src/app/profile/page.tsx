@@ -23,6 +23,7 @@ import {
     Globe,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 
 export default function ProfilePage() {
     const { user, refreshUser } = useAuth();
@@ -80,9 +81,12 @@ export default function ProfilePage() {
 
     if (!user) {
         return (
-            <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300">
-                Please log in to manage your profile and license credentials.
-            </div>
+            <AccessDenied
+                title="Sign In to Access Profile"
+                description="You must be logged in to view and edit your AREENA profile, licenses, and security preferences."
+                requiredRole="Authenticated User"
+                returnHref="/"
+            />
         );
     }
 

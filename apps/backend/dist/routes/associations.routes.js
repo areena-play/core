@@ -1,12 +1,46 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
+const multer_1 = __importDefault(require("multer"));
 const prisma_1 = require("../config/prisma");
 const validate_1 = require("../middleware/validate");
-const shared_1 = require("@areena/shared");
 const auth_1 = require("../middleware/auth");
+const s3Service_1 = require("../services/s3Service");
+const env_1 = require("../config/env");
+const shared_1 = require("@areena/shared");
 const hierarchyService_1 = require("../services/hierarchyService");
 const router = (0, express_1.Router)();
+const uploadLogo = (0, multer_1.default)({
+    storage: multer_1.default.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        }
+        else {
+            cb(new Error('Only image files (PNG, JPG, SVG, WebP) are allowed'));
+        }
+    },
+});
+function extractS3KeyFromUrl(url) {
+    if (!url)
+        return null;
+    const uploadFileIndex = url.indexOf('/upload/file/');
+    if (uploadFileIndex !== -1) {
+        return url.substring(uploadFileIndex + '/upload/file/'.length).split('?')[0];
+    }
+    const bucketIndex = url.indexOf(`/${env_1.config.s3.bucketName}/`);
+    if (bucketIndex !== -1) {
+        return url.substring(bucketIndex + `/${env_1.config.s3.bucketName}/`.length).split('?')[0];
+    }
+    if (url.startsWith('associations/logos/')) {
+        return url.split('?')[0];
+    }
+    return null;
+}
 // GET /associations - Full hierarchy & tree
 router.get('/', async (req, res, next) => {
     try {
@@ -84,6 +118,39 @@ router.post('/', auth_1.authenticateToken, auth_1.requireSuperAdmin, (0, validat
         next(err);
     }
 });
+// PUT /associations/:id/settings - Main association general settings & license template
+router.put('/:id/settings', auth_1.authenticateToken, (0, validate_1.validate)(shared_1.updateAssociationSettingsSchema), async (req, res, next) => {
+    try {
+        const targetAssoc = await prisma_1.prisma.association.findUnique({ where: { id: req.params.id } });
+        if (!targetAssoc) {
+            return res.status(404).json({ error: 'Association not found' });
+        }
+        // Must be super admin or association admin
+        const isAuthorized = req.user?.isSuperAdmin ||
+            req.user?.associationRoles.some((r) => r.associationId === targetAssoc.id && ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role));
+        if (!isAuthorized) {
+            return res
+                .status(403)
+                .json({ error: 'Only association administrators can update association settings' });
+        }
+        const { name, shortName, logoUrl, licenseIdTemplate, counter, regionDigit } = req.body;
+        const updated = await prisma_1.prisma.association.update({
+            where: { id: req.params.id },
+            data: {
+                ...(name ? { name } : {}),
+                ...(shortName ? { shortName } : {}),
+                ...(logoUrl !== undefined ? { logoUrl } : {}),
+                ...(licenseIdTemplate ? { licenseIdTemplate } : {}),
+                ...(counter !== undefined ? { licenseCounter: counter } : {}),
+                ...(regionDigit !== undefined ? { regionDigit } : {}),
+            },
+        });
+        res.json(updated);
+    }
+    catch (err) {
+        next(err);
+    }
+});
 // PUT /associations/:id/settings/license-template - Main association settings for License ID format
 router.put('/:id/settings/license-template', auth_1.authenticateToken, (0, validate_1.validate)(shared_1.updateLicenseIdTemplateSchema), async (req, res, next) => {
     try {
@@ -107,6 +174,92 @@ router.put('/:id/settings/license-template', auth_1.authenticateToken, (0, valid
             },
         });
         res.json(updated);
+    }
+    catch (err) {
+        next(err);
+    }
+});
+// POST /associations/:id/logo - Upload Association Logo to S3
+router.post('/:id/logo', auth_1.authenticateToken, uploadLogo.single('logo'), async (req, res, next) => {
+    try {
+        const targetAssoc = await prisma_1.prisma.association.findUnique({ where: { id: req.params.id } });
+        if (!targetAssoc) {
+            return res.status(404).json({ error: 'Association not found' });
+        }
+        // Must be super admin or association admin
+        const isAuthorized = req.user?.isSuperAdmin ||
+            req.user?.associationRoles.some((r) => r.associationId === targetAssoc.id && ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role));
+        if (!isAuthorized) {
+            return res
+                .status(403)
+                .json({ error: 'Only association administrators can upload the association logo' });
+        }
+        if (!req.file) {
+            return res.status(400).json({ error: 'No logo image file provided' });
+        }
+        // If there is an existing logo in S3, delete the previous file to save storage
+        if (targetAssoc.logoUrl) {
+            const oldKey = extractS3KeyFromUrl(targetAssoc.logoUrl);
+            if (oldKey) {
+                try {
+                    await s3Service_1.S3Service.deleteFile(oldKey);
+                    console.log(`[S3] Cleaned up replaced logo: ${oldKey}`);
+                }
+                catch (delErr) {
+                    console.warn(`[S3] Notice on cleaning up old logo: ${delErr.message}`);
+                }
+            }
+        }
+        const uploadResult = await s3Service_1.S3Service.uploadFile(req.file.buffer, req.file.originalname, req.file.mimetype, 'associations/logos');
+        const updated = await prisma_1.prisma.association.update({
+            where: { id: req.params.id },
+            data: {
+                logoUrl: uploadResult.fileUrl,
+            },
+        });
+        res.status(200).json({
+            success: true,
+            logoUrl: uploadResult.fileUrl,
+            key: uploadResult.key,
+            association: updated,
+        });
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Logo upload failed', details: err.message });
+    }
+});
+// DELETE /associations/:id/logo - Remove Association Logo & delete from S3
+router.delete('/:id/logo', auth_1.authenticateToken, async (req, res, next) => {
+    try {
+        const targetAssoc = await prisma_1.prisma.association.findUnique({ where: { id: req.params.id } });
+        if (!targetAssoc) {
+            return res.status(404).json({ error: 'Association not found' });
+        }
+        const isAuthorized = req.user?.isSuperAdmin ||
+            req.user?.associationRoles.some((r) => r.associationId === targetAssoc.id && ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role));
+        if (!isAuthorized) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+        // Delete from S3 bucket
+        if (targetAssoc.logoUrl) {
+            const key = extractS3KeyFromUrl(targetAssoc.logoUrl);
+            if (key) {
+                try {
+                    await s3Service_1.S3Service.deleteFile(key);
+                    console.log(`[S3] Deleted association logo from bucket: ${key}`);
+                }
+                catch (delErr) {
+                    console.warn(`[S3] Notice on deleting S3 file "${key}": ${delErr.message}`);
+                }
+            }
+        }
+        const updated = await prisma_1.prisma.association.update({
+            where: { id: req.params.id },
+            data: {
+                logoUrl: null,
+            },
+        });
+        res.json({ success: true, association: updated });
     }
     catch (err) {
         next(err);

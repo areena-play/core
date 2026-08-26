@@ -6,6 +6,7 @@ export const it: TranslationDictionary = {
         dashboard: 'Pannello di controllo',
         calendar: 'Calendario generale',
         competitions: 'Competizioni & Campionati',
+        tournaments: 'Tornei & Campionati',
         licenses: 'Gestione tesseramenti',
         refresherCourses: 'Corsi di aggiornamento',
         approvals: 'Approvazioni',
@@ -24,6 +25,74 @@ export const it: TranslationDictionary = {
         navigation: 'Navigazione',
         theme: 'Tema',
         language: 'Lingua',
+        backToAssociation: 'Torna alla federazione',
+        backToTournaments: 'Torna ai tornei',
+    },
+
+    // Main Views / Workspaces
+    mainViews: {
+        workspace: 'Area di lavoro',
+        switchWorkspace: 'Cambia area di lavoro',
+        association: 'Area Federale',
+        associationShort: 'Federazione',
+        associationDesc: 'Direzione delle federazioni nazionali e regionali, DAG regole e tesseramenti',
+        associationBadge: 'Federazione',
+        tournament: 'Area Torneo',
+        tournamentShort: 'Torneo',
+        tournamentDesc: 'Gestione categorie, sorteggi squadre, referto arbitrale live e classifiche',
+        tournamentBadge: 'Torneo',
+        club: 'Area Club & Società',
+        clubShort: 'Club',
+        clubDesc: 'Amministrazione societaria, tesserati atleti, carte T e squadre nei campionati',
+        clubBadge: 'Portale Club',
+        switchingTo: 'Caricamento {view}...',
+        loadingWorkspace: 'Caricamento dell’ambiente di lavoro e dei permessi...',
+    },
+
+    // Tournament Workspace Sidebar & Sections
+    tournamentWorkspace: {
+        title: 'Area Torneo',
+        overview: 'Panoramica torneo',
+        categories: 'Categorie & Divisioni',
+        teams: 'Giocatori & Squadre',
+        encounters: 'Incontri & Calendario',
+        courts: 'Tavoli & Punteggio live',
+        standings: 'Classifica & Tabellone',
+        courtOverview: 'Assegnazione tavoli / campi',
+        allCourts: 'Tutti i tavoli attivi',
+        manageSchedule: 'Gestisci calendario',
+        liveScoring: 'Controlli punteggio live',
+    },
+
+    // Club Workspace Sidebar & Sections
+    clubWorkspace: {
+        title: 'Area Club',
+        overview: 'Panoramica club',
+        members: 'Tesserati & Licenze',
+        teams: 'Squadre iscritte ai campionati',
+        calendar: 'Calendario ed eventi club',
+        communications: 'Comunicazioni societarie',
+        registeredPlayersCount: '{count} Atleti registrati',
+        activeLeagueTeamsCount: '{count} Squadre di campionato attive',
+    },
+
+    // User Menu & Accessible Pages
+    userMenu: {
+        myWorkspaces: 'I miei accessi & Aree',
+        topFederation: 'Federazione Nazionale Centrale',
+        managedAssociations: 'Federazioni gestite',
+        managedClubs: 'Club e Società gestite',
+        myTournaments: 'I miei tornei & campionati',
+        myLicenses: 'I miei tesseramenti & licenze',
+        myProfile: 'Il mio profilo & Impostazioni',
+        account: 'Account',
+        signedInAs: 'Accesso effettuato come',
+        roleSuperAdmin: 'Super Amministratore',
+        roleAssocAdmin: 'Amministratore Federale',
+        roleClubAdmin: 'Dirigente di Società',
+        roleCoach: 'Allenatore Abilitato',
+        rolePlayer: 'Atleta Tesserato',
+        roleReferee: 'Arbitro Nazionale',
     },
 
     // Common / Actions

@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { Award, Shield, CheckCircle2, AlertCircle, Clock, Sparkles, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 
 export default function ApplyLicensePage() {
     const router = useRouter();
@@ -112,6 +113,17 @@ export default function ApplyLicensePage() {
             setSubmitting(false);
         }
     };
+
+    if (!user) {
+        return (
+            <AccessDenied
+                title="Sign In to Apply for a License"
+                description="An authenticated AREENA user account is required to apply for player, coach, or referee federation licenses."
+                requiredRole="Authenticated User / Registered Member"
+                returnHref="/licenses"
+            />
+        );
+    }
 
     return (
         <div className="max-w-2xl mx-auto space-y-6 pb-16">

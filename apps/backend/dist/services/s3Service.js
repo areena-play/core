@@ -18,13 +18,30 @@ class S3Service {
             ContentType: mimeType,
         });
         await s3_1.s3Client.send(command);
-        // In local development with MinIO or S3, construct direct URL or relative key
-        const fileUrl = `${env_1.config.s3.endpoint}/${env_1.config.s3.bucketName}/${key}`;
+        // Generate reliable API streaming URL for browser access (avoids MinIO private bucket/CORS/port mismatch)
+        const apiBase = process.env.API_PUBLIC_URL ||
+            process.env.NEXT_PUBLIC_API_URL ||
+            `http://localhost:${env_1.config.port}`;
+        const fileUrl = `${apiBase}/upload/file/${key}`;
         return {
             key,
             fileUrl,
             bucket: env_1.config.s3.bucketName,
         };
+    }
+    static async getFileStream(key) {
+        const command = new client_s3_1.GetObjectCommand({
+            Bucket: env_1.config.s3.bucketName,
+            Key: key,
+        });
+        return await s3_1.s3Client.send(command);
+    }
+    static async deleteFile(key) {
+        const command = new client_s3_1.DeleteObjectCommand({
+            Bucket: env_1.config.s3.bucketName,
+            Key: key,
+        });
+        return await s3_1.s3Client.send(command);
     }
     static async getDownloadUrl(key, expiresInSeconds = 3600) {
         const command = new client_s3_1.GetObjectCommand({

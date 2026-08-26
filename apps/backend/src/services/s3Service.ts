@@ -1,4 +1,4 @@
-import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { s3Client, ensureBucketExists } from '../config/s3';
 import { config } from '../config/env';
@@ -25,14 +25,36 @@ export class S3Service {
 
         await s3Client.send(command);
 
-        // In local development with MinIO or S3, construct direct URL or relative key
-        const fileUrl = `${config.s3.endpoint}/${config.s3.bucketName}/${key}`;
+        // Generate reliable API streaming URL for browser access (avoids MinIO private bucket/CORS/port mismatch)
+        const apiBase =
+            process.env.API_PUBLIC_URL ||
+            process.env.NEXT_PUBLIC_API_URL ||
+            `http://localhost:${config.port}`;
+        const fileUrl = `${apiBase}/upload/file/${key}`;
 
         return {
             key,
             fileUrl,
             bucket: config.s3.bucketName,
         };
+    }
+
+    static async getFileStream(key: string) {
+        const command = new GetObjectCommand({
+            Bucket: config.s3.bucketName,
+            Key: key,
+        });
+
+        return await s3Client.send(command);
+    }
+
+    static async deleteFile(key: string) {
+        const command = new DeleteObjectCommand({
+            Bucket: config.s3.bucketName,
+            Key: key,
+        });
+
+        return await s3Client.send(command);
     }
 
     static async getDownloadUrl(key: string, expiresInSeconds: number = 3600) {

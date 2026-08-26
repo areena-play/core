@@ -191,9 +191,12 @@ export default function AssociationsPage() {
                                                     <span className="rounded bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 text-[10px] font-bold">
                                                         {sub.level}
                                                     </span>
-                                                    <span className="font-mono text-xs text-red-600 dark:text-red-400 font-bold">
-                                                        [{sub.code}]
-                                                    </span>
+                                                    <Link
+                                                        href={`/association/${sub.id}`}
+                                                        className="font-mono text-xs text-red-600 dark:text-red-400 font-bold hover:underline"
+                                                    >
+                                                        [{sub.code}] ↗
+                                                    </Link>
                                                 </div>
                                                 <h4 className="font-bold text-slate-900 dark:text-white text-sm">
                                                     {sub.name}
@@ -267,7 +270,12 @@ export default function AssociationsPage() {
                             </div>
 
                             <div>
-                                <h3 className="text-base font-bold text-slate-900 dark:text-white">{club.name}</h3>
+                                <Link
+                                    href={`/club/${club.id}`}
+                                    className="text-base font-bold text-slate-900 hover:text-red-600 dark:text-white dark:hover:text-red-400 transition"
+                                >
+                                    {club.name} ↗
+                                </Link>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-1">
                                     <MapPin className="h-3.5 w-3.5 text-red-500" />
                                     {club.address}, {club.postalCode} {club.city}

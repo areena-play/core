@@ -1,11 +1,45 @@
 import { Router, Response } from 'express';
+import multer from 'multer';
 import { prisma } from '../config/prisma';
 import { validate } from '../middleware/validate';
-import { createAssociationSchema, updateLicenseIdTemplateSchema } from '@areena/shared';
 import { authenticateToken, requireSuperAdmin, AuthRequest } from '../middleware/auth';
+import { S3Service } from '../services/s3Service';
+import { config } from '../config/env';
+import {
+    createAssociationSchema,
+    updateLicenseIdTemplateSchema,
+    updateAssociationSettingsSchema,
+} from '@areena/shared';
 import { HierarchyService } from '../services/hierarchyService';
 
 const router = Router();
+const uploadLogo = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files (PNG, JPG, SVG, WebP) are allowed'));
+        }
+    },
+});
+
+function extractS3KeyFromUrl(url: string | null | undefined): string | null {
+    if (!url) return null;
+    const uploadFileIndex = url.indexOf('/upload/file/');
+    if (uploadFileIndex !== -1) {
+        return url.substring(uploadFileIndex + '/upload/file/'.length).split('?')[0];
+    }
+    const bucketIndex = url.indexOf(`/${config.s3.bucketName}/`);
+    if (bucketIndex !== -1) {
+        return url.substring(bucketIndex + `/${config.s3.bucketName}/`.length).split('?')[0];
+    }
+    if (url.startsWith('associations/logos/')) {
+        return url.split('?')[0];
+    }
+    return null;
+}
 
 // GET /associations - Full hierarchy & tree
 router.get('/', async (req, res, next) => {
@@ -106,6 +140,51 @@ router.post(
     },
 );
 
+// PUT /associations/:id/settings - Main association general settings & license template
+router.put(
+    '/:id/settings',
+    authenticateToken,
+    validate(updateAssociationSettingsSchema),
+    async (req: AuthRequest, res: Response, next) => {
+        try {
+            const targetAssoc = await prisma.association.findUnique({ where: { id: req.params.id } });
+            if (!targetAssoc) {
+                return res.status(404).json({ error: 'Association not found' });
+            }
+
+            // Must be super admin or association admin
+            const isAuthorized =
+                req.user?.isSuperAdmin ||
+                req.user?.associationRoles.some(
+                    (r: any) => r.associationId === targetAssoc.id && ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
+                );
+            if (!isAuthorized) {
+                return res
+                    .status(403)
+                    .json({ error: 'Only association administrators can update association settings' });
+            }
+
+            const { name, shortName, logoUrl, licenseIdTemplate, counter, regionDigit } = req.body;
+
+            const updated = await prisma.association.update({
+                where: { id: req.params.id },
+                data: {
+                    ...(name ? { name } : {}),
+                    ...(shortName ? { shortName } : {}),
+                    ...(logoUrl !== undefined ? { logoUrl } : {}),
+                    ...(licenseIdTemplate ? { licenseIdTemplate } : {}),
+                    ...(counter !== undefined ? { licenseCounter: counter } : {}),
+                    ...(regionDigit !== undefined ? { regionDigit } : {}),
+                },
+            });
+
+            res.json(updated);
+        } catch (err) {
+            next(err);
+        }
+    },
+);
+
 // PUT /associations/:id/settings/license-template - Main association settings for License ID format
 router.put(
     '/:id/settings/license-template',
@@ -120,7 +199,7 @@ router.put(
 
             // Must be super admin or main association admin
             const isMainAdmin =
-                req.user?.isSuperAdmin || req.user?.associationRoles.some((r) => r.associationId === targetAssoc.id);
+                req.user?.isSuperAdmin || req.user?.associationRoles.some((r: any) => r.associationId === targetAssoc.id);
             if (!isMainAdmin) {
                 return res
                     .status(403)
@@ -143,6 +222,116 @@ router.put(
         }
     },
 );
+
+// POST /associations/:id/logo - Upload Association Logo to S3
+router.post(
+    '/:id/logo',
+    authenticateToken,
+    uploadLogo.single('logo'),
+    async (req: AuthRequest, res: Response, next) => {
+        try {
+            const targetAssoc = await prisma.association.findUnique({ where: { id: req.params.id } });
+            if (!targetAssoc) {
+                return res.status(404).json({ error: 'Association not found' });
+            }
+
+            // Must be super admin or association admin
+            const isAuthorized =
+                req.user?.isSuperAdmin ||
+                req.user?.associationRoles.some(
+                    (r: any) => r.associationId === targetAssoc.id && ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
+                );
+            if (!isAuthorized) {
+                return res
+                    .status(403)
+                    .json({ error: 'Only association administrators can upload the association logo' });
+            }
+
+            if (!req.file) {
+                return res.status(400).json({ error: 'No logo image file provided' });
+            }
+
+            // If there is an existing logo in S3, delete the previous file to save storage
+            if (targetAssoc.logoUrl) {
+                const oldKey = extractS3KeyFromUrl(targetAssoc.logoUrl);
+                if (oldKey) {
+                    try {
+                        await S3Service.deleteFile(oldKey);
+                        console.log(`[S3] Cleaned up replaced logo: ${oldKey}`);
+                    } catch (delErr: any) {
+                        console.warn(`[S3] Notice on cleaning up old logo: ${delErr.message}`);
+                    }
+                }
+            }
+
+            const uploadResult = await S3Service.uploadFile(
+                req.file.buffer,
+                req.file.originalname,
+                req.file.mimetype,
+                'associations/logos',
+            );
+
+            const updated = await prisma.association.update({
+                where: { id: req.params.id },
+                data: {
+                    logoUrl: uploadResult.fileUrl,
+                },
+            });
+
+            res.status(200).json({
+                success: true,
+                logoUrl: uploadResult.fileUrl,
+                key: uploadResult.key,
+                association: updated,
+            });
+        } catch (err: any) {
+            res.status(500).json({ error: 'Logo upload failed', details: err.message });
+        }
+    },
+);
+
+// DELETE /associations/:id/logo - Remove Association Logo & delete from S3
+router.delete('/:id/logo', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const targetAssoc = await prisma.association.findUnique({ where: { id: req.params.id } });
+        if (!targetAssoc) {
+            return res.status(404).json({ error: 'Association not found' });
+        }
+
+        const isAuthorized =
+            req.user?.isSuperAdmin ||
+            req.user?.associationRoles.some(
+                (r: any) => r.associationId === targetAssoc.id && ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
+            );
+        if (!isAuthorized) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+
+        // Delete from S3 bucket
+        if (targetAssoc.logoUrl) {
+            const key = extractS3KeyFromUrl(targetAssoc.logoUrl);
+            if (key) {
+                try {
+                    await S3Service.deleteFile(key);
+                    console.log(`[S3] Deleted association logo from bucket: ${key}`);
+                } catch (delErr: any) {
+                    console.warn(`[S3] Notice on deleting S3 file "${key}": ${delErr.message}`);
+                }
+            }
+        }
+
+        const updated = await prisma.association.update({
+            where: { id: req.params.id },
+            data: {
+                logoUrl: null,
+            },
+        });
+
+        res.json({ success: true, association: updated });
+    } catch (err: any) {
+        next(err);
+    }
+});
 
 // POST /associations/:id/seasons - Create Season
 router.post('/:id/seasons', authenticateToken, async (req: AuthRequest, res: Response, next) => {

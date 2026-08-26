@@ -4,6 +4,7 @@ export const en = {
         dashboard: 'Dashboard',
         calendar: 'Master Calendar',
         competitions: 'Competitions & Leagues',
+        tournaments: 'Tournaments & Leagues',
         licenses: 'License Hub',
         refresherCourses: 'Refresher Courses',
         approvals: 'Approvals Queue',
@@ -22,6 +23,74 @@ export const en = {
         navigation: 'Navigation',
         theme: 'Theme',
         language: 'Language',
+        backToAssociation: 'Back to Association',
+        backToTournaments: 'Back to Tournaments',
+    },
+
+    // Main Views / Workspaces
+    mainViews: {
+        workspace: 'Workspace',
+        switchWorkspace: 'Switch Workspace',
+        association: 'Association Workspace',
+        associationShort: 'Association',
+        associationDesc: 'National & regional federation governance, rule DAG, and licensing engine',
+        associationBadge: 'Federation',
+        tournament: 'Tournament Workspace',
+        tournamentShort: 'Tournament',
+        tournamentDesc: 'Unified category management, team draws, courtside live scoring, and standings',
+        tournamentBadge: 'Tournament',
+        club: 'Club Workspace',
+        clubShort: 'Club',
+        clubDesc: 'Club administration, player roster, license passes, and registered league teams',
+        clubBadge: 'Club Portal',
+        switchingTo: 'Loading {view}...',
+        loadingWorkspace: 'Configuring workspace environment and permissions...',
+    },
+
+    // Tournament Workspace Sidebar & Sections
+    tournamentWorkspace: {
+        title: 'Tournament Workspace',
+        overview: 'Tournament Overview',
+        categories: 'Categories & Divisions',
+        teams: 'Players & Teams',
+        encounters: 'Encounters & Schedule',
+        courts: 'Courts & Live Scoring',
+        standings: 'Standings & Bracket',
+        courtOverview: 'Table / Court Allocation',
+        allCourts: 'All Active Tables',
+        manageSchedule: 'Manage Schedule',
+        liveScoring: 'Live Scoring Controls',
+    },
+
+    // Club Workspace Sidebar & Sections
+    clubWorkspace: {
+        title: 'Club Workspace',
+        overview: 'Club Overview',
+        members: 'Club Members & Licenses',
+        teams: 'Registered League Teams',
+        calendar: 'Club Events & Calendar',
+        communications: 'Club Announcements',
+        registeredPlayersCount: '{count} Registered Players',
+        activeLeagueTeamsCount: '{count} Active League Teams',
+    },
+
+    // User Menu & Accessible Pages
+    userMenu: {
+        myWorkspaces: 'My Access & Workspaces',
+        topFederation: 'Top National Federation',
+        managedAssociations: 'Managed Associations',
+        managedClubs: 'Managed Clubs',
+        myTournaments: 'My Tournaments & Leagues',
+        myLicenses: 'My Licenses & Credentials',
+        myProfile: 'My Profile & Settings',
+        account: 'Account',
+        signedInAs: 'Signed in as',
+        roleSuperAdmin: 'Super Administrator',
+        roleAssocAdmin: 'Association Admin',
+        roleClubAdmin: 'Club Admin / Manager',
+        roleCoach: 'Accredited Coach',
+        rolePlayer: 'Active Athlete',
+        roleReferee: 'Certified Referee',
     },
 
     // Common / Actions

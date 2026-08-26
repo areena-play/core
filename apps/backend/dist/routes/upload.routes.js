@@ -23,4 +23,37 @@ router.post('/', auth_1.authenticateToken, upload.single('file'), async (req, re
         res.status(500).json({ error: 'Upload failed', details: err.message });
     }
 });
+// GET /upload/file/* - Stream/serve object from S3
+router.get('/file/*', async (req, res, next) => {
+    try {
+        const rawKey = req.params[0] || req.params['0'] || req.url.replace(/^\/file\/?/, '').split('?')[0];
+        const key = decodeURIComponent(rawKey).replace(/^\/+/, '');
+        const s3Object = await s3Service_1.S3Service.getFileStream(key);
+        if (s3Object.ContentType) {
+            res.setHeader('Content-Type', s3Object.ContentType);
+        }
+        if (s3Object.ContentLength) {
+            res.setHeader('Content-Length', s3Object.ContentLength);
+        }
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        if (s3Object.Body && typeof s3Object.Body.pipe === 'function') {
+            s3Object.Body.on('error', (streamErr) => {
+                console.error('S3 stream pipe error:', streamErr);
+                if (!res.headersSent)
+                    res.status(500).json({ error: 'Stream error' });
+            });
+            s3Object.Body.pipe(res);
+        }
+        else if (s3Object.Body && typeof s3Object.Body.transformToByteArray === 'function') {
+            const bytes = await s3Object.Body.transformToByteArray();
+            res.send(Buffer.from(bytes));
+        }
+        else {
+            res.status(500).json({ error: 'Unable to read file stream' });
+        }
+    }
+    catch (err) {
+        res.status(404).json({ error: 'File not found on storage' });
+    }
+});
 exports.default = router;

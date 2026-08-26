@@ -18,6 +18,7 @@ import {
     Sparkles,
     Network,
 } from 'lucide-react';
+import { LiveTicker } from '@/components/layout/LiveTicker';
 
 export default function DashboardPage() {
     const { user } = useAuth();
@@ -58,6 +59,9 @@ export default function DashboardPage() {
 
     return (
         <div className="space-y-6 md:space-y-8 pb-12">
+            {/* Live Scoring Ticker Bar (Association Overview Only) */}
+            <LiveTicker />
+
             {/* Hero Welcome Banner */}
             <div className="relative overflow-hidden rounded-2xl border border-red-200 bg-gradient-to-r from-red-100 via-white to-red-50 p-5 sm:p-6 md:p-8 shadow-sm dark:border-red-900/40 dark:bg-gradient-to-r dark:from-red-950/80 dark:via-slate-900 dark:to-slate-950 dark:shadow-xl transition-colors duration-200">
                 <div className="relative z-10 max-w-3xl space-y-3">
@@ -163,7 +167,7 @@ export default function DashboardPage() {
                             <span>{t('competitions.title')}</span>
                         </h2>
                         <Link
-                            href="/competitions"
+                            href="/tournaments"
                             className="flex items-center gap-1 text-xs font-semibold text-red-600 dark:text-red-400 hover:underline"
                         >
                             <span>{t('common.viewAll')}</span> <ChevronRight className="h-3 w-3" />
@@ -202,7 +206,7 @@ export default function DashboardPage() {
                                     </div>
 
                                     <Link
-                                        href={`/competitions/${comp.id}`}
+                                        href={`/tournament/${comp.id}`}
                                         className="inline-flex items-center gap-1.5 self-start rounded-lg bg-slate-100 text-slate-800 hover:bg-red-600 hover:text-white dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-red-600 dark:hover:text-white px-3.5 py-2 text-xs font-semibold transition sm:self-center shadow-sm"
                                     >
                                         <span>{t('competitions.standings')}</span>

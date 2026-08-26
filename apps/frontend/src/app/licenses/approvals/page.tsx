@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { CheckSquare, CheckCircle2, XCircle, Clock, Shield, Award, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 
 export default function ApprovalsQueuePage() {
     const { user } = useAuth();
@@ -64,6 +65,26 @@ export default function ApprovalsQueuePage() {
             setProcessingId(null);
         }
     };
+
+    const isAuthorized =
+        user?.isSuperAdmin ||
+        user?.associationRoles?.some((r: any) =>
+            ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
+        ) ||
+        user?.clubRoles?.some((r: any) =>
+            ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
+        );
+
+    if (!loading && !isAuthorized) {
+        return (
+            <AccessDenied
+                title="License Approvals Restricted"
+                description="The license approvals queue is restricted to authorized federation and club administrative officers."
+                requiredRole="Club or Association Administrator"
+                returnHref="/licenses"
+            />
+        );
+    }
 
     return (
         <div className="space-y-6 pb-12">
