@@ -106,6 +106,7 @@ jobs:
             host_key: "PROD_SSH_HOST"
             user_key: "PROD_SSH_USER"
             key_secret: "PROD_SSH_KEY"
+            domain_key: "PROD_DOMAIN"      # Optional (e.g. demo.areena.ch)
             port_key: "PROD_SSH_PORT"      # Optional (defaults to 22)
             path_key: "PROD_DEPLOY_PATH"   # Optional (defaults to ~/areena)
             env_secret: "PROD_ENV"
@@ -119,18 +120,10 @@ jobs:
           #   host_key: "PROD1_SSH_HOST"
           #   user_key: "PROD1_SSH_USER"
           #   key_secret: "PROD1_SSH_KEY"
+          #   domain_key: "PROD1_DOMAIN"     # Optional
           #   port_key: "PROD1_SSH_PORT"     # Optional
           #   path_key: "PROD1_DEPLOY_PATH"  # Optional (defaults to ~/areena)
           #   env_secret: "PROD1_ENV"
-
-          # - name: "Live Production Server 2"
-          #   project_name: "areena-prod-2"
-          #   host_key: "PROD2_SSH_HOST"
-          #   user_key: "PROD2_SSH_USER"
-          #   key_secret: "PROD2_SSH_KEY"
-          #   port_key: "PROD2_SSH_PORT"     # Optional
-          #   path_key: "PROD2_DEPLOY_PATH"  # Optional (defaults to ~/areena)
-          #   env_secret: "PROD2_ENV"
 
     steps:
       - name: Trigger Fast Image Pull & Restart via SSH
@@ -141,12 +134,14 @@ jobs:
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}
           REGISTRY_IMAGE_PREFIX: ${{ needs.build-and-push.outputs.registry_prefix }}
+          DOMAIN_NAME: ${{ (matrix.server.domain_key && vars[matrix.server.domain_key]) || vars.PROD_DOMAIN || 'localhost' }}
+          LETSENCRYPT_EMAIL: ${{ vars.LETSENCRYPT_EMAIL }}
         with:
           host: ${{ vars[matrix.server.host_key] || secrets[matrix.server.host_key] }}
           username: ${{ vars[matrix.server.user_key] || secrets[matrix.server.user_key] }}
           key: ${{ secrets[matrix.server.key_secret] }}
           port: ${{ vars[matrix.server.port_key] || secrets[matrix.server.port_key] || 22 }}
-          envs: APP_ENV_CONTENT,USE_PREBUILT_IMAGES,GHCR_USER,GHCR_TOKEN,REGISTRY_IMAGE_PREFIX
+          envs: APP_ENV_CONTENT,USE_PREBUILT_IMAGES,GHCR_USER,GHCR_TOKEN,REGISTRY_IMAGE_PREFIX,DOMAIN_NAME,LETSENCRYPT_EMAIL
           script_stop: true
           script: |
             # Resolve deploy path, default to ~/areena

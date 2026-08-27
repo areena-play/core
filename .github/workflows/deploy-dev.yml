@@ -20,12 +20,14 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           APP_ENV_CONTENT: ${{ secrets.DEV_ENV }}
+          DOMAIN_NAME: ${{ vars.DEV_DOMAIN || 'localhost' }}
+          LETSENCRYPT_EMAIL: ${{ vars.LETSENCRYPT_EMAIL }}
         with:
           host: ${{ vars.DEV_SSH_HOST || secrets.DEV_SSH_HOST }}
           username: ${{ vars.DEV_SSH_USER || secrets.DEV_SSH_USER }}
           key: ${{ secrets.DEV_SSH_KEY }}
           port: ${{ vars.DEV_SSH_PORT || secrets.DEV_SSH_PORT || 22 }}
-          envs: APP_ENV_CONTENT
+          envs: APP_ENV_CONTENT,DOMAIN_NAME,LETSENCRYPT_EMAIL
           script_stop: true
           script: |
             # Resolve deploy path, default to ~/areena

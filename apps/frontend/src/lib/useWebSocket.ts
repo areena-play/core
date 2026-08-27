@@ -2,12 +2,33 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:5000';
-
 export interface WebSocketEventPayload {
     channel: string;
     data: any;
     timestamp: string;
+}
+
+function getWebSocketUrl(): string {
+    const envUrl = process.env.NEXT_PUBLIC_WS_URL;
+
+    // Server-side rendering fallback
+    if (typeof window === 'undefined') {
+        return envUrl || 'ws://localhost:5000';
+    }
+
+    // If an explicit remote WebSocket URL is set and doesn't point to localhost
+    if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+        return envUrl;
+    }
+
+    // If running in local development
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'ws://localhost:5000';
+    }
+
+    // In production / remote environments behind SSL reverse proxy (Caddy / Nginx)
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}/ws`;
 }
 
 export function useWebSocket(onEvent?: (event: WebSocketEventPayload) => void) {
@@ -19,7 +40,8 @@ export function useWebSocket(onEvent?: (event: WebSocketEventPayload) => void) {
 
     const connect = useCallback(() => {
         try {
-            const ws = new WebSocket(WS_URL);
+            const wsUrl = getWebSocketUrl();
+            const ws = new WebSocket(wsUrl);
             wsRef.current = ws;
 
             ws.onopen = () => {
@@ -67,11 +89,5 @@ export function useWebSocket(onEvent?: (event: WebSocketEventPayload) => void) {
         };
     }, [connect]);
 
-    const send = useCallback((data: any) => {
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify(data));
-        }
-    }, []);
-
-    return { isConnected, lastMessage, send };
+    return { isConnected, lastMessage };
 }
