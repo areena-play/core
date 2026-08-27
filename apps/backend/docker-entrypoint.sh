@@ -23,4 +23,3 @@ npx ts-node -r dotenv/config apps/backend/prisma/seed.ts || echo "[AREENA Backen
 
 echo "[AREENA Backend Entrypoint] Starting AREENA Backend Service..."
 exec node apps/backend/dist/server.js
-
