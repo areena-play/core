@@ -1,7 +1,741 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
 }
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum AssociationLevel {
+  NATIONAL
+  REGIONAL
+  LOCAL
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum LicenseType {
+  PLAYER_REGULAR
+  PLAYER_TCARD
+  PLAYER_WOMEN
+  PLAYER_JUNIOR
+  PLAYER_SENIOR
+  COACH
+  REFEREE
+}
+
+enum LicenseStatus {
+  PENDING_CLUB
+  PENDING_ASSOCIATION
+  APPROVED
+  REJECTED
+  EXPIRED
+  SUSPENDED
+}
+
+enum CourseType {
+  COACH_REFRESHER
+  REFEREE_REFRESHER
+}
+
+enum CompetitionType {
+  LEAGUE
+  TOURNAMENT
+}
+
+enum CompetitionStatus {
+  DRAFT
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum GenderRestriction {
+  ANY
+  MALE_ONLY
+  FEMALE_ONLY
+  MIXED
+}
+
+enum EncounterStatus {
+  SCHEDULED
+  LIVE
+  FINISHED
+  POSTPONED
+  CANCELLED
+}
+
+enum MatchType {
+  SINGLE
+  DOUBLE
+}
+
+enum MatchWinner {
+  HOME
+  AWAY
+  DRAW
+  PENDING
+}
+
+enum EventType {
+  TOURNAMENT
+  LEAGUE_MATCH
+  REFRESHER_COURSE
+  ASSOCIATION_MEETING
+  CLUB_EVENT
+  TRAINING
+}
+
+enum MessageChannel {
+  EMAIL
+  SMS
+}
+
+enum OAuthClientStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REVOKED
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  phone        String
+  street       String
+  postalCode   String
+  city         String
+  country      String    @default("Switzerland")
+  birthDate    DateTime?
+  gender       Gender?
+  licenseId    String?   @unique
+  eloPoints    Int       @default(1000)
+  rank         Int?
+  avatarUrl    String?
+  isSuperAdmin Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  associationRoles     UserAssociationRole[]
+  clubRoles            UserClubRole[]
+  licenses             License[]             @relation("UserLicenses")
+  appliedLicenses      License[]             @relation("AppliedByUser")
+  approvedLicenses     License[]             @relation("ApprovedByUser")
+  courseAttendances    CourseAttendance[]    @relation("UserCourseAttendance")
+  attestedAttendances  CourseAttendance[]    @relation("AttestedByInstructor")
+  instructedCourses    RefresherCourse[]     @relation("CourseInstructor")
+  teamMemberships      TeamMember[]
+  sentMessages         BroadcastMessage[]    @relation("SenderUser")
+  receivedMessages     MessageRecipient[]
+  oauthClients         OAuthClient[]         @relation("UserOAuthClients")
+  approvedOAuthClients OAuthClient[]         @relation("ApprovedByAdmin")
+  oauthTokens          OAuthToken[]
+  invoicesReceived     Invoice[]             @relation("InvoiceRecipientUser")
+  auditLogs            AuditLog[]            @relation("UserAuditLogs")
+
+  // Matches where user is player
+  homeMatchesP1 Match[] @relation("HomePlayer1")
+  homeMatchesP2 Match[] @relation("HomePlayer2")
+  awayMatchesP1 Match[] @relation("AwayPlayer1")
+  awayMatchesP2 Match[] @relation("AwayPlayer2")
+}
+
+model Association {
+  id                String           @id @default(uuid())
+  name              String
+  shortName         String
+  code              String           @unique
+  level             AssociationLevel
+  isTopLevel        Boolean          @default(false)
+  rules             Json             @default("{}")
+  licenseIdTemplate String           @default("{regionDigit}{year2}{counter3}")
+  licenseCounter    Int              @default(1)
+  regionDigit       Int              @default(1)
+  logoUrl           String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  parentHierarchies AssociationHierarchy[] @relation("ChildAssociation")
+  childHierarchies  AssociationHierarchy[] @relation("ParentAssociation")
+  clubAssociations  ClubAssociation[]
+  seasons           Season[]
+  competitions      Competition[]
+  licenses          License[]
+  refresherCourses  RefresherCourse[]
+  calendarEvents    CalendarEvent[]
+  adminRoles        UserAssociationRole[]
+  broadcastMessages BroadcastMessage[]
+  invoicesIssued    Invoice[]             @relation("AssociationInvoices")
+  bexioConfig       BexioConfig?
+  auditLogs         AuditLog[]            @relation("AssociationAuditLogs")
+}
+
+model AssociationHierarchy {
+  id        String   @id @default(uuid())
+  parentId  String
+  childId   String
+  createdAt DateTime @default(now())
+
+  parent Association @relation("ParentAssociation", fields: [parentId], references: [id], onDelete: Cascade)
+  child  Association @relation("ChildAssociation", fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, childId])
+}
+
+model UserAssociationRole {
+  id            String   @id @default(uuid())
+  userId        String
+  associationId String
+  role          String   @default("ADMIN") // ADMIN, PRESIDENT, SECRETARY, REFEREE_HEAD, COACH_HEAD
+  createdAt     DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, associationId, role])
+}
+
+model Club {
+  id         String   @id @default(uuid())
+  name       String
+  code       String   @unique
+  address    String
+  city       String
+  postalCode String
+  country    String   @default("Switzerland")
+  email      String
+  phone      String
+  website    String?
+  logoUrl    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  associations      ClubAssociation[]
+  licenses          License[]
+  teams             Team[]
+  calendarEvents    CalendarEvent[]
+  adminRoles        UserClubRole[]
+  broadcastMessages BroadcastMessage[]
+  invoicesIssued    Invoice[]             @relation("ClubInvoices")
+  invoicesReceived  Invoice[]             @relation("ClubInvoicesReceived")
+  bexioConfig       BexioConfig?
+  auditLogs         AuditLog[]            @relation("ClubAuditLogs")
+}
+
+model ClubAssociation {
+  id            String   @id @default(uuid())
+  clubId        String
+  associationId String
+  createdAt     DateTime @default(now())
+
+  club        Club        @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, associationId])
+}
+
+model UserClubRole {
+  id        String   @id @default(uuid())
+  userId    String
+  clubId    String
+  role      String   @default("ADMIN") // ADMIN, PRESIDENT, COACH, MANAGER
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clubId, role])
+}
+
+model Season {
+  id            String   @id @default(uuid())
+  associationId String
+  name          String
+  startDate     DateTime
+  endDate       DateTime
+  isCurrent     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  association  Association   @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  licenses     License[]
+  competitions Competition[]
+}
+
+model License {
+  id               String        @id @default(uuid())
+  userId           String
+  type             LicenseType
+  status           LicenseStatus @default(PENDING_CLUB)
+  clubId           String?
+  associationId    String
+  seasonId         String?
+  validFrom        DateTime
+  validUntil       DateTime
+  autoApproved     Boolean       @default(false)
+  appliedByUserId  String
+  approvedByUserId String?
+  rejectionReason  String?
+  metadata         Json          @default("{}")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user              User               @relation("UserLicenses", fields: [userId], references: [id], onDelete: Cascade)
+  appliedBy         User               @relation("AppliedByUser", fields: [appliedByUserId], references: [id], onDelete: Cascade)
+  approvedBy        User?              @relation("ApprovedByUser", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  club              Club?              @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  association       Association        @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  season            Season?            @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  courseAttendances CourseAttendance[]
+}
+
+model RefresherCourse {
+  id                      String     @id @default(uuid())
+  associationId           String
+  title                   String
+  type                    CourseType
+  instructorId            String
+  location                String
+  date                    DateTime
+  durationHours           Int        @default(4)
+  validityExtensionMonths Int        @default(12)
+  createdAt               DateTime   @default(now())
+  updatedAt               DateTime   @updatedAt
+
+  association Association        @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  instructor  User               @relation("CourseInstructor", fields: [instructorId], references: [id], onDelete: Cascade)
+  attendances CourseAttendance[]
+}
+
+model CourseAttendance {
+  id               String    @id @default(uuid())
+  courseId         String
+  userId           String
+  licenseId        String?
+  attested         Boolean   @default(false)
+  attestedAt       DateTime?
+  attestedByUserId String?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  course     RefresherCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user       User            @relation("UserCourseAttendance", fields: [userId], references: [id], onDelete: Cascade)
+  license    License?        @relation(fields: [licenseId], references: [id], onDelete: SetNull)
+  attestedBy User?           @relation("AttestedByInstructor", fields: [attestedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([courseId, userId])
+}
+
+model Competition {
+  id            String            @id @default(uuid())
+  type          CompetitionType
+  name          String
+  description   String?
+  associationId String
+  seasonId      String?
+  startDate     DateTime
+  endDate       DateTime
+  location      String?
+  status        CompetitionStatus @default(DRAFT)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  association    Association     @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  season         Season?         @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  categories     Category[]
+  calendarEvents CalendarEvent[]
+}
+
+model Category {
+  id                  String            @id @default(uuid())
+  competitionId       String
+  name                String
+  teamSize            Int               @default(1)
+  minElo              Int?
+  maxElo              Int?
+  minAge              Int?
+  maxAge              Int?
+  genderRestriction   GenderRestriction @default(ANY)
+  requiredLicenseType LicenseType?
+  encounterFormat     Json              @default("[]")
+  roundsPerGroup      Int               @default(1)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  competition Competition                @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  groups      CompetitionGroup[]
+  encounters  Encounter[]
+  teams       TeamCategoryRegistration[]
+}
+
+model Team {
+  id        String   @id @default(uuid())
+  name      String
+  clubId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club           Club?                      @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  members        TeamMember[]
+  registrations  TeamCategoryRegistration[]
+  homeEncounters Encounter[]                @relation("HomeTeamEncounters")
+  awayEncounters Encounter[]                @relation("AwayTeamEncounters")
+  standings      GroupStanding[]
+}
+
+model TeamMember {
+  id        String   @id @default(uuid())
+  teamId    String
+  userId    String
+  role      String   @default("PLAYER") // CAPTAIN, PLAYER, RESERVE
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
+model TeamCategoryRegistration {
+  id           String   @id @default(uuid())
+  teamId       String
+  categoryId   String
+  registeredAt DateTime @default(now())
+
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, categoryId])
+}
+
+model CompetitionGroup {
+  id         String   @id @default(uuid())
+  categoryId String
+  name       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category   Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  encounters Encounter[]
+  standings  GroupStanding[]
+}
+
+model GroupStanding {
+  id          String   @id @default(uuid())
+  groupId     String
+  teamId      String
+  played      Int      @default(0)
+  won         Int      @default(0)
+  drawn       Int      @default(0)
+  lost        Int      @default(0)
+  matchesWon  Int      @default(0)
+  matchesLost Int      @default(0)
+  setsWon     Int      @default(0)
+  setsLost    Int      @default(0)
+  pointsWon   Int      @default(0)
+  pointsLost  Int      @default(0)
+  tablePoints Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  group CompetitionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  team  Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, teamId])
+}
+
+model Encounter {
+  id          String          @id @default(uuid())
+  categoryId  String
+  groupId     String?
+  round       Int             @default(1)
+  scheduledAt DateTime
+  location    String?
+  homeTeamId  String
+  awayTeamId  String
+  homeScore   Int             @default(0)
+  awayScore   Int             @default(0)
+  status      EncounterStatus @default(SCHEDULED)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  category       Category          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  group          CompetitionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  homeTeam       Team              @relation("HomeTeamEncounters", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  awayTeam       Team              @relation("AwayTeamEncounters", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  matches        Match[]
+  calendarEvents CalendarEvent[]
+}
+
+model Match {
+  id            String          @id @default(uuid())
+  encounterId   String
+  orderIndex    Int
+  matchType     MatchType       @default(SINGLE)
+  label         String?
+  homePlayer1Id String?
+  homePlayer2Id String?
+  awayPlayer1Id String?
+  awayPlayer2Id String?
+  sets          Json            @default("[]")
+  homeWonSets   Int             @default(0)
+  awayWonSets   Int             @default(0)
+  winner        MatchWinner     @default(PENDING)
+  status        EncounterStatus @default(SCHEDULED)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  encounter   Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  homePlayer1 User?     @relation("HomePlayer1", fields: [homePlayer1Id], references: [id], onDelete: SetNull)
+  homePlayer2 User?     @relation("HomePlayer2", fields: [homePlayer2Id], references: [id], onDelete: SetNull)
+  awayPlayer1 User?     @relation("AwayPlayer1", fields: [awayPlayer1Id], references: [id], onDelete: SetNull)
+  awayPlayer2 User?     @relation("AwayPlayer2", fields: [awayPlayer2Id], references: [id], onDelete: SetNull)
+}
+
+model CalendarEvent {
+  id            String    @id @default(uuid())
+  title         String
+  description   String?
+  eventType     EventType
+  associationId String?
+  clubId        String?
+  competitionId String?
+  encounterId   String?
+  startDate     DateTime
+  endDate       DateTime
+  location      String?
+  isPublic      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  association Association? @relation(fields: [associationId], references: [id], onDelete: SetNull)
+  club        Club?        @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  competition Competition? @relation(fields: [competitionId], references: [id], onDelete: SetNull)
+  encounter   Encounter?   @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+}
+
+model BroadcastMessage {
+  id            String         @id @default(uuid())
+  senderUserId  String
+  associationId String?
+  clubId        String?
+  subject       String
+  body          String
+  channel       MessageChannel @default(EMAIL)
+  targetFilter  Json           @default("{}")
+  sentAt        DateTime       @default(now())
+
+  sender      User               @relation("SenderUser", fields: [senderUserId], references: [id], onDelete: Cascade)
+  association Association?       @relation(fields: [associationId], references: [id], onDelete: SetNull)
+  club        Club?              @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  recipients  MessageRecipient[]
+}
+
+model MessageRecipient {
+  id              String   @id @default(uuid())
+  messageId       String
+  recipientUserId String
+  status          String   @default("SENT") // QUEUED, SENT, DELIVERED, FAILED
+  deliveredAt     DateTime @default(now())
+
+  message   BroadcastMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  recipient User             @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, recipientUserId])
+}
+
+model OAuthClient {
+  id               String            @id @default(uuid())
+  clientId         String            @unique
+  clientSecretHash String
+  name             String
+  description      String?
+  ownerUserId      String
+  allowedScopes    String[]          @default(["read:public"])
+  status           OAuthClientStatus @default(PENDING_APPROVAL)
+  approvedByUserId String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  owner      User         @relation("UserOAuthClients", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  approvedBy User?        @relation("ApprovedByAdmin", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  tokens     OAuthToken[]
+}
+
+model OAuthToken {
+  id        String   @id @default(uuid())
+  clientId  String
+  userId    String?
+  token     String   @unique
+  expiresAt DateTime
+  scopes    String[]
+  createdAt DateTime @default(now())
+
+  client OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user   User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+// ----------------------------------------
+// BILLING, INVOICING & BEXIO INTEGRATION
+// ----------------------------------------
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum InvoiceCategory {
+  MEMBERSHIP_FEE
+  LICENSE_FEE
+  COMPETITION_ENTRY
+  COURSE_FEE
+  EQUIPMENT
+  PENALTY
+  OTHER
+}
+
+enum InvoiceTargetType {
+  MEMBER_CLUB
+  CLUB_MEMBER
+  INDIVIDUAL_PLAYER
+  SUB_ASSOCIATION
+  OTHER
+}
+
+model Invoice {
+  id               String            @id @default(uuid())
+  invoiceNumber    String            @unique
+  associationId    String?
+  clubId           String?
+  targetType       InvoiceTargetType @default(MEMBER_CLUB)
+  recipientClubId  String?
+  recipientUserId  String?
+  recipientName    String
+  recipientEmail   String?
+  recipientAddress String?
+  status           InvoiceStatus     @default(DRAFT)
+  category         InvoiceCategory   @default(MEMBERSHIP_FEE)
+  currency         String            @default("CHF")
+  subtotal         Float
+  taxRate          Float             @default(0.0)
+  taxAmount        Float             @default(0.0)
+  totalAmount      Float
+  issueDate        DateTime          @default(now())
+  dueDate          DateTime
+  paidAt           DateTime?
+  notes            String?
+  terms            String?
+  bexioId          Int?
+  bexioSyncedAt    DateTime?
+  bexioSyncStatus  String?           @default("NOT_CONFIGURED") // NOT_CONFIGURED, PENDING, SYNCED, FAILED
+  bexioQrPdfUrl    String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  association   Association?      @relation("AssociationInvoices", fields: [associationId], references: [id], onDelete: SetNull)
+  club          Club?             @relation("ClubInvoices", fields: [clubId], references: [id], onDelete: SetNull)
+  recipientClub Club?             @relation("ClubInvoicesReceived", fields: [recipientClubId], references: [id], onDelete: SetNull)
+  recipientUser User?             @relation("InvoiceRecipientUser", fields: [recipientUserId], references: [id], onDelete: SetNull)
+  lineItems     InvoiceLineItem[]
+}
+
+model InvoiceLineItem {
+  id             String   @id @default(uuid())
+  invoiceId      String
+  position       Int      @default(1)
+  description    String
+  quantity       Float    @default(1.0)
+  unit           String   @default("pc")
+  unitPrice      Float
+  totalPrice     Float
+  taxRate        Float    @default(0.0)
+  bexioArticleId Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model BexioConfig {
+  id             String    @id @default(uuid())
+  associationId  String?   @unique
+  clubId         String?   @unique
+  apiToken       String?
+  userId         Int?
+  bankAccountId  Int?
+  taxId          Int?
+  paymentTypeId  Int?
+  iban           String?
+  qrIban         String?
+  companyName    String?
+  companyAddress String?
+  autoSync       Boolean   @default(true)
+  isConnected    Boolean   @default(false)
+  lastSyncAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  association Association? @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  club        Club?        @relation(fields: [clubId], references: [id], onDelete: Cascade)
+}
+
+// ----------------------------------------
+// AUDIT TRAIL & TRACEABILITY LOGGING
+// ----------------------------------------
+
+enum AuditCategory {
+  AUTH
+  GOVERNANCE
+  FINANCE
+  COMMUNICATION
+  LICENSING
+  TOURNAMENT
+  CLUB
+  DEVELOPER
+  SECURITY
+}
+
+model AuditLog {
+  id            String        @id @default(uuid())
+  userId        String?
+  userEmail     String
+  userName      String?
+  action        String
+  category      AuditCategory @default(GOVERNANCE)
+  entityType    String?
+  entityId      String?
+  associationId String?
+  clubId        String?
+  tournamentId  String?
+  description   String
+  status        String        @default("SUCCESS") // SUCCESS, FAILURE, WARNING
+  ipAddress     String        @default("127.0.0.1")
+  userAgent     String        @default("Unknown")
+  metadata      Json          @default("{}")
+  createdAt     DateTime      @default(now())
+
+  user        User?        @relation("UserAuditLogs", fields: [userId], references: [id], onDelete: SetNull)
+  association Association? @relation("AssociationAuditLogs", fields: [associationId], references: [id], onDelete: SetNull)
+  club        Club?        @relation("ClubAuditLogs", fields: [clubId], references: [id], onDelete: SetNull)
+
+  @@index([associationId])
+  @@index([clubId])
+  @@index([userId])
+  @@index([category])
+  @@index([action])
+  @@index([createdAt])
+}
+

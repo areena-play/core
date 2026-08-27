@@ -1,0 +1,28 @@
+import { Request, Response, NextFunction } from 'express';
+import { ZodSchema, ZodError } from 'zod';
+
+export function validate(schema: ZodSchema) {
+    return (req: Request, res: Response, next: NextFunction) => {
+        try {
+            req.body = schema.parse(req.body);
+            next();
+        } catch (err) {
+            if (err instanceof ZodError) {
+                return res.status(400).json({
+                    error: 'Validation error',
+                    details: err.errors.map((e) => ({ path: e.path.join('.'), message: e.message })),
+                });
+            }
+            next(err);
+        }
+    };
+}
+
+export function errorHandler(err: any, req: Request, res: Response, next: NextFunction) {
+    console.error('[Error Handler]', err);
+    const status = err.status || 500;
+    res.status(status).json({
+        error: err.message || 'Internal Server Error',
+        ...(process.env.NODE_ENV === 'development' ? { stack: err.stack } : {}),
+    });
+}

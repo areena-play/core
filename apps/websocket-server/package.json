@@ -1,9 +1,25 @@
 {
-  "name": "@areena/websocket-server",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "dev": "nodemon src/server.ts",
-    "start": "node dist/server.js"
-  }
+    "name": "@areena/websocket-server",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "dev": "nodemon --watch src --exec ts-node -r dotenv/config src/server.ts",
+        "build": "tsc",
+        "start": "node dist/server.js"
+    },
+    "dependencies": {
+        "@areena/shared": "*",
+        "dotenv": "^16.4.5",
+        "ioredis": "^5.4.1",
+        "jsonwebtoken": "^9.0.2",
+        "ws": "^8.16.0"
+    },
+    "devDependencies": {
+        "@types/jsonwebtoken": "^9.0.6",
+        "@types/node": "^20.12.7",
+        "@types/ws": "^8.5.10",
+        "nodemon": "^3.1.0",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.4.5"
+    }
 }
