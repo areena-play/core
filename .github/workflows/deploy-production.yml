@@ -1,4 +1,4 @@
-name: Deploy Production (Build on GitHub & Deploy Pre-built Images)
+name: Deploy Production
 
 on:
   push:
@@ -149,9 +149,18 @@ jobs:
           envs: APP_ENV_CONTENT,USE_PREBUILT_IMAGES,GHCR_USER,GHCR_TOKEN,REGISTRY_IMAGE_PREFIX
           script_stop: true
           script: |
-            # Default deploy path to ~/areena if not specified
-            TARGET_PATH="${{ (matrix.server.path_key && (vars[matrix.server.path_key] || secrets[matrix.server.path_key])) || '~/areena' }}"
+            # Resolve deploy path, default to ~/areena
+            RAW_PATH="${{ (matrix.server.path_key && (vars[matrix.server.path_key] || secrets[matrix.server.path_key])) || '~/areena' }}"
+            TARGET_PATH="${RAW_PATH/#\~/$HOME}"
             echo "🚀 Connecting to ${{ matrix.server.name }} at $TARGET_PATH..."
+            
+            # Ensure target directory exists and repo is initialized
+            if [ ! -d "$TARGET_PATH/.git" ]; then
+              echo "📥 Repository not found at $TARGET_PATH. Initializing and cloning..."
+              mkdir -p "$TARGET_PATH"
+              git clone "https://github.com/${{ github.repository }}.git" "$TARGET_PATH"
+            fi
+            
             cd "$TARGET_PATH"
             
             # Export registry image prefix to .env if not present

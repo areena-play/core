@@ -1,9 +1,9 @@
-name: Deploy Development (Dev Instance)
+name: Deploy Development
 
 on:
   push:
     branches:
-      - dev
+      - dev/main
   workflow_dispatch:
 
 concurrency:
@@ -28,8 +28,18 @@ jobs:
           envs: APP_ENV_CONTENT
           script_stop: true
           script: |
-            TARGET_PATH="${{ vars.DEV_DEPLOY_PATH || secrets.DEV_DEPLOY_PATH || '~/areena' }}"
+            # Resolve deploy path, default to ~/areena
+            RAW_PATH="${{ vars.DEV_DEPLOY_PATH || secrets.DEV_DEPLOY_PATH || '~/areena' }}"
+            TARGET_PATH="${RAW_PATH/#\~/$HOME}"
             echo "🚀 Connecting to Dev Server at $TARGET_PATH..."
+            
+            # Ensure target directory exists and repo is initialized
+            if [ ! -d "$TARGET_PATH/.git" ]; then
+              echo "📥 Repository not found at $TARGET_PATH. Initializing and cloning..."
+              mkdir -p "$TARGET_PATH"
+              git clone "https://github.com/${{ github.repository }}.git" "$TARGET_PATH"
+            fi
+            
             cd "$TARGET_PATH"
             chmod +x scripts/deploy.sh
             ./scripts/deploy.sh dev "areena-dev"
