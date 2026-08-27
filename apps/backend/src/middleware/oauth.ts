@@ -10,6 +10,10 @@ export interface OAuthRequest extends Request {
 }
 
 export async function authenticateOAuthToken(req: OAuthRequest, res: Response, next: NextFunction) {
+    if (req.oauth) {
+        return next();
+    }
+
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
 

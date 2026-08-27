@@ -4,6 +4,9 @@ exports.authenticateOAuthToken = authenticateOAuthToken;
 exports.requireOAuthScope = requireOAuthScope;
 const prisma_1 = require("../config/prisma");
 async function authenticateOAuthToken(req, res, next) {
+    if (req.oauth) {
+        return next();
+    }
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
     if (!token) {

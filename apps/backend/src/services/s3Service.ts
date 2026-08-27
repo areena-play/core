@@ -29,8 +29,8 @@ export class S3Service {
         const apiBase =
             process.env.API_PUBLIC_URL ||
             process.env.NEXT_PUBLIC_API_URL ||
-            `http://localhost:${config.port}`;
-        const fileUrl = `${apiBase}/upload/file/${key}`;
+            '';
+        const fileUrl = apiBase ? `${apiBase}/upload/file/${key}` : `/upload/file/${key}`;
 
         return {
             key,

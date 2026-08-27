@@ -21,8 +21,8 @@ class S3Service {
         // Generate reliable API streaming URL for browser access (avoids MinIO private bucket/CORS/port mismatch)
         const apiBase = process.env.API_PUBLIC_URL ||
             process.env.NEXT_PUBLIC_API_URL ||
-            `http://localhost:${env_1.config.port}`;
-        const fileUrl = `${apiBase}/upload/file/${key}`;
+            '';
+        const fileUrl = apiBase ? `${apiBase}/upload/file/${key}` : `/upload/file/${key}`;
         return {
             key,
             fileUrl,

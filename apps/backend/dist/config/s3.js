@@ -7,8 +7,8 @@ const client_s3_1 = require("@aws-sdk/client-s3");
 const env_1 = require("./env");
 exports.s3Client = new client_s3_1.S3Client({
     region: env_1.config.s3.region,
-    endpoint: env_1.config.s3.endpoint,
-    forcePathStyle: true,
+    ...(env_1.config.s3.endpoint ? { endpoint: env_1.config.s3.endpoint } : {}),
+    forcePathStyle: Boolean(env_1.config.s3.endpoint),
     credentials: {
         accessKeyId: env_1.config.s3.accessKeyId,
         secretAccessKey: env_1.config.s3.secretAccessKey,

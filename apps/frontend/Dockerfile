@@ -11,7 +11,7 @@ RUN npm install
 COPY packages/shared/ ./packages/shared/
 COPY apps/frontend/ ./apps/frontend/
 
-ARG NEXT_PUBLIC_API_URL=http://localhost:4000
+ARG NEXT_PUBLIC_API_URL=/api
 ARG NEXT_PUBLIC_WS_URL=ws://localhost:5000
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL

@@ -8,6 +8,7 @@ const cors_1 = __importDefault(require("cors"));
 const morgan_1 = __importDefault(require("morgan"));
 const env_1 = require("./config/env");
 const errorHandler_1 = require("./middleware/errorHandler");
+const gatewayGuard_1 = require("./middleware/gatewayGuard");
 const s3_1 = require("./config/s3");
 // Route imports
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
@@ -36,6 +37,8 @@ app.get('/health', (req, res) => {
         timestamp: new Date().toISOString(),
     });
 });
+// Ingress API Gateway Guard (OAuth 2.0 or Frontend Server with internal secret)
+app.use(gatewayGuard_1.gatewayIngressGuard);
 // Mount Routes
 app.use('/auth', auth_routes_1.default);
 app.use('/associations', associations_routes_1.default);

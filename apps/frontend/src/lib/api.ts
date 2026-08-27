@@ -1,4 +1,5 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+const DIRECT_BACKEND_URL = process.env.NEXT_PUBLIC_DIRECT_API_URL || 'http://localhost:4000';
 
 class ApiClient {
     private getToken(): string | null {
@@ -248,9 +249,9 @@ class ApiClient {
         return this.request('/oauth/token', { method: 'POST', body: JSON.stringify(body) });
     }
 
-    // Protected OAuth API Tester
+    // Protected OAuth API Tester (Direct external OAuth verification against backend)
     fetchOAuthApi(endpoint: string, token: string) {
-        return fetch(`${API_BASE}/oauth${endpoint}`, {
+        return fetch(`${DIRECT_BACKEND_URL}/oauth${endpoint}`, {
             headers: { Authorization: `Bearer ${token}` },
         }).then((res) => res.json());
     }
