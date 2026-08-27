@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -14,8 +14,8 @@ COPY apps/websocket-server/ ./apps/websocket-server/
 RUN npm run build --workspace=@areena/shared
 RUN npm run build --workspace=@areena/websocket-server
 
-# Runner stage: Fast startup by copying pre-built artifacts and node_modules
-FROM node:20-alpine AS runner
+# Runner stage: Fast startup on Node 22 LTS
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production

@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -20,8 +20,8 @@ ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
 RUN npm run build --workspace=@areena/shared
 RUN npm run build --workspace=@areena/frontend
 
-# Runner stage: Lightweight Standalone Next.js runner (no npm install required!)
-FROM node:20-alpine AS runner
+# Runner stage: Lightweight Standalone Next.js runner (Node 22 LTS)
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production

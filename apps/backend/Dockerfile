@@ -1,4 +1,4 @@
-FROM node:20-slim AS builder
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
@@ -17,8 +17,8 @@ RUN npm run build --workspace=@areena/shared
 RUN npx prisma generate --schema=apps/backend/prisma/schema.prisma
 RUN npm run build --workspace=@areena/backend
 
-# Runner stage: Fast startup by copying pre-built artifacts and node_modules
-FROM node:20-slim AS runner
+# Runner stage: Fast startup on Node 22 LTS
+FROM node:22-slim AS runner
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
