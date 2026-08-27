@@ -9,7 +9,13 @@
         reverse_proxy websocket:5000
     }
 
-    # 2. Next.js Frontend & API Gateway
+    # 2. Direct to Express API Backend (stripping /api prefix)
+    handle /api* {
+        uri strip_prefix /api
+        reverse_proxy backend:4000
+    }
+
+    # 3. Next.js Frontend
     handle {
         reverse_proxy frontend:3000
     }

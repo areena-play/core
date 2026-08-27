@@ -1,11 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-    SESSION_COOKIE_NAME,
-    buildSessionCookieHeader,
-    createSessionToken,
-    verifySessionToken,
-} from '@/lib/sessionSecurity';
-import { checkRateLimit } from '@/lib/rateLimit';
 
 function getBackendUrl(): string {
     return (
@@ -15,137 +8,40 @@ function getBackendUrl(): string {
     );
 }
 
-function getInternalSecret(): string {
-    return (
-        process.env.INTERNAL_API_SECRET ||
-        'areena_internal_secret_key_2026'
-    );
-}
-
 async function handleProxy(request: NextRequest, { params }: { params: { path: string[] } }) {
-    const clientIp =
-        request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
-        request.headers.get('x-real-ip') ||
-        request.ip ||
-        '127.0.0.1';
-
-    // -------------------------------------------------------------
-    // 1. Rate Limiting Check
-    // -------------------------------------------------------------
-    const rateLimitResult = checkRateLimit(clientIp);
-    if (!rateLimitResult.allowed) {
-        return NextResponse.json(
-            {
-                error: 'Too Many Requests',
-                message: 'Rate limit exceeded. Please slow down your requests.',
-                retryAfterSeconds: rateLimitResult.retryAfterSeconds,
-            },
-            {
-                status: 429,
-                headers: {
-                    'Retry-After': String(rateLimitResult.retryAfterSeconds),
-                },
-            },
-        );
-    }
-
-    // -------------------------------------------------------------
-    // 2. Fetch Metadata & Cross-Origin Validation (Anti-Scraping / Anti-CSRF)
-    // -------------------------------------------------------------
-    const secFetchSite = request.headers.get('sec-fetch-site');
-    if (secFetchSite && secFetchSite === 'cross-site') {
-        return NextResponse.json(
-            {
-                error: 'Forbidden',
-                message: 'Cross-origin proxy requests are prohibited.',
-            },
-            { status: 403 },
-        );
-    }
-
-    const origin = request.headers.get('origin');
-    if (origin) {
-        try {
-            const originUrl = new URL(origin);
-            const reqHost = request.headers.get('host') || request.nextUrl.host;
-            if (originUrl.host !== reqHost && !originUrl.host.includes('localhost') && !originUrl.host.includes('127.0.0.1')) {
-                return NextResponse.json(
-                    {
-                        error: 'Forbidden',
-                        message: 'Unauthorized origin for internal API proxy.',
-                    },
-                    { status: 403 },
-                );
-            }
-        } catch {}
-    }
-
-    // -------------------------------------------------------------
-    // 3. Signed Session Handshake Cookie & User Auth Verification
-    // -------------------------------------------------------------
-    const isPublicMediaStream =
-        params.path &&
-        params.path.length >= 2 &&
-        params.path[0] === 'upload' &&
-        params.path[1] === 'file' &&
-        request.method.toUpperCase() === 'GET';
-
-    const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-    const sessionCheck = await verifySessionToken(sessionCookie);
-    const authHeader = request.headers.get('authorization');
-
-    // Legitimate requests must have either a valid signed session handshake cookie, a User Authorization token, or be a public media stream
-    if (!isPublicMediaStream && !sessionCheck.valid && !authHeader) {
-        return NextResponse.json(
-            {
-                error: 'Forbidden',
-                message:
-                    'Direct external access to frontend proxy is not permitted. Please visit the application in your browser or authenticate via OAuth 2.0.',
-                docs: '/developers',
-            },
-            { status: 403 },
-        );
-    }
-
-    // -------------------------------------------------------------
-    // 4. Forwarding Request to AREENA Backend
-    // -------------------------------------------------------------
     const path = params.path ? params.path.join('/') : '';
     const search = request.nextUrl.search || '';
     const backendBase = getBackendUrl();
     const targetUrl = `${backendBase}/${path}${search}`;
 
-    const forwardHeaders: Record<string, string> = {
-        'x-internal-secret': getInternalSecret(),
-    };
+    const forwardHeaders: Record<string, string> = {};
 
-    if (authHeader) {
-        forwardHeaders['authorization'] = authHeader;
-    }
+    // Forward headers from client to backend
+    const forwardHeaderNames = [
+        'authorization',
+        'content-type',
+        'accept',
+        'cookie',
+        'user-agent',
+        'sec-fetch-site',
+        'sec-fetch-mode',
+        'origin',
+        'referer',
+    ];
 
-    const contentType = request.headers.get('content-type');
-    if (contentType) {
-        forwardHeaders['content-type'] = contentType;
-    }
+    forwardHeaderNames.forEach((name) => {
+        const val = request.headers.get(name);
+        if (val) forwardHeaders[name] = val;
+    });
 
-    const accept = request.headers.get('accept');
-    if (accept) {
-        forwardHeaders['accept'] = accept;
-    }
-
-    const userAgent = request.headers.get('user-agent');
-    if (userAgent) {
-        forwardHeaders['user-agent'] = userAgent;
-    }
-
+    const clientIp =
+        request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+        request.headers.get('x-real-ip') ||
+        request.ip ||
+        '127.0.0.1';
     forwardHeaders['x-forwarded-for'] = clientIp;
 
-    const cookie = request.headers.get('cookie');
-    if (cookie) {
-        forwardHeaders['cookie'] = cookie;
-    }
-
-    // Body extraction
+    // Body extraction for mutating methods
     let body: BodyInit | undefined = undefined;
     const method = request.method.toUpperCase();
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
@@ -165,7 +61,6 @@ async function handleProxy(request: NextRequest, { params }: { params: { path: s
                 cache: 'no-store',
             });
         } catch (fetchErr: any) {
-            // IPv4 fallback if localhost failed
             if (targetUrl.includes('localhost:')) {
                 const fallbackUrl = targetUrl.replace('localhost:', '127.0.0.1:');
                 backendRes = await fetch(fallbackUrl, {
@@ -179,35 +74,20 @@ async function handleProxy(request: NextRequest, { params }: { params: { path: s
             }
         }
 
-        // Read response body
         const responseData = await backendRes.arrayBuffer();
-
-        // Build response with forwarded headers
         const responseHeaders = new Headers();
-        const copyHeaders = [
+
+        [
             'content-type',
             'content-length',
             'content-disposition',
             'cache-control',
-        ];
-
-        copyHeaders.forEach((headerName) => {
-            const val = backendRes.headers.get(headerName);
-            if (val) {
-                responseHeaders.set(headerName, val);
-            }
+            'x-ratelimit-limit',
+            'x-ratelimit-remaining',
+        ].forEach((h) => {
+            const v = backendRes.headers.get(h);
+            if (v) responseHeaders.set(h, v);
         });
-
-        // Add rate limit telemetry headers
-        responseHeaders.set('X-RateLimit-Remaining', String(rateLimitResult.remaining));
-
-        // -------------------------------------------------------------
-        // 5. SPA Rolling Session Refresh
-        // -------------------------------------------------------------
-        if (sessionCheck.shouldRefresh || !sessionCookie) {
-            const refreshedToken = await createSessionToken();
-            responseHeaders.append('Set-Cookie', buildSessionCookieHeader(refreshedToken));
-        }
 
         return new NextResponse(responseData, {
             status: backendRes.status,
@@ -215,11 +95,11 @@ async function handleProxy(request: NextRequest, { params }: { params: { path: s
             headers: responseHeaders,
         });
     } catch (err: any) {
-        console.error(`[Frontend Server Proxy] Error connecting to backend (${targetUrl}):`, err.message);
+        console.error(`[Frontend Proxy] Failed to connect to ${targetUrl}:`, err.message);
         return NextResponse.json(
             {
                 error: 'Bad Gateway',
-                message: `Failed to connect to AREENA backend at ${backendBase}. Please ensure the backend service is running.`,
+                message: `Failed to connect to backend at ${backendBase}. Please ensure the backend service is running.`,
                 target: targetUrl,
                 details: err.message,
             },
@@ -235,3 +115,4 @@ export const DELETE = handleProxy;
 export const PATCH = handleProxy;
 export const HEAD = handleProxy;
 export const OPTIONS = handleProxy;
+

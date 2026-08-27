@@ -3,7 +3,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import { config } from './config/env';
 import { errorHandler } from './middleware/errorHandler';
-import { gatewayIngressGuard } from './middleware/gatewayGuard';
+import { apiIngressGuard } from './middleware/ingressGuard';
 import { ensureBucketExists } from './config/s3';
 
 // Route imports
@@ -37,8 +37,8 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Ingress API Gateway Guard (OAuth 2.0 or Frontend Server with internal secret)
-app.use(gatewayIngressGuard);
+// API Ingress Guard (OAuth unrestricted / Frontend rate-limited / Direct blocked)
+app.use(apiIngressGuard);
 
 // Mount Routes
 app.use('/auth', authRoutes);
