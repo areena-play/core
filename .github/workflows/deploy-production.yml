@@ -145,7 +145,7 @@ jobs:
           host: ${{ vars[matrix.server.host_key] || secrets[matrix.server.host_key] }}
           username: ${{ vars[matrix.server.user_key] || secrets[matrix.server.user_key] }}
           key: ${{ secrets[matrix.server.key_secret] }}
-          port: ${{ vars[matrix.server.port_key] || secrets[matrix.server.port_key] 22 }}
+          port: ${{ vars[matrix.server.port_key] || secrets[matrix.server.port_key] || 22 }}
           envs: APP_ENV_CONTENT,USE_PREBUILT_IMAGES,GHCR_USER,GHCR_TOKEN,REGISTRY_IMAGE_PREFIX
           script_stop: true
           script: |
