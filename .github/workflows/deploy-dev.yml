@@ -42,4 +42,4 @@ jobs:
             
             cd "$TARGET_PATH"
             chmod +x scripts/deploy.sh
-            ./scripts/deploy.sh dev "areena-dev"
+            ./scripts/deploy.sh dev/main "areena-dev"
