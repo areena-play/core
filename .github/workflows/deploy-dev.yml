@@ -21,14 +21,14 @@ jobs:
         env:
           APP_ENV_CONTENT: ${{ secrets.DEV_ENV }}
         with:
-          host: ${{ secrets.DEV_SSH_HOST || secrets.SSH_HOST }}
-          username: ${{ secrets.DEV_SSH_USER || secrets.SSH_USER }}
-          key: ${{ secrets.DEV_SSH_KEY || secrets.SSH_KEY }}
-          port: ${{ secrets.DEV_SSH_PORT || secrets.SSH_PORT || 22 }}
+          host: ${{ vars.DEV_SSH_HOST || secrets.DEV_SSH_HOST }}
+          username: ${{ vars.DEV_SSH_USER || secrets.DEV_SSH_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          port: ${{ vars.DEV_SSH_PORT || secrets.DEV_SSH_PORT || 22 }}
           envs: APP_ENV_CONTENT
           script_stop: true
           script: |
-            TARGET_PATH="${{ secrets.DEV_DEPLOY_PATH || secrets.DEPLOY_PATH || '~/areena' }}"
+            TARGET_PATH="${{ vars.DEV_DEPLOY_PATH || secrets.DEV_DEPLOY_PATH || '~/areena' }}"
             echo "🚀 Connecting to Dev Server at $TARGET_PATH..."
             cd "$TARGET_PATH"
             chmod +x scripts/deploy.sh

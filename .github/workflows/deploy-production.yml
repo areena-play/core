@@ -98,14 +98,39 @@ jobs:
       fail-fast: false
       matrix:
         server:
+          # -------------------------------------------------------------
+          # 1. Current Live / Demo Instance
+          # -------------------------------------------------------------
           - name: "Demo Server"
             project_name: "areena-demo"
-            host_secret: "PROD_SSH_HOST"
-            user_secret: "PROD_SSH_USER"
+            host_key: "PROD_SSH_HOST"
+            user_key: "PROD_SSH_USER"
             key_secret: "PROD_SSH_KEY"
-            port_secret: "PROD_SSH_PORT"
-            path_secret: "PROD_DEPLOY_PATH"
+            port_key: "PROD_SSH_PORT"      # Optional (defaults to 22)
+            path_key: "PROD_DEPLOY_PATH"   # Optional (defaults to ~/areena)
             env_secret: "PROD_ENV"
+
+          # -------------------------------------------------------------
+          # 2. How to Add Future Productive Live Instances:
+          # Simply uncomment and fill in the corresponding GitHub Variable/Secret names:
+          # -------------------------------------------------------------
+          # - name: "Live Production Server 1"
+          #   project_name: "areena-prod-1"
+          #   host_key: "PROD1_SSH_HOST"
+          #   user_key: "PROD1_SSH_USER"
+          #   key_secret: "PROD1_SSH_KEY"
+          #   port_key: "PROD1_SSH_PORT"     # Optional
+          #   path_key: "PROD1_DEPLOY_PATH"  # Optional (defaults to ~/areena)
+          #   env_secret: "PROD1_ENV"
+
+          # - name: "Live Production Server 2"
+          #   project_name: "areena-prod-2"
+          #   host_key: "PROD2_SSH_HOST"
+          #   user_key: "PROD2_SSH_USER"
+          #   key_secret: "PROD2_SSH_KEY"
+          #   port_key: "PROD2_SSH_PORT"     # Optional
+          #   path_key: "PROD2_DEPLOY_PATH"  # Optional (defaults to ~/areena)
+          #   env_secret: "PROD2_ENV"
 
     steps:
       - name: Trigger Fast Image Pull & Restart via SSH
@@ -117,15 +142,16 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}
           REGISTRY_IMAGE_PREFIX: ${{ needs.build-and-push.outputs.registry_prefix }}
         with:
-          host: ${{ secrets[matrix.server.host_secret] || secrets.SSH_HOST }}
-          username: ${{ secrets[matrix.server.user_secret] || secrets.SSH_USER }}
-          key: ${{ secrets[matrix.server.key_secret] || secrets.SSH_KEY }}
-          port: ${{ secrets[matrix.server.port_secret] || secrets.SSH_PORT || 22 }}
+          host: ${{ vars[matrix.server.host_key] || secrets[matrix.server.host_key] }}
+          username: ${{ vars[matrix.server.user_key] || secrets[matrix.server.user_key] }}
+          key: ${{ secrets[matrix.server.key_secret] }}
+          port: ${{ vars[matrix.server.port_key] || secrets[matrix.server.port_key] || 22 }}
           envs: APP_ENV_CONTENT,USE_PREBUILT_IMAGES,GHCR_USER,GHCR_TOKEN,REGISTRY_IMAGE_PREFIX
           script_stop: true
           script: |
-            TARGET_PATH="${{ secrets[matrix.server.path_secret] || secrets.DEPLOY_PATH || '~/areena' }}"
-            echo "🚀 Connecting to ${{ matrix.server.name }}..."
+            # Default deploy path to ~/areena if not specified
+            TARGET_PATH="${{ (matrix.server.path_key && (vars[matrix.server.path_key] || secrets[matrix.server.path_key])) || '~/areena' }}"
+            echo "🚀 Connecting to ${{ matrix.server.name }} at $TARGET_PATH..."
             cd "$TARGET_PATH"
             
             # Export registry image prefix to .env if not present
