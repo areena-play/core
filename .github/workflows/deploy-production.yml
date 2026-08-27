@@ -1,4 +1,4 @@
-name: Deploy Production
+name: Deploy Production (Parallel Image Builds & Zero-Downtime Deploy)
 
 on:
   push:
@@ -16,14 +16,29 @@ concurrency:
 
 jobs:
   # -------------------------------------------------------------
-  # 1. BUILD & VERIFY DOCKER IMAGES ON GITHUB ACTIONS
+  # 1. BUILD ALL DOCKER IMAGES IN PARALLEL ON GITHUB ACTIONS
   # -------------------------------------------------------------
   build-and-push:
-    name: Build & Verify Production Images
+    name: Build Image (${{ matrix.target.name }})
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    outputs:
-      registry_prefix: ${{ steps.prep.outputs.registry_prefix }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: true
+      matrix:
+        target:
+          - name: "backend"
+            image: "areena-backend"
+            dockerfile: "apps/backend/Dockerfile"
+            build_args: ""
+          - name: "websocket"
+            image: "areena-websocket"
+            dockerfile: "apps/websocket-server/Dockerfile"
+            build_args: ""
+          - name: "frontend"
+            image: "areena-frontend"
+            dockerfile: "apps/frontend/Dockerfile"
+            build_args: "NEXT_PUBLIC_API_URL=/api"
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -33,7 +48,6 @@ jobs:
         run: |
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "OWNER_LC=${OWNER_LC}" >> $GITHUB_ENV
-          echo "registry_prefix=ghcr.io/${OWNER_LC}/" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -45,46 +59,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # --- 1a. Build Backend ---
-      - name: Build & Push Backend
+      - name: Build & Push ${{ matrix.target.name }}
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: apps/backend/Dockerfile
+          file: ${{ matrix.target.dockerfile }}
+          build-args: ${{ matrix.target.build_args }}
           push: true
           tags: |
-            ghcr.io/${{ env.OWNER_LC }}/areena-backend:latest
-            ghcr.io/${{ env.OWNER_LC }}/areena-backend:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # --- 1b. Build WebSocket ---
-      - name: Build & Push WebSocket
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: apps/websocket-server/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ env.OWNER_LC }}/areena-websocket:latest
-            ghcr.io/${{ env.OWNER_LC }}/areena-websocket:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # --- 1c. Build Frontend (Next.js) ---
-      - name: Build & Push Frontend
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: apps/frontend/Dockerfile
-          build-args: |
-            NEXT_PUBLIC_API_URL=/api
-          push: true
-          tags: |
-            ghcr.io/${{ env.OWNER_LC }}/areena-frontend:latest
-            ghcr.io/${{ env.OWNER_LC }}/areena-frontend:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ghcr.io/${{ env.OWNER_LC }}/${{ matrix.target.image }}:latest
+            ghcr.io/${{ env.OWNER_LC }}/${{ matrix.target.image }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.target.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target.name }}
 
   # -------------------------------------------------------------
   # 2. ZERO-DOWNTIME DEPLOYMENT ON LIVE / DEMO VPS
@@ -126,6 +112,11 @@ jobs:
           #   env_secret: "PROD1_ENV"
 
     steps:
+      - name: Set lower case owner name
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "REGISTRY_IMAGE_PREFIX=ghcr.io/${OWNER_LC}/" >> $GITHUB_ENV
+
       - name: Trigger Fast Image Pull & Restart via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
@@ -133,9 +124,9 @@ jobs:
           USE_PREBUILT_IMAGES: "true"
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}
-          REGISTRY_IMAGE_PREFIX: ${{ needs.build-and-push.outputs.registry_prefix }}
-          DOMAIN_NAME: ${{ (matrix.server.domain_key && vars[matrix.server.domain_key]) || vars.PROD_DOMAIN || 'localhost' }}
-          LETSENCRYPT_EMAIL: ${{ vars.LETSENCRYPT_EMAIL }}
+          REGISTRY_IMAGE_PREFIX: ${{ env.REGISTRY_IMAGE_PREFIX }}
+          DOMAIN_NAME: ${{ (matrix.server.domain_key && vars[matrix.server.domain_key]) || vars.PROD_DOMAIN || vars.DOMAIN_NAME || 'localhost' }}
+          LETSENCRYPT_EMAIL: ${{ vars.LETSENCRYPT_EMAIL || 'admin@areena.ch' }}
         with:
           host: ${{ vars[matrix.server.host_key] || secrets[matrix.server.host_key] }}
           username: ${{ vars[matrix.server.user_key] || secrets[matrix.server.user_key] }}

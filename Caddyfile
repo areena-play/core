@@ -1,7 +1,6 @@
 {
-    # Global options
+    # Global options - Let's Encrypt / ZeroSSL contact email
     email {$LETSENCRYPT_EMAIL}
-    auto_https auto_mode
 }
 
 {$DOMAIN_NAME:localhost} {
@@ -15,4 +14,3 @@
         reverse_proxy frontend:3000
     }
 }
-

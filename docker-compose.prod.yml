@@ -16,7 +16,7 @@ services:
       - "443:443/udp" # HTTP/3 QUIC
     environment:
       - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
-      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL:-admin@areena.ch}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
