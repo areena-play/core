@@ -79,6 +79,7 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
     // -------------------------------------------------------------------------
     if (
         path === '/health' ||
+        path.startsWith('/setup') ||
         (path.startsWith('/upload/file') && method === 'GET') ||
         (path === '/oauth/token' && method === 'POST')
     ) {

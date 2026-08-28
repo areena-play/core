@@ -139,9 +139,9 @@ export const de: TranslationDictionary = {
 
     // Dashboard
     dashboard: {
-        welcomeTitle: 'Dashboard des Schweizerischen Tischtennisverbands',
+        welcomeTitle: 'Sportverband-Portal',
         welcomeSubtitle:
-            'Mehrstufige Regelverwaltung, Live-Davis-Cup-Begegnungen und Echtzeit-Lizenzierungsplattform.',
+            'Hierarchische Verbandsverwaltung, Live-Begegnungen und Lizenzmanagement-Plattform in Echtzeit.',
         welcomeUser: 'Willkommen zurück, {name}!',
         kpiLicenses: 'Aktive Lizenzen',
         kpiCompetitions: 'Laufende Wettbewerbe',

@@ -32,6 +32,15 @@ class ApiClient {
         return res.json();
     }
 
+    // System Initialization & Setup
+    getSetupStatus() {
+        return this.request('/setup/status');
+    }
+
+    initializeSetup(body: any) {
+        return this.request('/setup/initialize', { method: 'POST', body: JSON.stringify(body) });
+    }
+
     // Auth
     login(body: any) {
         return this.request('/auth/login', { method: 'POST', body: JSON.stringify(body) });

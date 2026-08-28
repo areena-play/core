@@ -31,7 +31,7 @@ export function Sidebar() {
     const pathname = usePathname();
     const { t } = useI18n();
     const { user } = useAuth();
-    const { activeView, entityId, entityMeta, currentViewMeta } = useMainView();
+    const { activeView, entityId, entityMeta, currentViewMeta, mainAssoc } = useMainView();
 
     const ActiveIcon = currentViewMeta.icon;
 
@@ -202,7 +202,7 @@ export function Sidebar() {
     // Determine header card contents
     const headerTitle =
         entityMeta?.title ||
-        (activeView === 'association' ? 'Swiss Table Tennis Federation' : t(currentViewMeta.labelKey));
+        (activeView === 'association' ? (mainAssoc?.name || 'Sports Federation') : t(currentViewMeta.labelKey));
     const headerBadge = entityMeta?.badge || t(currentViewMeta.badgeKey);
     const headerDesc = entityMeta?.subtitle || t(currentViewMeta.descKey);
 

@@ -1,9 +1,9 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useMemo, useRef } from 'react';
-import { usePathname } from 'next/navigation';
+import React, { createContext, useContext, useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Network, Trophy, Shield } from 'lucide-react';
-import { useI18n } from './i18nContext';
+import { api } from './api';
 
 export type MainViewType = 'association' | 'tournament' | 'club';
 
@@ -72,15 +72,43 @@ interface MainViewContextType {
     setEntityMeta: (meta: EntityMeta | null) => void;
     currentViewMeta: MainViewMeta;
     isTransitioning: boolean;
+    mainAssoc: any | null;
+    associations: any[];
+    refetchAssociations: () => Promise<void>;
 }
 
 const MainViewContext = createContext<MainViewContextType | undefined>(undefined);
 
 export function MainViewProvider({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
+    const router = useRouter();
     const [entityMeta, setEntityMeta] = useState<EntityMeta | null>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
+    const [associations, setAssociations] = useState<any[]>([]);
+    const [mainAssoc, setMainAssoc] = useState<any | null>(null);
     const prevContextRef = useRef<string>('');
+
+    const fetchAssociations = useCallback(async () => {
+        try {
+            const data = await api.getAssociations();
+            const assocs = data.associations || [];
+            setAssociations(assocs);
+
+            const top = assocs.find((a: any) => a.isTopLevel) || assocs[0] || null;
+            setMainAssoc(top);
+
+            // If no associations exist at all and we are not already on /setup, redirect to setup
+            if (assocs.length === 0 && pathname !== '/setup') {
+                router.replace('/setup');
+            }
+        } catch (err: any) {
+            console.error('Failed to load associations:', err);
+        }
+    }, [pathname, router]);
+
+    useEffect(() => {
+        fetchAssociations();
+    }, [fetchAssociations]);
 
     // Determine active view & entity ID strictly from URL
     const { activeView, entityId } = useMemo(() => {
@@ -102,7 +130,6 @@ export function MainViewProvider({ children }: { children: React.ReactNode }) {
         return { activeView: 'association' as MainViewType, entityId: 'main' };
     }, [pathname]);
 
-    // Trigger fullscreen loader when switching primary workspace context (e.g. from association to tournament, or between clubs)
     useEffect(() => {
         const currentContextKey = `${activeView}:${entityId || 'main'}`;
         if (prevContextRef.current && prevContextRef.current !== currentContextKey) {
@@ -127,6 +154,9 @@ export function MainViewProvider({ children }: { children: React.ReactNode }) {
                 setEntityMeta,
                 currentViewMeta,
                 isTransitioning,
+                mainAssoc,
+                associations,
+                refetchAssociations: fetchAssociations,
             }}
         >
             {children}

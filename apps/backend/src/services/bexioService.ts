@@ -50,9 +50,9 @@ export class BexioService {
             return {
                 connected: true,
                 isSimulation: true,
-                companyName: 'STTV Swiss Table Tennis Bexio Account',
-                owner: 'Dominic Sonderegger',
-                email: 'finance@areena.ch',
+                companyName: 'Sports Federation Bexio Account',
+                owner: 'Finance Officer',
+                email: 'finance@areena.app',
                 currency: 'CHF',
             };
         }
@@ -86,7 +86,7 @@ export class BexioService {
             return {
                 connected: true,
                 isSimulation: true,
-                companyName: 'STTV Swiss Table Tennis (Simulated)',
+                companyName: 'Sports Federation (Simulated)',
                 owner: 'Finance Officer',
                 notice: 'Running in simulated mode (Bexio endpoint offline).',
             };
@@ -266,8 +266,8 @@ export class BexioService {
         bexioConfig?: { qrIban?: string | null; iban?: string | null; companyName?: string | null; companyAddress?: string | null } | null,
     ) {
         const qrIban = bexioConfig?.qrIban || 'CH4431999123000889012';
-        const creditorName = bexioConfig?.companyName || 'Swiss Table Tennis Federation';
-        const creditorAddress = bexioConfig?.companyAddress || 'Haus des Sports, Talgut-Zentrum 27, 3063 Ittigen';
+        const creditorName = bexioConfig?.companyName || 'Sports Federation';
+        const creditorAddress = bexioConfig?.companyAddress || 'Federation Administration, Central Sports Office';
 
         // Swiss structured reference or cred reference
         const cleanInvNum = invoice.invoiceNumber.replace(/[^0-9]/g, '');

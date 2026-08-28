@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useI18n } from '@/lib/i18nContext';
 import { useTheme } from '@/lib/themeContext';
+import { useMainView } from '@/lib/mainViewContext';
 import {
     Shield,
     ChevronLeft,
@@ -22,6 +23,7 @@ import {
 export default function ImpressumPage() {
     const { t } = useI18n();
     const { resolvedTheme } = useTheme();
+    const { mainAssoc } = useMainView();
     const logoSrc = resolvedTheme === 'dark' ? '/areena-logo-dark.png' : '/areena-logo.png';
 
     return (
@@ -78,25 +80,20 @@ export default function ImpressumPage() {
 
                     <div className="space-y-2 text-xs text-slate-600 dark:text-slate-300">
                         <div className="font-semibold text-slate-900 dark:text-white text-sm">
-                            Swiss Table Tennis Federation (STTV)
+                            {mainAssoc?.name || 'AREENA Platform Operator'}
                         </div>
-                        <p>Haus des Sports / National Sports Administration</p>
-                        <p>Talgut-Zentrum 27</p>
-                        <p>CH-3063 Ittigen bei Bern, Switzerland</p>
+                        <p>Sports Federation Administration & Digital Operations</p>
+                        <p>National Sports Governance</p>
                     </div>
 
                     <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2 text-xs text-slate-500 dark:text-slate-400">
                         <div className="flex items-center gap-2">
                             <Mail className="h-3.5 w-3.5 text-red-500" />
-                            <span>info@areena-sports.ch</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Phone className="h-3.5 w-3.5 text-slate-400" />
-                            <span>+41 31 359 73 90</span>
+                            <span>info@areena.app</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <Globe className="h-3.5 w-3.5 text-slate-400" />
-                            <span>www.swisstabletennis.ch</span>
+                            <span>www.areena.app</span>
                         </div>
                     </div>
                 </div>

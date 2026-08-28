@@ -139,9 +139,9 @@ export const fr: TranslationDictionary = {
 
     // Dashboard
     dashboard: {
-        welcomeTitle: 'Portail de la Fédération Suisse de Tennis de Table',
+        welcomeTitle: 'Portail de la Fédération Sportive',
         welcomeSubtitle:
-            'Gouvernance des règlements, rencontres Davis-Cup en direct et gestion en temps réel des licences.',
+            'Gouvernance hiérarchique, rencontres sportives en direct et plateforme de gestion des licences en temps réel.',
         welcomeUser: 'Bienvenue, {name} !',
         kpiLicenses: 'Licences actives',
         kpiCompetitions: 'Compétitions en cours',

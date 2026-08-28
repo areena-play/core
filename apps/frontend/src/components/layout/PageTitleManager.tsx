@@ -10,7 +10,7 @@ export function PageTitleManager() {
     const pathname = usePathname();
     const { entityMeta } = useMainView();
     const { t } = useI18n();
-    const [mainAssocShort, setMainAssocShort] = useState<string>('STTV');
+    const [mainAssocShort, setMainAssocShort] = useState<string>('AREENA');
 
     // Fetch main association short name / abbreviation
     useEffect(() => {
@@ -21,7 +21,7 @@ export function PageTitleManager() {
                 const top =
                     data.associations?.find((a: any) => a.isTopLevel) || data.associations?.[0];
                 if (top && isMounted) {
-                    setMainAssocShort(top.shortName || top.code || top.name || 'STTV');
+                    setMainAssocShort(top.shortName || top.code || top.name || 'AREENA');
                 }
             } catch {}
         }

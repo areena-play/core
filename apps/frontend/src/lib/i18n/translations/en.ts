@@ -137,9 +137,9 @@ export const en = {
 
     // Dashboard
     dashboard: {
-        welcomeTitle: 'Swiss Table Tennis Federation Portal',
+        welcomeTitle: 'Sports Federation Portal',
         welcomeSubtitle:
-            'Hierarchical rule governance, live Davis-Cup encounters, and real-time licensing management platform.',
+            'Hierarchical rule governance, live competitive encounters, and real-time licensing management platform.',
         welcomeUser: 'Welcome back, {name}!',
         kpiLicenses: 'Active Licenses',
         kpiCompetitions: 'Active Competitions',

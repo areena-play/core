@@ -267,7 +267,7 @@ export default function TournamentsPage() {
                                     <input
                                         type="text"
                                         required
-                                        placeholder="e.g. Swiss National League B 2026"
+                                        placeholder="e.g. National Championship Open 2026"
                                         value={formName}
                                         onChange={(e) => setFormName(e.target.value)}
                                         className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"

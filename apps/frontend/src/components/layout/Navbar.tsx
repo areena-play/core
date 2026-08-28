@@ -263,7 +263,7 @@ export function Navbar() {
 
     const headerTitle =
         entityMeta?.title ||
-        (activeView === 'association' ? (mainAssoc?.name || 'Swiss Table Tennis Federation') : t(currentViewMeta.labelKey));
+        (activeView === 'association' ? (mainAssoc?.name || 'Sports Federation') : t(currentViewMeta.labelKey));
     const headerBadge = entityMeta?.badge || t(currentViewMeta.badgeKey);
     const headerDesc = entityMeta?.subtitle || t(currentViewMeta.descKey);
 

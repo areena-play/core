@@ -217,8 +217,8 @@ export function BillingDashboard({ associationId, isSubAssociation = false }: Bi
         } else if (type === 'TOURNAMENT_ENTRY') {
             setCategory('COMPETITION_ENTRY');
             setLineItems([
-                { description: 'National Table Tennis Tournament - Men Single Open', quantity: 4, unit: 'entries', unitPrice: 30, taxRate: 0 },
-                { description: 'National Table Tennis Tournament - Team Event Category B', quantity: 1, unit: 'team', unitPrice: 80, taxRate: 0 },
+                { description: 'National Championship - Single Event Open', quantity: 4, unit: 'entries', unitPrice: 30, taxRate: 0 },
+                { description: 'National Championship - Team Category B', quantity: 1, unit: 'team', unitPrice: 80, taxRate: 0 },
             ]);
         }
     };
@@ -1125,7 +1125,7 @@ export function BillingDashboard({ associationId, isSubAssociation = false }: Bi
                                 <div>
                                     <div className="font-bold">{t('bexio.connected')}</div>
                                     <div className="text-[11px] opacity-80">
-                                        {bexioConfig.companyName || 'Swiss Table Tennis Federation'}
+                                        {bexioConfig.companyName || currentAssoc?.name || 'Sports Federation'}
                                     </div>
                                 </div>
                             </div>
@@ -1255,9 +1255,9 @@ export function BillingDashboard({ associationId, isSubAssociation = false }: Bi
                                 <div>
                                     <div className="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px]">Creditor</div>
                                     <div className="font-bold text-slate-900 dark:text-white text-sm">
-                                        {currentAssoc?.name || 'Swiss Table Tennis Federation'}
+                                        {currentAssoc?.name || 'Sports Federation'}
                                     </div>
-                                    <div className="text-slate-500 text-[11px]">Haus des Sports, Talgut-Zentrum 27, 3063 Ittigen</div>
+                                    <div className="text-slate-500 text-[11px]">Federation Administration, Central Sports Office</div>
                                 </div>
                                 <div className="text-right">
                                     <div className="font-bold text-slate-500 dark:text-slate-400 uppercase text-[10px]">Debtor</div>
@@ -1314,7 +1314,7 @@ export function BillingDashboard({ associationId, isSubAssociation = false }: Bi
                                     <div>
                                         <div className="font-bold text-slate-400 uppercase text-[9px]">{t('billing.qrCreditor')}</div>
                                         <div className="font-bold text-slate-900 dark:text-white">
-                                            {qrPayload?.creditor?.name || 'Swiss Table Tennis Federation'}
+                                            {qrPayload?.creditor?.name || currentAssoc?.name || 'Sports Federation'}
                                         </div>
                                         <div className="text-slate-500 font-mono">
                                             {qrPayload?.creditor?.iban || 'CH44 3199 9123 0008 8901 2'}

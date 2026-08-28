@@ -1,6 +1,6 @@
-# AREENA — Swiss Table Tennis Tournament & Association Management Platform
+# AREENA — Multi-Sport Tournament & Association Management Platform
 
-AREENA is a modern, full-stack tournament management and sports federation administration platform built for sports associations, clubs, licensed players, and live match scoring.
+AREENA is a modern, high-performance tournament management and sports federation administration platform built for sports associations, regional leagues, clubs, licensed athletes, and live match scoring across multiple sporting disciplines.
 
 ---
 

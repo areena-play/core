@@ -216,7 +216,7 @@ export default function AssociationSettingsPage() {
                 description={`Only authorized federation administrators of ${
                     topAssoc?.name || 'the main sports association'
                 } can configure federation branding, S3 logo, and License ID engine parameters.`}
-                requiredRole="Association Administrator (STTV / Regional Admin)"
+                requiredRole="Association Administrator (Federation / Regional Admin)"
                 returnHref="/associations"
             />
         );
@@ -276,7 +276,7 @@ export default function AssociationSettingsPage() {
                                 <input
                                     type="text"
                                     required
-                                    placeholder="e.g. Swiss Table Tennis Federation"
+                                    placeholder="e.g. National Sports Federation"
                                     value={assocName}
                                     onChange={(e) => setAssocName(e.target.value)}
                                     className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white focus:border-red-500 focus:outline-none font-medium"
@@ -290,7 +290,7 @@ export default function AssociationSettingsPage() {
                                 <input
                                     type="text"
                                     required
-                                    placeholder="e.g. STTV"
+                                    placeholder="e.g. NSF"
                                     value={assocShortName}
                                     onChange={(e) => setAssocShortName(e.target.value)}
                                     className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white focus:border-red-500 focus:outline-none font-medium"
