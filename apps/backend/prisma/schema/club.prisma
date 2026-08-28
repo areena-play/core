@@ -1,0 +1,52 @@
+model Club {
+  id         String   @id @default(uuid())
+  name       String
+  code       String   @unique
+  address    String
+  city       String
+  postalCode String
+  country    String   @default("Switzerland")
+  email      String
+  phone      String
+  website    String?
+  logoUrl    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  associations      ClubAssociation[]
+  licenses          License[]
+  teams             Team[]
+  calendarEvents    CalendarEvent[]
+  adminRoles        UserClubRole[]
+  broadcastMessages BroadcastMessage[]
+  invoicesIssued    Invoice[]             @relation("ClubInvoices")
+  invoicesReceived  Invoice[]             @relation("ClubInvoicesReceived")
+  bexioConfig       BexioConfig?
+  auditLogs         AuditLog[]            @relation("ClubAuditLogs")
+}
+
+model ClubAssociation {
+  id            String   @id @default(uuid())
+  clubId        String
+  associationId String
+  createdAt     DateTime @default(now())
+
+  club        Club        @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, associationId])
+}
+
+model UserClubRole {
+  id        String   @id @default(uuid())
+  userId    String
+  clubId    String
+  role      String   @default("ADMIN") // ADMIN, PRESIDENT, COACH, MANAGER
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clubId, role])
+}
+

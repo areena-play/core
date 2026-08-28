@@ -15,7 +15,7 @@ COPY packages/shared/ ./packages/shared/
 COPY apps/backend/ ./apps/backend/
 
 RUN npm run build --workspace=@areena/shared
-RUN npx prisma generate --schema=apps/backend/prisma/schema.prisma
+RUN npx prisma generate --schema=apps/backend/prisma/schema
 RUN npm run build --workspace=@areena/backend
 
 # Runner stage: Ultra-fast startup on Node 22 Alpine LTS

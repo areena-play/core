@@ -1,0 +1,206 @@
+enum CompetitionType {
+  LEAGUE
+  TOURNAMENT
+}
+
+enum CompetitionStatus {
+  DRAFT
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum GenderRestriction {
+  ANY
+  MALE_ONLY
+  FEMALE_ONLY
+  MIXED
+}
+
+enum EncounterStatus {
+  SCHEDULED
+  LIVE
+  FINISHED
+  POSTPONED
+  CANCELLED
+}
+
+enum MatchType {
+  SINGLE
+  DOUBLE
+}
+
+enum MatchWinner {
+  HOME
+  AWAY
+  DRAW
+  PENDING
+}
+
+model Competition {
+  id            String            @id @default(uuid())
+  type          CompetitionType
+  name          String
+  description   String?
+  associationId String
+  seasonId      String?
+  startDate     DateTime
+  endDate       DateTime
+  location      String?
+  status        CompetitionStatus @default(DRAFT)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  association    Association     @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  season         Season?         @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  categories     Category[]
+  calendarEvents CalendarEvent[]
+}
+
+model Category {
+  id                  String            @id @default(uuid())
+  competitionId       String
+  name                String
+  teamSize            Int               @default(1)
+  minElo              Int?
+  maxElo              Int?
+  minAge              Int?
+  maxAge              Int?
+  genderRestriction   GenderRestriction @default(ANY)
+  requiredLicenseType LicenseType?
+  encounterFormat     Json              @default("[]")
+  roundsPerGroup      Int               @default(1)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  competition Competition                @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  groups      CompetitionGroup[]
+  encounters  Encounter[]
+  teams       TeamCategoryRegistration[]
+}
+
+model Team {
+  id        String   @id @default(uuid())
+  name      String
+  clubId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  club           Club?                      @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  members        TeamMember[]
+  registrations  TeamCategoryRegistration[]
+  homeEncounters Encounter[]                @relation("HomeTeamEncounters")
+  awayEncounters Encounter[]                @relation("AwayTeamEncounters")
+  standings      GroupStanding[]
+}
+
+model TeamMember {
+  id        String   @id @default(uuid())
+  teamId    String
+  userId    String
+  role      String   @default("PLAYER") // CAPTAIN, PLAYER, RESERVE
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
+model TeamCategoryRegistration {
+  id           String   @id @default(uuid())
+  teamId       String
+  categoryId   String
+  registeredAt DateTime @default(now())
+
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, categoryId])
+}
+
+model CompetitionGroup {
+  id         String   @id @default(uuid())
+  categoryId String
+  name       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category   Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  encounters Encounter[]
+  standings  GroupStanding[]
+}
+
+model GroupStanding {
+  id          String   @id @default(uuid())
+  groupId     String
+  teamId      String
+  played      Int      @default(0)
+  won         Int      @default(0)
+  drawn       Int      @default(0)
+  lost        Int      @default(0)
+  matchesWon  Int      @default(0)
+  matchesLost Int      @default(0)
+  setsWon     Int      @default(0)
+  setsLost    Int      @default(0)
+  pointsWon   Int      @default(0)
+  pointsLost  Int      @default(0)
+  tablePoints Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  group CompetitionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  team  Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, teamId])
+}
+
+model Encounter {
+  id          String          @id @default(uuid())
+  categoryId  String
+  groupId     String?
+  round       Int             @default(1)
+  scheduledAt DateTime
+  location    String?
+  homeTeamId  String
+  awayTeamId  String
+  homeScore   Int             @default(0)
+  awayScore   Int             @default(0)
+  status      EncounterStatus @default(SCHEDULED)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  category       Category          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  group          CompetitionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  homeTeam       Team              @relation("HomeTeamEncounters", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  awayTeam       Team              @relation("AwayTeamEncounters", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  matches        Match[]
+  calendarEvents CalendarEvent[]
+}
+
+model Match {
+  id            String          @id @default(uuid())
+  encounterId   String
+  orderIndex    Int
+  matchType     MatchType       @default(SINGLE)
+  label         String?
+  homePlayer1Id String?
+  homePlayer2Id String?
+  awayPlayer1Id String?
+  awayPlayer2Id String?
+  sets          Json            @default("[]")
+  homeWonSets   Int             @default(0)
+  awayWonSets   Int             @default(0)
+  winner        MatchWinner     @default(PENDING)
+  status        EncounterStatus @default(SCHEDULED)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  encounter   Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  homePlayer1 User?     @relation("HomePlayer1", fields: [homePlayer1Id], references: [id], onDelete: SetNull)
+  homePlayer2 User?     @relation("HomePlayer2", fields: [homePlayer2Id], references: [id], onDelete: SetNull)
+  awayPlayer1 User?     @relation("AwayPlayer1", fields: [awayPlayer1Id], references: [id], onDelete: SetNull)
+  awayPlayer2 User?     @relation("AwayPlayer2", fields: [awayPlayer2Id], references: [id], onDelete: SetNull)
+}
+

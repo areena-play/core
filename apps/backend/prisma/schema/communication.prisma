@@ -1,0 +1,109 @@
+enum EventType {
+  TOURNAMENT
+  LEAGUE_MATCH
+  REFRESHER_COURSE
+  ASSOCIATION_MEETING
+  CLUB_EVENT
+  TRAINING
+}
+
+enum MessageChannel {
+  EMAIL
+  SMS
+}
+
+enum AuditCategory {
+  AUTH
+  GOVERNANCE
+  FINANCE
+  COMMUNICATION
+  LICENSING
+  TOURNAMENT
+  CLUB
+  DEVELOPER
+  SECURITY
+}
+
+model CalendarEvent {
+  id            String    @id @default(uuid())
+  title         String
+  description   String?
+  eventType     EventType
+  associationId String?
+  clubId        String?
+  competitionId String?
+  encounterId   String?
+  startDate     DateTime
+  endDate       DateTime
+  location      String?
+  isPublic      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  association Association? @relation(fields: [associationId], references: [id], onDelete: SetNull)
+  club        Club?        @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  competition Competition? @relation(fields: [competitionId], references: [id], onDelete: SetNull)
+  encounter   Encounter?   @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+}
+
+model BroadcastMessage {
+  id            String         @id @default(uuid())
+  senderUserId  String
+  associationId String?
+  clubId        String?
+  subject       String
+  body          String
+  channel       MessageChannel @default(EMAIL)
+  targetFilter  Json           @default("{}")
+  sentAt        DateTime       @default(now())
+
+  sender      User               @relation("SenderUser", fields: [senderUserId], references: [id], onDelete: Cascade)
+  association Association?       @relation(fields: [associationId], references: [id], onDelete: SetNull)
+  club        Club?              @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  recipients  MessageRecipient[]
+}
+
+model MessageRecipient {
+  id              String   @id @default(uuid())
+  messageId       String
+  recipientUserId String
+  status          String   @default("SENT") // QUEUED, SENT, DELIVERED, FAILED
+  deliveredAt     DateTime @default(now())
+
+  message   BroadcastMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  recipient User             @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, recipientUserId])
+}
+
+model AuditLog {
+  id            String        @id @default(uuid())
+  userId        String?
+  userEmail     String
+  userName      String?
+  action        String
+  category      AuditCategory @default(GOVERNANCE)
+  entityType    String?
+  entityId      String?
+  associationId String?
+  clubId        String?
+  tournamentId  String?
+  description   String
+  status        String        @default("SUCCESS") // SUCCESS, FAILURE, WARNING
+  ipAddress     String        @default("127.0.0.1")
+  userAgent     String        @default("Unknown")
+  metadata      Json          @default("{}")
+  createdAt     DateTime      @default(now())
+
+  user        User?        @relation("UserAuditLogs", fields: [userId], references: [id], onDelete: SetNull)
+  association Association? @relation("AssociationAuditLogs", fields: [associationId], references: [id], onDelete: SetNull)
+  club        Club?        @relation("ClubAuditLogs", fields: [clubId], references: [id], onDelete: SetNull)
+
+  @@index([associationId])
+  @@index([clubId])
+  @@index([userId])
+  @@index([category])
+  @@index([action])
+  @@index([createdAt])
+}
+

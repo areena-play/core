@@ -1,0 +1,82 @@
+enum OAuthClientStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REVOKED
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  phone        String
+  street       String
+  postalCode   String
+  city         String
+  country      String    @default("Switzerland")
+  birthDate    DateTime?
+  gender       Gender?
+  licenseId    String?   @unique
+  eloPoints    Int       @default(1000)
+  rank         Int?
+  avatarUrl    String?
+  isSuperAdmin Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  associationRoles     UserAssociationRole[]
+  clubRoles            UserClubRole[]
+  licenses             License[]             @relation("UserLicenses")
+  appliedLicenses      License[]             @relation("AppliedByUser")
+  approvedLicenses     License[]             @relation("ApprovedByUser")
+  courseAttendances    CourseAttendance[]    @relation("UserCourseAttendance")
+  attestedAttendances  CourseAttendance[]    @relation("AttestedByInstructor")
+  instructedCourses    RefresherCourse[]     @relation("CourseInstructor")
+  teamMemberships      TeamMember[]
+  sentMessages         BroadcastMessage[]    @relation("SenderUser")
+  receivedMessages     MessageRecipient[]
+  oauthClients         OAuthClient[]         @relation("UserOAuthClients")
+  approvedOAuthClients OAuthClient[]         @relation("ApprovedByAdmin")
+  oauthTokens          OAuthToken[]
+  invoicesReceived     Invoice[]             @relation("InvoiceRecipientUser")
+  auditLogs            AuditLog[]            @relation("UserAuditLogs")
+
+  // Matches where user is player
+  homeMatchesP1 Match[] @relation("HomePlayer1")
+  homeMatchesP2 Match[] @relation("HomePlayer2")
+  awayMatchesP1 Match[] @relation("AwayPlayer1")
+  awayMatchesP2 Match[] @relation("AwayPlayer2")
+}
+
+model OAuthClient {
+  id               String            @id @default(uuid())
+  clientId         String            @unique
+  clientSecretHash String
+  name             String
+  description      String?
+  ownerUserId      String
+  allowedScopes    String[]          @default(["read:public"])
+  status           OAuthClientStatus @default(PENDING_APPROVAL)
+  approvedByUserId String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  owner      User         @relation("UserOAuthClients", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  approvedBy User?        @relation("ApprovedByAdmin", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  tokens     OAuthToken[]
+}
+
+model OAuthToken {
+  id        String   @id @default(uuid())
+  clientId  String
+  userId    String?
+  token     String   @unique
+  expiresAt DateTime
+  scopes    String[]
+  createdAt DateTime @default(now())
+
+  client OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user   User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+

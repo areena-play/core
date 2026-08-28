@@ -1,0 +1,89 @@
+enum LicenseType {
+  PLAYER_REGULAR
+  PLAYER_TCARD
+  PLAYER_WOMEN
+  PLAYER_JUNIOR
+  PLAYER_SENIOR
+  COACH
+  REFEREE
+}
+
+enum LicenseStatus {
+  PENDING_CLUB
+  PENDING_ASSOCIATION
+  APPROVED
+  REJECTED
+  EXPIRED
+  SUSPENDED
+}
+
+enum CourseType {
+  COACH_REFRESHER
+  REFEREE_REFRESHER
+}
+
+model License {
+  id               String        @id @default(uuid())
+  userId           String
+  type             LicenseType
+  status           LicenseStatus @default(PENDING_CLUB)
+  clubId           String?
+  associationId    String
+  seasonId         String?
+  validFrom        DateTime
+  validUntil       DateTime
+  autoApproved     Boolean       @default(false)
+  appliedByUserId  String
+  approvedByUserId String?
+  rejectionReason  String?
+  metadata         Json          @default("{}")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user              User               @relation("UserLicenses", fields: [userId], references: [id], onDelete: Cascade)
+  appliedBy         User               @relation("AppliedByUser", fields: [appliedByUserId], references: [id], onDelete: Cascade)
+  approvedBy        User?              @relation("ApprovedByUser", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  club              Club?              @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  association       Association        @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  season            Season?            @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  courseAttendances CourseAttendance[]
+}
+
+model RefresherCourse {
+  id                      String     @id @default(uuid())
+  associationId           String
+  title                   String
+  type                    CourseType
+  instructorId            String
+  location                String
+  date                    DateTime
+  durationHours           Int        @default(4)
+  validityExtensionMonths Int        @default(12)
+  createdAt               DateTime   @default(now())
+  updatedAt               DateTime   @updatedAt
+
+  association Association        @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  instructor  User               @relation("CourseInstructor", fields: [instructorId], references: [id], onDelete: Cascade)
+  attendances CourseAttendance[]
+}
+
+model CourseAttendance {
+  id               String    @id @default(uuid())
+  courseId         String
+  userId           String
+  licenseId        String?
+  attested         Boolean   @default(false)
+  attestedAt       DateTime?
+  attestedByUserId String?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  course     RefresherCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user       User            @relation("UserCourseAttendance", fields: [userId], references: [id], onDelete: Cascade)
+  license    License?        @relation(fields: [licenseId], references: [id], onDelete: SetNull)
+  attestedBy User?           @relation("AttestedByInstructor", fields: [attestedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([courseId, userId])
+}
+

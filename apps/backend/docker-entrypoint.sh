@@ -5,7 +5,7 @@ echo "[AREENA Backend Entrypoint] Waiting for database to be ready..."
 max_retries=30
 count=0
 
-until npx prisma db push --schema=apps/backend/prisma/schema.prisma --accept-data-loss; do
+until npx prisma db push --schema=apps/backend/prisma/schema --accept-data-loss || npx prisma db push --schema=prisma/schema --accept-data-loss; do
   count=$((count + 1))
   if [ $count -gt $max_retries ]; then
     echo "[AREENA Backend Entrypoint] Failed to connect to database after $max_retries attempts. Exiting."

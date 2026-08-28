@@ -1,0 +1,76 @@
+enum AssociationLevel {
+  NATIONAL
+  REGIONAL
+  LOCAL
+}
+
+model Association {
+  id                String           @id @default(uuid())
+  name              String
+  shortName         String
+  code              String           @unique
+  level             AssociationLevel
+  isTopLevel        Boolean          @default(false)
+  rules             Json             @default("{}")
+  licenseIdTemplate String           @default("{regionDigit}{year2}{counter3}")
+  licenseCounter    Int              @default(1)
+  regionDigit       Int              @default(1)
+  logoUrl           String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  parentHierarchies AssociationHierarchy[] @relation("ChildAssociation")
+  childHierarchies  AssociationHierarchy[] @relation("ParentAssociation")
+  clubAssociations  ClubAssociation[]
+  seasons           Season[]
+  competitions      Competition[]
+  licenses          License[]
+  refresherCourses  RefresherCourse[]
+  calendarEvents    CalendarEvent[]
+  adminRoles        UserAssociationRole[]
+  broadcastMessages BroadcastMessage[]
+  invoicesIssued    Invoice[]             @relation("AssociationInvoices")
+  bexioConfig       BexioConfig?
+  auditLogs         AuditLog[]            @relation("AssociationAuditLogs")
+}
+
+model AssociationHierarchy {
+  id        String   @id @default(uuid())
+  parentId  String
+  childId   String
+  createdAt DateTime @default(now())
+
+  parent Association @relation("ParentAssociation", fields: [parentId], references: [id], onDelete: Cascade)
+  child  Association @relation("ChildAssociation", fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, childId])
+}
+
+model UserAssociationRole {
+  id            String   @id @default(uuid())
+  userId        String
+  associationId String
+  role          String   @default("ADMIN") // ADMIN, PRESIDENT, SECRETARY, REFEREE_HEAD, COACH_HEAD
+  createdAt     DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, associationId, role])
+}
+
+model Season {
+  id            String   @id @default(uuid())
+  associationId String
+  name          String
+  startDate     DateTime
+  endDate       DateTime
+  isCurrent     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  association  Association   @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  licenses     License[]
+  competitions Competition[]
+}
+

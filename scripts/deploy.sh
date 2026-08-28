@@ -60,7 +60,7 @@ fi
 
 # 4. Synchronize Prisma database schema to external PostgreSQL
 echo "🗄️ Synchronizing Prisma database schema to external PostgreSQL..."
-docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" exec -T backend npx prisma db push --schema=apps/backend/prisma/schema.prisma --accept-data-loss || docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" exec -T backend npx prisma db push --schema=prisma/schema.prisma --accept-data-loss || true
+docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" exec -T backend npx prisma db push --schema=apps/backend/prisma/schema --accept-data-loss || docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" exec -T backend npx prisma db push --schema=prisma/schema --accept-data-loss || true
 
 # 5. Clean up dangling images to keep server disk healthy
 echo "🧹 Pruning unused Docker build cache..."
