@@ -1,20 +1,39 @@
 # ==============================================================================
 # AREENA PRODUCTION & DEV DEPLOYMENT COMPOSE
-# (Uses External Database & External S3 Storage - No local DB / S3 containers)
+# (Uses External Database & External S3 Storage, Automated Let's Encrypt SSL)
 # ==============================================================================
 
 services:
   # ----------------------------------------
-  # 1. CACHE & PUB/SUB (Redis)
+  # 1. REVERSE PROXY & AUTOMATED SSL (Caddy)
+  # ----------------------------------------
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3 QUIC
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - websocket
+
+  # ----------------------------------------
+  # 2. CACHE & PUB/SUB (Redis)
   # ----------------------------------------
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
 
   # ----------------------------------------
-  # 2. EXPRESS API BACKEND
+  # 3. EXPRESS API BACKEND
   # ----------------------------------------
   backend:
     image: ${REGISTRY_IMAGE_PREFIX:-}areena-backend:${IMAGE_TAG:-latest}
@@ -22,8 +41,6 @@ services:
       context: .
       dockerfile: apps/backend/Dockerfile
     restart: unless-stopped
-    ports:
-      - "${BACKEND_PORT:-4000}:4000"
     environment:
       - PORT=4000
       - BACKEND_PORT=4000
@@ -40,7 +57,7 @@ services:
       - redis
 
   # ----------------------------------------
-  # 3. WEBSOCKET SERVER
+  # 4. WEBSOCKET SERVER
   # ----------------------------------------
   websocket:
     image: ${REGISTRY_IMAGE_PREFIX:-}areena-websocket:${IMAGE_TAG:-latest}
@@ -48,8 +65,6 @@ services:
       context: .
       dockerfile: apps/websocket-server/Dockerfile
     restart: unless-stopped
-    ports:
-      - "${WS_PORT:-5000}:5000"
     environment:
       - PORT=5000
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
@@ -57,7 +72,7 @@ services:
       - redis
 
   # ----------------------------------------
-  # 4. FRONTEND (Next.js App Router)
+  # 5. FRONTEND (Next.js App Router)
   # ----------------------------------------
   frontend:
     image: ${REGISTRY_IMAGE_PREFIX:-}areena-frontend:${IMAGE_TAG:-latest}
@@ -66,15 +81,15 @@ services:
       dockerfile: apps/frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: /api
-        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:5000}
     restart: unless-stopped
-    ports:
-      - "${FRONTEND_PORT:-3000}:3000"
     environment:
       - NEXT_PUBLIC_API_URL=/api
-      - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-ws://localhost:5000}
       - BACKEND_INTERNAL_URL=http://backend:4000
       - INTERNAL_API_SECRET=${INTERNAL_API_SECRET}
     depends_on:
       - backend
       - websocket
+
+volumes:
+  caddy_data:
+  caddy_config:

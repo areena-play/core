@@ -11,19 +11,19 @@
         "@areena/shared": "*",
         "clsx": "^2.1.1",
         "date-fns": "^3.6.0",
-        "lucide-react": "^0.378.0",
-        "next": "^14.2.3",
+        "lucide-react": "^0.477.0",
+        "next": "^14.2.24",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
-        "tailwind-merge": "^2.3.0"
+        "tailwind-merge": "^2.6.0"
     },
     "devDependencies": {
-        "@types/node": "^20.12.7",
-        "@types/react": "^18.3.1",
-        "@types/react-dom": "^18.3.0",
-        "autoprefixer": "^10.4.19",
-        "postcss": "^8.4.38",
-        "tailwindcss": "^3.4.3",
-        "typescript": "^5.4.5"
+        "@types/node": "^22.13.9",
+        "@types/react": "^18.3.18",
+        "@types/react-dom": "^18.3.5",
+        "autoprefixer": "^10.4.20",
+        "postcss": "^8.5.3",
+        "tailwindcss": "^3.4.17",
+        "typescript": "^5.8.2"
     }
 }

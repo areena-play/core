@@ -8,6 +8,10 @@
     ],
     "scripts": {
         "build": "npm run build --workspace=@areena/shared && npm run build --workspaces --if-present",
+        "predev": "docker compose up -d db redis s3",
+        "dev": "concurrently -n \"BACKEND,FRONTEND,WS\" -c \"blue,green,magenta\" \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:ws\"",
+        "dev:services": "docker compose up -d db redis s3",
+        "dev:stop": "docker compose down",
         "dev:backend": "npm run dev --workspace=@areena/backend",
         "dev:frontend": "npm run dev --workspace=@areena/frontend",
         "dev:ws": "npm run dev --workspace=@areena/websocket-server",
@@ -17,7 +21,8 @@
     },
     "devDependencies": {
         "@types/pngjs": "^6.0.5",
+        "concurrently": "^9.1.2",
         "pngjs": "^7.0.0",
-        "typescript": "^5.4.5"
+        "typescript": "^5.8.2"
     }
 }

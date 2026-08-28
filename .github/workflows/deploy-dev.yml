@@ -1,9 +1,9 @@
-name: Deploy Development (Dev Instance)
+name: Deploy Development
 
 on:
   push:
     branches:
-      - dev
+      - dev/main
   workflow_dispatch:
 
 concurrency:
@@ -12,24 +12,18 @@ concurrency:
 
 jobs:
   deploy-dev:
-    name: Deploy to Dev Server
-    runs-on: ubuntu-latest
+    name: Build & Deploy on Dev VPS
+    runs-on: self-hosted
     timeout-minutes: 15
     steps:
-      - name: Trigger Remote Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Deploy Script
         env:
           APP_ENV_CONTENT: ${{ secrets.DEV_ENV }}
-        with:
-          host: ${{ vars.DEV_SSH_HOST || secrets.DEV_SSH_HOST }}
-          username: ${{ vars.DEV_SSH_USER || secrets.DEV_SSH_USER }}
-          key: ${{ secrets.DEV_SSH_KEY }}
-          port: ${{ vars.DEV_SSH_PORT || secrets.DEV_SSH_PORT || 22 }}
-          envs: APP_ENV_CONTENT
-          script_stop: true
-          script: |
-            TARGET_PATH="${{ vars.DEV_DEPLOY_PATH || secrets.DEV_DEPLOY_PATH || '~/areena' }}"
-            echo "🚀 Connecting to Dev Server at $TARGET_PATH..."
-            cd "$TARGET_PATH"
-            chmod +x scripts/deploy.sh
-            ./scripts/deploy.sh dev "areena-dev"
+          DOMAIN_NAME: ${{ vars.DEV_DOMAIN || 'localhost' }}
+          LETSENCRYPT_EMAIL: ${{ vars.LETSENCRYPT_EMAIL }}
+        run: |
+          chmod +x scripts/deploy.sh
+          ./scripts/deploy.sh dev/main "areena-dev"
