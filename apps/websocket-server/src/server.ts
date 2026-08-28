@@ -2,8 +2,21 @@ import { WebSocketServer, WebSocket } from 'ws';
 import Redis from 'ioredis';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+const candidatePaths = [
+    path.resolve(process.cwd(), '.env'),
+    path.resolve(__dirname, '../../../../.env'),
+    path.resolve(__dirname, '../../../.env'),
+    path.resolve(__dirname, '../../.env'),
+];
+
+for (const envPath of candidatePaths) {
+    if (fs.existsSync(envPath)) {
+        dotenv.config({ path: envPath });
+        break;
+    }
+}
 dotenv.config();
 
 const PORT = parseInt(process.env.WS_PORT || '5000', 10);

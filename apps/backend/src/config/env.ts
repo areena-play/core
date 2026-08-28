@@ -1,7 +1,21 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+// Resolve .env file from process.cwd() or walking up to monorepo root
+const candidatePaths = [
+    path.resolve(process.cwd(), '.env'),
+    path.resolve(__dirname, '../../../../.env'),
+    path.resolve(__dirname, '../../../.env'),
+    path.resolve(__dirname, '../../.env'),
+];
+
+for (const envPath of candidatePaths) {
+    if (fs.existsSync(envPath)) {
+        dotenv.config({ path: envPath });
+        break;
+    }
+}
 dotenv.config();
 
 export const config = {
@@ -17,7 +31,7 @@ export const config = {
         region: process.env.AWS_REGION || process.env.MINIO_REGION || 'eu-central-2',
         accessKeyId: process.env.AWS_ACCESS_KEY_ID || process.env.MINIO_USER || 'minioadmin',
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || process.env.MINIO_PASS || 'minioadmin',
-        bucketName: process.env.AWS_BUCKET_NAME || process.env.MINIO_BUCKET_NAME || 'areena-storage',
+        bucketName: process.env.AWS_BUCKET_NAME || process.env.MINIO_BUCKET_NAME || 'areena-local-storage',
     },
 };
 

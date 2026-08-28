@@ -21,8 +21,8 @@ interface RateLimitBucket {
 }
 
 const rateLimitMap = new Map<string, RateLimitBucket>();
-const RATE_LIMIT_CAPACITY = 120; // 120 requests
-const REFILL_RATE_PER_SEC = 2; // +2 requests per second (120 req/min sustained)
+const RATE_LIMIT_CAPACITY = 120; // 120 requests capacity
+const REFILL_RATE_PER_SEC = 2; // +2 requests per second refill (120 req/min sustained)
 
 function checkFrontendRateLimit(ip: string): { allowed: boolean; remaining: number; retryAfter: number } {
     const now = Date.now();
@@ -58,13 +58,17 @@ function checkFrontendRateLimit(ip: string): { allowed: boolean; remaining: numb
  * Global Ingress & Rate Limiting Middleware
  * 
  * Rules:
- * 1. OAuth 2.0 / API Keys -> Unrestricted / No Rate Limit
- * 2. Requests from Frontend Web Pages -> Allowed with Rate Limiting (120 req/min)
- * 3. Direct Unauthenticated API calls (scrapers/bots) -> Blocked (401 Unauthorized)
+ * 1. Public Whitelist (/health, /oauth/token, /upload/file/*) -> Allowed
+ * 2. OAuth 2.0 / API Keys -> Unrestricted / No Rate Limit
+ * 3. Local Development (npm run dev on localhost/127.0.0.1) -> Allowed with Rate Limiting
+ * 4. Requests from Frontend Web Pages (Same-Origin, SSR, User JWT) -> Allowed with Rate Limiting
+ * 5. Direct Unauthenticated API calls (scrapers/bots) -> Blocked (401 Unauthorized)
  */
 export async function apiIngressGuard(req: IngressRequest, res: Response, next: NextFunction) {
     const path = req.path;
     const method = req.method.toUpperCase();
+    const isDev = process.env.NODE_ENV !== 'production';
+
     const clientIp =
         (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ||
         req.socket.remoteAddress ||
@@ -73,7 +77,11 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
     // -------------------------------------------------------------------------
     // 1. Whitelist Public Bootstrap & Static Media Endpoints
     // -------------------------------------------------------------------------
-    if (path === '/health' || (path.startsWith('/upload/file') && method === 'GET') || (path === '/oauth/token' && method === 'POST')) {
+    if (
+        path === '/health' ||
+        (path.startsWith('/upload/file') && method === 'GET') ||
+        (path === '/oauth/token' && method === 'POST')
+    ) {
         return next();
     }
 
@@ -126,7 +134,6 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
             const payload = jwt.verify(token, config.jwtSecret) as any;
             if (payload && payload.userId) {
                 req.user = payload;
-                // Legitimate user from web app -> apply rate limiter and continue
                 const rl = checkFrontendRateLimit(clientIp);
                 if (!rl.allowed) {
                     return res.status(429).json({
@@ -142,23 +149,38 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
     }
 
     // -------------------------------------------------------------------------
-    // 3. Check for Requests Originating from the Frontend Web Page
+    // 3. Allow Local Development Environment (npm run dev)
+    // -------------------------------------------------------------------------
+    const host = (req.headers['host'] as string) || '';
+    const isLocalhost =
+        host.includes('localhost') ||
+        host.includes('127.0.0.1') ||
+        clientIp === '127.0.0.1' ||
+        clientIp === '::1' ||
+        clientIp === '::ffff:127.0.0.1';
+
+    if (isDev && isLocalhost) {
+        req.isFrontend = true;
+        const rl = checkFrontendRateLimit(clientIp);
+        res.setHeader('X-RateLimit-Remaining', String(rl.remaining));
+        return next();
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. Check for Requests Originating from the Frontend Web Page / SSR
     // -------------------------------------------------------------------------
     const secFetchSite = req.headers['sec-fetch-site'] as string;
     const origin = req.headers['origin'] as string;
     const referer = req.headers['referer'] as string;
-    const host = req.headers['host'] as string;
 
     const isSameOriginFetch = secFetchSite === 'same-origin' || secFetchSite === 'same-site' || secFetchSite === 'none';
     const isMatchingOrigin =
         (origin && (origin.includes(host) || origin.includes('localhost') || origin.includes('127.0.0.1'))) ||
         (referer && (referer.includes(host) || referer.includes('localhost') || referer.includes('127.0.0.1')));
 
-    // If request originates from frontend browser navigation/SPA
     if (isSameOriginFetch || isMatchingOrigin) {
         req.isFrontend = true;
 
-        // Apply rate limit for web users
         const rl = checkFrontendRateLimit(clientIp);
         if (!rl.allowed) {
             return res.status(429).json({
@@ -173,7 +195,7 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
     }
 
     // -------------------------------------------------------------------------
-    // 4. Block Direct Unauthenticated API Access (Scrapers, Bots, Raw Curl)
+    // 5. Block Direct Unauthenticated API Access (Scrapers, Bots, Raw Curl)
     // -------------------------------------------------------------------------
     return res.status(401).json({
         error: 'Unauthorized',
@@ -182,4 +204,3 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
         docs: '/developers',
     });
 }
-
