@@ -1,4 +1,8 @@
 {
+    "npm.exclude": [
+        "**/apps/**",
+        "**/packages/**"
+    ],
     "files.exclude": {
         "**/.git": true,
         "**/.svn": true,
@@ -44,10 +48,9 @@
         "**/build/**": true,
         "**/out/**": true,
         "**/.turbo/**": true,
-        "**/coverage/**": true
+        "**/.coverage/**": true
     },
     "search.useIgnoreFiles": true,
     "editor.tabSize": 4,
     "editor.insertSpaces": true
 }
-
