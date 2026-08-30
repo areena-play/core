@@ -32,7 +32,11 @@ class ApiClient {
         return res.json();
     }
 
-    // System Initialization & Setup
+    // System Initialization, Setup & Public Config
+    getPublicConfig() {
+        return this.request('/config/public');
+    }
+
     getSetupStatus() {
         return this.request('/setup/status');
     }

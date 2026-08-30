@@ -40,10 +40,10 @@ model CalendarEvent {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  association Association? @relation(fields: [associationId], references: [id], onDelete: SetNull)
-  club        Club?        @relation(fields: [clubId], references: [id], onDelete: SetNull)
-  competition Competition? @relation(fields: [competitionId], references: [id], onDelete: SetNull)
-  encounter   Encounter?   @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  association Association? @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  club        Club?        @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  competition Competition? @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  encounter   Encounter?   @relation(fields: [encounterId], references: [id], onDelete: Cascade)
 }
 
 model BroadcastMessage {

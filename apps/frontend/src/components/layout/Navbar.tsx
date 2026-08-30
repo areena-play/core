@@ -67,8 +67,15 @@ export function Navbar() {
     };
 
     const [mainAssoc, setMainAssoc] = useState<any | null>(null);
+    const [isDemo, setIsDemo] = useState(process.env.NEXT_PUBLIC_IS_DEMO === 'true');
 
     useEffect(() => {
+        api.getPublicConfig()
+            .then((cfg) => {
+                if (typeof cfg?.isDemo === 'boolean') setIsDemo(cfg.isDemo);
+            })
+            .catch(() => {});
+
         async function loadMainAssoc() {
             try {
                 const data = await api.getAssociations();
@@ -283,18 +290,30 @@ export function Navbar() {
                             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                         </button>
 
-                        <Link href="/" className="flex items-center gap-3">
-                            <div className="relative h-8 w-24 sm:h-10 sm:w-32">
-                                <Image
-                                    key={logoSrc}
-                                    src={logoSrc}
-                                    alt="AREENA Logo"
-                                    fill
-                                    priority
-                                    className="object-contain"
-                                />
-                            </div>
-                        </Link>
+                        <div className="flex items-center gap-2">
+                            <Link href="/" className="flex items-center gap-3">
+                                <div className="relative h-8 w-24 sm:h-10 sm:w-32">
+                                    <Image
+                                        key={logoSrc}
+                                        src={logoSrc}
+                                        alt="AREENA Logo"
+                                        fill
+                                        priority
+                                        className="object-contain"
+                                    />
+                                </div>
+                            </Link>
+                            {isDemo && (
+                                <Link
+                                    href="/auth/login"
+                                    title="Demo Instance Active - Click to switch demo accounts"
+                                    className="hidden sm:inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider bg-red-600/90 hover:bg-red-600 text-white px-2 py-0.5 rounded-full shadow-sm transition hover:scale-105"
+                                >
+                                    <Sparkles className="w-2.5 h-2.5" />
+                                    Demo Mode
+                                </Link>
+                            )}
+                        </div>
 
                         {/* Breadcrumb / Main Association Name or Custom Logo */}
                         {entityMeta && activeView !== 'association' ? (

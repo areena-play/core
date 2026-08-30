@@ -349,6 +349,8 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response,
             return res.status(403).json({ error: 'Permission denied to delete this notice' });
         }
 
+        // Explicitly clean up all user dismissals associated with this notice
+        await prisma.noticeDismissal.deleteMany({ where: { noticeId: id } });
         await prisma.adminNotice.delete({ where: { id } });
 
         await AuditService.record({
@@ -357,11 +359,11 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response,
             category: AuditCategory.COMMUNICATION,
             entityType: 'AdminNotice',
             entityId: id,
-            description: `Deleted admin notice "${existing.title}"`,
+            description: `Deleted admin notice "${existing.title}" and cleaned up associated user dismissals`,
             status: 'SUCCESS',
         });
 
-        res.json({ message: 'Notice deleted successfully', id });
+        res.json({ message: 'Notice and associated dismissals deleted successfully', id });
     } catch (err) {
         next(err);
     }

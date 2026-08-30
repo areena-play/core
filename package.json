@@ -17,7 +17,9 @@
         "dev:ws": "npm run dev --workspace=@areena/websocket-server",
         "prisma:generate": "npm run prisma:generate --workspace=@areena/backend",
         "prisma:migrate": "npm run prisma:migrate --workspace=@areena/backend",
-        "prisma:seed": "npm run prisma:seed --workspace=@areena/backend"
+        "prisma:seed": "npm run prisma:seed --workspace=@areena/backend",
+        "demo:seed": "npm run prisma:seed --workspace=@areena/backend",
+        "demo:reset": "npm run prisma:seed --workspace=@areena/backend"
     },
     "devDependencies": {
         "@types/pngjs": "^6.0.5",

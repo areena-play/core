@@ -33,6 +33,7 @@ export const config = {
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || process.env.MINIO_PASS || 'minioadmin',
         bucketName: process.env.AWS_BUCKET_NAME || process.env.MINIO_BUCKET_NAME || 'areena-local-storage',
     },
+    isDemo: process.env.IS_DEMO === 'true',
 };
 
 export default config;

@@ -3,6 +3,9 @@ const nextConfig = {
     output: 'standalone',
     reactStrictMode: true,
     transpilePackages: ['@areena/shared'],
+    env: {
+        NEXT_PUBLIC_IS_DEMO: process.env.IS_DEMO || process.env.NEXT_PUBLIC_IS_DEMO || 'false',
+    },
     images: {
         domains: ['localhost'],
     },

@@ -20,6 +20,7 @@ import invoiceRoutes from './routes/invoices.routes';
 import auditRoutes from './routes/audit.routes';
 import setupRoutes from './routes/setup.routes';
 import noticeRoutes from './routes/notices.routes';
+import { startDemoScheduler } from './services/demoScheduler.service';
 
 const app = express();
 
@@ -29,11 +30,19 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
-// Health check endpoint
+// Health & Public Config endpoints (allowed unauthenticated)
 app.get('/health', (req, res) => {
     res.json({
         status: 'ok',
         service: 'areena-backend',
+        version: '1.0.0',
+        timestamp: new Date().toISOString(),
+    });
+});
+
+app.get('/config/public', (req, res) => {
+    res.json({
+        isDemo: config.isDemo,
         version: '1.0.0',
         timestamp: new Date().toISOString(),
     });
@@ -65,9 +74,13 @@ const PORT = config.port;
 app.listen(PORT, () => {
     console.log(`[AREENA Backend] Server listening on port ${PORT}`);
     console.log(`[AREENA Backend] Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`[AREENA Backend] Demo Mode: ${config.isDemo ? 'ENABLED (Auto 2am Reset)' : 'DISABLED'}`);
+
     ensureBucketExists().catch((err) => {
         console.warn(`[AREENA S3] Bucket initialization notice: ${err.message}`);
     });
+
+    startDemoScheduler();
 });
 
 export default app;
