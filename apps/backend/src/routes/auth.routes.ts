@@ -1,14 +1,30 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../config/prisma';
 import { config } from '../config/env';
 import { validate } from '../middleware/validate';
-import { registerSchema, loginSchema, updateProfileSchema, AuditCategory } from '@areena/shared';
+import {
+    registerSchema,
+    loginSchema,
+    updateProfileSchema,
+    verifyEmailSchema,
+    resendVerificationSchema,
+    AuditCategory,
+} from '@areena/shared';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { AuditService } from '../services/auditService';
+import { EmailService } from '../services/email.service';
 
 const router = Router();
+
+// Helper to check if email verification is mandatory in current environment
+export function isEmailVerificationRequired(): boolean {
+    const isProd = process.env.NODE_ENV === 'production';
+    const isDemo = config.isDemo || process.env.IS_DEMO === 'true';
+    return isProd && !isDemo;
+}
 
 // POST /auth/register
 router.post('/register', validate(registerSchema), async (req, res, next) => {
@@ -22,6 +38,11 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
         }
 
         const passwordHash = await bcrypt.hash(password, 10);
+        const requiresVerification = isEmailVerificationRequired();
+
+        // Generate verification token if in production
+        const verificationToken = requiresVerification ? crypto.randomBytes(32).toString('hex') : null;
+        const verificationExpires = requiresVerification ? new Date(Date.now() + 24 * 3600 * 1000) : null;
 
         const user = await prisma.user.create({
             data: {
@@ -36,8 +57,16 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
                 country: country || 'Switzerland',
                 birthDate: birthDate ? new Date(birthDate) : null,
                 gender: gender || null,
+                emailVerified: !requiresVerification,
+                emailVerificationToken: verificationToken,
+                emailVerificationExpires: verificationExpires,
             },
         });
+
+        // Dispatch verification email
+        if (verificationToken) {
+            await EmailService.sendVerificationEmail(user.email, user.firstName, verificationToken);
+        }
 
         const token = jwt.sign({ userId: user.id }, config.jwtSecret, { expiresIn: '7d' });
 
@@ -50,17 +79,19 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
             category: AuditCategory.AUTH,
             entityType: 'User',
             entityId: user.id,
-            description: `New user registration for ${user.firstName} ${user.lastName} (${user.email})`,
+            description: `New user registration for ${user.firstName} ${user.lastName} (${user.email})${requiresVerification ? ' [Verification Pending]' : ' [Auto-Verified]' }`,
             status: 'SUCCESS',
             metadata: {
                 email: user.email,
                 country: user.country,
                 city: user.city,
+                emailVerified: user.emailVerified,
             },
         });
 
         res.status(201).json({
             token,
+            requiresVerification,
             user: {
                 id: user.id,
                 email: user.email,
@@ -77,6 +108,7 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
                 eloPoints: user.eloPoints,
                 rank: user.rank,
                 isSuperAdmin: user.isSuperAdmin,
+                emailVerified: user.emailVerified,
             },
         });
     } catch (err) {
@@ -129,6 +161,29 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
+        // Check email verification in production environments
+        if (isEmailVerificationRequired() && !user.emailVerified) {
+            await AuditService.record({
+                req,
+                userId: user.id,
+                userEmail: user.email,
+                userName: `${user.firstName} ${user.lastName}`,
+                action: 'AUTH_LOGIN_BLOCKED_UNVERIFIED',
+                category: AuditCategory.SECURITY,
+                entityType: 'User',
+                entityId: user.id,
+                description: `Login blocked for unverified email: ${user.email}`,
+                status: 'FAILURE',
+                metadata: { email: user.email },
+            });
+
+            return res.status(403).json({
+                error: 'EMAIL_NOT_VERIFIED',
+                message: 'Please verify your email address before signing in. Check your inbox for the confirmation link.',
+                email: user.email,
+            });
+        }
+
         const token = jwt.sign({ userId: user.id }, config.jwtSecret, { expiresIn: '7d' });
 
         await AuditService.record({
@@ -167,11 +222,142 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
                 eloPoints: user.eloPoints,
                 rank: user.rank,
                 isSuperAdmin: user.isSuperAdmin,
+                emailVerified: user.emailVerified,
                 associationRoles: user.associationRoles,
                 clubRoles: user.clubRoles,
                 licenses: user.licenses,
             },
         });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// POST /auth/verify-email
+router.post('/verify-email', async (req, res, next) => {
+    try {
+        const token = (req.body.token || req.query.token) as string;
+
+        if (!token) {
+            return res.status(400).json({ error: 'Verification token is required' });
+        }
+
+        const user = await prisma.user.findFirst({
+            where: {
+                emailVerificationToken: token,
+                emailVerificationExpires: { gt: new Date() },
+            },
+        });
+
+        if (!user) {
+            return res.status(400).json({
+                error: 'INVALID_OR_EXPIRED_TOKEN',
+                message: 'The email verification link is invalid or has expired. Please request a new verification link.',
+            });
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                emailVerified: true,
+                emailVerificationToken: null,
+                emailVerificationExpires: null,
+            },
+            include: {
+                associationRoles: { include: { association: true } },
+                clubRoles: { include: { club: true } },
+                licenses: { include: { club: true, association: true, season: true } },
+            },
+        });
+
+        await AuditService.record({
+            req,
+            userId: user.id,
+            userEmail: user.email,
+            userName: `${user.firstName} ${user.lastName}`,
+            action: 'AUTH_EMAIL_VERIFIED',
+            category: AuditCategory.AUTH,
+            entityType: 'User',
+            entityId: user.id,
+            description: `Email address verified successfully for ${user.email}`,
+            status: 'SUCCESS',
+        });
+
+        const authToken = jwt.sign({ userId: user.id }, config.jwtSecret, { expiresIn: '7d' });
+
+        res.json({
+            message: 'Email address verified successfully! You are now logged in.',
+            token: authToken,
+            user: {
+                id: updatedUser.id,
+                email: updatedUser.email,
+                firstName: updatedUser.firstName,
+                lastName: updatedUser.lastName,
+                phone: updatedUser.phone,
+                street: updatedUser.street,
+                postalCode: updatedUser.postalCode,
+                city: updatedUser.city,
+                country: updatedUser.country,
+                birthDate: updatedUser.birthDate,
+                gender: updatedUser.gender,
+                licenseId: updatedUser.licenseId,
+                eloPoints: updatedUser.eloPoints,
+                rank: updatedUser.rank,
+                isSuperAdmin: updatedUser.isSuperAdmin,
+                emailVerified: updatedUser.emailVerified,
+                associationRoles: updatedUser.associationRoles,
+                clubRoles: updatedUser.clubRoles,
+                licenses: updatedUser.licenses,
+            },
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// POST /auth/resend-verification
+router.post('/resend-verification', validate(resendVerificationSchema), async (req, res, next) => {
+    try {
+        const { email } = req.body;
+
+        const user = await prisma.user.findUnique({ where: { email } });
+
+        if (!user) {
+            // Return success message anyway to prevent user enumeration
+            return res.json({ message: 'If an account exists with this email, a verification link has been sent.' });
+        }
+
+        if (user.emailVerified) {
+            return res.json({ message: 'This email address is already verified. You can log in.' });
+        }
+
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const verificationExpires = new Date(Date.now() + 24 * 3600 * 1000);
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                emailVerificationToken: verificationToken,
+                emailVerificationExpires: verificationExpires,
+            },
+        });
+
+        await EmailService.sendVerificationEmail(user.email, user.firstName, verificationToken);
+
+        await AuditService.record({
+            req,
+            userId: user.id,
+            userEmail: user.email,
+            userName: `${user.firstName} ${user.lastName}`,
+            action: 'AUTH_VERIFICATION_RESENT',
+            category: AuditCategory.AUTH,
+            entityType: 'User',
+            entityId: user.id,
+            description: `Resent verification email to ${user.email}`,
+            status: 'SUCCESS',
+        });
+
+        res.json({ message: 'A new verification link has been sent to your email address.' });
     } catch (err) {
         next(err);
     }

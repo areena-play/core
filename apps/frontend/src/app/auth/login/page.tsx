@@ -21,6 +21,7 @@ import {
     UserCheck,
     ArrowRight,
     Flame,
+    Mail,
 } from 'lucide-react';
 
 interface DemoAccount {
@@ -137,6 +138,9 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+    const [resendStatus, setResendStatus] = useState<string | null>(null);
+    const [resendLoading, setResendLoading] = useState(false);
     const [isDemo, setIsDemo] = useState(process.env.NEXT_PUBLIC_IS_DEMO === 'true');
     const [activeDemoCategory, setActiveDemoCategory] = useState<'ALL' | 'ADMINS' | 'CLUBS' | 'PLAYERS'>('ALL');
 
@@ -155,16 +159,36 @@ export default function LoginPage() {
             });
     }, []);
 
+    const handleResendFromLogin = async (targetEmail: string) => {
+        setResendLoading(true);
+        setResendStatus(null);
+        try {
+            const res = await api.resendVerification(targetEmail);
+            setResendStatus(res.message || 'Verification link sent successfully!');
+        } catch (err: any) {
+            setResendStatus(err.message || 'Failed to resend verification email.');
+        } finally {
+            setResendLoading(false);
+        }
+    };
+
     const executeLogin = async (loginEmail: string, loginPass: string) => {
         setLoading(true);
         setErrorMsg('');
+        setUnverifiedEmail(null);
+        setResendStatus(null);
 
         try {
             const res = await api.login({ email: loginEmail, password: loginPass });
             login(res.token, res.user);
             router.push('/');
         } catch (err: any) {
-            setErrorMsg(err.message || 'Login failed. Please check your credentials.');
+            if (err.error === 'EMAIL_NOT_VERIFIED' || err.message?.includes('verify your email')) {
+                setUnverifiedEmail(loginEmail);
+                setErrorMsg(err.message || 'Please verify your email address before signing in.');
+            } else {
+                setErrorMsg(err.message || 'Login failed. Please check your credentials.');
+            }
         } finally {
             setLoading(false);
         }
@@ -226,9 +250,30 @@ export default function LoginPage() {
                         } rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 p-6 md:p-8 shadow-sm dark:shadow-xl space-y-5 text-xs`}
                     >
                         {errorMsg && (
-                            <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/80 p-3 text-red-800 dark:text-red-300">
-                                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
-                                <div>{errorMsg}</div>
+                            <div className="space-y-3 rounded-xl border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/80 p-3 text-red-800 dark:text-red-300">
+                                <div className="flex items-start gap-2.5">
+                                    <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+                                    <div>{errorMsg}</div>
+                                </div>
+                                {unverifiedEmail && (
+                                    <div className="pt-2 border-t border-red-200/60 dark:border-red-800/60 flex flex-col gap-2">
+                                        {resendStatus ? (
+                                            <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                                                {resendStatus}
+                                            </div>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                disabled={resendLoading}
+                                                onClick={() => handleResendFromLogin(unverifiedEmail)}
+                                                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-[11px] transition shadow"
+                                            >
+                                                <Mail className="w-3.5 h-3.5" />
+                                                <span>{resendLoading ? 'Sending...' : 'Resend Verification Link'}</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
 

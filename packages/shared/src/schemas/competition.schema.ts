@@ -15,6 +15,7 @@ export const createCompetitionSchema = z.object({
 export const createCategorySchema = z.object({
     competitionId: z.string().uuid(),
     name: z.string().min(2),
+    nameI18n: z.record(z.string()).optional().nullable(),
     teamSize: z.number().int().positive().default(1),
     minElo: z.number().int().optional().nullable(),
     maxElo: z.number().int().optional().nullable(),

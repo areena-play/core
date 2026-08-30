@@ -20,6 +20,7 @@ import invoiceRoutes from './routes/invoices.routes';
 import auditRoutes from './routes/audit.routes';
 import setupRoutes from './routes/setup.routes';
 import noticeRoutes from './routes/notices.routes';
+import userRoutes from './routes/users.routes';
 import { startDemoScheduler } from './services/demoScheduler.service';
 
 const app = express();
@@ -53,6 +54,7 @@ app.use(apiIngressGuard);
 
 // Mount Routes
 app.use('/auth', authRoutes);
+app.use('/users', userRoutes);
 app.use('/associations', associationRoutes);
 app.use('/clubs', clubRoutes);
 app.use('/licenses', licenseRoutes);

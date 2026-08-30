@@ -174,6 +174,8 @@ router.post('/', authenticateToken, validate(createNoticeSchema), async (req: Au
         const {
             title,
             content,
+            titleI18n,
+            contentI18n,
             type,
             displayMode,
             targetGroup,
@@ -203,6 +205,8 @@ router.post('/', authenticateToken, validate(createNoticeSchema), async (req: Au
             data: {
                 title,
                 content,
+                titleI18n: titleI18n || null,
+                contentI18n: contentI18n || null,
                 type: type || 'INFO',
                 displayMode: displayMode || 'BANNER',
                 targetGroup: targetGroup || 'ALL',

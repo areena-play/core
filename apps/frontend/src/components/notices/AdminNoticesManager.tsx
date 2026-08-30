@@ -20,6 +20,7 @@ import {
     X,
     Filter,
     Layers,
+    Globe,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { AdminNoticeDto, NoticeType, NoticeTargetGroup, NoticeDisplayMode } from '@areena/shared';
@@ -41,9 +42,22 @@ export function AdminNoticesManager({ associations, clubs }: Props) {
     const [errorMsg, setErrorMsg] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
 
-    // Form state
-    const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
+    // Multilingual state
+    const [activeLangTab, setActiveLangTab] = useState<'en' | 'de' | 'fr' | 'it'>('en');
+    const [titlesI18n, setTitlesI18n] = useState<Record<string, string>>({
+        en: '',
+        de: '',
+        fr: '',
+        it: '',
+    });
+    const [contentsI18n, setContentsI18n] = useState<Record<string, string>>({
+        en: '',
+        de: '',
+        fr: '',
+        it: '',
+    });
+
+    // Form settings
     const [type, setType] = useState<NoticeType>(NoticeType.INFO);
     const [displayMode, setDisplayMode] = useState<NoticeDisplayMode>(NoticeDisplayMode.BANNER);
     const [targetGroup, setTargetGroup] = useState<NoticeTargetGroup>(NoticeTargetGroup.ALL);
@@ -76,9 +90,32 @@ export function AdminNoticesManager({ associations, clubs }: Props) {
         setSuccessMsg('');
 
         try {
+            const mainTitle =
+                titlesI18n[activeLangTab]?.trim() ||
+                titlesI18n.en?.trim() ||
+                titlesI18n.de?.trim() ||
+                titlesI18n.fr?.trim() ||
+                titlesI18n.it?.trim() ||
+                '';
+            const mainContent =
+                contentsI18n[activeLangTab]?.trim() ||
+                contentsI18n.en?.trim() ||
+                contentsI18n.de?.trim() ||
+                contentsI18n.fr?.trim() ||
+                contentsI18n.it?.trim() ||
+                '';
+
+            if (!mainTitle || !mainContent) {
+                setErrorMsg('Please enter a notice title and content for at least one language.');
+                setSubmitting(false);
+                return;
+            }
+
             const payload: any = {
-                title,
-                content,
+                title: mainTitle,
+                content: mainContent,
+                titleI18n: titlesI18n,
+                contentI18n: contentsI18n,
                 type,
                 displayMode,
                 targetGroup,
@@ -93,8 +130,8 @@ export function AdminNoticesManager({ associations, clubs }: Props) {
             setSuccessMsg('Notice created and published successfully!');
             setShowCreateModal(false);
             // Reset form
-            setTitle('');
-            setContent('');
+            setTitlesI18n({ en: '', de: '', fr: '', it: '' });
+            setContentsI18n({ en: '', de: '', fr: '', it: '' });
             setType(NoticeType.INFO);
             setDisplayMode(NoticeDisplayMode.BANNER);
             setTargetGroup(NoticeTargetGroup.ALL);
@@ -235,9 +272,30 @@ export function AdminNoticesManager({ associations, clubs }: Props) {
                                                 )}
                                             </div>
 
-                                            <h4 className="text-sm font-bold text-white tracking-tight">
-                                                {notice.title}
-                                            </h4>
+                                            <div className="flex items-center gap-2">
+                                                <h4 className="text-sm font-bold text-white tracking-tight">
+                                                    {notice.title}
+                                                </h4>
+                                                {notice.titleI18n && typeof notice.titleI18n === 'object' && (
+                                                    <div className="flex items-center gap-1">
+                                                        {['en', 'de', 'fr', 'it'].map((lang) => {
+                                                            const hasLang = !!(
+                                                                (notice.titleI18n as any)?.[lang] ||
+                                                                (notice.contentI18n as any)?.[lang]
+                                                            );
+                                                            if (!hasLang) return null;
+                                                            return (
+                                                                <span
+                                                                    key={lang}
+                                                                    className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 uppercase"
+                                                                >
+                                                                    {lang}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
 
                                             <p className="text-xs text-slate-300 mt-1 whitespace-pre-line leading-relaxed">
                                                 {notice.content}
@@ -314,18 +372,84 @@ export function AdminNoticesManager({ associations, clubs }: Props) {
                             )}
 
                             <form onSubmit={handleCreateNotice} className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                                        Notice Title *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
-                                        placeholder="e.g. Scheduled System Maintenance on Sunday"
-                                        className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500"
-                                    />
+                                {/* Multilingual Language Selector Tabs */}
+                                <div className="space-y-2 p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                                    <div className="flex items-center justify-between">
+                                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                                            Announcement Language Tabs
+                                        </label>
+                                        <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                                            <Globe className="w-3.5 h-3.5 text-blue-400" />
+                                            Translate per language
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-4 gap-1.5 p-1 bg-slate-900 rounded-lg border border-slate-800">
+                                        {[
+                                            { code: 'en', label: '🇬🇧 EN' },
+                                            { code: 'de', label: '🇩🇪 DE' },
+                                            { code: 'fr', label: '🇫🇷 FR' },
+                                            { code: 'it', label: '🇮🇹 IT' },
+                                        ].map((lang) => {
+                                            const hasData = !!(
+                                                titlesI18n[lang.code]?.trim() &&
+                                                contentsI18n[lang.code]?.trim()
+                                            );
+                                            const isActive = activeLangTab === lang.code;
+                                            return (
+                                                <button
+                                                    key={lang.code}
+                                                    type="button"
+                                                    onClick={() => setActiveLangTab(lang.code as any)}
+                                                    className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-md text-xs font-bold transition-all ${
+                                                        isActive
+                                                            ? 'bg-red-600 text-white shadow'
+                                                            : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                                    }`}
+                                                >
+                                                    <span>{lang.label}</span>
+                                                    {hasData && (
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                                            Notice Title ({activeLangTab.toUpperCase()}) *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={titlesI18n[activeLangTab] || ''}
+                                            onChange={(e) =>
+                                                setTitlesI18n({
+                                                    ...titlesI18n,
+                                                    [activeLangTab]: e.target.value,
+                                                })
+                                            }
+                                            placeholder={`Title in ${activeLangTab.toUpperCase()} (e.g. Scheduled System Maintenance)`}
+                                            className="w-full bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                                            Notice Message / Content ({activeLangTab.toUpperCase()}) *
+                                        </label>
+                                        <textarea
+                                            rows={3}
+                                            value={contentsI18n[activeLangTab] || ''}
+                                            onChange={(e) =>
+                                                setContentsI18n({
+                                                    ...contentsI18n,
+                                                    [activeLangTab]: e.target.value,
+                                                })
+                                            }
+                                            placeholder={`Message text in ${activeLangTab.toUpperCase()}...`}
+                                            className="w-full bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 resize-none leading-relaxed"
+                                        />
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-3 gap-3">
@@ -377,20 +501,6 @@ export function AdminNoticesManager({ associations, clubs }: Props) {
                                             <option value={NoticeTargetGroup.SUPER_ADMINS}>System Admins Only</option>
                                         </select>
                                     </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                                        Notice Message / Content *
-                                    </label>
-                                    <textarea
-                                        required
-                                        rows={4}
-                                        value={content}
-                                        onChange={(e) => setContent(e.target.value)}
-                                        placeholder="Enter the full message text to display to users..."
-                                        className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 resize-none leading-relaxed"
-                                    />
                                 </div>
 
                                 {/* Dismissal Control Toggle */}

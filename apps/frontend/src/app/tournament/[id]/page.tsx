@@ -26,12 +26,13 @@ import {
     CheckCircle2,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { getLocalizedValue } from '@/lib/i18nHelper';
 
 export default function SingleTournamentPage() {
     const params = useParams();
     const router = useRouter();
     const { user } = useAuth();
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const { setEntityMeta } = useMainView();
 
     const tournamentId = params?.id as string;
@@ -239,7 +240,7 @@ export default function SingleTournamentPage() {
                                         : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
                                 }`}
                             >
-                                <span>{cat.name}</span>
+                                <span>{getLocalizedValue(cat.nameI18n, cat.name, locale)}</span>
                                 <span className="rounded bg-black/20 px-1.5 py-0.5 text-[10px]">
                                     {cat.teamSize === 1
                                         ? '1v1'

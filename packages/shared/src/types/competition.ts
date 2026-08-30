@@ -47,3 +47,21 @@ export interface MatchSetScore {
     away: number;
 }
 
+export interface TournamentCategoryDto {
+    id: string;
+    competitionId: string;
+    name: string;
+    nameI18n?: Record<string, string> | null;
+    teamSize: number;
+    minElo?: number | null;
+    maxElo?: number | null;
+    minAge?: number | null;
+    maxAge?: number | null;
+    genderRestriction?: string;
+    requiredLicenseType?: string | null;
+    encounterFormat?: any;
+    roundsPerGroup?: number;
+    createdAt?: string;
+    updatedAt?: string;
+}
+

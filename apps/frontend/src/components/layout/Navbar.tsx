@@ -41,6 +41,7 @@ import {
     ArrowLeft,
     Receipt,
     Activity,
+    Cookie,
 } from 'lucide-react';
 
 export function Navbar() {
@@ -257,8 +258,11 @@ export function Navbar() {
                 ],
             },
             {
-                sectionTitle: 'Operations & API',
+                sectionTitle: 'Operations & Governance',
                 items: [
+                    ...(user?.isSuperAdmin
+                        ? [{ label: t('nav.users'), href: '/users', icon: Users }]
+                        : []),
                     { label: t('nav.communications'), href: '/communications', icon: Mail },
                     { label: t('nav.developerApi'), href: '/developers', icon: Code2 },
                 ],
@@ -276,7 +280,7 @@ export function Navbar() {
 
     return (
         <>
-            <header className="sticky top-0 z-30 w-full border-b border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-950/80 backdrop-blur-md transition-colors duration-200">
+            <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-950/80 backdrop-blur-md transition-colors duration-200">
                 <div className="flex h-16 items-center justify-between px-3 sm:px-6">
                     {/* Left: Mobile Menu Toggle, Brand Logo & Entity Breadcrumb */}
                     <div className="flex items-center gap-2 sm:gap-4 lg:gap-6">
@@ -370,21 +374,21 @@ export function Navbar() {
                             </span>
                         </div>
 
-                        {/* Language Selector Dropdown (Desktop) */}
-                        <div className="relative hidden sm:block" ref={langDropdownRef}>
+                        {/* Language Selector Dropdown (Desktop & Mobile in Navbar) */}
+                        <div className="relative" ref={langDropdownRef}>
                             <button
                                 onClick={() => setLangDropdownOpen(!langDropdownOpen)}
-                                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                className="flex items-center gap-1 sm:gap-1.5 rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900 px-1.5 py-1 sm:px-2.5 sm:py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                             >
-                                <span className="text-sm leading-none">{locales[locale].flag}</span>
-                                <span className="font-semibold uppercase tracking-wider text-[11px]">
+                                <span className="text-xs sm:text-sm leading-none">{locales[locale].flag}</span>
+                                <span className="font-semibold uppercase tracking-wider text-[10px] sm:text-[11px]">
                                     {locales[locale].code}
                                 </span>
-                                <ChevronDown className="h-3 w-3 text-slate-400" />
+                                <ChevronDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-slate-400" />
                             </button>
 
                             {langDropdownOpen && (
-                                <div className="absolute right-0 mt-2 w-40 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-1.5 shadow-xl z-50 animate-in fade-in-50 zoom-in-95">
+                                <div className="absolute right-0 mt-2 w-36 sm:w-40 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-1.5 shadow-xl z-50 animate-in fade-in-50 zoom-in-95">
                                     <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                                         {t('nav.language')}
                                     </div>
@@ -395,17 +399,17 @@ export function Navbar() {
                                                 setLocale(loc);
                                                 setLangDropdownOpen(false);
                                             }}
-                                            className={`w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs text-left transition ${
+                                            className={`w-full flex items-center justify-between rounded-lg px-2 sm:px-2.5 py-1.5 text-xs text-left transition ${
                                                 locale === loc
                                                     ? 'bg-red-50 text-red-600 font-bold dark:bg-red-950/50 dark:text-red-400'
                                                     : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                                             }`}
                                         >
-                                            <span className="flex items-center gap-2">
-                                                <span className="text-sm leading-none">{locales[loc].flag}</span>
-                                                <span>{locales[loc].nativeLabel}</span>
+                                            <span className="flex items-center gap-1.5 sm:gap-2">
+                                                <span className="text-xs sm:text-sm leading-none">{locales[loc].flag}</span>
+                                                <span className="text-[11px] sm:text-xs">{locales[loc].nativeLabel}</span>
                                             </span>
-                                            <span className="font-mono text-[10px] uppercase text-slate-400">
+                                            <span className="font-mono text-[9px] sm:text-[10px] uppercase text-slate-400">
                                                 {loc}
                                             </span>
                                         </button>
@@ -579,6 +583,17 @@ export function Navbar() {
                                                 <User className="h-4 w-4 text-slate-400" />
                                                 <span>{t('userMenu.myProfile')}</span>
                                             </Link>
+
+                                            {user?.isSuperAdmin && (
+                                                <Link
+                                                    href="/users"
+                                                    onClick={() => setUserMenuOpen(false)}
+                                                    className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                                >
+                                                    <Users className="h-4 w-4 text-red-500" />
+                                                    <span>{t('nav.users')}</span>
+                                                </Link>
+                                            )}
                                         </div>
 
                                         {/* Integrated Sign Out Button */}
@@ -722,56 +737,53 @@ export function Navbar() {
                                     </div>
                                 ))}
                             </nav>
-
-                            {/* Language Switcher in Mobile Drawer */}
-                            <div className="rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60 p-2.5 space-y-1.5">
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                                    <Globe className="h-3 w-3" />
-                                    <span>{t('nav.language')}</span>
-                                </div>
-                                <div className="grid grid-cols-2 gap-1.5">
-                                    {supportedLocales.map((loc) => (
-                                        <button
-                                            key={loc}
-                                            onClick={() => setLocale(loc)}
-                                            className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs transition ${
-                                                locale === loc
-                                                    ? 'bg-white shadow text-red-600 font-bold dark:bg-slate-800 dark:text-red-400 border border-slate-200/80 dark:border-slate-700'
-                                                    : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-800/60'
-                                            }`}
-                                        >
-                                            <span className="text-sm">{locales[loc].flag}</span>
-                                            <span className="truncate">{locales[loc].nativeLabel}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
                         </div>
 
-                        {/* Sticky Fixed Bottom AREENA Tag & Impressum Link */}
+                        {/* Sticky Fixed Bottom AREENA Tag & Legal Links */}
                         <div className="flex-shrink-0 p-3 border-t border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xs">
-                            <Link
-                                href="/impressum"
-                                onClick={() => setMobileMenuOpen(false)}
-                                className="group block rounded-xl border border-slate-200 bg-slate-50/80 hover:border-red-500/40 hover:bg-red-50/40 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-red-500/40 dark:hover:bg-red-950/20 p-2.5 transition"
-                            >
+                            <div className="block rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60 p-2.5 transition">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-1.5 font-black text-xs text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition">
-                                        <Sparkles className="h-3.5 w-3.5 text-red-500" />
+                                        <div className="relative h-4 w-4 shrink-0">
+                                            <Image src="/icon.svg" alt="AREENA" fill className="object-contain" />
+                                        </div>
                                         <span>AREENA</span>
+                                        <span className="text-[9.5px] font-normal text-slate-400">© {new Date().getFullYear()}</span>
                                     </div>
                                     <span className="text-[9px] font-mono text-slate-400">v1.0</span>
                                 </div>
-                                <div className="mt-1 text-[9.5px] leading-tight text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300">
-                                    Advanced Resource and Event Engine for Next-gen Associations
+                                <div className="mt-1.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-[8.5px] text-slate-400 dark:text-slate-500">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setMobileMenuOpen(false);
+                                            if (typeof window !== 'undefined') {
+                                                window.dispatchEvent(
+                                                    new CustomEvent('areena:open-cookie-settings'),
+                                                );
+                                            }
+                                        }}
+                                        className="flex items-center gap-0.5 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
+                                    >
+                                        <Cookie className="h-2.5 w-2.5 text-amber-500/80" />
+                                        <span>{t('cookieConsent.shortLabel')}</span>
+                                    </button>
+                                    <Link
+                                        href="/data-protection"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
+                                    >
+                                        {t('nav.dataProtection')}
+                                    </Link>
+                                    <Link
+                                        href="/impressum"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
+                                    >
+                                        {t('nav.impressum')}
+                                    </Link>
                                 </div>
-                                <div className="mt-1.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-[9px] text-slate-400">
-                                    <span>© {new Date().getFullYear()} AREENA</span>
-                                    <span className="text-red-600 dark:text-red-400 font-semibold group-hover:underline">
-                                        Impressum ↗
-                                    </span>
-                                </div>
-                            </Link>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -17,6 +17,7 @@ import {
     Check,
 } from 'lucide-react';
 import { AdminNoticeDto, NoticeType, NoticeDisplayMode } from '@areena/shared';
+import { getLocalizedValue } from '@/lib/i18nHelper';
 
 const LOCAL_PERMANENT_DISMISSED_KEY = 'areena_dismissed_notices';
 const SESSION_CLOSED_KEY = 'areena_session_closed_notices';
@@ -65,7 +66,7 @@ function addSessionClosed(id: string) {
 
 export function AdminNoticeModal() {
     const { user } = useAuth();
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
 
     const [notices, setNotices] = useState<AdminNoticeDto[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -222,7 +223,7 @@ export function AdminNoticeModal() {
                                 )}
                             </div>
                             <h3 className="text-lg md:text-xl font-bold text-white tracking-tight leading-snug">
-                                {currentNotice.title}
+                                {getLocalizedValue(currentNotice.titleI18n, currentNotice.title, locale)}
                             </h3>
                         </div>
                     </div>
@@ -240,7 +241,7 @@ export function AdminNoticeModal() {
 
                 {/* Body Content */}
                 <div className="p-5 md:p-6 overflow-y-auto flex-1 text-sm text-slate-200 whitespace-pre-line leading-relaxed selection:bg-red-600 selection:text-white">
-                    {currentNotice.content}
+                    {getLocalizedValue(currentNotice.contentI18n, currentNotice.content, locale)}
                 </div>
 
                 {/* Footer Controls */}

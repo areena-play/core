@@ -15,6 +15,7 @@ import {
     ChevronUp,
 } from 'lucide-react';
 import { AdminNoticeDto, NoticeType, NoticeDisplayMode } from '@areena/shared';
+import { getLocalizedValue } from '@/lib/i18nHelper';
 
 const LOCAL_PERMANENT_DISMISSED_KEY = 'areena_dismissed_notices';
 const SESSION_CLOSED_KEY = 'areena_session_closed_notices';
@@ -63,7 +64,7 @@ function addSessionClosed(id: string) {
 
 export function AdminNoticeBanner() {
     const { user } = useAuth();
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const [notices, setNotices] = useState<AdminNoticeDto[]>([]);
     const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
     const [dismissingId, setDismissingId] = useState<string | null>(null);
@@ -129,9 +130,11 @@ export function AdminNoticeBanner() {
     if (notices.length === 0) return null;
 
     return (
-        <aside aria-label="System Announcements" className="w-full flex flex-col z-40 shrink-0">
+        <aside aria-label="System Announcements" className="relative z-20 w-full flex flex-col shrink-0">
             {notices.map((notice) => {
                 const isExpanded = !!expandedMap[notice.id];
+                const noticeTitle = getLocalizedValue(notice.titleI18n, notice.title, locale);
+                const noticeContent = getLocalizedValue(notice.contentI18n, notice.content, locale);
 
                 let bannerBg = 'bg-gradient-to-r from-blue-950 via-slate-900 to-blue-950 border-b border-blue-500/30 text-blue-100';
                 let icon = <Info className="w-4 h-4 text-blue-400 shrink-0" />;
@@ -183,18 +186,18 @@ export function AdminNoticeBanner() {
                                     </span>
 
                                     <span className="font-bold text-white shrink-0">
-                                        {notice.title}:
+                                        {noticeTitle}:
                                     </span>
 
                                     <span
                                         className={`text-slate-200 ${
-                                            !isExpanded && notice.content.length > 140 ? 'truncate' : ''
+                                            !isExpanded && noticeContent.length > 140 ? 'truncate' : ''
                                         }`}
                                     >
-                                        {notice.content}
+                                        {noticeContent}
                                     </span>
 
-                                    {notice.content.length > 140 && (
+                                    {noticeContent.length > 140 && (
                                         <button
                                             onClick={() => toggleExpand(notice.id)}
                                             className="text-xs font-semibold text-slate-300 hover:text-white underline underline-offset-2 ml-1 shrink-0"

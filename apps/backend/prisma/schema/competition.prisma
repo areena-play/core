@@ -63,6 +63,7 @@ model Category {
   id                  String            @id @default(uuid())
   competitionId       String
   name                String
+  nameI18n            Json?
   teamSize            Int               @default(1)
   minElo              Int?
   maxElo              Int?

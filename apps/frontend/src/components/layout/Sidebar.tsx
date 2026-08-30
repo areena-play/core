@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard,
@@ -22,6 +23,7 @@ import {
     Sparkles,
     Receipt,
     Activity,
+    Cookie,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18nContext';
 import { useMainView } from '@/lib/mainViewContext';
@@ -188,8 +190,11 @@ export function Sidebar() {
                 ],
             },
             {
-                sectionTitle: 'Operations & API',
+                sectionTitle: 'Operations & Governance',
                 items: [
+                    ...(user?.isSuperAdmin
+                        ? [{ label: t('nav.users'), href: '/users', icon: Users }]
+                        : []),
                     { label: t('nav.communications'), href: '/communications', icon: Mail },
                     { label: t('nav.developerApi'), href: '/developers', icon: Code2 },
                 ],
@@ -280,29 +285,48 @@ export function Sidebar() {
                 </nav>
             </div>
 
-            {/* Sticky Fixed Bottom AREENA Tag & Impressum Link */}
+            {/* Sticky Fixed Bottom AREENA Tag & Legal Links */}
             <div className="flex-shrink-0 p-3 border-t border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xs">
-                <Link
-                    href="/impressum"
-                    className="group block rounded-xl border border-slate-200 bg-slate-50/80 hover:border-red-500/40 hover:bg-red-50/40 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-red-500/40 dark:hover:bg-red-950/20 p-2.5 transition"
-                >
+                <div className="block rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60 p-2.5 transition">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 font-black text-xs text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition">
-                            <Sparkles className="h-3.5 w-3.5 text-red-500" />
+                            <div className="relative h-4 w-4 shrink-0">
+                                <Image src="/icon.svg" alt="AREENA" fill className="object-contain" />
+                            </div>
                             <span>AREENA</span>
+                            <span className="text-[9.5px] font-normal text-slate-400">© {new Date().getFullYear()}</span>
                         </div>
                         <span className="text-[9px] font-mono text-slate-400">v1.0</span>
                     </div>
-                    <div className="mt-1 text-[9.5px] leading-tight text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300">
-                        Advanced Resource and Event Engine for Next-gen Associations
+                    <div className="mt-1.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-[8.5px] text-slate-400 dark:text-slate-500">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (typeof window !== 'undefined') {
+                                    window.dispatchEvent(
+                                        new CustomEvent('areena:open-cookie-settings'),
+                                    );
+                                }
+                            }}
+                            className="flex items-center gap-0.5 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
+                        >
+                            <Cookie className="h-2.5 w-2.5 text-amber-500/80" />
+                            <span>{t('cookieConsent.shortLabel')}</span>
+                        </button>
+                        <Link
+                            href="/data-protection"
+                            className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
+                        >
+                            {t('nav.dataProtection')}
+                        </Link>
+                        <Link
+                            href="/impressum"
+                            className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
+                        >
+                            {t('nav.impressum')}
+                        </Link>
                     </div>
-                    <div className="mt-1.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-[9px] text-slate-400">
-                        <span>© {new Date().getFullYear()} AREENA</span>
-                        <span className="text-red-600 dark:text-red-400 font-semibold group-hover:underline">
-                            Impressum ↗
-                        </span>
-                    </div>
-                </Link>
+                </div>
             </div>
         </aside>
     );

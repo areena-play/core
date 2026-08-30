@@ -28,6 +28,7 @@ export default function RegisterPage() {
 
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    const [registeredPendingEmail, setRegisteredPendingEmail] = useState<string | null>(null);
 
     const logoSrc = resolvedTheme === 'dark' ? '/areena-logo-dark.png' : '/areena-logo.png';
 
@@ -49,14 +50,57 @@ export default function RegisterPage() {
                 country,
             });
 
-            login(res.token, res.user);
-            router.push('/');
+            if (res.requiresVerification) {
+                setRegisteredPendingEmail(email);
+            } else {
+                login(res.token, res.user);
+                router.push('/');
+            }
         } catch (err: any) {
             setErrorMsg(err.message || 'Registration failed.');
         } finally {
             setLoading(false);
         }
     };
+
+    if (registeredPendingEmail) {
+        return (
+            <div className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-8">
+                <div className="w-full max-w-md space-y-6">
+                    <div className="text-center space-y-2">
+                        <div className="relative h-12 w-40 mx-auto">
+                            <Image key={logoSrc} src={logoSrc} alt="AREENA Logo" fill priority className="object-contain" />
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 p-6 md:p-8 shadow-sm dark:shadow-xl space-y-6 text-xs text-center">
+                        <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-500 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/10">
+                            <UserPlus className="w-8 h-8" />
+                        </div>
+                        <div className="space-y-2">
+                            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                                Account Created Successfully!
+                            </h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                We've sent an email verification link to{' '}
+                                <strong className="text-slate-900 dark:text-white">{registeredPendingEmail}</strong>.
+                                Please check your inbox and click the link to activate your account.
+                            </p>
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-2">
+                            <Link
+                                href="/auth/login"
+                                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 py-2.5 font-semibold text-white hover:bg-red-700 shadow transition"
+                            >
+                                <span>Go to Sign In</span>
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-8">

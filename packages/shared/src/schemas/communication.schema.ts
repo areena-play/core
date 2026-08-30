@@ -28,6 +28,8 @@ export const auditLogQuerySchema = z.object({
 export const createNoticeSchema = z.object({
     title: z.string().min(1, 'Title is required').max(200),
     content: z.string().min(1, 'Content is required'),
+    titleI18n: z.record(z.string()).optional().nullable(),
+    contentI18n: z.record(z.string()).optional().nullable(),
     type: z.enum(['INFO', 'WARNING', 'CRITICAL', 'SUCCESS']).default('INFO'),
     displayMode: z.enum(['BANNER', 'MODAL']).default('BANNER'),
     targetGroup: z
@@ -53,6 +55,8 @@ export const createNoticeSchema = z.object({
 export const updateNoticeSchema = z.object({
     title: z.string().min(1).max(200).optional(),
     content: z.string().min(1).optional(),
+    titleI18n: z.record(z.string()).optional().nullable(),
+    contentI18n: z.record(z.string()).optional().nullable(),
     type: z.enum(['INFO', 'WARNING', 'CRITICAL', 'SUCCESS']).optional(),
     displayMode: z.enum(['BANNER', 'MODAL']).optional(),
     targetGroup: z

@@ -39,3 +39,34 @@ export const createOAuthClientSchema = z.object({
     requestedScopes: z.array(z.string()).min(1),
 });
 
+export const adminUpdateUserSchema = z.object({
+    firstName: z.string().min(1).optional(),
+    lastName: z.string().min(1).optional(),
+    email: z.string().email().optional(),
+    phone: z.string().min(5).optional(),
+    street: z.string().min(2).optional(),
+    postalCode: z.string().min(2).optional(),
+    city: z.string().min(1).optional(),
+    country: z.string().optional(),
+    birthDate: z.string().optional().nullable(),
+    gender: z.nativeEnum(Gender).optional().nullable(),
+    isSuperAdmin: z.boolean().optional(),
+    emailVerified: z.boolean().optional(),
+    eloPoints: z.number().int().min(0).optional(),
+    licenseId: z.string().optional().nullable(),
+});
+
+export const adminResetPasswordSchema = z.object({
+    newPassword: z.string().min(8).optional(),
+    autoGenerate: z.boolean().optional(),
+});
+
+export const verifyEmailSchema = z.object({
+    token: z.string().min(10),
+});
+
+export const resendVerificationSchema = z.object({
+    email: z.string().email(),
+});
+
+

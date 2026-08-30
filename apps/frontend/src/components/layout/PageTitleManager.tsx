@@ -73,6 +73,8 @@ export function PageTitleManager() {
                 pageName = t('nav.communications', undefined, 'Communications');
             } else if (pathname === '/impressum') {
                 pageName = t('impressum.title', undefined, 'Impressum & Legal');
+            } else if (pathname === '/data-protection') {
+                pageName = t('nav.dataProtection', undefined, 'Data Protection & Privacy');
             } else if (pathname === '/profile') {
                 pageName = 'Profile';
             } else if (pathname === '/auth/login') {

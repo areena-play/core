@@ -207,6 +207,7 @@ export async function seedDemoDatabase() {
             postalCode: '3005',
             city: 'Bern',
             isSuperAdmin: true,
+            emailVerified: true,
             eloPoints: 1200,
         },
     });
@@ -222,6 +223,7 @@ export async function seedDemoDatabase() {
             postalCode: '3063',
             city: 'Ittigen',
             isSuperAdmin: false,
+            emailVerified: true,
             eloPoints: 1450,
             rank: 45,
         },
@@ -246,6 +248,7 @@ export async function seedDemoDatabase() {
             postalCode: '9000',
             city: 'St. Gallen',
             isSuperAdmin: false,
+            emailVerified: true,
             eloPoints: 1300,
         },
     });
@@ -269,6 +272,7 @@ export async function seedDemoDatabase() {
             postalCode: '8001',
             city: 'Zürich',
             isSuperAdmin: false,
+            emailVerified: true,
             eloPoints: 1520,
         },
     });
@@ -292,6 +296,7 @@ export async function seedDemoDatabase() {
             postalCode: '3011',
             city: 'Bern',
             isSuperAdmin: false,
+            emailVerified: true,
             eloPoints: 1480,
         },
     });
@@ -315,6 +320,7 @@ export async function seedDemoDatabase() {
             postalCode: '8050',
             city: 'Zürich',
             isSuperAdmin: false,
+            emailVerified: true,
             eloPoints: 1750,
             licenseId: '126001',
         },
@@ -339,6 +345,7 @@ export async function seedDemoDatabase() {
             postalCode: '3008',
             city: 'Bern',
             isSuperAdmin: false,
+            emailVerified: true,
             eloPoints: 1390,
             licenseId: '126002',
         },
@@ -355,6 +362,7 @@ export async function seedDemoDatabase() {
             postalCode: '6900',
             city: 'Lugano',
             isSuperAdmin: false,
+            emailVerified: true,
             eloPoints: 1850,
             rank: 4,
             licenseId: '126003',
@@ -372,6 +380,7 @@ export async function seedDemoDatabase() {
             postalCode: '1007',
             city: 'Lausanne',
             isSuperAdmin: false,
+            emailVerified: true,
             eloPoints: 1620,
             rank: 12,
             licenseId: '126004',
@@ -389,6 +398,7 @@ export async function seedDemoDatabase() {
             postalCode: '4053',
             city: 'Basel',
             isSuperAdmin: false,
+            emailVerified: true,
             eloPoints: 1340,
             rank: 28,
             licenseId: '126005',
@@ -406,9 +416,28 @@ export async function seedDemoDatabase() {
             postalCode: '3011',
             city: 'Bern',
             isSuperAdmin: false,
+            emailVerified: true,
             eloPoints: 1710,
             rank: 9,
             licenseId: '126006',
+        },
+    });
+
+    const userPending = await prisma.user.create({
+        data: {
+            email: 'test.pending@areena.ch',
+            passwordHash,
+            firstName: 'Simon',
+            lastName: 'Keller',
+            phone: '+41 79 999 88 77',
+            street: 'Bahnhofstrasse 1',
+            postalCode: '6003',
+            city: 'Luzern',
+            isSuperAdmin: false,
+            emailVerified: false,
+            emailVerificationToken: 'demo-sample-verification-token-2026',
+            emailVerificationExpires: new Date(Date.now() + 86400000),
+            eloPoints: 1000,
         },
     });
 
@@ -599,6 +628,12 @@ export async function seedDemoDatabase() {
         data: {
             competitionId: swissChampionship.id,
             name: "Men's Elite Singles (A-Series)",
+            nameI18n: {
+                en: "Men's Elite Singles (A-Series)",
+                de: 'Herren Elite Einzel (A-Serie)',
+                fr: 'Simple Messieurs Elite (Série A)',
+                it: 'Singolare Maschile Elite (Serie A)',
+            },
             teamSize: 1,
             minElo: 1500,
             genderRestriction: GenderRestriction.MALE_ONLY,
@@ -746,6 +781,18 @@ export async function seedDemoDatabase() {
             title: 'Welcome to the AREENA Sports Federation Platform Demo',
             content:
                 'Explore the multi-tier Swiss federation ecosystem: inspect tournament encounters, review license approvals, manage club rosters, and test role-based access.',
+            titleI18n: {
+                en: 'Welcome to the AREENA Sports Federation Platform Demo',
+                de: 'Willkommen bei der AREENA Sportverbands-Plattform Demo',
+                fr: 'Bienvenue sur la démo de la plateforme AREENA',
+                it: 'Benvenuti nella demo della piattaforma federale AREENA',
+            },
+            contentI18n: {
+                en: 'Explore the multi-tier Swiss federation ecosystem: inspect tournament encounters, review license approvals, manage club rosters, and test role-based access.',
+                de: 'Entdecken Sie das Schweizer Verbandsökosystem: Turnierbegegnungen einsehen, Lizenzanträge prüfen, Kader verwalten und Rollenberechtigungen testen.',
+                fr: 'Explorez l’écosystème fédéral suisse : suivez les rencontres de tournoi, validez les licences, gérez les effectifs de club et testez les accès.',
+                it: 'Esplora l’ecosistema federale svizzero: visualizza gli incontri, approva i tesseramenti, gestisci i roster dei club e verifica i ruoli.',
+            },
             type: NoticeType.INFO,
             displayMode: NoticeDisplayMode.BANNER,
             targetGroup: NoticeTargetGroup.ALL,
@@ -760,6 +807,18 @@ export async function seedDemoDatabase() {
             title: '2026 Swiss National Cup Registrations Closing',
             content:
                 'Attention all licensed athletes and club managers: Final team entries and player license renewals must be confirmed by this Friday at 23:59 CET.',
+            titleI18n: {
+                en: '2026 Swiss National Cup Registrations Closing',
+                de: 'Anmeldeschluss für den Schweizer Cup 2026',
+                fr: 'Clôture des inscriptions à la Coupe Suisse 2026',
+                it: 'Chiusura iscrizioni alla Coppa Svizzera 2026',
+            },
+            contentI18n: {
+                en: 'Attention all licensed athletes and club managers: Final team entries and player license renewals must be confirmed by this Friday at 23:59 CET.',
+                de: 'Achtung an alle lizenzierten Athleten und Vereinsmanager: Mannschaftsmeldungen und Lizenzerneuerungen müssen bis Freitag um 23:59 Uhr bestätigt sein.',
+                fr: 'Attention aux athlètes licenciés et responsables de club : Les inscriptions d’équipes et renouvellements de licences doivent être confirmés avant vendredi 23h59 CET.',
+                it: 'Attenzione a tutti gli atleti tesserati e dirigenti di club: le iscrizioni delle squadre e i rinnovi devono essere confermati entro venerdì alle 23:59 CET.',
+            },
             type: NoticeType.WARNING,
             displayMode: NoticeDisplayMode.MODAL,
             targetGroup: NoticeTargetGroup.PLAYERS,

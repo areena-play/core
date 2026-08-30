@@ -178,6 +178,7 @@ router.post(
         try {
             const {
                 name,
+                nameI18n,
                 teamSize,
                 minElo,
                 maxElo,
@@ -193,6 +194,7 @@ router.post(
                 data: {
                     competitionId: req.params.id,
                     name,
+                    nameI18n: nameI18n || null,
                     teamSize: teamSize || 1,
                     minElo,
                     maxElo,

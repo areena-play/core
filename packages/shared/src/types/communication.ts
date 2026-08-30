@@ -117,6 +117,8 @@ export interface AdminNoticeDto {
     id: string;
     title: string;
     content: string;
+    titleI18n?: Record<string, string> | null;
+    contentI18n?: Record<string, string> | null;
     type: NoticeType;
     displayMode: NoticeDisplayMode;
     targetGroup: NoticeTargetGroup;
@@ -153,6 +155,8 @@ export interface AdminNoticeDto {
 export interface CreateNoticeDto {
     title: string;
     content: string;
+    titleI18n?: Record<string, string> | null;
+    contentI18n?: Record<string, string> | null;
     type?: NoticeType;
     displayMode?: NoticeDisplayMode;
     targetGroup?: NoticeTargetGroup;
@@ -168,6 +172,8 @@ export interface CreateNoticeDto {
 export interface UpdateNoticeDto {
     title?: string;
     content?: string;
+    titleI18n?: Record<string, string> | null;
+    contentI18n?: Record<string, string> | null;
     type?: NoticeType;
     displayMode?: NoticeDisplayMode;
     targetGroup?: NoticeTargetGroup;
