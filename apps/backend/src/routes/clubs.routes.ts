@@ -96,4 +96,62 @@ router.post('/', authenticateToken, validate(createClubSchema), async (req: Auth
     }
 });
 
+// PUT /clubs/:id - Update club details with Optimistic Concurrency Control (OCC)
+router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const { id } = req.params;
+        const targetClub = await prisma.club.findUnique({ where: { id } });
+        if (!targetClub) {
+            return res.status(404).json({ error: 'Club not found' });
+        }
+
+        // Authorization check: SuperAdmin or Club Admin
+        const isAuthorized =
+            req.user?.isSuperAdmin ||
+            req.user?.clubRoles.some((r) => r.clubId === id && ['ADMIN', 'PRESIDENT'].includes(r.role));
+        if (!isAuthorized) {
+            return res.status(403).json({ error: 'Unauthorized to modify this club' });
+        }
+
+        const {
+            name,
+            address,
+            city,
+            postalCode,
+            country,
+            email,
+            phone,
+            website,
+            logoUrl,
+            expectedUpdatedAt,
+        } = req.body;
+
+        // Optimistic concurrency control check
+        if (expectedUpdatedAt && new Date(targetClub.updatedAt).getTime() !== new Date(expectedUpdatedAt).getTime()) {
+            return res.status(409).json({
+                error: 'Conflict: This club was modified concurrently by another administrator. Please reload before saving.',
+            });
+        }
+
+        const updated = await prisma.club.update({
+            where: { id },
+            data: {
+                ...(name ? { name } : {}),
+                ...(address ? { address } : {}),
+                ...(city ? { city } : {}),
+                ...(postalCode ? { postalCode } : {}),
+                ...(country ? { country } : {}),
+                ...(email ? { email } : {}),
+                ...(phone ? { phone } : {}),
+                ...(website !== undefined ? { website } : {}),
+                ...(logoUrl !== undefined ? { logoUrl } : {}),
+            },
+        });
+
+        res.json(updated);
+    } catch (err) {
+        next(err);
+    }
+});
+
 export default router;

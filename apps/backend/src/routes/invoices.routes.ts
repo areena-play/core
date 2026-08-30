@@ -12,6 +12,7 @@ import {
 } from '@areena/shared';
 import { BexioService } from '../services/bexioService';
 import { AuditService } from '../services/auditService';
+import { DistributedLockService } from '../services/distributedLockService';
 
 const router = Router();
 
@@ -331,44 +332,46 @@ router.post('/', authenticateToken, validate(createInvoiceSchema), async (req: A
         const taxAmount = Math.round(((subtotal * taxPct) / 100) * 100) / 100;
         const totalAmount = Math.round((subtotal + taxAmount) * 100) / 100;
 
-        // Auto-generate invoice number (INV-YYYY-XXXX)
-        const year = new Date().getFullYear();
-        const invoiceCount = await prisma.invoice.count();
-        const invoiceNumber = `INV-${year}-${String(invoiceCount + 1).padStart(4, '0')}`;
+        // Auto-generate invoice number (INV-YYYY-XXXX) protected by PostgreSQL advisory lock & transaction
+        const invoice = await DistributedLockService.withLock('billing:invoice-counter', async (tx) => {
+            const year = new Date().getFullYear();
+            const invoiceCount = await tx.invoice.count();
+            const invoiceNumber = `INV-${year}-${String(invoiceCount + 1).padStart(4, '0')}`;
 
-        const invoice = await prisma.invoice.create({
-            data: {
-                invoiceNumber,
-                associationId: associationId || null,
-                clubId: clubId || null,
-                targetType,
-                recipientClubId: recipientClubId || null,
-                recipientUserId: recipientUserId || null,
-                recipientName,
-                recipientEmail: recipientEmail || null,
-                recipientAddress: recipientAddress || null,
-                status: InvoiceStatus.DRAFT,
-                category,
-                currency: currency || 'CHF',
-                subtotal,
-                taxRate: taxPct,
-                taxAmount,
-                totalAmount,
-                issueDate: issueDate ? new Date(issueDate) : new Date(),
-                dueDate: new Date(dueDate),
-                notes: notes || null,
-                terms: terms || null,
-                lineItems: {
-                    create: formattedItems,
+            return await tx.invoice.create({
+                data: {
+                    invoiceNumber,
+                    associationId: associationId || null,
+                    clubId: clubId || null,
+                    targetType,
+                    recipientClubId: recipientClubId || null,
+                    recipientUserId: recipientUserId || null,
+                    recipientName,
+                    recipientEmail: recipientEmail || null,
+                    recipientAddress: recipientAddress || null,
+                    status: InvoiceStatus.DRAFT,
+                    category,
+                    currency: currency || 'CHF',
+                    subtotal,
+                    taxRate: taxPct,
+                    taxAmount,
+                    totalAmount,
+                    issueDate: issueDate ? new Date(issueDate) : new Date(),
+                    dueDate: new Date(dueDate),
+                    notes: notes || null,
+                    terms: terms || null,
+                    lineItems: {
+                        create: formattedItems,
+                    },
                 },
-            },
-            include: {
-                lineItems: true,
-                association: true,
-                club: true,
-                recipientClub: true,
-                recipientUser: true,
-            },
+                include: {
+                    lineItems: true,
+                    association: true,
+                    club: true,
+                    recipientClub: true,
+                    recipientUser: true,
+                },
+            });
         });
 
         // Trigger Bexio sync if requested or if autoSync is enabled
@@ -402,10 +405,10 @@ router.post('/', authenticateToken, validate(createInvoiceSchema), async (req: A
                     entityId: invoice.id,
                     associationId: invoice.associationId,
                     clubId: invoice.clubId,
-                    description: `Created invoice #${invoiceNumber} for ${recipientName} (${invoice.currency} ${invoice.totalAmount.toFixed(2)}) & synced to Bexio (#${syncRes.bexioId})`,
+                    description: `Created invoice #${invoice.invoiceNumber} for ${recipientName} (${invoice.currency} ${invoice.totalAmount.toFixed(2)}) & synced to Bexio (#${syncRes.bexioId})`,
                     status: 'SUCCESS',
                     metadata: {
-                        invoiceNumber,
+                        invoiceNumber: invoice.invoiceNumber,
                         recipientName,
                         totalAmount: invoice.totalAmount,
                         currency: invoice.currency,
@@ -426,10 +429,10 @@ router.post('/', authenticateToken, validate(createInvoiceSchema), async (req: A
             entityId: invoice.id,
             associationId: invoice.associationId,
             clubId: invoice.clubId,
-            description: `Created invoice #${invoiceNumber} for ${recipientName} (${invoice.currency} ${invoice.totalAmount.toFixed(2)})`,
+            description: `Created invoice #${invoice.invoiceNumber} for ${recipientName} (${invoice.currency} ${invoice.totalAmount.toFixed(2)})`,
             status: 'SUCCESS',
             metadata: {
-                invoiceNumber,
+                invoiceNumber: invoice.invoiceNumber,
                 recipientName,
                 totalAmount: invoice.totalAmount,
                 currency: invoice.currency,

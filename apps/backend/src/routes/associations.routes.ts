@@ -182,7 +182,14 @@ router.put(
                     .json({ error: 'Only association administrators can update association settings' });
             }
 
-            const { name, shortName, logoUrl, licenseIdTemplate, counter, regionDigit } = req.body;
+            const { name, shortName, logoUrl, licenseIdTemplate, counter, regionDigit, expectedUpdatedAt } = req.body;
+
+            // Optimistic concurrency control check
+            if (expectedUpdatedAt && new Date(targetAssoc.updatedAt).getTime() !== new Date(expectedUpdatedAt).getTime()) {
+                return res.status(409).json({
+                    error: 'Conflict: Association settings were modified by another administrator. Please refresh before saving.',
+                });
+            }
 
             const updated = await prisma.association.update({
                 where: { id: req.params.id },
