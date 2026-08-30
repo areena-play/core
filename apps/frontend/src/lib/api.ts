@@ -1,6 +1,27 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 const DIRECT_BACKEND_URL = process.env.NEXT_PUBLIC_DIRECT_API_URL || 'http://localhost:4000';
 
+let activeRequests = 0;
+const loadingListeners = new Set<(activeCount: number) => void>();
+
+export function subscribeApiLoading(listener: (activeCount: number) => void) {
+    loadingListeners.add(listener);
+    listener(activeRequests);
+    return () => {
+        loadingListeners.delete(listener);
+    };
+}
+
+function notifyLoading() {
+    loadingListeners.forEach((fn) => {
+        try {
+            fn(activeRequests);
+        } catch (e) {
+            console.error('Error in loading listener', e);
+        }
+    });
+}
+
 class ApiClient {
     private getToken(): string | null {
         if (typeof window === 'undefined') return null;
@@ -8,34 +29,42 @@ class ApiClient {
     }
 
     async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
-        const token = this.getToken();
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            ...((options.headers as Record<string, string>) || {}),
-        };
+        activeRequests++;
+        notifyLoading();
 
-        const res = await fetch(`${API_BASE}${endpoint}`, {
-            ...options,
-            headers,
-        });
+        try {
+            const token = this.getToken();
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                ...((options.headers as Record<string, string>) || {}),
+            };
 
-        if (!res.ok) {
-            let errorMessage = `HTTP Error ${res.status}`;
-            let errorData: any = {};
-            try {
-                errorData = await res.json();
-                errorMessage = errorData.message || errorData.error || errorMessage;
-            } catch {}
-            const error: any = new Error(errorMessage);
-            error.status = res.status;
-            error.code = errorData.error;
-            error.error = errorData.error;
-            error.data = errorData;
-            throw error;
+            const res = await fetch(`${API_BASE}${endpoint}`, {
+                ...options,
+                headers,
+            });
+
+            if (!res.ok) {
+                let errorMessage = `HTTP Error ${res.status}`;
+                let errorData: any = {};
+                try {
+                    errorData = await res.json();
+                    errorMessage = errorData.message || errorData.error || errorMessage;
+                } catch {}
+                const error: any = new Error(errorMessage);
+                error.status = res.status;
+                error.code = errorData.error;
+                error.error = errorData.error;
+                error.data = errorData;
+                throw error;
+            }
+
+            return res.json();
+        } finally {
+            activeRequests = Math.max(0, activeRequests - 1);
+            notifyLoading();
         }
-
-        return res.json();
     }
 
     // System Initialization, Setup & Public Config

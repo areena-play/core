@@ -103,8 +103,8 @@ export default function DashboardPage() {
                         </span>
                         <Network className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
                     </div>
-                    <div className="mt-2 sm:mt-3 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-                        {associations.length || 4}
+                    <div className="mt-2 sm:mt-3 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white min-h-[32px] flex items-center">
+                        {loading ? '' : associations.length}
                     </div>
                     <p className="mt-1 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                         {t('associations.title')}
@@ -118,8 +118,8 @@ export default function DashboardPage() {
                         </span>
                         <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500" />
                     </div>
-                    <div className="mt-2 sm:mt-3 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-                        {clubs.length || 3}
+                    <div className="mt-2 sm:mt-3 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white min-h-[32px] flex items-center">
+                        {loading ? '' : clubs.length}
                     </div>
                     <p className="mt-1 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                         {t('associations.affiliatedClubs')}
@@ -133,8 +133,8 @@ export default function DashboardPage() {
                         </span>
                         <Award className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500" />
                     </div>
-                    <div className="mt-2 sm:mt-3 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-                        {licenses.length || 5}
+                    <div className="mt-2 sm:mt-3 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white min-h-[32px] flex items-center">
+                        {loading ? '' : licenses.length}
                     </div>
                     <p className="mt-1 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                         {t('licenses.subtitle')}
@@ -148,8 +148,8 @@ export default function DashboardPage() {
                         </span>
                         <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-500" />
                     </div>
-                    <div className="mt-2 sm:mt-3 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-                        {competitions.length || 2}
+                    <div className="mt-2 sm:mt-3 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white min-h-[32px] flex items-center">
+                        {loading ? '' : competitions.length}
                     </div>
                     <p className="mt-1 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                         {t('competitions.subtitle')}
@@ -175,46 +175,51 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="space-y-3 sm:space-y-4">
-                        {competitions.map((comp) => (
-                            <div
-                                key={comp.id}
-                                className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 sm:p-5 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/80 dark:hover:border-slate-700 transition shadow-sm"
-                            >
-                                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <span
-                                                className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
-                                                    comp.type === 'LEAGUE'
-                                                        ? 'bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-400 border border-red-300 dark:border-red-800/40'
-                                                        : 'bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-400 border border-blue-300 dark:border-blue-800/40'
-                                                }`}
-                                            >
-                                                {comp.type}
-                                            </span>
-                                            <span className="text-xs text-slate-500 dark:text-slate-400">
-                                                {comp.association?.name || 'National Federation'}
-                                            </span>
-                                        </div>
-                                        <h3 className="mt-1.5 text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition">
-                                            {comp.name}
-                                        </h3>
-                                        <p className="mt-1 text-xs text-slate-600 dark:text-slate-400 line-clamp-1">
-                                            {comp.description ||
-                                                'Official championship with group rounds and playoff encounters.'}
-                                        </p>
-                                    </div>
-
-                                    <Link
-                                        href={`/tournament/${comp.id}`}
-                                        className="inline-flex items-center gap-1.5 self-start rounded-lg bg-slate-100 text-slate-800 hover:bg-red-600 hover:text-white dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-red-600 dark:hover:text-white px-3.5 py-2 text-xs font-semibold transition sm:self-center shadow-sm"
-                                    >
-                                        <span>{t('competitions.standings')}</span>
-                                        <ArrowRight className="h-3.5 w-3.5" />
-                                    </Link>
-                                </div>
+                        {loading ? null : competitions.length === 0 ? (
+                            <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-400">
+                                No active competitions found.
                             </div>
-                        ))}
+                        ) : (
+                            competitions.map((comp) => (
+                                <div
+                                    key={comp.id}
+                                    className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 sm:p-5 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/80 dark:hover:border-slate-700 transition shadow-sm"
+                                >
+                                    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span
+                                                    className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                                        comp.type === 'LEAGUE'
+                                                            ? 'bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-400 border border-red-300 dark:border-red-800/40'
+                                                            : 'bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-400 border border-blue-300 dark:border-blue-800/40'
+                                                    }`}
+                                                >
+                                                    {comp.type}
+                                                </span>
+                                                <span className="text-xs text-slate-500 dark:text-slate-400">
+                                                    {comp.association?.name || 'National Federation'}
+                                                </span>
+                                            </div>
+                                            <h3 className="mt-1.5 text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition">
+                                                {comp.name}
+                                            </h3>
+                                            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400 line-clamp-1">
+                                                {comp.description || ''}
+                                            </p>
+                                        </div>
+
+                                        <Link
+                                            href={`/tournament/${comp.id}`}
+                                            className="inline-flex items-center gap-1.5 self-start rounded-lg bg-slate-100 text-slate-800 hover:bg-red-600 hover:text-white dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-red-600 dark:hover:text-white px-3.5 py-2 text-xs font-semibold transition sm:self-center shadow-sm"
+                                        >
+                                            <span>{t('competitions.standings')}</span>
+                                            <ArrowRight className="h-3.5 w-3.5" />
+                                        </Link>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
 
                     {/* Quick Association DAG Hierarchy Card */}
@@ -255,32 +260,38 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="space-y-2.5 sm:space-y-3">
-                        {calendarEvents.slice(0, 5).map((evt) => (
-                            <div
-                                key={evt.id}
-                                className="rounded-xl border border-slate-200 bg-white p-3.5 sm:p-4 transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-slate-700 shadow-sm"
-                            >
-                                <div className="flex items-start justify-between gap-2">
-                                    <span className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
-                                        {evt.eventType.replace('_', ' ')}
-                                    </span>
-                                    <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                                        {new Date(evt.startDate).toLocaleDateString(undefined, {
-                                            month: 'short',
-                                            day: 'numeric',
-                                        })}
-                                    </span>
-                                </div>
-                                <h4 className="mt-2 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">
-                                    {evt.title}
-                                </h4>
-                                {evt.location && (
-                                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                                        📍 {evt.location}
-                                    </p>
-                                )}
+                        {loading ? null : calendarEvents.length === 0 ? (
+                            <div className="rounded-xl border border-slate-200 bg-white p-4 text-center text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
+                                {t('calendar.noEvents') || 'No upcoming events scheduled.'}
                             </div>
-                        ))}
+                        ) : (
+                            calendarEvents.slice(0, 5).map((evt) => (
+                                <div
+                                    key={evt.id}
+                                    className="rounded-xl border border-slate-200 bg-white p-3.5 sm:p-4 transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-slate-700 shadow-sm"
+                                >
+                                    <div className="flex items-start justify-between gap-2">
+                                        <span className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
+                                            {evt.eventType?.replace('_', ' ')}
+                                        </span>
+                                        <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                                            {evt.startDate && new Date(evt.startDate).toLocaleDateString(undefined, {
+                                                month: 'short',
+                                                day: 'numeric',
+                                            })}
+                                        </span>
+                                    </div>
+                                    <h4 className="mt-2 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">
+                                        {evt.title}
+                                    </h4>
+                                    {evt.location && (
+                                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                            📍 {evt.location}
+                                        </p>
+                                    )}
+                                </div>
+                            ))
+                        )}
                     </div>
 
                     {/* License ID Engine Settings Card */}

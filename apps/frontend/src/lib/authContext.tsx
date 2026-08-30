@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api } from './api';
 
-interface User {
+export interface User {
     id: string;
     email: string;
     firstName: string;
@@ -22,7 +22,7 @@ interface User {
     licenses?: any[];
 }
 
-interface AuthContextType {
+export interface AuthContextType {
     user: User | null;
     token: string | null;
     loading: boolean;
@@ -46,37 +46,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     const refreshUser = async () => {
-        try {
-            const storedToken = localStorage.getItem('areena_token');
-            if (storedToken) {
-                setToken(storedToken);
-                const userData = await api.getMe();
-                setUser(userData);
-            } else {
-                setUser(null);
-                setToken(null);
-            }
-        } catch {
-            localStorage.removeItem('areena_token');
+        if (typeof window === 'undefined') {
+            setLoading(false);
+            return;
+        }
+
+        const storedToken = localStorage.getItem('areena_token');
+        if (!storedToken) {
             setUser(null);
             setToken(null);
+            setLoading(false);
+            return;
+        }
+
+        setToken(storedToken);
+
+        try {
+            const userData = await api.getMe();
+            if (userData && userData.id) {
+                setUser(userData);
+                localStorage.setItem('areena_user', JSON.stringify(userData));
+            }
+        } catch (err: any) {
+            // Only invalidate local session if token is explicitly rejected (401 or 403)
+            if (err?.status === 401 || err?.status === 403 || err?.error === 'Invalid or expired token') {
+                console.warn('[Auth] Stored session is invalid or expired. Logging out.');
+                localStorage.removeItem('areena_token');
+                localStorage.removeItem('areena_user');
+                setUser(null);
+                setToken(null);
+            } else {
+                console.warn('[Auth] Unable to verify session with /auth/me; retaining cached session:', err?.message);
+            }
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
+        // Immediately restore cached credentials on client mount to prevent logout flicker
+        try {
+            const storedToken = localStorage.getItem('areena_token');
+            const storedUser = localStorage.getItem('areena_user');
+            if (storedToken) {
+                setToken(storedToken);
+                if (storedUser) {
+                    setUser(JSON.parse(storedUser));
+                }
+            }
+        } catch {}
+
         refreshUser();
     }, []);
 
     const login = (newToken: string, newUser: User) => {
         localStorage.setItem('areena_token', newToken);
+        localStorage.setItem('areena_user', JSON.stringify(newUser));
         setToken(newToken);
         setUser(newUser);
+        setLoading(false);
     };
 
     const logout = () => {
         localStorage.removeItem('areena_token');
+        localStorage.removeItem('areena_user');
         setToken(null);
         setUser(null);
     };
@@ -91,3 +124,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
     return useContext(AuthContext);
 }
+

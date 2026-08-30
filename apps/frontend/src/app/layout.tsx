@@ -11,6 +11,7 @@ import { PageTitleManager } from '@/components/layout/PageTitleManager';
 import { AdminNoticeModal } from '@/components/notices/AdminNoticeModal';
 import { AdminNoticeBanner } from '@/components/notices/AdminNoticeBanner';
 import { CookieConsentBanner } from '@/components/privacy/CookieConsentBanner';
+import { TopLoadingBar } from '@/components/layout/TopLoadingBar';
 
 export const metadata: Metadata = {
     title: {
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <I18nProvider>
                         <AuthProvider>
                             <MainViewProvider>
+                                <TopLoadingBar />
                                 <PageTitleManager />
                                 <FullscreenViewLoader />
                                 <AdminNoticeModal />

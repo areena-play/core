@@ -170,7 +170,7 @@ export default function SingleClubPage() {
                         League Teams
                     </span>
                     <div className="mt-1 text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                        {competitions.length > 0 ? competitions.length : 1}
+                        {competitions.length}
                     </div>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-xs">
