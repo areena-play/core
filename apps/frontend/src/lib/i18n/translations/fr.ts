@@ -32,6 +32,7 @@ export const fr: TranslationDictionary = {
         backToTournaments: 'Retour aux tournois',
         impressum: 'Impressum',
         dataProtection: 'Protection des données',
+        subAssociations: 'Sous-associations',
     },
 
     // Main Views / Workspaces
@@ -405,6 +406,12 @@ export const fr: TranslationDictionary = {
         noAccount: 'Pas encore de compte ?',
         hasAccount: 'Déjà inscrit ?',
         alreadyHaveAccount: 'Déjà inscrit ?',
+        emailNotVerifiedTitle: 'Email non vérifié',
+        emailNotVerifiedDesc: 'Veuillez vérifier votre adresse email avant de vous connecter. Vérifiez votre boîte de réception pour le lien d\'activation.',
+        resendActivationLink: 'Renvoyer le lien d\'activation',
+        resending: 'Envoi en cours...',
+        activationLinkSent: 'Un nouveau lien d\'activation a été envoyé à votre adresse email.',
+        didntReceiveEmail: 'Vous n\'avez pas reçu l\'email ?',
     },
 
     // Billing & Invoicing

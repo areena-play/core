@@ -44,12 +44,24 @@ import {
     Cookie,
 } from 'lucide-react';
 
+interface NavItem {
+    label: string;
+    href: string;
+    icon: React.ComponentType<{ className?: string }>;
+    badge?: string;
+}
+
+interface NavSection {
+    sectionTitle: string;
+    items: NavItem[];
+}
+
 export function Navbar() {
     const { user, logout } = useAuth();
     const { isConnected } = useWebSocket();
     const { theme, resolvedTheme, setTheme } = useTheme();
     const { locale, setLocale, t, locales, supportedLocales } = useI18n();
-    const { activeView, entityId, entityMeta, currentViewMeta } = useMainView();
+    const { activeView, entityId, entityMeta, currentViewMeta, mainAssoc, associations } = useMainView();
 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -67,7 +79,6 @@ export function Navbar() {
         }
     };
 
-    const [mainAssoc, setMainAssoc] = useState<any | null>(null);
     const [isDemo, setIsDemo] = useState(process.env.NEXT_PUBLIC_IS_DEMO === 'true');
 
     useEffect(() => {
@@ -76,17 +87,6 @@ export function Navbar() {
                 if (typeof cfg?.isDemo === 'boolean') setIsDemo(cfg.isDemo);
             })
             .catch(() => {});
-
-        async function loadMainAssoc() {
-            try {
-                const data = await api.getAssociations();
-                const top = data.associations?.find((a: any) => a.isTopLevel) || data.associations?.[0];
-                if (top) {
-                    setMainAssoc(top);
-                }
-            } catch {}
-        }
-        loadMainAssoc();
     }, []);
 
     // Close dropdowns on outside click
@@ -118,7 +118,7 @@ export function Navbar() {
             ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
         );
 
-    const getNavSections = () => {
+    const getNavSections = (): NavSection[] => {
         if (activeView === 'tournament' && entityId) {
             return [
                 {
@@ -230,6 +230,30 @@ export function Navbar() {
         const assocOverviewHref = isSubAssoc ? `/association/${entityId}` : '/';
         const tournamentsHref = isSubAssoc ? `/association/${entityId}/tournaments` : '/tournaments';
 
+        const currentAssocId = isSubAssoc ? entityId : (mainAssoc?.id || 'main');
+        const currentAssoc = associations?.find((a: any) => a.id === currentAssocId) || (isSubAssoc ? null : mainAssoc);
+
+        // Find direct child / sub-associations of the currently viewed association
+        const directSubAssocs = (associations || []).filter((a: any) =>
+            a.id !== currentAssoc?.id &&
+            (
+                a.parentHierarchies?.some((ph: any) => ph.parentId === currentAssoc?.id) ||
+                currentAssoc?.childHierarchies?.some((ch: any) => ch.childId === a.id || ch.child?.id === a.id)
+            )
+        );
+
+        const subAssocsSection = directSubAssocs.length > 0 ? [
+            {
+                sectionTitle: t('nav.subAssociations'),
+                items: directSubAssocs.map((sub: any) => ({
+                    label: sub.name,
+                    href: `/association/${sub.id}`,
+                    icon: Network,
+                    badge: sub.code || sub.shortName,
+                })),
+            }
+        ] : [];
+
         return [
             {
                 sectionTitle: 'Federation Governance',
@@ -247,6 +271,7 @@ export function Navbar() {
                     { label: t('nav.calendar'), href: '/calendar', icon: Calendar },
                 ],
             },
+            ...subAssocsSection,
             {
                 sectionTitle: 'Licensing & Education',
                 items: [
@@ -726,11 +751,6 @@ export function Navbar() {
                                                         />
                                                         <span>{item.label}</span>
                                                     </div>
-                                                    {item.badge && (
-                                                        <span className="rounded bg-red-600 px-1.5 py-0.2 text-[9px] font-extrabold text-white animate-pulse">
-                                                            {item.badge}
-                                                        </span>
-                                                    )}
                                                 </Link>
                                             );
                                         })}

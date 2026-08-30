@@ -22,6 +22,7 @@ import {
     ArrowRight,
     Flame,
     Mail,
+    CheckCircle2,
 } from 'lucide-react';
 
 interface DemoAccount {
@@ -164,7 +165,7 @@ export default function LoginPage() {
         setResendStatus(null);
         try {
             const res = await api.resendVerification(targetEmail);
-            setResendStatus(res.message || 'Verification link sent successfully!');
+            setResendStatus(res.message || t('auth.activationLinkSent'));
         } catch (err: any) {
             setResendStatus(err.message || 'Failed to resend verification email.');
         } finally {
@@ -183,9 +184,24 @@ export default function LoginPage() {
             login(res.token, res.user);
             router.push('/');
         } catch (err: any) {
-            if (err.error === 'EMAIL_NOT_VERIFIED' || err.message?.includes('verify your email')) {
-                setUnverifiedEmail(loginEmail);
-                setErrorMsg(err.message || 'Please verify your email address before signing in.');
+            const isUnverified =
+                err.status === 403 ||
+                err.error === 'EMAIL_NOT_VERIFIED' ||
+                err.code === 'EMAIL_NOT_VERIFIED' ||
+                err.data?.error === 'EMAIL_NOT_VERIFIED' ||
+                err.message?.includes('EMAIL_NOT_VERIFIED') ||
+                err.message?.toLowerCase().includes('verify your email') ||
+                err.message?.toLowerCase().includes('unverified');
+
+            if (isUnverified) {
+                const targetEmail = err.data?.email || loginEmail;
+                setUnverifiedEmail(targetEmail);
+                setErrorMsg(
+                    err.data?.message ||
+                    (err.message && err.message !== 'EMAIL_NOT_VERIFIED'
+                        ? err.message
+                        : t('auth.emailNotVerifiedDesc'))
+                );
             } else {
                 setErrorMsg(err.message || 'Login failed. Please check your credentials.');
             }
@@ -250,27 +266,40 @@ export default function LoginPage() {
                         } rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 p-6 md:p-8 shadow-sm dark:shadow-xl space-y-5 text-xs`}
                     >
                         {errorMsg && (
-                            <div className="space-y-3 rounded-xl border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/80 p-3 text-red-800 dark:text-red-300">
+                            <div className="space-y-3 rounded-xl border border-red-200 bg-red-50 dark:border-red-800/80 dark:bg-red-950/60 p-4 text-red-800 dark:text-red-300 animate-in fade-in duration-200">
                                 <div className="flex items-start gap-2.5">
                                     <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
-                                    <div>{errorMsg}</div>
+                                    <div className="space-y-0.5 min-w-0 flex-1">
+                                        {unverifiedEmail && (
+                                            <div className="font-bold text-xs text-red-900 dark:text-red-200">
+                                                {t('auth.emailNotVerifiedTitle')}
+                                            </div>
+                                        )}
+                                        <div className="text-xs leading-relaxed">{errorMsg}</div>
+                                    </div>
                                 </div>
                                 {unverifiedEmail && (
-                                    <div className="pt-2 border-t border-red-200/60 dark:border-red-800/60 flex flex-col gap-2">
+                                    <div className="pt-3 border-t border-red-200/70 dark:border-red-800/60 space-y-2">
                                         {resendStatus ? (
-                                            <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                                                {resendStatus}
+                                            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-950/60 p-2.5 rounded-lg border border-emerald-300 dark:border-emerald-800">
+                                                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                                <span>{resendStatus}</span>
                                             </div>
                                         ) : (
-                                            <button
-                                                type="button"
-                                                disabled={resendLoading}
-                                                onClick={() => handleResendFromLogin(unverifiedEmail)}
-                                                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-[11px] transition shadow"
-                                            >
-                                                <Mail className="w-3.5 h-3.5" />
-                                                <span>{resendLoading ? 'Sending...' : 'Resend Verification Link'}</span>
-                                            </button>
+                                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-red-100/50 dark:bg-red-900/30 p-2.5 rounded-lg border border-red-200/60 dark:border-red-800/40">
+                                                <span className="text-[11px] text-slate-700 dark:text-slate-300 font-medium">
+                                                    {t('auth.didntReceiveEmail')}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    disabled={resendLoading}
+                                                    onClick={() => handleResendFromLogin(unverifiedEmail)}
+                                                    className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-[11px] transition shadow-xs active:scale-95 disabled:opacity-50"
+                                                >
+                                                    <Mail className="w-3.5 h-3.5" />
+                                                    <span>{resendLoading ? t('auth.resending') : t('auth.resendActivationLink')}</span>
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
                                 )}

@@ -22,11 +22,17 @@ class ApiClient {
 
         if (!res.ok) {
             let errorMessage = `HTTP Error ${res.status}`;
+            let errorData: any = {};
             try {
-                const errorData = await res.json();
-                errorMessage = errorData.error || errorData.message || errorMessage;
+                errorData = await res.json();
+                errorMessage = errorData.message || errorData.error || errorMessage;
             } catch {}
-            throw new Error(errorMessage);
+            const error: any = new Error(errorMessage);
+            error.status = res.status;
+            error.code = errorData.error;
+            error.error = errorData.error;
+            error.data = errorData;
+            throw error;
         }
 
         return res.json();

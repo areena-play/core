@@ -30,6 +30,7 @@ export const en = {
         backToTournaments: 'Back to Tournaments',
         impressum: 'Impressum',
         dataProtection: 'Data Protection',
+        subAssociations: 'Sub-Associations',
     },
 
     // Main Views / Workspaces
@@ -403,6 +404,12 @@ export const en = {
         noAccount: "Don't have an account yet?",
         hasAccount: 'Already registered?',
         alreadyHaveAccount: 'Already have an account?',
+        emailNotVerifiedTitle: 'Email Not Verified',
+        emailNotVerifiedDesc: 'Please verify your email address before signing in. Check your inbox for the activation link.',
+        resendActivationLink: 'Resend Activation Link',
+        resending: 'Sending...',
+        activationLinkSent: 'A new activation link has been sent to your email address.',
+        didntReceiveEmail: "Didn't receive the email?",
     },
 
     // Billing & Invoicing

@@ -29,11 +29,23 @@ import { useI18n } from '@/lib/i18nContext';
 import { useMainView } from '@/lib/mainViewContext';
 import { useAuth } from '@/lib/authContext';
 
+interface NavItem {
+    label: string;
+    href: string;
+    icon: React.ComponentType<{ className?: string }>;
+    badge?: string;
+}
+
+interface NavSection {
+    sectionTitle: string;
+    items: NavItem[];
+}
+
 export function Sidebar() {
     const pathname = usePathname();
     const { t } = useI18n();
     const { user } = useAuth();
-    const { activeView, entityId, entityMeta, currentViewMeta, mainAssoc } = useMainView();
+    const { activeView, entityId, entityMeta, currentViewMeta, mainAssoc, associations } = useMainView();
 
     const ActiveIcon = currentViewMeta.icon;
 
@@ -50,7 +62,7 @@ export function Sidebar() {
         );
 
     // Build navigation items tailored for the active entity workspace
-    const getNavSections = () => {
+    const getNavSections = (): NavSection[] => {
         if (activeView === 'tournament' && entityId) {
             return [
                 {
@@ -162,6 +174,30 @@ export function Sidebar() {
         const assocOverviewHref = isSubAssoc ? `/association/${entityId}` : '/';
         const tournamentsHref = isSubAssoc ? `/association/${entityId}/tournaments` : '/tournaments';
 
+        const currentAssocId = isSubAssoc ? entityId : (mainAssoc?.id || 'main');
+        const currentAssoc = associations?.find((a: any) => a.id === currentAssocId) || (isSubAssoc ? null : mainAssoc);
+
+        // Find direct child / sub-associations of the currently viewed association
+        const directSubAssocs = (associations || []).filter((a: any) =>
+            a.id !== currentAssoc?.id &&
+            (
+                a.parentHierarchies?.some((ph: any) => ph.parentId === currentAssoc?.id) ||
+                currentAssoc?.childHierarchies?.some((ch: any) => ch.childId === a.id || ch.child?.id === a.id)
+            )
+        );
+
+        const subAssocsSection = directSubAssocs.length > 0 ? [
+            {
+                sectionTitle: t('nav.subAssociations'),
+                items: directSubAssocs.map((sub: any) => ({
+                    label: sub.name,
+                    href: `/association/${sub.id}`,
+                    icon: Network,
+                    badge: sub.code || sub.shortName,
+                })),
+            }
+        ] : [];
+
         return [
             {
                 sectionTitle: 'Federation Governance',
@@ -179,6 +215,7 @@ export function Sidebar() {
                     { label: t('nav.calendar'), href: '/calendar', icon: Calendar },
                 ],
             },
+            ...subAssocsSection,
             {
                 sectionTitle: 'Licensing & Education',
                 items: [
@@ -272,11 +309,6 @@ export function Sidebar() {
                                             />
                                             <span>{item.label}</span>
                                         </div>
-                                        {item.badge && (
-                                            <span className="rounded bg-red-600 px-1.5 py-0.2 text-[9px] font-extrabold text-white animate-pulse">
-                                                {item.badge}
-                                            </span>
-                                        )}
                                     </Link>
                                 );
                             })}

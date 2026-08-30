@@ -32,6 +32,7 @@ export const de: TranslationDictionary = {
         backToTournaments: 'Zurück zu den Turnieren',
         impressum: 'Impressum',
         dataProtection: 'Datenschutz',
+        subAssociations: 'Unterverbände',
     },
 
     // Main Views / Workspaces
@@ -405,6 +406,12 @@ export const de: TranslationDictionary = {
         noAccount: 'Noch kein Konto?',
         hasAccount: 'Bereits registriert?',
         alreadyHaveAccount: 'Bereits registriert?',
+        emailNotVerifiedTitle: 'E-Mail nicht bestätigt',
+        emailNotVerifiedDesc: 'Bitte bestätige deine E-Mail-Adresse, bevor du dich anmeldest. Überprüfe deinen Posteingang für den Aktivierungslink.',
+        resendActivationLink: 'Aktivierungslink erneut senden',
+        resending: 'Wird gesendet...',
+        activationLinkSent: 'Ein neuer Aktivierungslink wurde an deine E-Mail-Adresse gesendet.',
+        didntReceiveEmail: 'E-Mail nicht erhalten?',
     },
 
     // Billing & Invoicing
