@@ -91,3 +91,94 @@ export interface AuditStatsDto {
     }>;
 }
 
+export enum NoticeType {
+    INFO = 'INFO',
+    WARNING = 'WARNING',
+    CRITICAL = 'CRITICAL',
+    SUCCESS = 'SUCCESS',
+}
+
+export enum NoticeDisplayMode {
+    BANNER = 'BANNER',
+    MODAL = 'MODAL',
+}
+
+export enum NoticeTargetGroup {
+    ALL = 'ALL',
+    SUPER_ADMINS = 'SUPER_ADMINS',
+    ASSOCIATION_ADMINS = 'ASSOCIATION_ADMINS',
+    CLUB_ADMINS = 'CLUB_ADMINS',
+    PLAYERS = 'PLAYERS',
+    COACHES = 'COACHES',
+    REFEREES = 'REFEREES',
+}
+
+export interface AdminNoticeDto {
+    id: string;
+    title: string;
+    content: string;
+    type: NoticeType;
+    displayMode: NoticeDisplayMode;
+    targetGroup: NoticeTargetGroup;
+    associationId?: string | null;
+    clubId?: string | null;
+    isDismissible: boolean;
+    isActive: boolean;
+    priority: number;
+    startsAt: string;
+    expiresAt?: string | null;
+    createdById: string;
+    createdAt: string;
+    updatedAt: string;
+    createdBy?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+    } | null;
+    association?: {
+        id: string;
+        name: string;
+        shortName?: string;
+    } | null;
+    club?: {
+        id: string;
+        name: string;
+    } | null;
+    _count?: {
+        dismissals: number;
+    };
+}
+
+export interface CreateNoticeDto {
+    title: string;
+    content: string;
+    type?: NoticeType;
+    displayMode?: NoticeDisplayMode;
+    targetGroup?: NoticeTargetGroup;
+    associationId?: string | null;
+    clubId?: string | null;
+    isDismissible?: boolean;
+    isActive?: boolean;
+    priority?: number;
+    startsAt?: string;
+    expiresAt?: string | null;
+}
+
+export interface UpdateNoticeDto {
+    title?: string;
+    content?: string;
+    type?: NoticeType;
+    displayMode?: NoticeDisplayMode;
+    targetGroup?: NoticeTargetGroup;
+    associationId?: string | null;
+    clubId?: string | null;
+    isDismissible?: boolean;
+    isActive?: boolean;
+    priority?: number;
+    startsAt?: string;
+    expiresAt?: string | null;
+}
+
+
+

@@ -23,6 +23,7 @@ model Club {
   invoicesReceived  Invoice[]             @relation("ClubInvoicesReceived")
   bexioConfig       BexioConfig?
   auditLogs         AuditLog[]            @relation("ClubAuditLogs")
+  adminNotices      AdminNotice[]
 }
 
 model ClubAssociation {

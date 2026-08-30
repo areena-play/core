@@ -107,3 +107,67 @@ model AuditLog {
   @@index([createdAt])
 }
 
+enum NoticeType {
+  INFO
+  WARNING
+  CRITICAL
+  SUCCESS
+}
+
+enum NoticeDisplayMode {
+  BANNER
+  MODAL
+}
+
+enum NoticeTargetGroup {
+  ALL
+  SUPER_ADMINS
+  ASSOCIATION_ADMINS
+  CLUB_ADMINS
+  PLAYERS
+  COACHES
+  REFEREES
+}
+
+model AdminNotice {
+  id            String            @id @default(uuid())
+  title         String
+  content       String
+  type          NoticeType        @default(INFO)
+  displayMode   NoticeDisplayMode @default(BANNER)
+  targetGroup   NoticeTargetGroup @default(ALL)
+  associationId String?
+  clubId        String?
+  isDismissible Boolean           @default(true)
+  isActive      Boolean           @default(true)
+  priority      Int               @default(0)
+  startsAt      DateTime          @default(now())
+  expiresAt     DateTime?
+  createdById   String
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  createdBy   User              @relation("CreatedAdminNotices", fields: [createdById], references: [id], onDelete: Cascade)
+  association Association?      @relation(fields: [associationId], references: [id], onDelete: SetNull)
+  club        Club?             @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  dismissals  NoticeDismissal[]
+
+  @@index([targetGroup])
+  @@index([isActive])
+  @@index([createdAt])
+}
+
+model NoticeDismissal {
+  id          String   @id @default(uuid())
+  noticeId    String
+  userId      String
+  dismissedAt DateTime @default(now())
+
+  notice AdminNotice @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  user   User        @relation("UserNoticeDismissals", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([noticeId, userId])
+  @@index([userId])
+}
+
+

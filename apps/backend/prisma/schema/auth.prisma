@@ -41,6 +41,8 @@ model User {
   oauthTokens          OAuthToken[]
   invoicesReceived     Invoice[]             @relation("InvoiceRecipientUser")
   auditLogs            AuditLog[]            @relation("UserAuditLogs")
+  createdNotices       AdminNotice[]         @relation("CreatedAdminNotices")
+  dismissedNotices     NoticeDismissal[]     @relation("UserNoticeDismissals")
 
   // Matches where user is player
   homeMatchesP1 Match[] @relation("HomePlayer1")

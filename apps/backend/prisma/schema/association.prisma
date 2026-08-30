@@ -32,6 +32,7 @@ model Association {
   invoicesIssued    Invoice[]             @relation("AssociationInvoices")
   bexioConfig       BexioConfig?
   auditLogs         AuditLog[]            @relation("AssociationAuditLogs")
+  adminNotices      AdminNotice[]
 }
 
 model AssociationHierarchy {

@@ -350,7 +350,33 @@ class ApiClient {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
     }
+
+    // System Admin Notices & Announcements
+    getActiveNotices() {
+        return this.request('/notices/active');
+    }
+
+    getAdminNotices() {
+        return this.request('/notices');
+    }
+
+    createNotice(body: any) {
+        return this.request('/notices', { method: 'POST', body: JSON.stringify(body) });
+    }
+
+    updateNotice(id: string, body: any) {
+        return this.request(`/notices/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+    }
+
+    deleteNotice(id: string) {
+        return this.request(`/notices/${id}`, { method: 'DELETE' });
+    }
+
+    dismissNotice(id: string) {
+        return this.request(`/notices/${id}/dismiss`, { method: 'POST' });
+    }
 }
 
 export const api = new ApiClient();
+
 

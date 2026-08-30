@@ -4,10 +4,11 @@ import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
-import { Mail, Send, Users, CheckCircle2, AlertCircle, MessageSquare, Clock, Shield, Smartphone, Activity } from 'lucide-react';
+import { Mail, Send, Users, CheckCircle2, AlertCircle, MessageSquare, Clock, Shield, Smartphone, Activity, BellRing } from 'lucide-react';
 import { format } from 'date-fns';
 import { AccessDenied } from '@/components/auth/AccessDenied';
 import { AuditTrailViewer } from '@/components/audit/AuditTrailViewer';
+import { AdminNoticesManager } from '@/components/notices/AdminNoticesManager';
 
 export default function CommunicationsPage() {
     const { user } = useAuth();
@@ -16,7 +17,7 @@ export default function CommunicationsPage() {
     const [associations, setAssociations] = useState<any[]>([]);
     const [clubs, setClubs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'messages' | 'audit'>('messages');
+    const [activeTab, setActiveTab] = useState<'messages' | 'notices' | 'audit'>('messages');
 
     // Form
     const [subject, setSubject] = useState('');
@@ -130,6 +131,17 @@ export default function CommunicationsPage() {
                             <span>Broadcast Hub</span>
                         </button>
                         <button
+                            onClick={() => setActiveTab('notices')}
+                            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                                activeTab === 'notices'
+                                    ? 'bg-white shadow text-slate-900 dark:bg-slate-900 dark:text-white'
+                                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                            }`}
+                        >
+                            <BellRing className="h-3.5 w-3.5 text-amber-500" />
+                            <span>Admin Notices</span>
+                        </button>
+                        <button
                             onClick={() => setActiveTab('audit')}
                             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
                                 activeTab === 'audit'
@@ -143,6 +155,13 @@ export default function CommunicationsPage() {
                     </div>
                 )}
             </div>
+
+            {/* Admin Notices & Announcements Tab */}
+            {activeTab === 'notices' && (
+                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-6 shadow-xl space-y-6">
+                    <AdminNoticesManager associations={associations} clubs={clubs} />
+                </div>
+            )}
 
             {/* Contextual Audit Trail View */}
             {activeTab === 'audit' && (
