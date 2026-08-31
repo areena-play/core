@@ -23,6 +23,30 @@ export interface SmtpConfig {
     hasPassword?: boolean;
 }
 
+export function formatEmailSender(
+    fromEmail?: string,
+    fromName?: string,
+    defaultDomain: string = 'areena.ch'
+): { formatted: string; cleanEmail: string; cleanName: string } {
+    let rawEmail = (fromEmail || '').trim();
+    let rawName = (fromName || '').trim();
+
+    // Parse cases where rawEmail is "Display Name <user@domain.com>" or "<user@domain.com>"
+    const match = rawEmail.match(/^(?:"?([^"]*)"?\s*)?<([^>]+)>$/);
+    if (match) {
+        if (!rawName && match[1]) {
+            rawName = match[1].trim();
+        }
+        rawEmail = match[2].trim();
+    }
+
+    const cleanEmail = rawEmail || `noreply@${defaultDomain}`;
+    const cleanName = rawName || 'AREENA Sports Platform';
+    const formatted = `"${cleanName}" <${cleanEmail}>`;
+
+    return { formatted, cleanEmail, cleanName };
+}
+
 export class SystemService {
     private static mailgunClientCache: any = null;
     private static mailgunConfigCache: MailgunConfig | null = null;
@@ -61,22 +85,27 @@ export class SystemService {
             return this.mailgunConfigCache;
         }
 
-        const [apiKey, domain, url, fromEmail, fromName] = await Promise.all([
-            this.getSetting('MAILGUN_API_KEY', process.env.MAILGUN_API_KEY || ''),
-            this.getSetting('MAILGUN_DOMAIN', process.env.MAILGUN_DOMAIN || ''),
-            this.getSetting('MAILGUN_HOST', process.env.MAILGUN_HOST || 'https://api.mailgun.net'),
-            this.getSetting('MAILGUN_FROM_EMAIL', process.env.EMAIL_FROM_DEFAULT || 'noreply@areena.ch'),
-            this.getSetting('MAILGUN_FROM_NAME', 'AREENA Sports Platform'),
+        const [apiKey, domain, rawUrl, rawFromEmail, rawFromName] = await Promise.all([
+            this.getSetting('MAILGUN_API_KEY'),
+            this.getSetting('MAILGUN_DOMAIN'),
+            this.getSetting('MAILGUN_HOST'),
+            this.getSetting('MAILGUN_FROM_EMAIL'),
+            this.getSetting('MAILGUN_FROM_NAME'),
         ]);
 
-        const isConfigured = Boolean(apiKey && domain);
+        const apiKeyClean = (apiKey || '').trim();
+        const domainClean = (domain || '').trim();
+        const urlClean = (rawUrl || '').trim() || 'https://api.mailgun.net';
+        const sender = formatEmailSender(rawFromEmail, rawFromName, domainClean || 'areena.ch');
+
+        const isConfigured = Boolean(apiKeyClean && domainClean);
 
         this.mailgunConfigCache = {
-            apiKey,
-            domain,
-            url: url || 'https://api.mailgun.net',
-            fromEmail: fromEmail || 'noreply@areena.ch',
-            fromName: fromName || 'AREENA Sports Platform',
+            apiKey: apiKeyClean,
+            domain: domainClean,
+            url: urlClean,
+            fromEmail: sender.cleanEmail,
+            fromName: sender.cleanName,
             isConfigured,
         };
 
@@ -92,15 +121,15 @@ export class SystemService {
             this.mailgunClientCache = mailgun.client({
                 username: 'api',
                 key: config.apiKey,
-                url: config.url,
+                url: config.url || 'https://api.mailgun.net',
             });
         }
 
-        const from = `"${config.fromName}" <${config.fromEmail}>`;
+        const sender = formatEmailSender(config.fromEmail, config.fromName, config.domain || 'areena.ch');
         return {
             client: this.mailgunClientCache,
             domain: config.domain,
-            from,
+            from: sender.formatted,
         };
     }
 
@@ -121,10 +150,14 @@ export class SystemService {
             await this.setSetting('MAILGUN_DOMAIN', data.domain.trim(), 'Mailgun Sending Domain', false, updatedBy);
         }
         if (data.url !== undefined) {
-            await this.setSetting('MAILGUN_HOST', data.url.trim(), 'Mailgun API Regional Endpoint Host', false, updatedBy);
+            await this.setSetting('MAILGUN_HOST', data.url.trim() || 'https://api.mailgun.net', 'Mailgun API Regional Endpoint Host', false, updatedBy);
         }
         if (data.fromEmail !== undefined) {
-            await this.setSetting('MAILGUN_FROM_EMAIL', data.fromEmail.trim(), 'Mailgun Default Sender Email', false, updatedBy);
+            const sender = formatEmailSender(data.fromEmail, data.fromName);
+            await this.setSetting('MAILGUN_FROM_EMAIL', sender.cleanEmail, 'Mailgun Default Sender Email', false, updatedBy);
+            if (data.fromName === undefined && sender.cleanName) {
+                await this.setSetting('MAILGUN_FROM_NAME', sender.cleanName, 'Mailgun Default Sender Name', false, updatedBy);
+            }
         }
         if (data.fromName !== undefined) {
             await this.setSetting('MAILGUN_FROM_NAME', data.fromName.trim(), 'Mailgun Default Sender Name', false, updatedBy);
@@ -144,6 +177,7 @@ export class SystemService {
         }
 
         try {
+            console.log(`[Mailgun Test] Dispatching test message to "${toEmail}" via domain "${mailgun.domain}" (from: ${mailgun.from})...`);
             const res = await mailgun.client.messages.create(mailgun.domain, {
                 from: mailgun.from,
                 to: [toEmail],
@@ -164,9 +198,17 @@ export class SystemService {
                 `,
             });
 
+            console.log(`[Mailgun Test] Successfully sent (Message ID: ${res.id})`);
             return { success: true, messageId: res.id };
         } catch (err: any) {
-            return { success: false, error: err.message || 'Failed to dispatch test email via Mailgun' };
+            console.error('[Mailgun Test Error]:', {
+                status: err.status,
+                message: err.message,
+                details: err.details,
+                body: err.body,
+            });
+            const errorMsg = err.details || err.body?.message || err.message || 'Failed to dispatch test email via Mailgun';
+            return { success: false, error: errorMsg };
         }
     }
 
@@ -179,26 +221,28 @@ export class SystemService {
             return this.smtpConfigCache;
         }
 
-        const [host, portStr, user, pass, secureStr, from] = await Promise.all([
-            this.getSetting('SMTP_HOST', process.env.SMTP_HOST || ''),
-            this.getSetting('SMTP_PORT', process.env.SMTP_PORT || '587'),
-            this.getSetting('SMTP_USER', process.env.SMTP_USER || ''),
-            this.getSetting('SMTP_PASS', process.env.SMTP_PASS || ''),
-            this.getSetting('SMTP_SECURE', process.env.SMTP_SECURE || 'false'),
-            this.getSetting('SMTP_FROM', process.env.EMAIL_FROM_DEFAULT || 'noreply@areena.ch'),
+        const [host, portStr, user, pass, secureStr, rawFrom] = await Promise.all([
+            this.getSetting('SMTP_HOST'),
+            this.getSetting('SMTP_PORT'),
+            this.getSetting('SMTP_USER'),
+            this.getSetting('SMTP_PASS'),
+            this.getSetting('SMTP_SECURE'),
+            this.getSetting('SMTP_FROM'),
         ]);
 
+        const hostClean = (host || '').trim();
         const port = parseInt(portStr || '587', 10);
         const secure = secureStr === 'true' || port === 465;
-        const isConfigured = Boolean(host);
+        const isConfigured = Boolean(hostClean);
+        const sender = formatEmailSender(rawFrom, undefined, 'areena.ch');
 
         this.smtpConfigCache = {
-            host,
+            host: hostClean,
             port,
-            user,
-            pass,
+            user: (user || '').trim(),
+            pass: pass || '',
             secure,
-            from: from || 'noreply@areena.ch',
+            from: sender.formatted,
             isConfigured,
             hasPassword: Boolean(pass),
         };
@@ -260,7 +304,8 @@ export class SystemService {
             await this.setSetting('SMTP_SECURE', String(data.secure), 'SMTP TLS/SSL Mode', false, updatedBy);
         }
         if (data.from !== undefined) {
-            await this.setSetting('SMTP_FROM', data.from.trim(), 'SMTP Default From Address', false, updatedBy);
+            const sender = formatEmailSender(data.from);
+            await this.setSetting('SMTP_FROM', sender.formatted, 'SMTP Default From Address', false, updatedBy);
         }
 
         // Invalidate in-memory cache
@@ -277,6 +322,7 @@ export class SystemService {
         }
 
         try {
+            console.log(`[SMTP Test] Dispatching test message to "${toEmail}" via host...`);
             const info = await smtpData.transporter.sendMail({
                 from: smtpData.from,
                 to: toEmail,
@@ -296,8 +342,10 @@ export class SystemService {
                 `,
             });
 
+            console.log(`[SMTP Test] Successfully sent (Message ID: ${info.messageId})`);
             return { success: true, messageId: info.messageId };
         } catch (err: any) {
+            console.error('[SMTP Test Error]:', err);
             return { success: false, error: err.message || 'Failed to dispatch test email via SMTP' };
         }
     }

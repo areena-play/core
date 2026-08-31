@@ -43,6 +43,7 @@ import {
     Activity,
     Cookie,
     HelpCircle,
+    ShieldCheck,
 } from 'lucide-react';
 
 interface NavItem {
@@ -516,94 +517,64 @@ export function Navbar() {
                                             )}
                                         </div>
 
-                                        {/* My Workspaces & Accessible Pages */}
+                                        {/* My Spaces Section */}
                                         <div className="space-y-1">
                                             <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                                {t('userMenu.myWorkspaces')}
+                                                {t('userMenu.mySpaces')}
                                             </div>
 
-                                            {/* Super Admin Top Federation Link */}
-                                            {user.isSuperAdmin && (
-                                                <Link
-                                                    href="/"
-                                                    onClick={() => setUserMenuOpen(false)}
-                                                    className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                                                >
-                                                    <div className="flex items-center gap-2.5">
-                                                        <Network className="h-4 w-4 text-red-500" />
-                                                        <span>{t('userMenu.topFederation')}</span>
-                                                    </div>
-                                                    <span className="rounded bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400 text-[10px] px-1.5 py-0.2 font-bold">
-                                                        Admin
-                                                    </span>
-                                                </Link>
-                                            )}
-
-                                            {/* Association Admin Links */}
-                                            {user.associationRoles?.map((r: any) => (
-                                                <Link
-                                                    key={r.associationId}
-                                                    href={`/association/${r.associationId}`}
-                                                    onClick={() => setUserMenuOpen(false)}
-                                                    className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                                                >
-                                                    <div className="flex items-center gap-2.5">
-                                                        <Network className="h-4 w-4 text-red-500" />
-                                                        <span>Association #{r.associationId.slice(0, 8)}</span>
-                                                    </div>
-                                                    <span className="rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] px-1.5 py-0.2 font-mono font-bold">
-                                                        {r.role}
-                                                    </span>
-                                                </Link>
-                                            ))}
-
-                                            {/* Club Admin Links */}
-                                            {user.clubRoles?.map((r: any) => (
-                                                <Link
-                                                    key={r.clubId}
-                                                    href={`/club/${r.clubId}`}
-                                                    onClick={() => setUserMenuOpen(false)}
-                                                    className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                                                >
-                                                    <div className="flex items-center gap-2.5">
-                                                        <Shield className="h-4 w-4 text-blue-500" />
-                                                        <span>Club Portal</span>
-                                                    </div>
-                                                    <span className="rounded bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400 text-[10px] px-1.5 py-0.2 font-bold">
-                                                        {r.role}
-                                                    </span>
-                                                </Link>
-                                            ))}
-
-                                            {/* Tournaments Link */}
+                                            {/* My Competitions */}
                                             <Link
-                                                href="/tournaments"
+                                                href="/profile#competitions"
                                                 onClick={() => setUserMenuOpen(false)}
                                                 className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                             >
                                                 <Trophy className="h-4 w-4 text-amber-500" />
-                                                <span>{t('userMenu.myTournaments')}</span>
+                                                <span>{t('userMenu.myCompetitions')}</span>
                                             </Link>
 
-                                            {/* Licenses Link */}
+                                            {/* My Licenses */}
                                             <Link
-                                                href="/licenses"
+                                                href="/profile#licenses"
                                                 onClick={() => setUserMenuOpen(false)}
                                                 className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                             >
                                                 <Award className="h-4 w-4 text-emerald-500" />
                                                 <span>{t('userMenu.myLicenses')}</span>
                                             </Link>
+
+                                            {/* My Courses */}
+                                            <Link
+                                                href="/profile#courses"
+                                                onClick={() => setUserMenuOpen(false)}
+                                                className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                            >
+                                                <GraduationCap className="h-4 w-4 text-blue-500" />
+                                                <span>{t('userMenu.myCourses')}</span>
+                                            </Link>
+
+                                            {/* (Only if any) My Admin Access */}
+                                            {(user.isSuperAdmin || (user.associationRoles && user.associationRoles.length > 0) || (user.clubRoles && user.clubRoles.length > 0)) && (
+                                                <Link
+                                                    href="/profile#admin-access"
+                                                    onClick={() => setUserMenuOpen(false)}
+                                                    className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                                >
+                                                    <ShieldCheck className="h-4 w-4 text-purple-500" />
+                                                    <span>{t('userMenu.myAdminAccess')}</span>
+                                                </Link>
+                                            )}
                                         </div>
 
-                                        {/* Account & Profile */}
+                                        {/* Account Section */}
                                         <div className="space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800 mt-2">
                                             <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                                                 {t('userMenu.account')}
                                             </div>
 
+                                            {/* My Profile & Settings */}
                                             <Link
-                                                href="/profile"
+                                                href="/profile#personal"
                                                 onClick={() => setUserMenuOpen(false)}
                                                 className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                             >
@@ -611,25 +582,15 @@ export function Navbar() {
                                                 <span>{t('userMenu.myProfile')}</span>
                                             </Link>
 
+                                            {/* Support & FAQs */}
                                             <Link
                                                 href="/support"
                                                 onClick={() => setUserMenuOpen(false)}
                                                 className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                             >
-                                                <HelpCircle className="h-4 w-4 text-red-500" />
+                                                <HelpCircle className="h-4 w-4 text-amber-500" />
                                                 <span>{t('nav.support')}</span>
                                             </Link>
-
-                                            {user?.isSuperAdmin && (
-                                                <Link
-                                                    href="/users"
-                                                    onClick={() => setUserMenuOpen(false)}
-                                                    className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                                                >
-                                                    <Users className="h-4 w-4 text-red-500" />
-                                                    <span>{t('nav.users')}</span>
-                                                </Link>
-                                            )}
                                         </div>
 
                                         {/* Integrated Sign Out Button */}

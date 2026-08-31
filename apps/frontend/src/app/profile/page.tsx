@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useTheme } from '@/lib/themeContext';
@@ -21,15 +22,41 @@ import {
     Moon,
     Laptop,
     Globe,
+    Trophy,
+    Sliders,
+    Building2,
+    ExternalLink,
+    ChevronRight,
+    Crown,
+    Flame,
+    Clock,
+    Check,
+    Lock,
+    ShieldAlert,
+    ShieldCheck,
+    Layers,
+    FileBadge,
+    Sparkles,
+    Bell,
+    CalendarCheck,
+    X,
+    Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { AccessDenied } from '@/components/auth/AccessDenied';
 
+type ProfileTab = 'personal' | 'preferences' | 'licenses' | 'competitions' | 'courses' | 'admin-access';
+
 export default function ProfilePage() {
     const { user, refreshUser } = useAuth();
-    const { theme, resolvedTheme, setTheme } = useTheme();
+    const { theme, setTheme } = useTheme();
     const { locale, setLocale, t, locales, supportedLocales } = useI18n();
 
+    const [activeTab, setActiveTab] = useState<ProfileTab>('personal');
+    const [overviewData, setOverviewData] = useState<any | null>(null);
+    const [loadingOverview, setLoadingOverview] = useState(true);
+
+    // Personal Form State
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [phone, setPhone] = useState('');
@@ -37,22 +64,84 @@ export default function ProfilePage() {
     const [postalCode, setPostalCode] = useState('');
     const [city, setCity] = useState('');
     const [country, setCountry] = useState('Switzerland');
+    const [birthDate, setBirthDate] = useState('');
+    const [gender, setGender] = useState<string>('');
+
+    // Preferences Form State
+    const [emailMatchAlerts, setEmailMatchAlerts] = useState(true);
+    const [emailLicensingAlerts, setEmailLicensingAlerts] = useState(true);
 
     const [saving, setSaving] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
+    const [emailChangeModalOpen, setEmailChangeModalOpen] = useState(false);
+    const [newEmailInput, setNewEmailInput] = useState('');
+    const [emailChangeLoading, setEmailChangeLoading] = useState(false);
+    const [emailChangeMsg, setEmailChangeMsg] = useState('');
+    const [emailChangeErr, setEmailChangeErr] = useState('');
+
+    // Synchronize tab with URL Hash
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const hash = window.location.hash.replace('#', '') as ProfileTab;
+            const validTabs: ProfileTab[] = ['personal', 'preferences', 'licenses', 'competitions', 'courses', 'admin-access'];
+            if (validTabs.includes(hash)) {
+                setActiveTab(hash);
+            }
+        }
+    }, []);
+
+    const handleTabChange = (tab: ProfileTab) => {
+        setActiveTab(tab);
+        if (typeof window !== 'undefined') {
+            window.location.hash = tab;
+        }
+    };
+
+    const fetchOverview = async () => {
+        setLoadingOverview(true);
+        try {
+            const data = await api.getProfileOverview();
+            setOverviewData(data);
+            if (data?.user) {
+                setFirstName(data.user.firstName || '');
+                setLastName(data.user.lastName || '');
+                setPhone(data.user.phone || '');
+                setStreet(data.user.street || '');
+                setPostalCode(data.user.postalCode || '');
+                setCity(data.user.city || '');
+                setCountry(data.user.country || 'Switzerland');
+                setBirthDate(data.user.birthDate ? data.user.birthDate.substring(0, 10) : '');
+                setGender(data.user.gender || '');
+            }
+        } catch (err) {
+            console.error('Failed to load profile overview:', err);
+        } finally {
+            setLoadingOverview(false);
+        }
+    };
 
     useEffect(() => {
         if (user) {
-            setFirstName(user.firstName || '');
-            setLastName(user.lastName || '');
-            setPhone(user.phone || '');
-            setStreet(user.street || '');
-            setPostalCode(user.postalCode || '');
-            setCity(user.city || '');
-            setCountry(user.country || 'Switzerland');
+            fetchOverview();
         }
     }, [user]);
+
+    const handleRequestEmailChange = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setEmailChangeLoading(true);
+        setEmailChangeErr('');
+        setEmailChangeMsg('');
+        try {
+            const res = await api.requestEmailChange(newEmailInput);
+            setEmailChangeMsg(res.message || 'Confirmation link sent to your new email address. Please check your inbox.');
+            fetchOverview();
+        } catch (err: any) {
+            setEmailChangeErr(err.message || 'Failed to request email change.');
+        } finally {
+            setEmailChangeLoading(false);
+        }
+    };
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -69,9 +158,13 @@ export default function ProfilePage() {
                 postalCode,
                 city,
                 country,
+                birthDate: birthDate || null,
+                gender: gender || null,
             });
             await refreshUser();
+            await fetchOverview();
             setSuccessMsg(t('profile.profileUpdated'));
+            setTimeout(() => setSuccessMsg(''), 4000);
         } catch (err: any) {
             setErrorMsg(err.message || 'Failed to update profile');
         } finally {
@@ -83,75 +176,426 @@ export default function ProfilePage() {
         return (
             <AccessDenied
                 title="Sign In to Access Profile"
-                description="You must be logged in to view and edit your AREENA profile, licenses, and security preferences."
+                description="You must be logged in to view and edit your AREENA profile, licenses, registered competitions, and administrative settings."
                 requiredRole="Authenticated User"
                 returnHref="/"
             />
         );
     }
 
+    const licensesCount = overviewData?.licenses?.length || user.licenses?.length || 0;
+    const competitionsCount = overviewData?.registeredCompetitions?.length || 0;
+    const coursesCount = (overviewData?.courseAttendances?.length || 0) + (overviewData?.instructedCourses?.length || 0);
+    const adminAssocsCount = overviewData?.adminAccess?.associations?.length || 0;
+    const adminClubsCount = overviewData?.adminAccess?.clubs?.length || 0;
+    const adminTotalCount = adminAssocsCount + adminClubsCount + (user.isSuperAdmin ? 1 : 0);
+
     return (
-        <div className="max-w-4xl mx-auto space-y-6 md:space-y-8 pb-16">
-            {/* Header Profile Card */}
-            <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-gradient-to-r dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-5 sm:p-6 md:p-8 shadow-sm dark:shadow-xl transition-colors duration-200">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-red-600 font-extrabold text-xl sm:text-2xl text-white shadow-lg flex-shrink-0">
-                            {user.firstName[0]}
-                            {user.lastName[0]}
+        <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 pb-20">
+            {/* Header Profile Hero Card */}
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-6 sm:p-8 shadow-sm relative overflow-hidden">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                    <div className="flex items-start sm:items-center gap-5">
+                        <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-3xl bg-gradient-to-tr from-amber-600 to-amber-400 font-black text-2xl sm:text-3xl text-white shadow-md flex-shrink-0">
+                            {user.firstName ? user.firstName[0] : 'U'}
+                            {user.lastName ? user.lastName[0] : 'A'}
                         </div>
-                        <div className="space-y-1">
-                            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-                                {user.firstName} {user.lastName}
-                            </h1>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">User ID: {user.id}</p>
-                            <div className="flex flex-wrap gap-1.5 sm:gap-2 pt-1">
+                        <div className="space-y-1.5">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                                    {user.firstName} {user.lastName}
+                                </h1>
+                                {user.emailVerified ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                                        <Check className="h-3 w-3" />
+                                        <span>Verified</span>
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-2.5 py-0.5 text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                                        <span>Pending Verification</span>
+                                    </span>
+                                )}
+                            </div>
+
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono flex items-center gap-2">
+                                <span>{user.email}</span>
+                                <span>•</span>
+                                <span>ID: {user.id.substring(0, 8)}...</span>
+                            </p>
+
+                            <div className="flex flex-wrap items-center gap-2 pt-1">
                                 {user.isSuperAdmin && (
-                                    <span className="rounded bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white uppercase">
+                                    <span className="rounded-full bg-red-600 px-2.5 py-0.5 text-[10px] font-extrabold text-white uppercase tracking-wider shadow-xs">
                                         {t('nav.superAdmin')}
                                     </span>
                                 )}
                                 {user.licenseId && (
-                                    <span className="rounded bg-red-100 dark:bg-red-950 border border-red-300 dark:border-red-800/40 px-2 py-0.5 text-[10px] font-mono font-bold text-red-700 dark:text-red-400">
+                                    <span className="rounded-full bg-amber-50 dark:bg-amber-950 border border-amber-300 dark:border-amber-800/60 px-2.5 py-0.5 text-[10px] font-mono font-bold text-amber-700 dark:text-amber-400">
                                         LIC #{user.licenseId}
                                     </span>
                                 )}
-                                <span className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
-                                    {user.eloPoints} Elo Points {user.rank ? `(Rank #${user.rank})` : ''}
+                                <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
+                                    {user.eloPoints} Elo Points {user.rank ? `• Rank #${user.rank}` : ''}
                                 </span>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Quick Stats Banner */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-950/70 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/80 text-center">
+                        <div className="px-2">
+                            <span className="block text-lg font-black text-slate-900 dark:text-white">{licensesCount}</span>
+                            <span className="text-[10px] uppercase font-bold text-slate-400">{t('profile.tabs.licenses')}</span>
+                        </div>
+                        <div className="px-2 border-l border-slate-200 dark:border-slate-800">
+                            <span className="block text-lg font-black text-amber-600 dark:text-amber-400">{competitionsCount}</span>
+                            <span className="text-[10px] uppercase font-bold text-slate-400">Events</span>
+                        </div>
+                        <div className="px-2 border-l border-slate-200 dark:border-slate-800">
+                            <span className="block text-lg font-black text-blue-600 dark:text-blue-400">{coursesCount}</span>
+                            <span className="text-[10px] uppercase font-bold text-slate-400">Courses</span>
+                        </div>
+                        <div className="px-2 border-l border-slate-200 dark:border-slate-800">
+                            <span className="block text-lg font-black text-purple-600 dark:text-purple-400">{adminTotalCount}</span>
+                            <span className="text-[10px] uppercase font-bold text-slate-400">Admin</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Grid: Edit Profile & Active Licenses & Preferences */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-                {/* Left 2 Cols: Language Preference, Theme Setting & Edit Details */}
-                <div className="md:col-span-2 space-y-6">
-                    {/* Language Preference Card */}
-                    <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 p-5 sm:p-6 shadow-sm dark:shadow-xl space-y-4">
-                        <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <Globe className="h-4 w-4 text-red-500" />
-                            <span>{t('profile.languagePreference')}</span>
+            {/* Profile Tabs Bar */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-200 dark:border-slate-800 scrollbar-none">
+                <button
+                    type="button"
+                    onClick={() => handleTabChange('personal')}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition ${
+                        activeTab === 'personal'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                >
+                    <User className="h-4 w-4" />
+                    <span>{t('profile.tabs.personal')}</span>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => handleTabChange('preferences')}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition ${
+                        activeTab === 'preferences'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                >
+                    <Sliders className="h-4 w-4" />
+                    <span>{t('profile.tabs.preferences')}</span>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => handleTabChange('licenses')}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition ${
+                        activeTab === 'licenses'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                >
+                    <Award className="h-4 w-4" />
+                    <span>{t('profile.tabs.licenses')}</span>
+                    {licensesCount > 0 && (
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                            activeTab === 'licenses' ? 'bg-amber-700 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                        }`}>
+                            {licensesCount}
+                        </span>
+                    )}
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => handleTabChange('competitions')}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition ${
+                        activeTab === 'competitions'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                >
+                    <Trophy className="h-4 w-4" />
+                    <span>{t('profile.tabs.competitions')}</span>
+                    {competitionsCount > 0 && (
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                            activeTab === 'competitions' ? 'bg-amber-700 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                        }`}>
+                            {competitionsCount}
+                        </span>
+                    )}
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => handleTabChange('courses')}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition ${
+                        activeTab === 'courses'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                >
+                    <GraduationCap className="h-4 w-4" />
+                    <span>{t('profile.tabs.courses')}</span>
+                    {coursesCount > 0 && (
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                            activeTab === 'courses' ? 'bg-amber-700 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                        }`}>
+                            {coursesCount}
+                        </span>
+                    )}
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => handleTabChange('admin-access')}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition ${
+                        activeTab === 'admin-access'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                >
+                    <ShieldCheck className="h-4 w-4" />
+                    <span>{t('profile.tabs.adminAccess')}</span>
+                    {adminTotalCount > 0 && (
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                            activeTab === 'admin-access' ? 'bg-amber-700 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                        }`}>
+                            {adminTotalCount}
+                        </span>
+                    )}
+                </button>
+            </div>
+
+            {/* TAB CONTENT SECTIONS */}
+
+            {/* 1. PERSONAL DATA TAB */}
+            {activeTab === 'personal' && (
+                <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-sm space-y-6">
+                    <div className="space-y-1">
+                        <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <User className="h-5 w-5 text-amber-500" />
+                            <span>{t('profile.personalInfo')}</span>
                         </h2>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {t('profile.personalDesc')}
+                        </p>
+                    </div>
+
+                    {errorMsg && (
+                        <div className="flex items-start gap-2.5 rounded-2xl border border-red-200 bg-red-50 p-4 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/80 dark:text-red-300">
+                            <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+                            <div>{errorMsg}</div>
+                        </div>
+                    )}
+
+                    {successMsg && (
+                        <div className="flex items-start gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                            <div>{successMsg}</div>
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSave} className="space-y-4 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    {t('profile.firstName')} *
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={firstName}
+                                    onChange={(e) => setFirstName(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    {t('profile.lastName')} *
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={lastName}
+                                    onChange={(e) => setLastName(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="block font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('profile.email')}
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setEmailChangeModalOpen(true);
+                                            setNewEmailInput('');
+                                            setEmailChangeErr('');
+                                            setEmailChangeMsg('');
+                                        }}
+                                        className="text-[11px] font-bold text-amber-600 hover:text-amber-700 dark:text-amber-400 hover:underline"
+                                    >
+                                        {t('auth.emailChangeTitle') || 'Change Email'}
+                                    </button>
+                                </div>
+                                <input
+                                    type="email"
+                                    disabled
+                                    value={user.email}
+                                    className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2.5 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400 cursor-not-allowed font-mono"
+                                />
+                                {overviewData?.user?.pendingEmail && (
+                                    <div className="mt-1.5 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-[11px] text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                                        <Mail className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                                        <span>Pending verification: <strong>{overviewData.user.pendingEmail}</strong></span>
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    {t('profile.phone')} *
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={phone}
+                                    onChange={(e) => setPhone(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    {t('profile.birthDate')}
+                                </label>
+                                <input
+                                    type="date"
+                                    value={birthDate}
+                                    onChange={(e) => setBirthDate(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    {t('profile.gender')}
+                                </label>
+                                <select
+                                    value={gender}
+                                    onChange={(e) => setGender(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none font-medium"
+                                >
+                                    <option value="">{t('profile.genderAny')}</option>
+                                    <option value="MALE">{t('profile.genderMale')}</option>
+                                    <option value="FEMALE">{t('profile.genderFemale')}</option>
+                                    <option value="OTHER">{t('profile.genderOther')}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                {t('profile.street')} *
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                value={street}
+                                onChange={(e) => setStreet(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    {t('profile.postalCode')} *
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={postalCode}
+                                    onChange={(e) => setPostalCode(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    {t('profile.city')} *
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={city}
+                                    onChange={(e) => setCity(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    {t('profile.country')} *
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={country}
+                                    onChange={(e) => setCountry(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
+                            <button
+                                type="submit"
+                                disabled={saving}
+                                className="inline-flex items-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 px-6 py-2.5 text-xs font-bold text-white shadow-xs transition disabled:opacity-50"
+                            >
+                                <Save className="h-4 w-4" />
+                                <span>{saving ? t('common.saving') : t('profile.saveProfile')}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {/* 2. PREFERENCES TAB */}
+            {activeTab === 'preferences' && (
+                <div className="space-y-6">
+                    {/* Language Preference Card */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-sm space-y-4">
+                        <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <Globe className="h-5 w-5 text-amber-500" />
+                            <span>{t('profile.languagePreference')}</span>
+                        </h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xl">
                             {t('profile.languageDescription')}
                         </p>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
                             {supportedLocales.map((loc) => (
                                 <button
                                     key={loc}
                                     type="button"
                                     onClick={() => setLocale(loc)}
-                                    className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border p-3 text-xs font-semibold transition ${
+                                    className={`flex flex-col items-center justify-center gap-2 rounded-2xl border p-4 text-xs font-semibold transition ${
                                         locale === loc
-                                            ? 'border-red-500 bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 shadow-sm font-bold'
+                                            ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-bold shadow-xs'
                                             : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-slate-700'
                                     }`}
                                 >
-                                    <span className="text-2xl leading-none">{locales[loc].flag}</span>
+                                    <span className="text-3xl leading-none">{locales[loc].flag}</span>
                                     <span>{locales[loc].nativeLabel}</span>
                                     <span className="text-[10px] uppercase font-mono text-slate-400">
                                         {loc}
@@ -162,240 +606,669 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Theme Preference Setting Card */}
-                    <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 p-5 sm:p-6 shadow-sm dark:shadow-xl space-y-4">
-                        <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <Sun className="h-4 w-4 text-red-500" />
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-sm space-y-4">
+                        <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <Sun className="h-5 w-5 text-amber-500" />
                             <span>{t('profile.themePreference')}</span>
                         </h2>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xl">
                             {t('profile.themeDescription')}
                         </p>
 
-                        <div className="grid grid-cols-3 gap-2.5 pt-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                             <button
                                 type="button"
                                 onClick={() => setTheme('light')}
-                                className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border p-3 text-xs font-semibold transition ${
+                                className={`flex items-center gap-3 rounded-2xl border p-4 text-xs font-semibold transition ${
                                     theme === 'light'
-                                        ? 'border-red-500 bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 shadow-sm'
+                                        ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-bold shadow-xs'
                                         : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-slate-700'
                                 }`}
                             >
                                 <Sun className="h-5 w-5 text-amber-500" />
-                                <span>{t('common.light')}</span>
+                                <div>
+                                    <span className="block font-bold">{t('common.light')}</span>
+                                    <span className="text-[10px] text-slate-400">Clean high-contrast theme</span>
+                                </div>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={() => setTheme('dark')}
-                                className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border p-3 text-xs font-semibold transition ${
+                                className={`flex items-center gap-3 rounded-2xl border p-4 text-xs font-semibold transition ${
                                     theme === 'dark'
-                                        ? 'border-red-500 bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 shadow-sm'
+                                        ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-bold shadow-xs'
                                         : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-slate-700'
                                 }`}
                             >
                                 <Moon className="h-5 w-5 text-indigo-400" />
-                                <span>{t('common.dark')}</span>
+                                <div>
+                                    <span className="block font-bold">{t('common.dark')}</span>
+                                    <span className="text-[10px] text-slate-400">Modern low-glare dark mode</span>
+                                </div>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={() => setTheme('system')}
-                                className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border p-3 text-xs font-semibold transition ${
+                                className={`flex items-center gap-3 rounded-2xl border p-4 text-xs font-semibold transition ${
                                     theme === 'system'
-                                        ? 'border-red-500 bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 shadow-sm'
+                                        ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-bold shadow-xs'
                                         : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-slate-700'
                                 }`}
                             >
                                 <Laptop className="h-5 w-5 text-slate-500" />
-                                <span>{t('common.system')}</span>
+                                <div>
+                                    <span className="block font-bold">{t('common.system')}</span>
+                                    <span className="text-[10px] text-slate-400">Sync with device system preference</span>
+                                </div>
                             </button>
                         </div>
                     </div>
 
-                    {/* Personal Info Card */}
-                    <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 p-5 sm:p-6 shadow-sm dark:shadow-xl space-y-6">
-                        <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <User className="h-4 w-4 text-red-500" />
-                            <span>{t('profile.personalInfo')}</span>
+                    {/* Email Notifications Card */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-sm space-y-4">
+                        <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <Bell className="h-5 w-5 text-amber-500" />
+                            <span>{t('profile.notificationsPreference')}</span>
                         </h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xl">
+                            {t('profile.notificationsDescription')}
+                        </p>
 
-                        {errorMsg && (
-                            <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/80 dark:text-red-300">
-                                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
-                                <div>{errorMsg}</div>
-                            </div>
-                        )}
-
-                        {successMsg && (
-                            <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
-                                <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                                <div>{successMsg}</div>
-                            </div>
-                        )}
-
-                        <form onSubmit={handleSave} className="space-y-4 text-xs">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('profile.firstName')}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={firstName}
-                                        onChange={(e) => setFirstName(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
+                        <div className="space-y-3 pt-2">
+                            <label className="flex items-center justify-between p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition">
+                                <div className="space-y-0.5">
+                                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                                        {t('profile.emailMatchAlerts')}
+                                    </span>
+                                    <p className="text-[11px] text-slate-500">
+                                        Get notified when match schedules change, fixtures are assigned, or match scores are certified.
+                                    </p>
                                 </div>
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('profile.lastName')}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={lastName}
-                                        onChange={(e) => setLastName(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
+                                <input
+                                    type="checkbox"
+                                    checked={emailMatchAlerts}
+                                    onChange={(e) => setEmailMatchAlerts(e.target.checked)}
+                                    className="h-4 w-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300"
+                                />
+                            </label>
+
+                            <label className="flex items-center justify-between p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition">
+                                <div className="space-y-0.5">
+                                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                                        {t('profile.emailLicensingAlerts')}
+                                    </span>
+                                    <p className="text-[11px] text-slate-500">
+                                        Receive automatic warnings 30 days before player/coach license expiry and course enrollment confirmations.
+                                    </p>
                                 </div>
-                            </div>
-
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('common.email')}
-                                </label>
                                 <input
-                                    type="email"
-                                    disabled
-                                    value={user.email}
-                                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400 cursor-not-allowed"
+                                    type="checkbox"
+                                    checked={emailLicensingAlerts}
+                                    onChange={(e) => setEmailLicensingAlerts(e.target.checked)}
+                                    className="h-4 w-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300"
                                 />
-                            </div>
-
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('profile.phone')}
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={phone}
-                                    onChange={(e) => setPhone(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('profile.street')}
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={street}
-                                    onChange={(e) => setStreet(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('profile.postalCode')}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={postalCode}
-                                        onChange={(e) => setPostalCode(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        {t('profile.city')}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={city}
-                                        onChange={(e) => setCity(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('profile.country')}
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={country}
-                                    onChange={(e) => setCountry(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="flex justify-end pt-3 border-t border-slate-200 dark:border-slate-800">
-                                <button
-                                    type="submit"
-                                    disabled={saving}
-                                    className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50 shadow"
-                                >
-                                    <Save className="h-4 w-4" />
-                                    <span>{saving ? t('common.saving') : t('profile.saveProfile')}</span>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                {/* Right Col: Active Licenses Card */}
-                <div className="space-y-6">
-                    <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 space-y-4 shadow-sm dark:shadow-xl">
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <Award className="h-4 w-4 text-red-500" />
-                            <span>{t('profile.activeLicenseBadge')}</span>
-                        </h3>
-
-                        <div className="space-y-2.5">
-                            {user.licenses && user.licenses.length > 0 ? (
-                                user.licenses.map((lic: any) => (
-                                    <div
-                                        key={lic.id}
-                                        className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 p-3 text-xs space-y-1"
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-bold text-slate-900 dark:text-white">
-                                                {lic.type.replace('PLAYER_', '')}
-                                            </span>
-                                            <span className="rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/40 px-1.5 py-0.2 text-[10px]">
-                                                {lic.status}
-                                            </span>
-                                        </div>
-                                        {lic.club && (
-                                            <p className="text-slate-600 dark:text-slate-400">
-                                                {t('common.club')}: {lic.club.name}
-                                            </p>
-                                        )}
-                                        <p className="text-[11px] font-mono text-slate-500">
-                                            {t('licenses.validity')}: {format(new Date(lic.validUntil), 'dd.MM.yyyy')}
-                                        </p>
-                                    </div>
-                                ))
-                            ) : (
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    {t('licenses.title')}
-                                </p>
-                            )}
+                            </label>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
+
+            {/* 3. LICENSES TAB */}
+            {activeTab === 'licenses' && (
+                <div className="space-y-6">
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-sm space-y-2">
+                        <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <Award className="h-5 w-5 text-amber-500" />
+                            <span>{t('profile.activeLicenseBadge')}</span>
+                        </h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {t('profile.licensesDesc')}
+                        </p>
+                    </div>
+
+                    {overviewData?.licenses?.length === 0 ? (
+                        <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-12 text-center space-y-3">
+                            <Award className="h-10 w-10 text-slate-400 mx-auto" />
+                            <h3 className="font-bold text-sm text-slate-900 dark:text-white">{t('profile.noLicenses')}</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                                Contact your club administrator or federation secretariat to apply for a verified license pass.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {overviewData?.licenses?.map((lic: any) => (
+                                <div
+                                    key={lic.id}
+                                    className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-xs hover:border-amber-500/50 transition space-y-4"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-2.5 py-0.5 text-[10px] font-black uppercase text-amber-700 dark:text-amber-400 mb-1">
+                                                <FileBadge className="h-3.5 w-3.5" />
+                                                <span>{lic.type?.replace('PLAYER_', '').replace('_', ' ')}</span>
+                                            </div>
+                                            <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                                                {lic.type === 'COACH' ? 'Certified National Coach' : lic.type === 'REFEREE' ? 'Official Umpire License' : 'Official Player License Pass'}
+                                            </h3>
+                                        </div>
+
+                                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                                            lic.status === 'APPROVED'
+                                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
+                                                : lic.status.includes('PENDING')
+                                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800'
+                                                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                        }`}>
+                                            {lic.status}
+                                        </span>
+                                    </div>
+
+                                    <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400 pt-1">
+                                        {lic.club && (
+                                            <div className="flex items-center gap-2">
+                                                <Shield className="h-4 w-4 text-blue-500 shrink-0" />
+                                                <span>{t('profile.affiliatedClub')}: <strong className="text-slate-900 dark:text-white">{lic.club.name}</strong></span>
+                                            </div>
+                                        )}
+                                        {lic.association && (
+                                            <div className="flex items-center gap-2">
+                                                <Building2 className="h-4 w-4 text-amber-500 shrink-0" />
+                                                <span>{t('profile.issuedBy')}: <strong className="text-slate-900 dark:text-white">{lic.association.name} [{lic.association.code}]</strong></span>
+                                            </div>
+                                        )}
+                                        {lic.validUntil && (
+                                            <div className="flex items-center gap-2">
+                                                <Clock className="h-4 w-4 text-slate-400 shrink-0" />
+                                                <span>{t('profile.validity')}: <strong className="text-slate-900 dark:text-white">{format(new Date(lic.validUntil), 'dd.MM.yyyy')}</strong></span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {lic.season && (
+                                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500">
+                                            <span>Season: {lic.season.name}</span>
+                                            {lic.autoApproved && (
+                                                <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                                                    <Check className="h-3 w-3" />
+                                                    <span>Auto-Verified</span>
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* 4. REGISTERED COMPETITIONS TAB */}
+            {activeTab === 'competitions' && (
+                <div className="space-y-6">
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-sm space-y-2">
+                        <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <Trophy className="h-5 w-5 text-amber-500" />
+                            <span>{t('profile.competitionsTitle')}</span>
+                        </h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {t('profile.competitionsDesc')}
+                        </p>
+                    </div>
+
+                    {overviewData?.registeredCompetitions?.length === 0 ? (
+                        <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-12 text-center space-y-3">
+                            <Trophy className="h-10 w-10 text-slate-400 mx-auto" />
+                            <h3 className="font-bold text-sm text-slate-900 dark:text-white">{t('profile.noCompetitions')}</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                                Explore published tournaments, league schedules, and cups to join a team.
+                            </p>
+                            <Link
+                                href="/competitions"
+                                className="inline-flex items-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 px-4 py-2 text-xs font-bold text-white transition mt-2"
+                            >
+                                <span>Browse Competitions</span>
+                                <ExternalLink className="h-3.5 w-3.5" />
+                            </Link>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {overviewData?.registeredCompetitions?.map((comp: any) => (
+                                <Link
+                                    key={`${comp.id}-${comp.category?.id}`}
+                                    href={comp.type === 'TOURNAMENT' ? `/tournament/${comp.seriesSlug || comp.slug || comp.id}` : `/competitions/${comp.seriesSlug || comp.slug || comp.id}`}
+                                    className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-xs hover:border-amber-500/50 hover:shadow-md transition flex flex-col justify-between space-y-4 group"
+                                >
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-2.5 py-0.5 text-[10px] font-black uppercase text-amber-700 dark:text-amber-400">
+                                                {comp.type?.replace('_', ' ')}
+                                            </span>
+                                            <span className="text-[10px] font-bold text-slate-400">
+                                                {comp.status}
+                                            </span>
+                                        </div>
+
+                                        <div>
+                                            <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight group-hover:text-amber-600 dark:group-hover:text-amber-400 transition">
+                                                {comp.name}
+                                            </h3>
+                                            {comp.association && (
+                                                <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-1">
+                                                    <Building2 className="h-3.5 w-3.5 text-amber-500" />
+                                                    <span>{comp.association.name}</span>
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-100 dark:border-slate-800/80 space-y-1.5 text-xs">
+                                            {comp.team && (
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-slate-500">Registered Team:</span>
+                                                    <strong className="text-slate-900 dark:text-white font-semibold">{comp.team.name}</strong>
+                                                </div>
+                                            )}
+                                            {comp.team?.role && (
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-slate-500">{t('profile.roleInTeam')}:</span>
+                                                    <span className={`inline-flex items-center gap-1 font-bold ${
+                                                        comp.team.role === 'CAPTAIN' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-700 dark:text-slate-300'
+                                                    }`}>
+                                                        {comp.team.role === 'CAPTAIN' && <Crown className="h-3 w-3" />}
+                                                        <span>{comp.team.role}</span>
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {comp.category?.name && (
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-slate-500">Category / Division:</span>
+                                                    <span className="text-slate-700 dark:text-slate-300 font-medium">{comp.category.name}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-amber-600 dark:text-amber-400 font-bold">
+                                        <span>{t('profile.enterCompetition')}</span>
+                                        <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition" />
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* 5. REGISTERED COURSES TAB */}
+            {activeTab === 'courses' && (
+                <div className="space-y-6">
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-sm space-y-2">
+                        <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <GraduationCap className="h-5 w-5 text-amber-500" />
+                            <span>{t('profile.coursesTitle')}</span>
+                        </h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {t('profile.coursesDesc')}
+                        </p>
+                    </div>
+
+                    {overviewData?.courseAttendances?.length === 0 && overviewData?.instructedCourses?.length === 0 ? (
+                        <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-12 text-center space-y-3">
+                            <GraduationCap className="h-10 w-10 text-slate-400 mx-auto" />
+                            <h3 className="font-bold text-sm text-slate-900 dark:text-white">{t('profile.noCourses')}</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                                Check the calendar for upcoming coaching seminars, elite umpire modules, and technical courses.
+                            </p>
+                            <Link
+                                href="/courses"
+                                className="inline-flex items-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 px-4 py-2 text-xs font-bold text-white transition mt-2"
+                            >
+                                <span>View Refresher Courses</span>
+                                <ExternalLink className="h-3.5 w-3.5" />
+                            </Link>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            {overviewData?.courseAttendances?.length > 0 && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {overviewData?.courseAttendances?.map((att: any) => (
+                                        <div
+                                            key={att.id}
+                                            className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-xs space-y-4"
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-2.5 py-0.5 text-[10px] font-black uppercase text-blue-700 dark:text-blue-400 mb-1">
+                                                        {att.course?.type?.replace('_', ' ')}
+                                                    </span>
+                                                    <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                                                        {att.course?.title}
+                                                    </h3>
+                                                </div>
+
+                                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                                    att.attested
+                                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1'
+                                                        : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800'
+                                                }`}>
+                                                    {att.attested && <Check className="h-3 w-3" />}
+                                                    <span>{att.attested ? t('profile.attested') : t('profile.pendingAttestation')}</span>
+                                                </span>
+                                            </div>
+
+                                            <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400 pt-1">
+                                                {att.course?.date && (
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
+                                                        <span>{format(new Date(att.course.date), 'dd.MM.yyyy • HH:mm')} ({att.course.durationHours}h Workshop)</span>
+                                                    </div>
+                                                )}
+                                                {att.course?.location && (
+                                                    <div className="flex items-center gap-2">
+                                                        <MapPin className="h-4 w-4 text-slate-400 shrink-0" />
+                                                        <span className="truncate">{att.course.location}</span>
+                                                    </div>
+                                                )}
+                                                {att.course?.instructor && (
+                                                    <div className="flex items-center gap-2">
+                                                        <User className="h-4 w-4 text-amber-500 shrink-0" />
+                                                        <span>{t('profile.instructor')}: <strong>{att.course.instructor.firstName} {att.course.instructor.lastName}</strong></span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {att.notes && (
+                                                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 italic">
+                                                    &ldquo;{att.notes}&rdquo;
+                                                </div>
+                                            )}
+
+                                            <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                                <span>{t('profile.extensionGranted')}</span>
+                                                <span>+{att.course?.validityExtensionMonths || 12} Months</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Courses Taught as Instructor */}
+                            {overviewData?.instructedCourses?.length > 0 && (
+                                <div className="space-y-3 pt-4">
+                                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                        <Sparkles className="h-4 w-4 text-amber-500" />
+                                        <span>{t('profile.instructedCoursesTitle')}</span>
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {overviewData?.instructedCourses?.map((crs: any) => (
+                                            <div
+                                                key={crs.id}
+                                                className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-xs space-y-2"
+                                            >
+                                                <span className="rounded-full bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 px-2.5 py-0.5 text-[10px] font-black uppercase text-purple-700 dark:text-purple-400">
+                                                    Instructor Credit
+                                                </span>
+                                                <h4 className="font-bold text-sm text-slate-900 dark:text-white">{crs.title}</h4>
+                                                <p className="text-xs text-slate-500 flex items-center gap-2">
+                                                    <Calendar className="h-3.5 w-3.5" />
+                                                    <span>{format(new Date(crs.date), 'dd.MM.yyyy')} • {crs._count?.attendances || 0} Attendees Attested</span>
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* 6. ADMIN ACCESS OVERVIEW TAB */}
+            {activeTab === 'admin-access' && (
+                <div className="space-y-6">
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-sm space-y-2">
+                        <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <ShieldCheck className="h-5 w-5 text-amber-500" />
+                            <span>{t('profile.adminAccessTitle')}</span>
+                        </h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {t('profile.adminAccessDesc')}
+                        </p>
+                    </div>
+
+                    {/* Global Super Admin Banner */}
+                    {overviewData?.adminAccess?.isSuperAdmin && (
+                        <div className="rounded-3xl border border-red-200 dark:border-red-900/50 bg-gradient-to-r from-red-500/10 via-red-500/5 to-transparent p-6 shadow-sm flex items-start gap-4">
+                            <div className="p-3 rounded-2xl bg-red-600 text-white shadow-md">
+                                <ShieldAlert className="h-6 w-6" />
+                            </div>
+                            <div className="space-y-1">
+                                <span className="rounded bg-red-600 px-2 py-0.5 text-[10px] font-extrabold text-white uppercase tracking-wider">
+                                    Platform Governance
+                                </span>
+                                <h3 className="font-black text-base text-slate-900 dark:text-white">
+                                    {t('profile.superAdminGlobal')}
+                                </h3>
+                                <p className="text-xs text-slate-600 dark:text-slate-300 max-w-2xl">
+                                    {t('profile.superAdminGlobalDesc')}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Governed Associations */}
+                    <div className="space-y-3">
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-amber-500" />
+                            <span>{t('profile.governedAssociations')} ({overviewData?.adminAccess?.associations?.length || 0})</span>
+                        </h3>
+
+                        {overviewData?.adminAccess?.associations?.length === 0 ? (
+                            <p className="text-xs text-slate-500 italic p-4 rounded-2xl bg-slate-50 dark:bg-slate-950">
+                                No federation or regional association roles assigned.
+                            </p>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {overviewData?.adminAccess?.associations?.map((assoc: any) => (
+                                    <Link
+                                        key={assoc.id}
+                                        href={`/association/${assoc.slug || assoc.id}/management`}
+                                        className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-xs hover:border-amber-500 hover:shadow-md transition space-y-3 group"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-2.5 py-0.5 text-[10px] font-black uppercase text-amber-700 dark:text-amber-400">
+                                                {assoc.role}
+                                            </span>
+                                            <span className="font-mono text-[11px] text-slate-400">{assoc.code}</span>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition leading-tight">
+                                                {assoc.name}
+                                            </h4>
+                                            <span className="text-[11px] text-slate-400">{assoc.level} Level</span>
+                                        </div>
+                                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-amber-600 dark:text-amber-400 font-bold">
+                                            <span>{t('profile.openManagement')}</span>
+                                            <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition" />
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Managed Sports Clubs */}
+                    <div className="space-y-3 pt-4">
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <Shield className="h-4 w-4 text-blue-500" />
+                            <span>{t('profile.managedClubs')} ({overviewData?.adminAccess?.clubs?.length || 0})</span>
+                        </h3>
+
+                        {overviewData?.adminAccess?.clubs?.length === 0 ? (
+                            <p className="text-xs text-slate-500 italic p-4 rounded-2xl bg-slate-50 dark:bg-slate-950">
+                                No sports club administration roles assigned.
+                            </p>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {overviewData?.adminAccess?.clubs?.map((club: any) => (
+                                    <Link
+                                        key={club.id}
+                                        href={`/club/${club.slug || club.id}`}
+                                        className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-xs hover:border-blue-500 hover:shadow-md transition space-y-3 group"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-2.5 py-0.5 text-[10px] font-black uppercase text-blue-700 dark:text-blue-400">
+                                                {club.role}
+                                            </span>
+                                            <span className="font-mono text-[11px] text-slate-400">{club.code}</span>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition leading-tight">
+                                                {club.name}
+                                            </h4>
+                                            <span className="text-[11px] text-slate-400">{club.city || 'Switzerland'}</span>
+                                        </div>
+                                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-blue-600 dark:text-blue-400 font-bold">
+                                            <span>{t('profile.openClubPortal')}</span>
+                                            <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition" />
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Managed Competitions & Leagues */}
+                    {overviewData?.adminAccess?.competitions?.length > 0 && (
+                        <div className="space-y-3 pt-4">
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <Trophy className="h-4 w-4 text-amber-500" />
+                                <span>{t('profile.managedCompetitions')} ({overviewData?.adminAccess?.competitions?.length})</span>
+                            </h3>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {overviewData?.adminAccess?.competitions?.map((comp: any) => (
+                                    <Link
+                                        key={comp.id}
+                                        href={comp.type === 'TOURNAMENT' ? `/tournament/${comp.seriesSlug || comp.slug || comp.id}` : `/competitions/${comp.seriesSlug || comp.slug || comp.id}`}
+                                        className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-xs hover:border-amber-500 hover:shadow-md transition space-y-3 group"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-2.5 py-0.5 text-[10px] font-black uppercase text-amber-700 dark:text-amber-400">
+                                                {comp.type?.replace('_', ' ')}
+                                            </span>
+                                            <span className="text-[10px] font-bold text-slate-400">{comp.status}</span>
+                                        </div>
+                                        <h4 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition leading-tight">
+                                            {comp.name}
+                                        </h4>
+                                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-amber-600 dark:text-amber-400 font-bold">
+                                            <span>Manage Engine</span>
+                                            <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition" />
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Email Change Modal */}
+            {emailChangeModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
+                    <div className="max-w-md w-full rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-2xl space-y-5">
+                        <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    <Mail className="h-5 w-5 text-amber-500" />
+                                    <span>{t('auth.emailChangeTitle')}</span>
+                                </h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    {t('auth.emailChangeSubtitle')}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setEmailChangeModalOpen(false)}
+                                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {emailChangeErr && (
+                            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300">
+                                <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                                <div>{emailChangeErr}</div>
+                            </div>
+                        )}
+
+                        {emailChangeMsg ? (
+                            <div className="space-y-4">
+                                <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                                    <div>{emailChangeMsg}</div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setEmailChangeModalOpen(false)}
+                                    className="w-full rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-2.5 text-xs transition"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleRequestEmailChange} className="space-y-4 text-xs">
+                                <div>
+                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                        Current Email
+                                    </label>
+                                    <input
+                                        type="text"
+                                        disabled
+                                        value={user.email}
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400 font-mono"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                        {t('auth.newEmailLabel')} *
+                                    </label>
+                                    <input
+                                        type="email"
+                                        required
+                                        placeholder="new.email@example.ch"
+                                        value={newEmailInput}
+                                        onChange={(e) => setNewEmailInput(e.target.value)}
+                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none font-mono"
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-end gap-2 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setEmailChangeModalOpen(false)}
+                                        className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                    >
+                                        {t('common.cancel')}
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={emailChangeLoading}
+                                        className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow transition disabled:opacity-50 inline-flex items-center gap-1.5"
+                                    >
+                                        {emailChangeLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                                        <span>{emailChangeLoading ? t('common.saving') : (t('auth.sendEmailChangeLink') || 'Send Confirmation Link')}</span>
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

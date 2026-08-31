@@ -34,20 +34,6 @@ export const config = {
     },
     isDemo: process.env.IS_DEMO === 'true',
     supportEmail: process.env.AREENA_SUPPORT_EMAIL || 'support@areena.ch',
-    smtp: {
-        host: process.env.SMTP_HOST || '',
-        port: parseInt(process.env.SMTP_PORT || '587', 10),
-        user: process.env.SMTP_USER || '',
-        pass: process.env.SMTP_PASS || process.env.SMTP_PASSWORD || '',
-        from: process.env.EMAIL_FROM_DEFAULT || '',
-        secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465',
-    },
-    mailgun: {
-        apiKey: process.env.MAILGUN_API_KEY || '',
-        domain: process.env.MAILGUN_DOMAIN || '',
-        url: process.env.MAILGUN_HOST || (process.env.MAILGUN_EU === 'true' ? 'https://api.eu.mailgun.net' : 'https://api.mailgun.net'),
-        from: process.env.EMAIL_FROM_DEFAULT || '',
-    },
 };
 
 export default config;

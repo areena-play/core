@@ -1,7 +1,3 @@
-import nodemailer, { Transporter } from 'nodemailer';
-import FormData from 'form-data';
-import Mailgun from 'mailgun.js';
-import { config } from '../config/env';
 import { SystemService } from './system.service';
 
 export interface BulkRecipient {
@@ -27,67 +23,6 @@ export interface BulkEmailOptions {
 }
 
 export class EmailService {
-    private static transporterInstance: Transporter | null = null;
-    private static mailgunClientInstance: any = null;
-
-    /**
-     * Resolves or initializes the Mailgun REST API client.
-     */
-    private static getMailgunClient(): any {
-        if (this.mailgunClientInstance) {
-            return this.mailgunClientInstance;
-        }
-
-        if (config.mailgun.apiKey && config.mailgun.domain) {
-            const mailgun = new Mailgun(FormData);
-            this.mailgunClientInstance = mailgun.client({
-                username: 'api',
-                key: config.mailgun.apiKey,
-                url: config.mailgun.url || 'https://api.mailgun.net',
-            });
-
-            console.log(
-                `[EmailService] Mailgun REST API Client configured (domain: ${config.mailgun.domain}, endpoint: ${config.mailgun.url || 'https://api.mailgun.net'}).`
-            );
-            return this.mailgunClientInstance;
-        }
-
-        return null;
-    }
-
-    /**
-     * Resolves or initializes the Nodemailer SMTP transporter.
-     */
-    private static getSmtpTransporter(): Transporter | null {
-        if (this.transporterInstance) {
-            return this.transporterInstance;
-        }
-
-        if (config.smtp.host) {
-            const isSecure = config.smtp.secure;
-            this.transporterInstance = nodemailer.createTransport({
-                host: config.smtp.host,
-                port: config.smtp.port,
-                secure: isSecure,
-                auth: config.smtp.user
-                    ? {
-                          user: config.smtp.user,
-                          pass: config.smtp.pass,
-                      }
-                    : undefined,
-                tls: {
-                    rejectUnauthorized: process.env.NODE_ENV === 'production',
-                },
-            });
-
-            console.log(
-                `[EmailService] SMTP Transporter configured (${config.smtp.host}:${config.smtp.port}, secure=${isSecure}, authUser=${config.smtp.user ? 'yes' : 'no'}).`
-            );
-            return this.transporterInstance;
-        }
-
-        return null;
-    }
 
     private static getAppBaseUrl(): string {
         if (process.env.APP_URL) return process.env.APP_URL;
@@ -201,7 +136,12 @@ export class EmailService {
                 console.log(`[EmailService] Dispatched via Mailgun API to "${options.to}" (ID: ${res.id})`);
                 return true;
             } catch (err: any) {
-                console.error(`[EmailService] Mailgun API delivery error to "${options.to}":`, err.message);
+                console.error(`[EmailService] Mailgun API delivery error to "${options.to}":`, {
+                    status: err.status,
+                    message: err.message,
+                    details: err.details,
+                    body: err.body,
+                });
                 // Fallback to SMTP if available
             }
         }
@@ -221,21 +161,27 @@ export class EmailService {
                 console.log(`[EmailService] Dispatched via SMTP to "${options.to}" (Message ID: ${info.messageId})`);
                 return true;
             } catch (err: any) {
-                console.error(`[EmailService] SMTP delivery failed to "${options.to}":`, err.message);
+                console.error(`[EmailService] SMTP delivery failed to "${options.to}":`, err.message || err);
                 return false;
             }
         }
 
         // 3. Development Fallback: Pretty-print to terminal
-        console.log('\n================== [DEV EMAIL SERVICE] ==================');
-        console.log(`✉️  Recipient: ${options.to}`);
-        console.log(`📋 Subject: ${options.subject}`);
-        if (options.replyTo) console.log(`↩️  Reply-To: ${options.replyTo}`);
-        if (options.tags) console.log(`🏷️  Tags: ${options.tags.join(', ')}`);
-        console.log('📝 Message Text:');
-        console.log(options.text);
-        console.log('=========================================================\n');
-        return true;
+        if (process.env.NODE_ENV === 'development') {
+            console.log('\n================== [DEV EMAIL SERVICE] ==================');
+            console.log(`✉️  Recipient: ${options.to}`);
+            console.log(`📋 Subject: ${options.subject}`);
+            if (options.replyTo) console.log(`↩️  Reply-To: ${options.replyTo}`);
+            if (options.tags) console.log(`🏷️  Tags: ${options.tags.join(', ')}`);
+            console.log('📝 Message Text:');
+            console.log(options.text);
+            console.log('=========================================================\n');
+            return true;
+        }
+
+        // 4. If all methods fail, log an error and return false
+        console.error(`[EmailService] No email delivery method available for "${options.to}". Please configure Mailgun or SMTP settings.`);
+        return false;
     }
 
     /**
@@ -408,6 +354,70 @@ export class EmailService {
             text,
             html,
             tags: ['auth-password-reset'],
+        });
+    }
+
+    /**
+     * Sends an email change confirmation link to the requested new email address.
+     */
+    static async sendEmailChangeConfirmationEmail(to: string, firstName: string, token: string): Promise<boolean> {
+        const baseUrl = this.getAppBaseUrl();
+        const confirmationLink = `${baseUrl}/verify-email-change?token=${encodeURIComponent(token)}`;
+
+        const subject = 'Confirm your new email address on AREENA';
+        const text = `Hello ${firstName},\n\nYou requested to change your email address on the AREENA sports platform.\n\nPlease confirm this email address by clicking the link below:\n\n${confirmationLink}\n\nThis confirmation link will expire in 24 hours. If you did not make this request, please disregard this message.\n\nBest regards,\nThe AREENA Team`;
+
+        const html = this.renderHtmlTemplate({
+            title: subject,
+            badge: 'Email Change Confirmation',
+            greeting: `Hello ${firstName},`,
+            bodyHtml: `You requested to update your email address on the <strong>AREENA</strong> sports management platform.<br><br>
+                       Please click the button below to verify this new address and activate the change on your account.`,
+            actionButton: {
+                label: 'Confirm New Email Address',
+                url: confirmationLink,
+            },
+            footerNote: `If you did not request this change, you can safely ignore this email. Link: ${confirmationLink}`,
+        });
+
+        return await this.sendMail({
+            to,
+            subject,
+            text,
+            html,
+            tags: ['auth-email-change'],
+        });
+    }
+
+    /**
+     * Sends a password reset link to a user.
+     */
+    static async sendPasswordResetLinkEmail(to: string, firstName: string, token: string): Promise<boolean> {
+        const baseUrl = this.getAppBaseUrl();
+        const resetLink = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
+
+        const subject = 'Reset your AREENA password';
+        const text = `Hello ${firstName},\n\nWe received a request to reset the password for your AREENA account.\n\nYou can reset your password by opening the following link:\n\n${resetLink}\n\nThis link will expire in 1 hour.\n\nIf you did not request a password reset, you can safely ignore this email.\n\nBest regards,\nThe AREENA Team`;
+
+        const html = this.renderHtmlTemplate({
+            title: subject,
+            badge: 'Password Reset',
+            greeting: `Hello ${firstName},`,
+            bodyHtml: `We received a request to reset the password associated with your <strong>AREENA</strong> account.<br><br>
+                       Please click the button below to choose a new secure password.`,
+            actionButton: {
+                label: 'Reset Password',
+                url: resetLink,
+            },
+            footerNote: `This reset link is valid for 1 hour. If you did not request this, please ignore this email. Link: ${resetLink}`,
+        });
+
+        return await this.sendMail({
+            to,
+            subject,
+            text,
+            html,
+            tags: ['auth-password-reset-link'],
         });
     }
 

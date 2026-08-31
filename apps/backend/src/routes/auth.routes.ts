@@ -11,6 +11,10 @@ import {
     updateProfileSchema,
     verifyEmailSchema,
     resendVerificationSchema,
+    requestEmailChangeSchema,
+    confirmEmailChangeSchema,
+    forgotPasswordSchema,
+    resetPasswordSchema,
     AuditCategory,
 } from '@areena/shared';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
@@ -363,6 +367,252 @@ router.post('/resend-verification', validate(resendVerificationSchema), async (r
     }
 });
 
+// POST /auth/request-email-change
+router.post(
+    '/request-email-change',
+    authenticateToken,
+    validate(requestEmailChangeSchema),
+    async (req: AuthRequest, res: Response, next) => {
+        try {
+            const { newEmail } = req.body;
+            const normalizedNewEmail = newEmail.trim().toLowerCase();
+
+            const user = await prisma.user.findUnique({
+                where: { id: req.user!.id },
+            });
+
+            if (!user) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            if (user.email.toLowerCase() === normalizedNewEmail) {
+                return res.status(400).json({ error: 'This is already your current email address.' });
+            }
+
+            const existingUser = await prisma.user.findUnique({
+                where: { email: normalizedNewEmail },
+            });
+
+            if (existingUser && existingUser.id !== user.id) {
+                return res.status(400).json({ error: 'This email address is already registered to another account.' });
+            }
+
+            const pendingEmailToken = crypto.randomBytes(32).toString('hex');
+            const pendingEmailExpires = new Date(Date.now() + 24 * 3600 * 1000); // 24 hours
+
+            await (prisma.user as any).update({
+                where: { id: user.id },
+                data: {
+                    pendingEmail: normalizedNewEmail,
+                    pendingEmailToken,
+                    pendingEmailExpires,
+                },
+            });
+
+            await EmailService.sendEmailChangeConfirmationEmail(normalizedNewEmail, user.firstName, pendingEmailToken);
+
+            await AuditService.record({
+                req,
+                userId: user.id,
+                userEmail: user.email,
+                userName: `${user.firstName} ${user.lastName}`,
+                action: 'AUTH_EMAIL_CHANGE_REQUESTED',
+                category: AuditCategory.AUTH,
+                entityType: 'User',
+                entityId: user.id,
+                description: `Requested email change from ${user.email} to ${normalizedNewEmail}`,
+                status: 'SUCCESS',
+                metadata: {
+                    currentEmail: user.email,
+                    requestedNewEmail: normalizedNewEmail,
+                },
+            });
+
+            res.json({
+                message: `A confirmation link has been sent to ${normalizedNewEmail}. Please check your inbox and confirm the change to activate it.`,
+                pendingEmail: normalizedNewEmail,
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+);
+
+// POST /auth/confirm-email-change
+router.post(
+    '/confirm-email-change',
+    validate(confirmEmailChangeSchema),
+    async (req, res, next) => {
+        try {
+            const { token } = req.body;
+
+            const user = await (prisma.user as any).findFirst({
+                where: {
+                    pendingEmailToken: token,
+                    pendingEmailExpires: {
+                        gt: new Date(),
+                    },
+                },
+            });
+
+            if (!user || !user.pendingEmail) {
+                return res.status(400).json({ error: 'Invalid or expired confirmation link. Please request a new email change.' });
+            }
+
+            const existingWithEmail = await prisma.user.findUnique({
+                where: { email: user.pendingEmail },
+            });
+
+            if (existingWithEmail && existingWithEmail.id !== user.id) {
+                return res.status(400).json({ error: 'This email address is already in use by another account.' });
+            }
+
+            const oldEmail = user.email;
+            const newEmail = user.pendingEmail;
+
+            const updated = await (prisma.user as any).update({
+                where: { id: user.id },
+                data: {
+                    email: newEmail,
+                    emailVerified: true,
+                    pendingEmail: null,
+                    pendingEmailToken: null,
+                    pendingEmailExpires: null,
+                },
+            });
+
+            await AuditService.record({
+                req,
+                userId: updated.id,
+                userEmail: updated.email,
+                userName: `${updated.firstName} ${updated.lastName}`,
+                action: 'AUTH_EMAIL_CHANGE_CONFIRMED',
+                category: AuditCategory.AUTH,
+                entityType: 'User',
+                entityId: updated.id,
+                description: `Successfully updated user email from ${oldEmail} to ${newEmail}`,
+                status: 'SUCCESS',
+                metadata: {
+                    oldEmail,
+                    newEmail,
+                },
+            });
+
+            res.json({
+                message: 'Your email address has been successfully updated and verified.',
+                newEmail: updated.email,
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+);
+
+// POST /auth/forgot-password
+router.post(
+    '/forgot-password',
+    validate(forgotPasswordSchema),
+    async (req, res, next) => {
+        try {
+            const { email } = req.body;
+            const normalizedEmail = email.trim().toLowerCase();
+
+            const user = await prisma.user.findUnique({
+                where: { email: normalizedEmail },
+            });
+
+            if (user) {
+                const passwordResetToken = crypto.randomBytes(32).toString('hex');
+                const passwordResetExpires = new Date(Date.now() + 3600 * 1000); // 1 hour
+
+                await prisma.user.update({
+                    where: { id: user.id },
+                    data: {
+                        passwordResetToken,
+                        passwordResetExpires,
+                    },
+                });
+
+                await EmailService.sendPasswordResetLinkEmail(user.email, user.firstName, passwordResetToken);
+
+                await AuditService.record({
+                    req,
+                    userId: user.id,
+                    userEmail: user.email,
+                    userName: `${user.firstName} ${user.lastName}`,
+                    action: 'AUTH_PASSWORD_RESET_REQUESTED',
+                    category: AuditCategory.AUTH,
+                    entityType: 'User',
+                    entityId: user.id,
+                    description: `Password reset link requested for ${user.email}`,
+                    status: 'SUCCESS',
+                });
+            }
+
+            // Always respond with a generic success to prevent email enumeration
+            res.json({
+                message: 'If an account exists with this email address, a password reset link has been sent.',
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+);
+
+// POST /auth/reset-password
+router.post(
+    '/reset-password',
+    validate(resetPasswordSchema),
+    async (req, res, next) => {
+        try {
+            const { token, password } = req.body;
+
+            const user = await prisma.user.findFirst({
+                where: {
+                    passwordResetToken: token,
+                    passwordResetExpires: {
+                        gt: new Date(),
+                    },
+                },
+            });
+
+            if (!user) {
+                return res.status(400).json({ error: 'Invalid or expired password reset link. Please request a new link.' });
+            }
+
+            const passwordHash = await bcrypt.hash(password, 10);
+
+            await prisma.user.update({
+                where: { id: user.id },
+                data: {
+                    passwordHash,
+                    passwordResetToken: null,
+                    passwordResetExpires: null,
+                },
+            });
+
+            await AuditService.record({
+                req,
+                userId: user.id,
+                userEmail: user.email,
+                userName: `${user.firstName} ${user.lastName}`,
+                action: 'AUTH_PASSWORD_RESET_COMPLETED',
+                category: AuditCategory.AUTH,
+                entityType: 'User',
+                entityId: user.id,
+                description: `Password reset successfully completed for ${user.email}`,
+                status: 'SUCCESS',
+            });
+
+            res.json({
+                message: 'Your password has been successfully reset. You can now log in with your new password.',
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+);
+
 // GET /auth/me
 router.get('/me', authenticateToken, async (req: AuthRequest, res: Response, next) => {
     try {
@@ -381,6 +631,248 @@ router.get('/me', authenticateToken, async (req: AuthRequest, res: Response, nex
         }
 
         res.json(user);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// GET /auth/profile-overview
+router.get('/profile-overview', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const userId = req.user!.id;
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                associationRoles: {
+                    include: { association: true },
+                },
+                clubRoles: {
+                    include: { club: true },
+                },
+                licenses: {
+                    include: {
+                        club: true,
+                        association: true,
+                        season: true,
+                        appliedBy: { select: { id: true, firstName: true, lastName: true } },
+                        approvedBy: { select: { id: true, firstName: true, lastName: true } },
+                    },
+                    orderBy: { validUntil: 'desc' },
+                },
+                courseAttendances: {
+                    include: {
+                        course: {
+                            include: {
+                                association: true,
+                                instructor: {
+                                    select: { id: true, firstName: true, lastName: true, email: true },
+                                },
+                            },
+                        },
+                    },
+                    orderBy: { course: { date: 'desc' } },
+                },
+                instructedCourses: {
+                    include: {
+                        association: true,
+                        _count: { select: { attendances: true } },
+                    },
+                    orderBy: { date: 'desc' },
+                },
+                teamMemberships: {
+                    include: {
+                        team: {
+                            include: {
+                                club: true,
+                                registrations: {
+                                    include: {
+                                        category: {
+                                            include: {
+                                                competition: {
+                                                    include: {
+                                                        association: true,
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // 1. Resolve registered competitions
+        const compMap = new Map<string, any>();
+        for (const tm of user.teamMemberships) {
+            for (const reg of tm.team.registrations) {
+                const comp = reg.category?.competition;
+                if (comp) {
+                    const key = `${comp.id}:${reg.category.id}:${tm.team.id}`;
+                    if (!compMap.has(key)) {
+                        compMap.set(key, {
+                            id: comp.id,
+                            name: comp.name,
+                            slug: comp.slug,
+                            seriesSlug: comp.seriesSlug,
+                            type: comp.type,
+                            status: comp.status,
+                            startDate: comp.startDate,
+                            endDate: comp.endDate,
+                            location: comp.location,
+                            association: comp.association,
+                            category: {
+                                id: reg.category.id,
+                                name: reg.category.name,
+                            },
+                            team: {
+                                id: tm.team.id,
+                                name: tm.team.name,
+                                role: tm.role,
+                                club: tm.team.club,
+                            },
+                        });
+                    }
+                }
+            }
+        }
+        const registeredCompetitions = Array.from(compMap.values());
+
+        // 2. Resolve Admin Access Overview
+        let adminAssociations: any[] = [];
+        let adminClubs: any[] = [];
+        let adminCompetitions: any[] = [];
+
+        if (user.isSuperAdmin) {
+            const [allAssocs, allClubs, allComps] = await Promise.all([
+                prisma.association.findMany({
+                    orderBy: [{ level: 'asc' }, { name: 'asc' }],
+                }),
+                prisma.club.findMany({
+                    orderBy: { name: 'asc' },
+                }),
+                prisma.competition.findMany({
+                    include: { association: true },
+                    orderBy: { startDate: 'desc' },
+                    take: 20,
+                }),
+            ]);
+            adminAssociations = allAssocs.map((a) => ({
+                id: a.id,
+                name: a.name,
+                code: a.code,
+                slug: a.slug,
+                level: a.level,
+                isTopLevel: a.isTopLevel,
+                role: 'SUPER_ADMIN',
+            }));
+            adminClubs = allClubs.map((c) => ({
+                id: c.id,
+                name: c.name,
+                code: c.code,
+                slug: c.slug,
+                city: c.city,
+                role: 'SUPER_ADMIN',
+            }));
+            adminCompetitions = allComps.map((cp) => ({
+                id: cp.id,
+                name: cp.name,
+                slug: cp.slug,
+                seriesSlug: cp.seriesSlug,
+                type: cp.type,
+                status: cp.status,
+                startDate: cp.startDate,
+                association: cp.association,
+                role: 'SUPER_ADMIN',
+            }));
+        } else {
+            // Associations where user has admin/governance role
+            const eligibleAssocRoles = ['SUPER_ADMIN', 'ADMIN', 'PRESIDENT', 'SECRETARY', 'TREASURER', 'OFFICIAL'];
+            adminAssociations = user.associationRoles
+                .filter((ar) => eligibleAssocRoles.includes(ar.role))
+                .map((ar) => ({
+                    id: ar.association.id,
+                    name: ar.association.name,
+                    code: ar.association.code,
+                    slug: ar.association.slug,
+                    level: ar.association.level,
+                    isTopLevel: ar.association.isTopLevel,
+                    role: ar.role,
+                }));
+
+            // Clubs where user has admin role
+            const eligibleClubRoles = ['ADMIN', 'PRESIDENT', 'SECRETARY', 'TREASURER', 'COACH'];
+            adminClubs = user.clubRoles
+                .filter((cr) => eligibleClubRoles.includes(cr.role))
+                .map((cr) => ({
+                    id: cr.club.id,
+                    name: cr.club.name,
+                    code: cr.club.code,
+                    slug: cr.club.slug,
+                    city: cr.club.city,
+                    role: cr.role,
+                }));
+
+            // Competitions hosted by the admin associations
+            const adminAssocIds = adminAssociations.map((a) => a.id);
+            if (adminAssocIds.length > 0) {
+                const comps = await prisma.competition.findMany({
+                    where: { associationId: { in: adminAssocIds } },
+                    include: { association: true },
+                    orderBy: { startDate: 'desc' },
+                });
+                adminCompetitions = comps.map((cp) => ({
+                    id: cp.id,
+                    name: cp.name,
+                    slug: cp.slug,
+                    seriesSlug: cp.seriesSlug,
+                    type: cp.type,
+                    status: cp.status,
+                    startDate: cp.startDate,
+                    association: cp.association,
+                    role: 'ASSOCIATION_ADMIN',
+                }));
+            }
+        }
+
+        res.json({
+            user: {
+                id: user.id,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                phone: user.phone,
+                street: user.street,
+                postalCode: user.postalCode,
+                city: user.city,
+                country: user.country,
+                birthDate: user.birthDate,
+                gender: user.gender,
+                licenseId: user.licenseId,
+                eloPoints: user.eloPoints,
+                rank: user.rank,
+                avatarUrl: user.avatarUrl,
+                isSuperAdmin: user.isSuperAdmin,
+                emailVerified: user.emailVerified,
+                createdAt: user.createdAt,
+            },
+            licenses: user.licenses,
+            courseAttendances: user.courseAttendances,
+            instructedCourses: user.instructedCourses,
+            registeredCompetitions,
+            adminAccess: {
+                isSuperAdmin: user.isSuperAdmin,
+                associations: adminAssociations,
+                clubs: adminClubs,
+                competitions: adminCompetitions,
+            },
+        });
     } catch (err) {
         next(err);
     }

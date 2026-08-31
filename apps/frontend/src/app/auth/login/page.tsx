@@ -140,7 +140,12 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
-    const [resendStatus, setResendStatus] = useState<string | null>(null);
+        const [resendStatus, setResendStatus] = useState<string | null>(null);
+    const [forgotMode, setForgotMode] = useState(false);
+    const [forgotEmail, setForgotEmail] = useState('');
+    const [forgotLoading, setForgotLoading] = useState(false);
+    const [forgotSuccess, setForgotSuccess] = useState('');
+    const [forgotError, setForgotError] = useState('');
     const [resendLoading, setResendLoading] = useState(false);
     const [isDemo, setIsDemo] = useState(process.env.NEXT_PUBLIC_IS_DEMO === 'true');
     const [activeDemoCategory, setActiveDemoCategory] = useState<'ALL' | 'ADMINS' | 'CLUBS' | 'PLAYERS'>('ALL');
@@ -207,6 +212,21 @@ export default function LoginPage() {
             }
         } finally {
             setLoading(false);
+        }
+    };
+
+        const handleForgotPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setForgotLoading(true);
+        setForgotError('');
+        setForgotSuccess('');
+        try {
+            const res = await api.forgotPassword(forgotEmail);
+            setForgotSuccess(res.message || t('auth.resetLinkSent') || 'If an account exists with this email address, a password reset link has been sent.');
+        } catch (err: any) {
+            setForgotError(err.message || 'Failed to send password reset link.');
+        } finally {
+            setForgotLoading(false);
         }
     };
 
@@ -306,44 +326,121 @@ export default function LoginPage() {
                             </div>
                         )}
 
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('common.email')}
-                                </label>
-                                <input
-                                    type="email"
-                                    required
-                                    placeholder="name@example.ch"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                />
-                            </div>
+                        {forgotMode ? (
+                            <form onSubmit={handleForgotPassword} className="space-y-4">
+                                <div className="space-y-1">
+                                    <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                                        {t('auth.forgotPasswordTitle')}
+                                    </h2>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                        {t('auth.forgotPasswordSubtitle')}
+                                    </p>
+                                </div>
 
-                            <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('auth.password')}
-                                </label>
-                                <input
-                                    type="password"
-                                    required
-                                    placeholder="••••••••"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                />
-                            </div>
+                                {forgotError && (
+                                    <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300">
+                                        <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                                        <div>{forgotError}</div>
+                                    </div>
+                                )}
 
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 py-2.5 font-semibold text-white hover:bg-red-700 disabled:opacity-50 shadow transition active:scale-[0.99]"
-                            >
-                                <LogIn className="h-4 w-4" />
-                                <span>{loading ? t('common.loading') : t('auth.loginButton')}</span>
-                            </button>
-                        </form>
+                                {forgotSuccess && (
+                                    <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                                        <div>{forgotSuccess}</div>
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('common.email')}
+                                    </label>
+                                    <input
+                                        type="email"
+                                        required
+                                        placeholder="name@example.ch"
+                                        value={forgotEmail}
+                                        onChange={(e) => setForgotEmail(e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={forgotLoading}
+                                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 py-2.5 font-semibold text-white hover:bg-red-700 disabled:opacity-50 shadow transition active:scale-[0.99]"
+                                >
+                                    <Mail className="h-4 w-4" />
+                                    <span>{forgotLoading ? t('common.loading') : t('auth.sendResetLink')}</span>
+                                </button>
+
+                                <div className="text-center pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setForgotMode(false);
+                                            setForgotSuccess('');
+                                            setForgotError('');
+                                        }}
+                                        className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-semibold"
+                                    >
+                                        <span>← {t('auth.backToSignIn')}</span>
+                                    </button>
+                                </div>
+                            </form>
+                        ) : (
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div>
+                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                        {t('common.email')}
+                                    </label>
+                                    <input
+                                        type="email"
+                                        required
+                                        placeholder="name@example.ch"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div>
+                                    <div className="flex items-center justify-between">
+                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {t('auth.password')}
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setForgotMode(true);
+                                                setForgotEmail(email);
+                                                setErrorMsg('');
+                                            }}
+                                            className="text-[11px] font-semibold text-red-600 hover:text-red-700 dark:text-red-400 hover:underline"
+                                        >
+                                            {t('auth.forgotPasswordLink')}
+                                        </button>
+                                    </div>
+                                    <input
+                                        type="password"
+                                        required
+                                        placeholder="••••••••"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 py-2.5 font-semibold text-white hover:bg-red-700 disabled:opacity-50 shadow transition active:scale-[0.99]"
+                                >
+                                    <LogIn className="h-4 w-4" />
+                                    <span>{loading ? t('common.loading') : t('auth.loginButton')}</span>
+                                </button>
+                            </form>
+                        )}
 
                         <div className="text-center text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800/80">
                             {t('auth.noAccount')}{' '}

@@ -17,6 +17,10 @@ export interface User {
     eloPoints: number;
     rank?: number | null;
     isSuperAdmin: boolean;
+    emailVerified?: boolean;
+    birthDate?: string | null;
+    gender?: string | null;
+    avatarUrl?: string | null;
     associationRoles?: Array<{ associationId: string; role: string }>;
     clubRoles?: Array<{ clubId: string; role: string }>;
     licenses?: any[];

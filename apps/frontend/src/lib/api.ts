@@ -101,8 +101,28 @@ class ApiClient {
         return this.request('/auth/me');
     }
 
+    getProfileOverview() {
+        return this.request('/auth/profile-overview');
+    }
+
     updateProfile(body: any) {
         return this.request('/auth/profile', { method: 'PUT', body: JSON.stringify(body) });
+    }
+
+    requestEmailChange(newEmail: string) {
+        return this.request('/auth/request-email-change', { method: 'POST', body: JSON.stringify({ newEmail }) });
+    }
+
+    confirmEmailChange(token: string) {
+        return this.request('/auth/confirm-email-change', { method: 'POST', body: JSON.stringify({ token }) });
+    }
+
+    forgotPassword(email: string) {
+        return this.request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
+    }
+
+    resetPassword(body: { token: string; password: string }) {
+        return this.request('/auth/reset-password', { method: 'POST', body: JSON.stringify(body) });
     }
 
     getUsers(params: string | { q?: string; associationId?: string; role?: string } = '') {
