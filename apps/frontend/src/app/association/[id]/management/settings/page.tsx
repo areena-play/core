@@ -88,6 +88,12 @@ export default function AssociationSettingsPage() {
     // 3. Age Series Configuration
     const [ageSeries, setAgeSeries] = useState<AgeSeriesItem[]>(DEFAULT_AGE_SERIES);
     const [ageCutoffDate, setAgeCutoffDate] = useState('07-01'); // July 1st cutoff
+    const [compAllowedCreators, setCompAllowedCreators] = useState<string>('CLUB_ADMIN');
+    const [compRequireApproval, setCompRequireApproval] = useState<boolean>(true);
+    const [compLeagueCreator, setCompLeagueCreator] = useState<string>('ASSOCIATION_ADMIN');
+    const [compTournCreator, setCompTournCreator] = useState<string>('CLUB_ADMIN');
+    const [compInofficialCreator, setCompInofficialCreator] = useState<string>('ANY_USER');
+    const [compTournApproval, setCompTournApproval] = useState<boolean>(true);
     const [ageModalOpen, setAgeModalOpen] = useState(false);
     const [editingAgeItem, setEditingAgeItem] = useState<AgeSeriesItem | null>(null);
     const [ageFormCode, setAgeFormCode] = useState('');
@@ -146,6 +152,15 @@ export default function AssociationSettingsPage() {
                 if (rules.requireRefereeCourseForSenior !== undefined) setRequireRefereeCourseForSenior(rules.requireRefereeCourseForSenior);
                 if (rules.refresherCourseValidityMonths !== undefined) setRefresherCourseValidityMonths(rules.refresherCourseValidityMonths);
                 if (rules.eloKFactor !== undefined) setEloKFactor(rules.eloKFactor);
+                if (rules.competitionGovernance) {
+                    const cg = rules.competitionGovernance;
+                    if (cg.allowedCreators) setCompAllowedCreators(cg.allowedCreators);
+                    if (cg.requireApproval !== undefined) setCompRequireApproval(cg.requireApproval);
+                    if (cg.allowedCreatorsByType?.LEAGUE) setCompLeagueCreator(cg.allowedCreatorsByType.LEAGUE);
+                    if (cg.allowedCreatorsByType?.TOURNAMENT) setCompTournCreator(cg.allowedCreatorsByType.TOURNAMENT);
+                    if (cg.allowedCreatorsByType?.INOFFICIAL) setCompInofficialCreator(cg.allowedCreatorsByType.INOFFICIAL);
+                    if (cg.requireApprovalByType?.TOURNAMENT !== undefined) setCompTournApproval(cg.requireApprovalByType.TOURNAMENT);
+                }
 
                 if (Array.isArray(rules.ageSeries) && rules.ageSeries.length > 0) {
                     setAgeSeries(rules.ageSeries);

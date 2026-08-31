@@ -44,6 +44,9 @@ import {
     Cookie,
     HelpCircle,
     ShieldCheck,
+    Mic,
+    DollarSign,
+    BarChart3,
 } from 'lucide-react';
 
 interface NavItem {
@@ -128,39 +131,44 @@ export function Navbar() {
                     items: [
                         {
                             label: t('tournamentWorkspace.overview'),
-                            href: `/tournament/${entityId}`,
+                            href: `/competition/${entityId}`,
                             icon: Trophy,
                         },
                         {
                             label: t('tournamentWorkspace.categories'),
-                            href: `/tournament/${entityId}#categories`,
+                            href: `/competition/${entityId}/categories`,
                             icon: Layers,
                         },
                         {
-                            label: t('tournamentWorkspace.teams'),
-                            href: `/tournament/${entityId}#teams`,
+                            label: t('tournamentWorkspace.players') || 'Players',
+                            href: `/competition/${entityId}/players`,
                             icon: Users,
                         },
                     ],
                 },
                 {
-                    sectionTitle: 'Match Center & Scoring',
+                    sectionTitle: 'Match Center & Operations',
                     items: [
                         {
-                            label: t('tournamentWorkspace.encounters'),
-                            href: `/tournament/${entityId}#encounters`,
-                            icon: Calendar,
-                        },
-                        {
-                            label: t('tournamentWorkspace.courts'),
-                            href: `/tournament/${entityId}#encounters`,
+                            label: t('tournamentWorkspace.resultEntering') || 'Result Entering',
+                            href: `/competition/${entityId}/results`,
                             icon: Flame,
                             badge: 'LIVE',
                         },
                         {
-                            label: t('tournamentWorkspace.standings'),
-                            href: `/tournament/${entityId}#standings`,
-                            icon: Trophy,
+                            label: t('tournamentWorkspace.speakerPage') || 'Speaker Console',
+                            href: `/competition/${entityId}/speaker`,
+                            icon: Mic,
+                        },
+                        {
+                            label: t('tournamentWorkspace.cashierPage') || 'Cashier Desk',
+                            href: `/competition/${entityId}/cashier`,
+                            icon: DollarSign,
+                        },
+                        {
+                            label: t('tournamentWorkspace.statistics') || 'Statistics',
+                            href: `/competition/${entityId}/statistics`,
+                            icon: BarChart3,
                         },
                     ],
                 },
@@ -169,7 +177,7 @@ export function Navbar() {
                     items: [
                         {
                             label: t('nav.backToTournaments'),
-                            href: '/tournaments',
+                            href: '/competitions',
                             icon: ArrowLeft,
                         },
                     ],
@@ -230,7 +238,7 @@ export function Navbar() {
         // Default: Association Workspace
         const isSubAssoc = pathname.startsWith('/association/') && entityId && entityId !== 'main';
         const assocOverviewHref = isSubAssoc ? `/association/${entityId}` : '/';
-        const tournamentsHref = isSubAssoc ? `/association/${entityId}/tournaments` : '/tournaments';
+        const tournamentsHref = isSubAssoc ? `/association/${entityId}/competitions` : '/competitions';
 
         const currentAssocId = isSubAssoc ? entityId : (mainAssoc?.id || 'main');
         const currentAssoc = associations?.find((a: any) => a.id === currentAssocId) || (isSubAssoc ? null : mainAssoc);

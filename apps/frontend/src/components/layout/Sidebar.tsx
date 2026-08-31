@@ -32,6 +32,13 @@ import {
     Building2,
     ShieldAlert,
     Settings,
+    Megaphone,
+    MessageSquare,
+    UserCheck,
+    BarChart3,
+    DollarSign,
+    Mic,
+    Key,
     MapPin,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18nContext';
@@ -95,52 +102,97 @@ export function Sidebar() {
         if (activeView === 'tournament' && entityId) {
             return [
                 {
-                    sectionTitle: 'Tournament Hub',
+                    sectionTitle: 'Dashboard',
                     items: [
                         {
-                            label: t('tournamentWorkspace.overview'),
-                            href: `/tournament/${entityId}`,
+                            label: 'Tournament Dashboard',
+                            href: `/competition/${entityId}`,
                             icon: Trophy,
-                        },
-                        {
-                            label: t('tournamentWorkspace.categories'),
-                            href: `/tournament/${entityId}#categories`,
-                            icon: Layers,
-                        },
-                        {
-                            label: t('tournamentWorkspace.teams'),
-                            href: `/tournament/${entityId}#teams`,
-                            icon: Users,
                         },
                     ],
                 },
                 {
-                    sectionTitle: 'Match Center & Scoring',
+                    sectionTitle: t('tournamentWorkspace.navConfiguration') || 'Configuration',
                     items: [
                         {
-                            label: t('tournamentWorkspace.encounters'),
-                            href: `/tournament/${entityId}#encounters`,
-                            icon: Calendar,
+                            label: t('tournamentWorkspace.settings') || 'Settings',
+                            href: `/competition/${entityId}/settings`,
+                            icon: Settings,
                         },
                         {
-                            label: t('tournamentWorkspace.courts'),
-                            href: `/tournament/${entityId}#encounters`,
+                            label: t('tournamentWorkspace.accessRights') || 'Access Rights',
+                            href: `/competition/${entityId}/access`,
+                            icon: Key,
+                        },
+                        {
+                            label: t('tournamentWorkspace.locationsUnits') || 'Locations / Units',
+                            href: `/competition/${entityId}/locations`,
+                            icon: MapPin,
+                        },
+                        {
+                            label: t('tournamentWorkspace.referees') || 'Referees',
+                            href: `/competition/${entityId}/referees`,
+                            icon: UserCheck,
+                        },
+                    ],
+                },
+                {
+                    sectionTitle: t('tournamentWorkspace.navCategories') || 'Categories / Divisions',
+                    items: [
+                        {
+                            label: t('tournamentWorkspace.categoriesOverview') || 'Categories & Draws',
+                            href: `/competition/${entityId}/categories`,
+                            icon: Layers,
+                        },
+                    ],
+                },
+                {
+                    sectionTitle: t('tournamentWorkspace.navOperations') || 'Operations & Live Desk',
+                    items: [
+                        {
+                            label: t('tournamentWorkspace.players') || 'Players Roster',
+                            href: `/competition/${entityId}/players`,
+                            icon: Users,
+                        },
+                        {
+                            label: t('tournamentWorkspace.resultEntering') || 'Result Entering',
+                            href: `/competition/${entityId}/results`,
                             icon: Flame,
                             badge: 'LIVE',
                         },
                         {
-                            label: t('tournamentWorkspace.standings'),
-                            href: `/tournament/${entityId}#standings`,
-                            icon: Trophy,
+                            label: t('tournamentWorkspace.speakerPage') || 'Speaker Console',
+                            href: `/competition/${entityId}/speaker`,
+                            icon: Mic,
+                        },
+                        {
+                            label: t('tournamentWorkspace.cashierPage') || 'Cashier Desk',
+                            href: `/competition/${entityId}/cashier`,
+                            icon: DollarSign,
                         },
                     ],
                 },
                 {
-                    sectionTitle: 'Navigation',
+                    sectionTitle: t('tournamentWorkspace.navInsights') || 'Insights & Control',
                     items: [
                         {
-                            label: t('nav.backToTournaments'),
-                            href: '/tournaments',
+                            label: t('tournamentWorkspace.communication') || 'Communication',
+                            href: `/competition/${entityId}/communication`,
+                            icon: MessageSquare,
+                        },
+                        {
+                            label: t('tournamentWorkspace.actions') || 'Actions & Backups',
+                            href: `/competition/${entityId}/actions`,
+                            icon: Activity,
+                        },
+                        {
+                            label: t('tournamentWorkspace.statistics') || 'Statistics',
+                            href: `/competition/${entityId}/statistics`,
+                            icon: BarChart3,
+                        },
+                        {
+                            label: t('nav.backToTournaments') || 'All Competitions',
+                            href: '/competitions',
                             icon: ArrowLeft,
                         },
                     ],
@@ -148,24 +200,23 @@ export function Sidebar() {
             ];
         }
 
-        // 2. CLUB WORKSPACE VIEW
         if (activeView === 'club' && entityId) {
             return [
                 {
                     sectionTitle: 'Club Management',
                     items: [
                         {
-                            label: t('clubWorkspace.overview'),
+                            label: t('clubWorkspace.overview') || 'Overview',
                             href: `/club/${entityId}`,
                             icon: Shield,
                         },
                         {
-                            label: t('clubWorkspace.members'),
+                            label: t('clubWorkspace.members') || 'Members',
                             href: `/club/${entityId}#members`,
                             icon: Users,
                         },
                         {
-                            label: t('clubWorkspace.teams'),
+                            label: t('clubWorkspace.teams') || 'Teams',
                             href: `/club/${entityId}#teams`,
                             icon: Trophy,
                         },
@@ -175,12 +226,12 @@ export function Sidebar() {
                     sectionTitle: 'Club Activities',
                     items: [
                         {
-                            label: t('clubWorkspace.calendar'),
+                            label: t('clubWorkspace.calendar') || 'Calendar',
                             href: `/calendar?clubId=${entityId}`,
                             icon: Calendar,
                         },
                         {
-                            label: t('clubWorkspace.communications'),
+                            label: t('clubWorkspace.communications') || 'Communications',
                             href: `/communications?clubId=${entityId}`,
                             icon: Mail,
                         },
@@ -190,7 +241,7 @@ export function Sidebar() {
                     sectionTitle: 'Navigation',
                     items: [
                         {
-                            label: t('nav.backToAssociation'),
+                            label: t('nav.backToAssociation') || 'Back to Association',
                             href: '/associations',
                             icon: ArrowLeft,
                         },

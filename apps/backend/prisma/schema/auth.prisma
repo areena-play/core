@@ -50,6 +50,7 @@ model User {
   invoicesReceived     Invoice[]             @relation("InvoiceRecipientUser")
   auditLogs            AuditLog[]            @relation("UserAuditLogs")
   unitReservations     LocationUnitReservation[]
+  competitionRoles     CompetitionUserRole[]
   createdNotices       AdminNotice[]         @relation("CreatedAdminNotices")
   dismissedNotices     NoticeDismissal[]     @relation("UserNoticeDismissals")
   createdFaqs          FaqItem[]             @relation("CreatedFaqs")

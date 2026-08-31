@@ -403,6 +403,62 @@ class ApiClient {
         return this.request(`/competitions/matches/${matchId}/score`, { method: 'PUT', body: JSON.stringify(body) });
     }
 
+    updateCompetition(id: string, body: any) {
+        return this.request(`/competitions/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+    }
+
+    approveCompetition(id: string, body: any) {
+        return this.request(`/competitions/${id}/approval`, { method: 'PUT', body: JSON.stringify(body) });
+    }
+
+    getCompetitionRoles(id: string) {
+        return this.request(`/competitions/${id}/roles`);
+    }
+
+    assignCompetitionRole(id: string, body: any) {
+        return this.request(`/competitions/${id}/roles`, { method: 'POST', body: JSON.stringify(body) });
+    }
+
+    revokeCompetitionRole(id: string, roleId: string) {
+        return this.request(`/competitions/${id}/roles/${roleId}`, { method: 'DELETE' });
+    }
+
+    getCompetitionPlayers(id: string) {
+        return this.request(`/competitions/${id}/players`);
+    }
+
+    checkinCompetitionPlayer(id: string, regId: string, body: any) {
+        return this.request(`/competitions/${id}/players/${regId}/checkin`, { method: 'POST', body: JSON.stringify(body) });
+    }
+
+    updateCompetitionPlayerPayment(id: string, regId: string, body: any) {
+        return this.request(`/competitions/${id}/players/${regId}/payment`, { method: 'POST', body: JSON.stringify(body) });
+    }
+
+    getCompetitionSpeakerCallouts(id: string) {
+        return this.request(`/competitions/${id}/speaker/callouts`);
+    }
+
+    createCompetitionSpeakerCallout(id: string, body: any) {
+        return this.request(`/competitions/${id}/speaker/callouts`, { method: 'POST', body: JSON.stringify(body) });
+    }
+
+    updateCompetitionSpeakerCallout(id: string, calloutId: string, body: any) {
+        return this.request(`/competitions/${id}/speaker/callouts/${calloutId}`, { method: 'PUT', body: JSON.stringify(body) });
+    }
+
+    getCompetitionStatistics(id: string) {
+        return this.request(`/competitions/${id}/statistics`);
+    }
+
+    backupCompetition(id: string) {
+        return this.request(`/competitions/${id}/backup`, { method: 'POST' });
+    }
+
+    getCompetitionActions(id: string) {
+        return this.request(`/competitions/${id}/actions`);
+    }
+
     // Calendar
     getCalendarEvents(params: Record<string, string> = {}) {
         const qs = new URLSearchParams(params).toString();

@@ -130,7 +130,7 @@ export default function SubAssociationPage() {
 
                     <div className="flex flex-wrap gap-2">
                         <Link
-                            href={`/association/${assocId}/tournaments`}
+                            href={`/association/${assocId}/competitions`}
                             className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-red-700 transition shadow"
                         >
                             <Trophy className="h-4 w-4" />

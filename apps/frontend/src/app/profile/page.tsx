@@ -935,7 +935,7 @@ export default function ProfilePage() {
                             {overviewData?.registeredCompetitions?.map((comp: any) => (
                                 <Link
                                     key={`${comp.id}-${comp.category?.id}`}
-                                    href={comp.type === 'TOURNAMENT' ? `/tournament/${comp.seriesSlug || comp.slug || comp.id}` : `/competitions/${comp.seriesSlug || comp.slug || comp.id}`}
+                                    href={`/competition/${comp.seriesSlug || comp.slug || comp.id}`}
                                     className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-xs hover:border-amber-500/50 hover:shadow-md transition flex flex-col justify-between space-y-4 group"
                                 >
                                     <div className="space-y-3">
@@ -1249,7 +1249,7 @@ export default function ProfilePage() {
                                 {overviewData?.adminAccess?.competitions?.map((comp: any) => (
                                     <Link
                                         key={comp.id}
-                                        href={comp.type === 'TOURNAMENT' ? `/tournament/${comp.seriesSlug || comp.slug || comp.id}` : `/competitions/${comp.seriesSlug || comp.slug || comp.id}`}
+                                        href={`/competition/${comp.seriesSlug || comp.slug || comp.id}`}
                                         className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-xs hover:border-amber-500 hover:shadow-md transition space-y-3 group"
                                     >
                                         <div className="flex items-center justify-between">

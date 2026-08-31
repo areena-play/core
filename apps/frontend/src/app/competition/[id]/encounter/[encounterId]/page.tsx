@@ -125,7 +125,7 @@ export default function EncounterScoreSheetPage() {
         <div className="space-y-6 md:space-y-8 pb-16">
             {/* Back link */}
             <Link
-                href={`/competitions/${competitionId}`}
+                href={`/competition/${competitionId}`}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
             >
                 <ChevronLeft className="h-4 w-4" />

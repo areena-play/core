@@ -2,15 +2,34 @@ export enum CompetitionType {
     LEAGUE = 'LEAGUE',
     TOURNAMENT = 'TOURNAMENT',
     SEASON_TOURNAMENT = 'SEASON_TOURNAMENT',
+    CUP = 'CUP',
+    INOFFICIAL = 'INOFFICIAL',
+    FRIENDLY = 'FRIENDLY',
+    RANKING_TOURNAMENT = 'RANKING_TOURNAMENT',
 }
 
 export enum CompetitionStatus {
     DRAFT = 'DRAFT',
+    PENDING_APPROVAL = 'PENDING_APPROVAL',
+    APPROVED = 'APPROVED',
     REGISTRATION_OPEN = 'REGISTRATION_OPEN',
     REGISTRATION_CLOSED = 'REGISTRATION_CLOSED',
     IN_PROGRESS = 'IN_PROGRESS',
     COMPLETED = 'COMPLETED',
     CANCELLED = 'CANCELLED',
+    REJECTED = 'REJECTED',
+}
+
+export enum CompetitionRole {
+    ADMIN = 'ADMIN',
+    ENTER_RESULTS = 'ENTER_RESULTS',
+    ASSIGN_COURTS = 'ASSIGN_COURTS',
+    SPEAKER = 'SPEAKER',
+    HEAD_REFEREE = 'HEAD_REFEREE',
+    REFEREE = 'REFEREE',
+    CASHIER = 'CASHIER',
+    CREATE_BACKUPS = 'CREATE_BACKUPS',
+    EDIT_REGISTRATIONS = 'EDIT_REGISTRATIONS',
 }
 
 export enum EncounterStatus {
@@ -58,11 +77,4 @@ export interface TournamentCategoryDto {
     maxElo?: number | null;
     minAge?: number | null;
     maxAge?: number | null;
-    genderRestriction?: string;
-    requiredLicenseType?: string | null;
-    encounterFormat?: any;
-    roundsPerGroup?: number;
-    createdAt?: string;
-    updatedAt?: string;
 }
-

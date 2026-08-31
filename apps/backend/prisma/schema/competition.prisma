@@ -1,16 +1,35 @@
+enum CompetitionRole {
+  ADMIN
+  ENTER_RESULTS
+  ASSIGN_COURTS
+  SPEAKER
+  HEAD_REFEREE
+  REFEREE
+  CASHIER
+  CREATE_BACKUPS
+  EDIT_REGISTRATIONS
+}
+
 enum CompetitionType {
   LEAGUE
   TOURNAMENT
   SEASON_TOURNAMENT
+  CUP
+  INOFFICIAL
+  FRIENDLY
+  RANKING_TOURNAMENT
 }
 
 enum CompetitionStatus {
   DRAFT
+  PENDING_APPROVAL
+  APPROVED
   REGISTRATION_OPEN
   REGISTRATION_CLOSED
   IN_PROGRESS
   COMPLETED
   CANCELLED
+  REJECTED
 }
 
 enum GenderRestriction {
@@ -41,29 +60,37 @@ enum MatchWinner {
 }
 
 model Competition {
-  id            String            @id @default(uuid())
-  type          CompetitionType
-  name          String
-  slug          String            @unique
-  seriesSlug    String?
-  description   String?
-  associationId String
-  seasonId      String?
-  startDate     DateTime
-  endDate       DateTime
-  location      String?
-  status        CompetitionStatus @default(DRAFT)
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  id               String            @id @default(uuid())
+  type             CompetitionType
+  name             String
+  slug             String            @unique
+  seriesSlug       String?
+  description      String?
+  associationId    String
+  seasonId         String?
+  startDate        DateTime
+  endDate          DateTime
+  location         String?
+  status           CompetitionStatus @default(DRAFT)
+  isOfficial       Boolean           @default(true)
+  countsForElo     Boolean           @default(true)
+  requiresApproval Boolean           @default(false)
+  approvalStatus   String            @default("APPROVED")
+  createdById      String?
+  entryFee         Float?            @default(0)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
-  association     Association      @relation(fields: [associationId], references: [id], onDelete: Cascade)
-  season          Season?          @relation(fields: [seasonId], references: [id], onDelete: SetNull)
-  categories      Category[]
-  calendarEvents  CalendarEvent[]
-  faqItems        FaqItem[]
-  supportSubjects SupportSubject[]
-  locations       CompetitionLocation[]
+  association      Association                 @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  season           Season?                     @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  categories       Category[]
+  calendarEvents   CalendarEvent[]
+  faqItems         FaqItem[]
+  supportSubjects  SupportSubject[]
+  locations        CompetitionLocation[]
   unitReservations LocationUnitReservation[]
+  roles            CompetitionUserRole[]
+  speakerCallouts  CompetitionSpeakerCallout[]
 
   @@index([seriesSlug])
 }
@@ -120,10 +147,14 @@ model TeamMember {
 }
 
 model TeamCategoryRegistration {
-  id           String   @id @default(uuid())
-  teamId       String
-  categoryId   String
-  registeredAt DateTime @default(now())
+  id            String   @id @default(uuid())
+  teamId        String
+  categoryId    String
+  paymentStatus String   @default("UNPAID")
+  paidAmount    Float?   @default(0)
+  paymentMethod String?
+  isCheckedIn   Boolean  @default(false)
+  registeredAt  DateTime @default(now())
 
   team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -214,3 +245,29 @@ model Match {
   awayPlayer2 User?     @relation("AwayPlayer2", fields: [awayPlayer2Id], references: [id], onDelete: SetNull)
 }
 
+model CompetitionUserRole {
+  id            String          @id @default(uuid())
+  competitionId String
+  userId        String
+  role          CompetitionRole
+  createdAt     DateTime        @default(now())
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([competitionId, userId, role])
+}
+
+model CompetitionSpeakerCallout {
+  id            String   @id @default(uuid())
+  competitionId String
+  title         String
+  message       String
+  type          String   @default("MATCH_CALL")
+  unitName      String?
+  status        String   @default("PENDING")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+}

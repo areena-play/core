@@ -303,7 +303,7 @@ export default function SingleClubPage() {
                             </p>
                             <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end">
                                 <Link
-                                    href={`/tournament/${comp.id}`}
+                                    href={`/competition/${comp.id}`}
                                     className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 dark:text-red-400 hover:underline"
                                 >
                                     <span>View Tournament</span>

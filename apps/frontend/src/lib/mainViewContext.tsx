@@ -112,7 +112,7 @@ export function MainViewProvider({ children }: { children: React.ReactNode }) {
 
     // Determine active view & entity ID strictly from URL
     const { activeView, entityId } = useMemo(() => {
-        if (pathname.startsWith('/tournament/')) {
+        if (pathname.startsWith('/competition/') || pathname.startsWith('/competitions/') || pathname.startsWith('/competition/')) {
             const parts = pathname.split('/');
             const id = parts[2] || null;
             return { activeView: 'tournament' as MainViewType, entityId: id };

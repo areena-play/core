@@ -45,6 +45,9 @@ export function CompetitionsOverviewView({ scopedAssociationId, defaultType }: C
     const [formStartDate, setFormStartDate] = useState('');
     const [formEndDate, setFormEndDate] = useState('');
     const [formLocation, setFormLocation] = useState('');
+    const [formIsOfficial, setFormIsOfficial] = useState(true);
+    const [formCountsForElo, setFormCountsForElo] = useState(true);
+    const [formEntryFee, setFormEntryFee] = useState('0');
     const [creating, setCreating] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
 
@@ -102,6 +105,9 @@ export function CompetitionsOverviewView({ scopedAssociationId, defaultType }: C
                 startDate: formStartDate,
                 endDate: formEndDate,
                 location: formLocation,
+                isOfficial: formType === 'INOFFICIAL' ? false : formIsOfficial,
+                countsForElo: formType === 'INOFFICIAL' ? false : formCountsForElo,
+                entryFee: Number(formEntryFee) || 0,
             });
             setShowCreateModal(false);
             setFormName('');
@@ -166,7 +172,7 @@ export function CompetitionsOverviewView({ scopedAssociationId, defaultType }: C
                     <div className="flex items-center gap-2">
                         {scopedAssociationId && (
                             <Link
-                                href={defaultType === 'TOURNAMENT' ? '/tournaments' : '/competitions'}
+                                href={defaultType === 'TOURNAMENT' ? '/competitions' : '/competitions'}
                                 className="inline-flex items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 transition"
                             >
                                 <span>All Competitions</span>
@@ -271,7 +277,7 @@ export function CompetitionsOverviewView({ scopedAssociationId, defaultType }: C
                     {filteredComps.map((comp: any) => (
                         <Link
                             key={comp.id}
-                            href={comp.type === 'TOURNAMENT' ? `/tournament/${comp.seriesSlug || comp.slug || comp.id}` : `/competitions/${comp.seriesSlug || comp.slug || comp.id}`}
+                            href={`/competition/${comp.seriesSlug || comp.slug || comp.id}`}
                             className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-xs hover:shadow-md hover:border-amber-500/50 transition flex flex-col justify-between space-y-4 group"
                         >
                             <div className="space-y-2.5">
@@ -400,6 +406,8 @@ export function CompetitionsOverviewView({ scopedAssociationId, defaultType }: C
                                             <option value="LEAGUE">League Championship</option>
                                             <option value="TOURNAMENT">Single/Double Tournament</option>
                                             <option value="SEASON_TOURNAMENT">Full-Season Tournament</option>
+                                            <option value="CUP">Cup Competition</option>
+                                            <option value="INOFFICIAL">Inofficial / Friendly (No ELO)</option>
                                         </select>
                                     </div>
 
@@ -467,6 +475,33 @@ export function CompetitionsOverviewView({ scopedAssociationId, defaultType }: C
                                         onChange={(e) => setFormLocation(e.target.value)}
                                         className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
                                     />
+                                </div>
+
+                                
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                            Entry Fee (CHF)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={formEntryFee}
+                                            onChange={(e) => setFormEntryFee(e.target.value)}
+                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col justify-center space-y-1 pt-4">
+                                        <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={formType !== 'INOFFICIAL' && formCountsForElo}
+                                                disabled={formType === 'INOFFICIAL'}
+                                                onChange={(e) => setFormCountsForElo(e.target.checked)}
+                                                className="rounded text-amber-500"
+                                            />
+                                            Count towards ELO Ratings
+                                        </label>
+                                    </div>
                                 </div>
 
                                 <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">

@@ -38,7 +38,7 @@ export function PageTitleManager() {
         if (entityMeta?.title) {
             if (pathname.includes('/encounter/')) {
                 pageName = `Match Score Sheet – ${entityMeta.title}`;
-            } else if (pathname.endsWith('/tournaments')) {
+            } else if (pathname.endsWith('/competitions')) {
                 pageName = `Tournaments – ${entityMeta.title}`;
             } else {
                 pageName = entityMeta.title;
@@ -47,7 +47,7 @@ export function PageTitleManager() {
             // Static / general routes
             if (pathname === '/') {
                 pageName = t('nav.dashboard', undefined, 'Overview');
-            } else if (pathname === '/tournaments') {
+            } else if (pathname === '/competitions') {
                 pageName = t('nav.tournaments', undefined, 'Tournaments');
             } else if (pathname === '/competitions') {
                 pageName = t('nav.competitions', undefined, 'Competitions & Leagues');
@@ -83,7 +83,7 @@ export function PageTitleManager() {
                 pageName = 'Create Account';
             } else if (pathname === '/developers') {
                 pageName = 'Developer Portal';
-            } else if (pathname.startsWith('/tournament/')) {
+            } else if (pathname.startsWith('/competition/') || pathname.startsWith('/competitions/') || pathname.startsWith('/competition/')) {
                 pageName = 'Tournament';
             } else if (pathname.startsWith('/club/')) {
                 pageName = 'Club';

@@ -42,7 +42,7 @@ export function LiveTicker() {
                     {encounters.map((enc) => (
                         <Link
                             key={enc.id}
-                            href={`/tournament/${enc.category?.competitionId || enc.category?.competition?.id || ''}/encounter/${enc.id}`}
+                            href={`/competition/${enc.category?.competitionId || enc.category?.competition?.id || ''}/encounter/${enc.id}`}
                             className="flex items-center gap-3 rounded-xl bg-white border border-slate-200/80 dark:bg-slate-900 dark:border-slate-800 px-3.5 py-1.5 text-slate-800 dark:text-slate-200 hover:border-red-500/60 dark:hover:border-red-500/60 transition flex-shrink-0 shadow-xs group"
                         >
                             <span className="font-semibold text-slate-900 dark:text-slate-100 group-hover:text-red-600 dark:group-hover:text-red-400 transition truncate max-w-[130px]">
