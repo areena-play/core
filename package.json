@@ -8,9 +8,9 @@
     ],
     "scripts": {
         "build": "npm run build --workspace=@areena/shared && npm run build --workspaces --if-present",
-        "predev": "docker compose up -d db redis s3",
+        "predev": "docker compose up -d db redis s3 vector",
         "dev": "concurrently -n \"BACKEND,FRONTEND,WS\" -c \"blue,green,magenta\" \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:ws\"",
-        "dev:services": "docker compose up -d db redis s3",
+        "dev:services": "docker compose up -d db redis s3 vector",
         "dev:stop": "docker compose down",
         "dev:backend": "npm run dev --workspace=@areena/backend",
         "dev:frontend": "npm run dev --workspace=@areena/frontend",

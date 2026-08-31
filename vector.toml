@@ -6,7 +6,7 @@
 # 1. Collect stdout and stderr from all Docker containers on this host
 [sources.docker_logs]
 type = "docker_logs"
-exclude_units = ["vector"]
+exclude_containers = ["*vector*"]
 
 # 2. Extract and format metadata tags
 [transforms.add_labels]
@@ -27,6 +27,12 @@ auth.strategy = "basic"
 auth.user = "${LOGGING_USER:-shipper}"
 auth.password = "${LOGGING_PASSWORD:-}"
 compression = "gzip"
+
+[sinks.loki.encoding]
+codec = "text"
+
+[sinks.loki.healthcheck]
+enabled = false
 
 [sinks.loki.labels]
 host = "{{ host }}"

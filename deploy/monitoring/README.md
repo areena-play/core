@@ -45,7 +45,7 @@ On your application repository (**Settings > Secrets and variables > Actions**),
 ### Variables (Repository Variables):
 | Variable Name | Example Value | Description |
 | :--- | :--- | :--- |
-| `LOGGING_URL` | `https://logs.areena.ch/loki/api/v1/push` | The ingestion URL for your central Loki server |
+| `LOGGING_URL` | `https://logs.areena.ch` | Base URL of central logging VPS (Vector appends `/loki/api/v1/push`) |
 | `LOGGING_USER` | `shipper` | Basic auth username (defaults to `shipper`) |
 
 ### Secrets (Repository Secrets):

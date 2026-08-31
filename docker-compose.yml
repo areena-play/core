@@ -118,6 +118,23 @@ services:
       - backend
       - websocket
 
+  # ----------------------------------------
+  # 7. CENTRAL LOG SHIPPER (Vector - ~15MB RAM)
+  # ----------------------------------------
+  vector:
+    image: timberio/vector:0.38.0-alpine
+    restart: unless-stopped
+    entrypoint: ["sh", "-c", "if [ -z \"$$LOGGING_URL\" ]; then echo 'LOGGING_URL is not set. Log shipping inactive.'; sleep infinity; else exec /usr/local/bin/vector --config /etc/vector/vector.toml; fi"]
+    environment:
+      - LOGGING_URL=${LOGGING_URL:-}
+      - LOGGING_USER=${LOGGING_USER:-shipper}
+      - LOGGING_PASSWORD=${LOGGING_PASSWORD:-}
+      - SERVER_NAME=${SERVER_NAME:-${DOMAIN_NAME:-areena-server}}
+      - NODE_ENV=production
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./vector.toml:/etc/vector/vector.toml:ro
+
 # ----------------------------------------
 # PERSISTENT VOLUMES
 # ----------------------------------------
