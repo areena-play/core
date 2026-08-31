@@ -28,6 +28,17 @@ jobs:
           LOGGING_USER: ${{ vars.LOGGING_USER || 'shipper' }}
           LOGGING_PASSWORD: ${{ secrets.LOGGING_PASSWORD || '' }}
           SERVER_NAME: "areena-dev"
+          MAILGUN_API_KEY: ${{ secrets.MAILGUN_API_KEY || '' }}
+          MAILGUN_DOMAIN: ${{ vars.MAILGUN_DOMAIN || '' }}
+          MAILGUN_EU: ${{ vars.MAILGUN_EU || 'false' }}
+          MAILGUN_HOST: ${{ vars.MAILGUN_HOST || '' }}
+          EMAIL_FROM_DEFAULT: ${{ vars.EMAIL_FROM_DEFAULT || '' }}
+          SMTP_HOST: ${{ vars.SMTP_HOST || '' }}
+          SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
+          SMTP_USER: ${{ vars.SMTP_USER || secrets.SMTP_USER || '' }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS || secrets.SMTP_PASSWORD || '' }}
+          SMTP_SECURE: ${{ vars.SMTP_SECURE || 'false' }}
+          AREENA_SUPPORT_EMAIL: ${{ vars.AREENA_SUPPORT_EMAIL || 'support@areena.ch' }}
         run: |
           chmod +x scripts/deploy.sh
           ./scripts/deploy.sh dev/main "areena-dev"

@@ -24,55 +24,48 @@ if [ -n "$APP_ENV_CONTENT" ]; then
     echo "$APP_ENV_CONTENT" > .env
 fi
 
-# Ensure domain and email are registered in .env for Caddy
-if [ -n "$DOMAIN_NAME" ]; then
-    if grep -q "^DOMAIN_NAME=" .env 2>/dev/null; then
-        sed -i "s|^DOMAIN_NAME=.*|DOMAIN_NAME=$DOMAIN_NAME|" .env
-    else
-        echo "DOMAIN_NAME=$DOMAIN_NAME" >> .env
-    fi
-fi
+# Ensure .env file exists
+touch .env
 
-if [ -n "$LETSENCRYPT_EMAIL" ]; then
-    if grep -q "^LETSENCRYPT_EMAIL=" .env 2>/dev/null; then
-        sed -i "s|^LETSENCRYPT_EMAIL=.*|LETSENCRYPT_EMAIL=$LETSENCRYPT_EMAIL|" .env
-    else
-        echo "LETSENCRYPT_EMAIL=$LETSENCRYPT_EMAIL" >> .env
+# Helper to sync GitHub variables and secrets into .env
+sync_var() {
+    local var_name="$1"
+    local var_value="$2"
+    if [ -n "$var_value" ]; then
+        if grep -q "^${var_name}=" .env 2>/dev/null; then
+            sed -i "s|^${var_name}=.*|${var_name}=${var_value}|" .env
+        else
+            echo "${var_name}=${var_value}" >> .env
+        fi
     fi
-fi
+}
 
-# Ensure Central Logging configuration is synced from GitHub Variables / Secrets
-if [ -n "$LOGGING_URL" ]; then
-    if grep -q "^LOGGING_URL=" .env 2>/dev/null; then
-        sed -i "s|^LOGGING_URL=.*|LOGGING_URL=$LOGGING_URL|" .env
-    else
-        echo "LOGGING_URL=$LOGGING_URL" >> .env
-    fi
-fi
+# Sync domain, SSL and server identification
+sync_var "DOMAIN_NAME" "$DOMAIN_NAME"
+sync_var "LETSENCRYPT_EMAIL" "$LETSENCRYPT_EMAIL"
+sync_var "SERVER_NAME" "$SERVER_NAME"
 
-if [ -n "$LOGGING_USER" ]; then
-    if grep -q "^LOGGING_USER=" .env 2>/dev/null; then
-        sed -i "s|^LOGGING_USER=.*|LOGGING_USER=$LOGGING_USER|" .env
-    else
-        echo "LOGGING_USER=$LOGGING_USER" >> .env
-    fi
-fi
+# Sync Central Logging configuration
+sync_var "LOGGING_URL" "$LOGGING_URL"
+sync_var "LOGGING_USER" "$LOGGING_USER"
+sync_var "LOGGING_PASSWORD" "$LOGGING_PASSWORD"
 
-if [ -n "$LOGGING_PASSWORD" ]; then
-    if grep -q "^LOGGING_PASSWORD=" .env 2>/dev/null; then
-        sed -i "s|^LOGGING_PASSWORD=.*|LOGGING_PASSWORD=$LOGGING_PASSWORD|" .env
-    else
-        echo "LOGGING_PASSWORD=$LOGGING_PASSWORD" >> .env
-    fi
-fi
+# Sync Mailgun API configuration
+sync_var "MAILGUN_API_KEY" "$MAILGUN_API_KEY"
+sync_var "MAILGUN_DOMAIN" "$MAILGUN_DOMAIN"
+sync_var "MAILGUN_EU" "$MAILGUN_EU"
+sync_var "MAILGUN_HOST" "$MAILGUN_HOST"
+sync_var "EMAIL_FROM_DEFAULT" "$EMAIL_FROM_DEFAULT"
 
-if [ -n "$SERVER_NAME" ]; then
-    if grep -q "^SERVER_NAME=" .env 2>/dev/null; then
-        sed -i "s|^SERVER_NAME=.*|SERVER_NAME=$SERVER_NAME|" .env
-    else
-        echo "SERVER_NAME=$SERVER_NAME" >> .env
-    fi
-fi
+# Sync SMTP fallback configuration
+sync_var "SMTP_HOST" "$SMTP_HOST"
+sync_var "SMTP_PORT" "$SMTP_PORT"
+sync_var "SMTP_USER" "$SMTP_USER"
+sync_var "SMTP_PASS" "$SMTP_PASS"
+sync_var "SMTP_SECURE" "$SMTP_SECURE"
+
+# Sync Support & Governance
+sync_var "AREENA_SUPPORT_EMAIL" "$AREENA_SUPPORT_EMAIL"
 
 # 3. Pull pre-built images or build locally
 if [ "$USE_PREBUILT_IMAGES" = "true" ]; then
