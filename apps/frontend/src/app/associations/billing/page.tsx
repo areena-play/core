@@ -1,9 +1,13 @@
 'use client';
 
-import React from 'react';
-import { BillingDashboard } from '@/components/billing/BillingDashboard';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function AssociationBillingPage() {
-    return <BillingDashboard />;
+    const router = useRouter();
+    useEffect(() => {
+        router.replace('/management/finances');
+    }, [router]);
+    return null;
 }
 

@@ -1,9 +1,13 @@
 'use client';
 
-import React from 'react';
-import { AuditTrailViewer } from '@/components/audit/AuditTrailViewer';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function AssociationAuditLogsPage() {
-    return <AuditTrailViewer />;
+    const router = useRouter();
+    useEffect(() => {
+        router.replace('/management/audit-logs');
+    }, [router]);
+    return null;
 }
 

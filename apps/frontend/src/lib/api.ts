@@ -542,6 +542,43 @@ class ApiClient {
         const qs = query.toString();
         return this.request(`/support/admin/inquiries${qs ? `?${qs}` : ''}`);
     }
+
+    // Super Admin & System Management
+    getAdminDashboard() {
+        return this.request('/admin/dashboard');
+    }
+
+    getAdminSettings() {
+        return this.request('/admin/settings');
+    }
+
+    updateMailgunSettings(body: { apiKey?: string; domain?: string; url?: string; fromEmail?: string; fromName?: string }) {
+        return this.request('/admin/settings/mailgun', {
+            method: 'PUT',
+            body: JSON.stringify(body),
+        });
+    }
+
+    testMailgunSettings(toEmail: string) {
+        return this.request('/admin/settings/mailgun/test', {
+            method: 'POST',
+            body: JSON.stringify({ toEmail }),
+        });
+    }
+
+    updateSmtpSettings(body: { host?: string; port?: number; user?: string; pass?: string; secure?: boolean; from?: string }) {
+        return this.request('/admin/settings/smtp', {
+            method: 'PUT',
+            body: JSON.stringify(body),
+        });
+    }
+
+    testSmtpSettings(toEmail: string) {
+        return this.request('/admin/settings/smtp/test', {
+            method: 'POST',
+            body: JSON.stringify({ toEmail }),
+        });
+    }
 }
 
 export const api = new ApiClient();

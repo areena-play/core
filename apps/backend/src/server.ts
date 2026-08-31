@@ -22,6 +22,7 @@ import setupRoutes from './routes/setup.routes';
 import noticeRoutes from './routes/notices.routes';
 import userRoutes from './routes/users.routes';
 import supportRoutes from './routes/support.routes';
+import adminRoutes from './routes/admin.routes';
 import { startDemoScheduler } from './services/demoScheduler.service';
 
 const app = express();
@@ -72,6 +73,7 @@ app.use('/audit-logs', auditRoutes);
 app.use('/setup', setupRoutes);
 app.use('/notices', noticeRoutes);
 app.use('/support', supportRoutes);
+app.use('/admin', adminRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

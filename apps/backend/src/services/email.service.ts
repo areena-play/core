@@ -2,6 +2,7 @@ import nodemailer, { Transporter } from 'nodemailer';
 import FormData from 'form-data';
 import Mailgun from 'mailgun.js';
 import { config } from '../config/env';
+import { SystemService } from './system.service';
 
 export interface BulkRecipient {
     email: string;
@@ -176,13 +177,13 @@ export class EmailService {
         replyTo?: string;
         tags?: string[];
     }): Promise<boolean> {
-        const mailgunClient = this.getMailgunClient();
+        const mailgunData = await SystemService.getMailgunClient();
 
         // 1. Try Mailgun REST API (Fastest & most reliable on VPS)
-        if (mailgunClient) {
+        if (mailgunData) {
             try {
                 const messageData: any = {
-                    from: config.mailgun.from || config.smtp.from,
+                    from: mailgunData.from,
                     to: [options.to],
                     subject: options.subject,
                     text: options.text,
@@ -196,7 +197,7 @@ export class EmailService {
                     messageData['o:tag'] = options.tags;
                 }
 
-                const res = await mailgunClient.messages.create(config.mailgun.domain, messageData);
+                const res = await mailgunData.client.messages.create(mailgunData.domain, messageData);
                 console.log(`[EmailService] Dispatched via Mailgun API to "${options.to}" (ID: ${res.id})`);
                 return true;
             } catch (err: any) {
@@ -206,11 +207,11 @@ export class EmailService {
         }
 
         // 2. Try Standard SMTP via Nodemailer
-        const smtpTransporter = this.getSmtpTransporter();
-        if (smtpTransporter) {
+        const smtpData = await SystemService.getSmtpTransporter();
+        if (smtpData) {
             try {
-                const info = await smtpTransporter.sendMail({
-                    from: config.smtp.from,
+                const info = await smtpData.transporter.sendMail({
+                    from: smtpData.from,
                     to: options.to,
                     subject: options.subject,
                     text: options.text,
@@ -264,11 +265,11 @@ export class EmailService {
             text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
         }
 
-        const mailgunClient = this.getMailgunClient();
+        const mailgunData = await SystemService.getMailgunClient();
 
         // 1. MAILGUN BATCH SENDING (1 single HTTP request per 1,000 recipients)
-        if (mailgunClient) {
-            console.log(`[EmailService] Processing batch email for ${recipients.length} recipients via Mailgun API...`);
+        if (mailgunData) {
+            console.log(`[EmailService] Processing batch email for ${recipients.length} recipients via Mailgun API (${mailgunData.domain})...`);
 
             const CHUNK_SIZE = 1000;
             let successful = 0;
@@ -288,7 +289,7 @@ export class EmailService {
 
                 try {
                     const messageData: any = {
-                        from: config.mailgun.from || config.smtp.from,
+                        from: mailgunData.from,
                         to: recipientEmails,
                         subject,
                         text: text || '',
@@ -299,7 +300,7 @@ export class EmailService {
                     if (replyTo) messageData['h:Reply-To'] = replyTo;
                     if (tags && tags.length > 0) messageData['o:tag'] = tags;
 
-                    const res = await mailgunClient.messages.create(config.mailgun.domain, messageData);
+                    const res = await mailgunData.client.messages.create(mailgunData.domain, messageData);
                     console.log(
                         `[EmailService] Successfully queued Mailgun batch chunk ${i / CHUNK_SIZE + 1} (${chunk.length} recipients, Batch ID: ${res.id})`
                     );
