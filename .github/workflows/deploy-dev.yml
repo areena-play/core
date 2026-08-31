@@ -24,6 +24,10 @@ jobs:
           APP_ENV_CONTENT: ${{ secrets.DEV_ENV }}
           DOMAIN_NAME: ${{ vars.DEV_DOMAIN || 'localhost' }}
           LETSENCRYPT_EMAIL: ${{ vars.LETSENCRYPT_EMAIL }}
+          LOGGING_URL: ${{ vars.LOGGING_URL || vars.LOKI_URL || '' }}
+          LOGGING_USER: ${{ vars.LOGGING_USER || 'shipper' }}
+          LOGGING_PASSWORD: ${{ secrets.LOGGING_PASSWORD || '' }}
+          SERVER_NAME: "areena-dev"
         run: |
           chmod +x scripts/deploy.sh
           ./scripts/deploy.sh dev/main "areena-dev"

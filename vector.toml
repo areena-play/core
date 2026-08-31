@@ -1,0 +1,35 @@
+# ==============================================================================
+# AREENA LOG SHIPPER CONFIGURATION (Vector)
+# Automatically collects container logs and ships to central Grafana / Loki
+# ==============================================================================
+
+# 1. Collect stdout and stderr from all Docker containers on this host
+[sources.docker_logs]
+type = "docker_logs"
+exclude_units = ["vector"]
+
+# 2. Extract and format metadata tags
+[transforms.add_labels]
+type = "remap"
+inputs = ["docker_logs"]
+source = '''
+.host = get_env_var("SERVER_NAME") ?? get_env_var("DOMAIN_NAME") ?? "areena-server"
+.service = .container_name
+.environment = get_env_var("NODE_ENV") ?? "production"
+'''
+
+# 3. Ship logs over HTTPS to the Central Loki instance
+[sinks.loki]
+type = "loki"
+inputs = ["add_labels"]
+endpoint = "${LOGGING_URL}"
+auth.strategy = "basic"
+auth.user = "${LOGGING_USER:-shipper}"
+auth.password = "${LOGGING_PASSWORD:-}"
+compression = "gzip"
+
+[sinks.loki.labels]
+host = "{{ host }}"
+service = "{{ service }}"
+stream = "{{ stream }}"
+environment = "{{ environment }}"

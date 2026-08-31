@@ -41,6 +41,39 @@ if [ -n "$LETSENCRYPT_EMAIL" ]; then
     fi
 fi
 
+# Ensure Central Logging configuration is synced from GitHub Variables / Secrets
+if [ -n "$LOGGING_URL" ]; then
+    if grep -q "^LOGGING_URL=" .env 2>/dev/null; then
+        sed -i "s|^LOGGING_URL=.*|LOGGING_URL=$LOGGING_URL|" .env
+    else
+        echo "LOGGING_URL=$LOGGING_URL" >> .env
+    fi
+fi
+
+if [ -n "$LOGGING_USER" ]; then
+    if grep -q "^LOGGING_USER=" .env 2>/dev/null; then
+        sed -i "s|^LOGGING_USER=.*|LOGGING_USER=$LOGGING_USER|" .env
+    else
+        echo "LOGGING_USER=$LOGGING_USER" >> .env
+    fi
+fi
+
+if [ -n "$LOGGING_PASSWORD" ]; then
+    if grep -q "^LOGGING_PASSWORD=" .env 2>/dev/null; then
+        sed -i "s|^LOGGING_PASSWORD=.*|LOGGING_PASSWORD=$LOGGING_PASSWORD|" .env
+    else
+        echo "LOGGING_PASSWORD=$LOGGING_PASSWORD" >> .env
+    fi
+fi
+
+if [ -n "$SERVER_NAME" ]; then
+    if grep -q "^SERVER_NAME=" .env 2>/dev/null; then
+        sed -i "s|^SERVER_NAME=.*|SERVER_NAME=$SERVER_NAME|" .env
+    else
+        echo "SERVER_NAME=$SERVER_NAME" >> .env
+    fi
+fi
+
 # 3. Pull pre-built images or build locally
 if [ "$USE_PREBUILT_IMAGES" = "true" ]; then
     if [ -n "$GHCR_TOKEN" ] && [ -n "$GHCR_USER" ]; then

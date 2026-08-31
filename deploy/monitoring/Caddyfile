@@ -1,0 +1,28 @@
+{
+    email {$LETSENCRYPT_EMAIL:admin@areena.ch}
+}
+
+# ----------------------------------------------------------------------
+# 1. STATUS MONITORING (e.g. status.areena.ch -> Uptime Kuma)
+# ----------------------------------------------------------------------
+{$STATUS_DOMAIN:status.areena.ch} {
+    reverse_proxy uptime-kuma:3001
+}
+
+# ----------------------------------------------------------------------
+# 2. LOGGING PORTAL (e.g. logs.areena.ch -> Grafana + Loki Ingestion)
+# ----------------------------------------------------------------------
+{$LOGS_DOMAIN:logs.areena.ch} {
+    # Ingestion endpoint for remote log shippers (Vector / Promtail)
+    handle /loki/api/v1/push* {
+        basic_auth {
+            shipper {$SHIPPER_PASSWORD_HASH}
+        }
+        reverse_proxy loki:3100
+    }
+
+    # Grafana Dashboard UI
+    handle {
+        reverse_proxy grafana:3000
+    }
+}
