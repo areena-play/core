@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
     LayoutDashboard,
     Calendar,
@@ -59,13 +59,15 @@ interface NavSection {
 
 export function Sidebar() {
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const { t } = useI18n();
     const { user } = useAuth();
     const { activeView, entityId, entityMeta, currentViewMeta, mainAssoc, associations } = useMainView();
 
-    // Track expanded status of collapsible groups (e.g. Competitions)
+    // Track expanded status of collapsible groups (e.g. Competitions, People)
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
         competitions: true,
+        people: true,
     });
 
     const toggleGroup = (key: string) => {
@@ -193,9 +195,25 @@ export function Sidebar() {
             ];
         }
 
-        // 3. MAIN ASSOCIATION VIEW (User Requested Structure)
-        const isSubAssoc = pathname.startsWith('/association/') && entityId && entityId !== 'main';
+        // 3. MAIN & SUB-ASSOCIATION VIEWS (Dynamic Hierarchy Structure)
+        const isSubAssoc = (pathname.startsWith('/association/') || pathname.startsWith('/associations/')) && entityId && entityId !== 'main';
+        const subAssocPrefix = isSubAssoc ? `/association/${entityId}` : '';
+
         const assocOverviewHref = isSubAssoc ? `/association/${entityId}` : '/';
+        const competitionsHref = isSubAssoc ? `${subAssocPrefix}/competitions` : '/competitions';
+        const leaguesHref = `${competitionsHref}?type=league`;
+        const tournamentsHref = `${competitionsHref}?type=tournament`;
+        const seasonTournamentsHref = `${competitionsHref}?type=season_tournament`;
+        const usersHref = isSubAssoc ? `${subAssocPrefix}/users` : '/users';
+        const clubsHref = isSubAssoc ? `${subAssocPrefix}/clubs` : '/clubs';
+        const coursesHref = isSubAssoc ? `${subAssocPrefix}/courses` : '/courses';
+        const calendarHref = isSubAssoc ? `${subAssocPrefix}/calendar` : '/calendar';
+        const associationsHref = isSubAssoc ? `${subAssocPrefix}/associations` : '/associations';
+        const eloCalculatorHref = isSubAssoc ? `${subAssocPrefix}/utilities/elo-calculator` : '/utilities/elo-calculator';
+        const levelTableHref = isSubAssoc ? `${subAssocPrefix}/utilities/level-table` : '/utilities/level-table';
+        const developerApiHref = '/developers';
+        const supportHref = isSubAssoc ? `${subAssocPrefix}/support` : '/support';
+        const mgmtPrefix = isSubAssoc ? `${subAssocPrefix}/management` : '/management';
 
         const currentAssocId = isSubAssoc ? entityId : (mainAssoc?.id || 'main');
         const currentAssoc = associations?.find((a: any) => a.id === currentAssocId) || (isSubAssoc ? null : mainAssoc);
@@ -210,7 +228,7 @@ export function Sidebar() {
         );
 
         const sectionsList: NavSection[] = [
-            // 1. Core Section: Dashboard, Competitions, People overview, Calendar
+            // 1. Core Section: Dashboard, Competitions, People, Clubs, Refresher Courses, Calendar
             {
                 items: [
                     {
@@ -220,40 +238,67 @@ export function Sidebar() {
                     },
                     {
                         label: t('nav.competitions'),
-                        href: '/competitions',
+                        href: competitionsHref,
                         icon: Trophy,
                         children: [
                             {
-                                label: t('nav.competitionsOverview'),
-                                href: '/competitions',
+                                label: t('nav.overview'),
+                                href: competitionsHref,
                             },
                             {
                                 label: t('nav.leagues'),
-                                href: '/competitions?type=LEAGUE',
+                                href: leaguesHref,
                             },
                             {
                                 label: t('nav.tournamentsOnly'),
-                                href: '/tournaments',
+                                href: tournamentsHref,
                             },
                             {
                                 label: t('nav.seasonTournaments'),
-                                href: '/competitions?type=SEASON_TOURNAMENT',
+                                href: seasonTournamentsHref,
                             },
                         ],
                     },
                     {
-                        label: t('nav.peopleOverview'),
-                        href: '/users',
+                        label: t('nav.people'),
+                        href: usersHref,
                         icon: Users,
+                        children: [
+                            {
+                                label: t('nav.overview'),
+                                href: usersHref,
+                            },
+                            {
+                                label: t('nav.players'),
+                                href: `${usersHref}?role=player`,
+                            },
+                            {
+                                label: t('nav.referees'),
+                                href: `${usersHref}?role=referee`,
+                            },
+                            {
+                                label: t('nav.coaches'),
+                                href: `${usersHref}?role=coach`,
+                            },
+                            {
+                                label: t('nav.officials'),
+                                href: `${usersHref}?role=official`,
+                            },
+                        ],
                     },
                     {
                         label: t('nav.clubOverview'),
-                        href: '/clubs',
+                        href: clubsHref,
                         icon: Shield,
                     },
                     {
+                        label: t('nav.refresherCourses'),
+                        href: coursesHref,
+                        icon: GraduationCap,
+                    },
+                    {
                         label: t('nav.calendar'),
-                        href: '/calendar',
+                        href: calendarHref,
                         icon: Calendar,
                     },
                 ],
@@ -265,7 +310,7 @@ export function Sidebar() {
                 items: [
                     {
                         label: t('nav.associationsOverview'),
-                        href: '/associations',
+                        href: associationsHref,
                         icon: Building2,
                     },
                     ...directSubAssocs.map((sub: any) => ({
@@ -283,66 +328,66 @@ export function Sidebar() {
                 items: [
                     {
                         label: t('nav.eloCalculator'),
-                        href: '/utilities/elo-calculator',
+                        href: eloCalculatorHref,
                         icon: Calculator,
                     },
                     {
                         label: t('nav.levelTable'),
-                        href: '/utilities/level-table',
+                        href: levelTableHref,
                         icon: TableIcon,
                     },
                     {
                         label: t('nav.developerApi'),
-                        href: '/developers',
+                        href: developerApiHref,
                         icon: Code2,
                     },
                     {
                         label: t('nav.support'),
-                        href: '/support',
+                        href: supportHref,
                         icon: HelpCircle,
                     },
                 ],
             },
         ];
 
-        // 4. Operations / Governance Section: Shown ONLY to Main Association Admins
+        // 4. Operations / Governance Section: Shown to Association Admins
         if (isAssocAdmin) {
             sectionsList.push({
                 sectionTitle: t('nav.operationsGovernance'),
                 items: [
                     {
                         label: t('nav.managementDashboard'),
-                        href: '/management',
+                        href: mgmtPrefix,
                         icon: LayoutDashboard,
                     },
                     {
-                        label: t('nav.federationSettings'),
-                        href: '/management/settings',
+                        label: t('nav.associationSettings'),
+                        href: `${mgmtPrefix}/settings`,
                         icon: Sliders,
                     },
                     {
                         label: t('nav.users'),
-                        href: '/management/users',
+                        href: `${mgmtPrefix}/users`,
                         icon: Users,
                     },
                     {
                         label: t('nav.communications'),
-                        href: '/management/communications',
+                        href: `${mgmtPrefix}/communications`,
                         icon: Mail,
                     },
                     {
                         label: t('nav.licensingHub'),
-                        href: '/management/licenses',
+                        href: `${mgmtPrefix}/licenses`,
                         icon: Award,
                     },
                     {
                         label: t('nav.auditLogs'),
-                        href: '/management/audit-logs',
+                        href: `${mgmtPrefix}/audit-logs`,
                         icon: Activity,
                     },
                     {
                         label: t('nav.financingHub'),
-                        href: '/management/finances',
+                        href: `${mgmtPrefix}/finances`,
                         icon: Receipt,
                     },
                 ],
@@ -380,6 +425,36 @@ export function Sidebar() {
     const headerBadge = entityMeta?.badge || t(currentViewMeta.badgeKey);
     const headerDesc = entityMeta?.subtitle || t(currentViewMeta.descKey);
 
+    // Precise active navigation resolver
+    const isNavActive = (targetHref: string) => {
+        if (!targetHref) return false;
+        const [targetPath, targetQuery] = targetHref.split('?');
+
+        // 1. If targetHref has query params (e.g. ?type=league or ?role=player)
+        if (targetQuery) {
+            if (pathname !== targetPath) return false;
+            const targetParams = new URLSearchParams(targetQuery);
+            for (const [key, value] of targetParams.entries()) {
+                if (searchParams.get(key)?.toLowerCase() !== value.toLowerCase()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // 2. If targetHref has NO query params:
+        // Exact pathname match ONLY. When specific query params are present (type or role),
+        // do not keep the bare parent overview item highlighted.
+        if (pathname === targetPath) {
+            if (searchParams.has('type') || searchParams.has('role')) {
+                return false;
+            }
+            return true;
+        }
+
+        return false;
+    };
+
     return (
         <aside className="w-64 h-full flex-shrink-0 border-r border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-950/70 hidden md:flex md:flex-col justify-between transition-colors duration-200">
             {/* Scrollable Navigation Area */}
@@ -406,6 +481,17 @@ export function Sidebar() {
                             {headerDesc}
                         </p>
                     </div>
+
+                    {/* Return to Main Starting Page Link */}
+                    <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
+                        <Link
+                            href="/"
+                            className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 transition group"
+                        >
+                            <ArrowLeft className="h-3 w-3 group-hover:-translate-x-0.5 transition-transform" />
+                            <span>Return to Main Starting Page</span>
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Dynamic Navigation Sections */}
@@ -420,12 +506,7 @@ export function Sidebar() {
                             {section.items.map((item, itemIdx) => {
                                 const hasChildren = item.children && item.children.length > 0;
                                 const isGroupExpanded = expandedGroups[item.label.toLowerCase()] ?? true;
-
-                                const isItemActive =
-                                    pathname === item.href ||
-                                    (item.href !== '/' &&
-                                        !item.href.includes('#') &&
-                                        pathname.startsWith(item.href));
+                                const isItemActive = isNavActive(item.href);
 
                                 const Icon = item.icon;
 
@@ -468,9 +549,7 @@ export function Sidebar() {
                                         {hasChildren && isGroupExpanded && (
                                             <div className="ml-4 pl-3 border-l border-slate-200 dark:border-slate-800/80 space-y-1 pt-0.5">
                                                 {item.children!.map((sub, subIdx) => {
-                                                    const isSubActive =
-                                                        pathname === sub.href ||
-                                                        (sub.href !== '/competitions' && pathname.startsWith(sub.href));
+                                                    const isSubActive = isNavActive(sub.href);
 
                                                     return (
                                                         <Link

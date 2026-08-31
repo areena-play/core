@@ -105,8 +105,16 @@ class ApiClient {
         return this.request('/auth/profile', { method: 'PUT', body: JSON.stringify(body) });
     }
 
-    getUsers(query: string = '') {
-        return this.request(`/auth/users?q=${encodeURIComponent(query)}`);
+    getUsers(params: string | { q?: string; associationId?: string; role?: string } = '') {
+        if (typeof params === 'string') {
+            return this.request(`/auth/users?q=${encodeURIComponent(params)}`);
+        }
+        const qs = new URLSearchParams();
+        if (params.q) qs.set('q', params.q);
+        if (params.associationId) qs.set('associationId', params.associationId);
+        if (params.role) qs.set('role', params.role);
+        const query = qs.toString();
+        return this.request(`/auth/users${query ? `?${query}` : ''}`);
     }
 
     // Super Admin User Management

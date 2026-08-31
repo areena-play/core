@@ -25,6 +25,7 @@ router.get('/admin/list', async (req: AuthRequest, res: Response, next) => {
     try {
         const q = (req.query.q as string)?.trim() || '';
         const role = (req.query.role as string) || 'ALL';
+        const associationId = (req.query.associationId as string)?.trim() || '';
         const page = Math.max(1, parseInt((req.query.page as string) || '1', 10));
         const limit = Math.min(100, Math.max(1, parseInt((req.query.limit as string) || '20', 10)));
         const sortBy = (req.query.sortBy as string) || 'createdAt';
@@ -34,16 +35,30 @@ router.get('/admin/list', async (req: AuthRequest, res: Response, next) => {
 
         // Build where filter
         const where: any = {};
+        const andConditions: any[] = [];
 
         if (q) {
-            where.OR = [
-                { firstName: { contains: q, mode: 'insensitive' } },
-                { lastName: { contains: q, mode: 'insensitive' } },
-                { email: { contains: q, mode: 'insensitive' } },
-                { licenseId: { contains: q, mode: 'insensitive' } },
-                { city: { contains: q, mode: 'insensitive' } },
-                { phone: { contains: q, mode: 'insensitive' } },
-            ];
+            andConditions.push({
+                OR: [
+                    { firstName: { contains: q, mode: 'insensitive' } },
+                    { lastName: { contains: q, mode: 'insensitive' } },
+                    { email: { contains: q, mode: 'insensitive' } },
+                    { licenseId: { contains: q, mode: 'insensitive' } },
+                    { city: { contains: q, mode: 'insensitive' } },
+                    { phone: { contains: q, mode: 'insensitive' } },
+                ],
+            });
+        }
+
+        if (associationId) {
+            andConditions.push({
+                OR: [
+                    { associationRoles: { some: { associationId } } },
+                    { clubRoles: { some: { club: { associations: { some: { associationId } } } } } },
+                    { licenses: { some: { associationId } } },
+                    { licenses: { some: { club: { associations: { some: { associationId } } } } } },
+                ],
+            });
         }
 
         if (role === 'SUPER_ADMIN') {
@@ -56,6 +71,10 @@ router.get('/admin/list', async (req: AuthRequest, res: Response, next) => {
             where.licenses = { some: {} };
         } else if (role === 'UNVERIFIED') {
             where.emailVerified = false;
+        }
+
+        if (andConditions.length > 0) {
+            where.AND = andConditions;
         }
 
         // Parallel queries: users list, total matching count, and overall stats

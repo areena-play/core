@@ -423,17 +423,74 @@ router.put(
 router.get('/users', authenticateToken, async (req: AuthRequest, res: Response, next) => {
     try {
         const query = (req.query.q as string) || '';
+        const associationId = (req.query.associationId as string)?.trim() || '';
+        const role = (req.query.role as string)?.trim().toLowerCase() || '';
+
+        const where: any = {};
+        const andConditions: any[] = [];
+
+        if (query) {
+            andConditions.push({
+                OR: [
+                    { firstName: { contains: query, mode: 'insensitive' } },
+                    { lastName: { contains: query, mode: 'insensitive' } },
+                    { email: { contains: query, mode: 'insensitive' } },
+                    { licenseId: { contains: query, mode: 'insensitive' } },
+                ],
+            });
+        }
+
+        if (associationId) {
+            andConditions.push({
+                OR: [
+                    { associationRoles: { some: { associationId } } },
+                    { clubRoles: { some: { club: { associations: { some: { associationId } } } } } },
+                    { licenses: { some: { associationId } } },
+                    { licenses: { some: { club: { associations: { some: { associationId } } } } } },
+                ],
+            });
+        }
+
+        if (role === 'player') {
+            andConditions.push({
+                licenses: {
+                    some: {
+                        type: { in: ['PLAYER_REGULAR', 'PLAYER_TCARD', 'PLAYER_WOMEN', 'PLAYER_JUNIOR', 'PLAYER_SENIOR'] }
+                    }
+                }
+            });
+        } else if (role === 'referee') {
+            andConditions.push({
+                licenses: {
+                    some: {
+                        type: 'REFEREE'
+                    }
+                }
+            });
+        } else if (role === 'coach') {
+            andConditions.push({
+                licenses: {
+                    some: {
+                        type: 'COACH'
+                    }
+                }
+            });
+        } else if (role === 'official') {
+            andConditions.push({
+                OR: [
+                    { associationRoles: { some: {} } },
+                    { clubRoles: { some: {} } },
+                    { isSuperAdmin: true }
+                ]
+            });
+        }
+
+        if (andConditions.length > 0) {
+            where.AND = andConditions;
+        }
+
         const users = await prisma.user.findMany({
-            where: query
-                ? {
-                      OR: [
-                          { firstName: { contains: query, mode: 'insensitive' } },
-                          { lastName: { contains: query, mode: 'insensitive' } },
-                          { email: { contains: query, mode: 'insensitive' } },
-                          { licenseId: { contains: query, mode: 'insensitive' } },
-                      ],
-                  }
-                : {},
+            where,
             select: {
                 id: true,
                 email: true,
@@ -446,6 +503,20 @@ router.get('/users', authenticateToken, async (req: AuthRequest, res: Response, 
                 eloPoints: true,
                 rank: true,
                 avatarUrl: true,
+                associationRoles: {
+                    select: {
+                        id: true,
+                        role: true,
+                        association: { select: { id: true, name: true, shortName: true, code: true } },
+                    },
+                },
+                clubRoles: {
+                    select: {
+                        id: true,
+                        role: true,
+                        club: { select: { id: true, name: true, code: true } },
+                    },
+                },
                 licenses: {
                     select: {
                         id: true,
@@ -456,7 +527,7 @@ router.get('/users', authenticateToken, async (req: AuthRequest, res: Response, 
                     },
                 },
             },
-            take: 50,
+            take: 100,
             orderBy: { lastName: 'asc' },
         });
 
