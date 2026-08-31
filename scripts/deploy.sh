@@ -50,20 +50,6 @@ sync_var "LOGGING_URL" "$LOGGING_URL"
 sync_var "LOGGING_USER" "$LOGGING_USER"
 sync_var "LOGGING_PASSWORD" "$LOGGING_PASSWORD"
 
-# Sync Mailgun API configuration
-sync_var "MAILGUN_API_KEY" "$MAILGUN_API_KEY"
-sync_var "MAILGUN_DOMAIN" "$MAILGUN_DOMAIN"
-sync_var "MAILGUN_EU" "$MAILGUN_EU"
-sync_var "MAILGUN_HOST" "$MAILGUN_HOST"
-sync_var "EMAIL_FROM_DEFAULT" "$EMAIL_FROM_DEFAULT"
-
-# Sync SMTP fallback configuration
-sync_var "SMTP_HOST" "$SMTP_HOST"
-sync_var "SMTP_PORT" "$SMTP_PORT"
-sync_var "SMTP_USER" "$SMTP_USER"
-sync_var "SMTP_PASS" "$SMTP_PASS"
-sync_var "SMTP_SECURE" "$SMTP_SECURE"
-
 # Sync Support & Governance
 sync_var "AREENA_SUPPORT_EMAIL" "$AREENA_SUPPORT_EMAIL"
 

@@ -36,6 +36,7 @@ model Association {
   adminNotices      AdminNotice[]
   faqItems          FaqItem[]
   supportSubjects   SupportSubject[]
+  locations         LocationAssociation[]
 }
 
 model AssociationHierarchy {

@@ -125,6 +125,10 @@ class ApiClient {
         return this.request('/auth/reset-password', { method: 'POST', body: JSON.stringify(body) });
     }
 
+    changePassword(body: { currentPassword: string; newPassword: string }) {
+        return this.request('/auth/change-password', { method: 'POST', body: JSON.stringify(body) });
+    }
+
     getUsers(params: string | { q?: string; associationId?: string; role?: string } = '') {
         if (typeof params === 'string') {
             return this.request(`/auth/users?q=${encodeURIComponent(params)}`);
@@ -240,6 +244,25 @@ class ApiClient {
         return this.request(`/associations/${associationId}/seasons`);
     }
 
+    updateSeason(associationId: string, seasonId: string, body: any) {
+        return this.request(`/associations/${associationId}/seasons/${seasonId}`, {
+            method: 'PUT',
+            body: JSON.stringify(body),
+        });
+    }
+
+    setCurrentSeason(associationId: string, seasonId: string) {
+        return this.request(`/associations/${associationId}/seasons/${seasonId}/set-current`, {
+            method: 'POST',
+        });
+    }
+
+    deleteSeason(associationId: string, seasonId: string) {
+        return this.request(`/associations/${associationId}/seasons/${seasonId}`, {
+            method: 'DELETE',
+        });
+    }
+
     // Clubs
     getClubs() {
         return this.request('/clubs');
@@ -284,6 +307,53 @@ class ApiClient {
 
     attestCourseAttendance(courseId: string, body: any) {
         return this.request(`/licenses/courses/${courseId}/attest`, { method: 'POST', body: JSON.stringify(body) });
+    }
+
+    // Locations & Playing Units (Tables / Courts)
+    getLocations(params: Record<string, string> = {}) {
+        const qs = new URLSearchParams(params).toString();
+        return this.request(`/locations${qs ? `?${qs}` : ''}`);
+    }
+
+    getLocation(idOrSlug: string) {
+        return this.request(`/locations/${idOrSlug}`);
+    }
+
+    createLocation(body: any) {
+        return this.request('/locations', { method: 'POST', body: JSON.stringify(body) });
+    }
+
+    updateLocation(id: string, body: any) {
+        return this.request(`/locations/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+    }
+
+    deleteLocation(id: string) {
+        return this.request(`/locations/${id}`, { method: 'DELETE' });
+    }
+
+    createLocationUnit(locationId: string, body: any) {
+        return this.request(`/locations/${locationId}/units`, { method: 'POST', body: JSON.stringify(body) });
+    }
+
+    updateLocationUnit(locationId: string, unitId: string, body: any) {
+        return this.request(`/locations/${locationId}/units/${unitId}`, { method: 'PUT', body: JSON.stringify(body) });
+    }
+
+    deleteLocationUnit(locationId: string, unitId: string) {
+        return this.request(`/locations/${locationId}/units/${unitId}`, { method: 'DELETE' });
+    }
+
+    getLocationReservations(locationId: string, params: Record<string, string> = {}) {
+        const qs = new URLSearchParams(params).toString();
+        return this.request(`/locations/${locationId}/reservations${qs ? `?${qs}` : ''}`);
+    }
+
+    createLocationReservation(locationId: string, body: any) {
+        return this.request(`/locations/${locationId}/reservations`, { method: 'POST', body: JSON.stringify(body) });
+    }
+
+    deleteLocationReservation(locationId: string, resId: string) {
+        return this.request(`/locations/${locationId}/reservations/${resId}`, { method: 'DELETE' });
     }
 
     // Competitions (Leagues & Tournaments)

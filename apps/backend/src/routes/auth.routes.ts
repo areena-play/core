@@ -15,6 +15,7 @@ import {
     confirmEmailChangeSchema,
     forgotPasswordSchema,
     resetPasswordSchema,
+    changePasswordSchema,
     AuditCategory,
 } from '@areena/shared';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
@@ -606,6 +607,68 @@ router.post(
 
             res.json({
                 message: 'Your password has been successfully reset. You can now log in with your new password.',
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+);
+
+// POST /auth/change-password
+router.post(
+    '/change-password',
+    authenticateToken,
+    validate(changePasswordSchema),
+    async (req: AuthRequest, res: Response, next) => {
+        try {
+            const { currentPassword, newPassword } = req.body;
+            const userId = req.user!.id;
+
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+            });
+
+            if (!user) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+            if (!isValid) {
+                return res.status(400).json({ error: 'Current password is incorrect.' });
+            }
+
+            const isSame = await bcrypt.compare(newPassword, user.passwordHash);
+            if (isSame) {
+                return res.status(400).json({ error: 'New password must be different from your current password.' });
+            }
+
+            const passwordHash = await bcrypt.hash(newPassword, 10);
+
+            await prisma.user.update({
+                where: { id: userId },
+                data: {
+                    passwordHash,
+                    passwordResetToken: null,
+                    passwordResetExpires: null,
+                },
+            });
+
+            await AuditService.record({
+                req,
+                userId: user.id,
+                userEmail: user.email,
+                userName: `${user.firstName} ${user.lastName}`,
+                action: 'AUTH_PASSWORD_CHANGED',
+                category: AuditCategory.AUTH,
+                entityType: 'User',
+                entityId: user.id,
+                description: `User ${user.email} changed their account password`,
+                status: 'SUCCESS',
+            });
+
+            res.json({
+                success: true,
+                message: 'Password changed successfully.',
             });
         } catch (err) {
             next(err);

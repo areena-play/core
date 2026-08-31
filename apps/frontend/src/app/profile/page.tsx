@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { AccessDenied } from '@/components/auth/AccessDenied';
+import { PasswordRequirements, checkPasswordRequirements } from '@/components/auth/PasswordRequirements';
 
 type ProfileTab = 'personal' | 'preferences' | 'licenses' | 'competitions' | 'courses' | 'admin-access';
 
@@ -79,6 +80,14 @@ export default function ProfilePage() {
     const [emailChangeLoading, setEmailChangeLoading] = useState(false);
     const [emailChangeMsg, setEmailChangeMsg] = useState('');
     const [emailChangeErr, setEmailChangeErr] = useState('');
+    // Password Change State
+    const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [passwordLoading, setPasswordLoading] = useState(false);
+    const [passwordSuccessMsg, setPasswordSuccessMsg] = useState('');
+    const [passwordErrorMsg, setPasswordErrorMsg] = useState('');
 
     // Synchronize tab with URL Hash
     useEffect(() => {
@@ -126,6 +135,41 @@ export default function ProfilePage() {
             fetchOverview();
         }
     }, [user]);
+
+    const handleChangePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setPasswordErrorMsg('');
+        setPasswordSuccessMsg('');
+
+        if (!currentPassword) {
+            setPasswordErrorMsg('Current password is required.');
+            return;
+        }
+
+        const reqs = checkPasswordRequirements(newPassword);
+        if (!reqs.isAllValid) {
+            setPasswordErrorMsg('New password does not meet all required complexity criteria.');
+            return;
+        }
+
+        if (newPassword !== confirmNewPassword) {
+            setPasswordErrorMsg(t('auth.passwordsDoNotMatch') || 'Passwords do not match.');
+            return;
+        }
+
+        setPasswordLoading(true);
+        try {
+            const res = await api.changePassword({ currentPassword, newPassword });
+            setPasswordSuccessMsg(res.message || 'Password changed successfully!');
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmNewPassword('');
+        } catch (err: any) {
+            setPasswordErrorMsg(err.message || 'Failed to change password.');
+        } finally {
+            setPasswordLoading(false);
+        }
+    };
 
     const handleRequestEmailChange = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -376,7 +420,8 @@ export default function ProfilePage() {
 
             {/* 1. PERSONAL DATA TAB */}
             {activeTab === 'personal' && (
-                <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="space-y-6">
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-sm space-y-6">
                     <div className="space-y-1">
                         <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
                             <User className="h-5 w-5 text-amber-500" />
@@ -567,6 +612,59 @@ export default function ProfilePage() {
                             </button>
                         </div>
                     </form>
+                </div>
+
+                {/* Account Security & Password Card */}
+                <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                                <Lock className="h-5 w-5 text-amber-500" />
+                                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                                    {t('profile.securityTitle') || 'Account Security & Password'}
+                                </h3>
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {t('profile.securitySubtitle') || 'Keep your account secure by using a strong password with letters, numbers, and symbols.'}
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setPasswordModalOpen(true);
+                                setCurrentPassword('');
+                                setNewPassword('');
+                                setConfirmNewPassword('');
+                                setPasswordErrorMsg('');
+                                setPasswordSuccessMsg('');
+                            }}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 px-5 py-2.5 text-xs font-bold shadow-xs transition shrink-0"
+                        >
+                            <Lock className="h-4 w-4" />
+                            <span>{t('profile.changePasswordBtn') || 'Change Password'}</span>
+                        </button>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+                                <ShieldCheck className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <div className="text-xs font-bold text-slate-900 dark:text-white">
+                                    {t('profile.passwordProtection') || 'Password Protection'}
+                                </div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                                    ••••••••••••••••
+                                </div>
+                            </div>
+                        </div>
+                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full">
+                            Active
+                        </span>
+                    </div>
+                </div>
                 </div>
             )}
 
@@ -1175,9 +1273,126 @@ export default function ProfilePage() {
                 </div>
             )}
 
+
+            {/* Password Change Modal */}
+            {passwordModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+                    <div className="w-full max-w-md rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-150">
+                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                    <Lock className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                                        {t('profile.changePasswordBtn') || 'Change Password'}
+                                    </h3>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                        {t('profile.changePasswordDesc') || 'Enter your current password and create a new secure password.'}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setPasswordModalOpen(false)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {passwordErrorMsg && (
+                            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300">
+                                <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                                <div>{passwordErrorMsg}</div>
+                            </div>
+                        )}
+
+                        {passwordSuccessMsg ? (
+                            <div className="space-y-4">
+                                <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                                    <div>{passwordSuccessMsg}</div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setPasswordModalOpen(false)}
+                                    className="w-full rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-2.5 text-xs transition"
+                                >
+                                    {t('common.close') || 'Close'}
+                                </button>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleChangePassword} className="space-y-4 text-xs">
+                                <div>
+                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                        {t('auth.currentPasswordLabel') || 'Current Password'} *
+                                    </label>
+                                    <input
+                                        type="password"
+                                        required
+                                        placeholder="••••••••"
+                                        value={currentPassword}
+                                        onChange={(e) => setCurrentPassword(e.target.value)}
+                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                        {t('auth.newPasswordLabel') || 'New Password'} *
+                                    </label>
+                                    <input
+                                        type="password"
+                                        required
+                                        placeholder="••••••••"
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                    />
+                                    {newPassword && <PasswordRequirements password={newPassword} className="mt-2.5" />}
+                                </div>
+
+                                <div>
+                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                        {t('auth.confirmNewPasswordLabel') || 'Confirm New Password'} *
+                                    </label>
+                                    <input
+                                        type="password"
+                                        required
+                                        placeholder="••••••••"
+                                        value={confirmNewPassword}
+                                        onChange={(e) => setConfirmNewPassword(e.target.value)}
+                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPasswordModalOpen(false)}
+                                        className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                    >
+                                        {t('common.cancel')}
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={passwordLoading}
+                                        className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs transition disabled:opacity-50 inline-flex items-center gap-1.5"
+                                    >
+                                        {passwordLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                                        <span>{passwordLoading ? t('common.saving') : (t('profile.updatePasswordBtn') || 'Update Password')}</span>
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Email Change Modal */}
             {emailChangeModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
                     <div className="max-w-md w-full rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-2xl space-y-5">
                         <div className="flex items-start justify-between">
                             <div className="space-y-1">

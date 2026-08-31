@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useI18n } from '@/lib/i18nContext';
 import { Lock, CheckCircle2, AlertCircle, Loader2, ArrowLeft, LogIn } from 'lucide-react';
+import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
 
 function ResetPasswordForm() {
     const searchParams = useSearchParams();
@@ -119,6 +120,7 @@ function ResetPasswordForm() {
                             onChange={(e) => setPassword(e.target.value)}
                             className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
                         />
+                        {password && <PasswordRequirements password={password} className="mt-2" />}
                     </div>
 
                     <div>

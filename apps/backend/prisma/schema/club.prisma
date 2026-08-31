@@ -27,6 +27,8 @@ model Club {
   adminNotices      AdminNotice[]
   faqItems          FaqItem[]
   supportSubjects   SupportSubject[]
+  locations         LocationClub[]
+  unitReservations  LocationUnitReservation[]
 }
 
 model ClubAssociation {

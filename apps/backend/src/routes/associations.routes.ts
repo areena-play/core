@@ -212,7 +212,7 @@ router.put(
                     .json({ error: 'Only association administrators can update association settings' });
             }
 
-            const { name, shortName, logoUrl, licenseIdTemplate, counter, regionDigit, expectedUpdatedAt } = req.body;
+            const { name, shortName, logoUrl, licenseIdTemplate, counter, regionDigit, rules, expectedUpdatedAt } = req.body;
 
             // Optimistic concurrency control check
             if (expectedUpdatedAt && new Date(targetAssoc.updatedAt).getTime() !== new Date(expectedUpdatedAt).getTime()) {
@@ -230,6 +230,7 @@ router.put(
                     ...(licenseIdTemplate ? { licenseIdTemplate } : {}),
                     ...(counter !== undefined ? { licenseCounter: counter } : {}),
                     ...(regionDigit !== undefined ? { regionDigit } : {}),
+                    ...(rules !== undefined ? { rules } : {}),
                 },
             });
 
@@ -467,6 +468,92 @@ router.get('/:id/seasons', async (req, res, next) => {
             orderBy: { startDate: 'desc' },
         });
         res.json(seasons);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// PUT /associations/:id/seasons/:seasonId - Update Season
+router.put('/:id/seasons/:seasonId', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const { name, startDate, endDate, isCurrent } = req.body;
+
+        if (isCurrent) {
+            await prisma.season.updateMany({
+                where: { associationId: req.params.id },
+                data: { isCurrent: false },
+            });
+        }
+
+        const season = await prisma.season.update({
+            where: { id: req.params.seasonId },
+            data: {
+                ...(name ? { name } : {}),
+                ...(startDate ? { startDate: new Date(startDate) } : {}),
+                ...(endDate ? { endDate: new Date(endDate) } : {}),
+                ...(isCurrent !== undefined ? { isCurrent: !!isCurrent } : {}),
+            },
+        });
+
+        res.json(season);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// POST /associations/:id/seasons/:seasonId/set-current - Set Active Season
+router.post('/:id/seasons/:seasonId/set-current', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        await prisma.season.updateMany({
+            where: { associationId: req.params.id },
+            data: { isCurrent: false },
+        });
+
+        const season = await prisma.season.update({
+            where: { id: req.params.seasonId },
+            data: { isCurrent: true },
+        });
+
+        await AuditService.record({
+            req,
+            action: 'SEASON_ACTIVATED',
+            category: AuditCategory.GOVERNANCE,
+            entityType: 'Season',
+            entityId: season.id,
+            associationId: req.params.id,
+            description: `Activated season "${season.name}" for association`,
+            status: 'SUCCESS',
+        });
+
+        res.json(season);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// DELETE /associations/:id/seasons/:seasonId - Delete Season
+router.delete('/:id/seasons/:seasonId', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const season = await prisma.season.findUnique({
+            where: { id: req.params.seasonId },
+            include: { _count: { select: { licenses: true, competitions: true } } },
+        });
+
+        if (!season) {
+            return res.status(404).json({ error: 'Season not found' });
+        }
+
+        if (season._count.licenses > 0 || season._count.competitions > 0) {
+            return res.status(400).json({
+                error: `Cannot delete season with active licenses (${season._count.licenses}) or competitions (${season._count.competitions}).`,
+            });
+        }
+
+        await prisma.season.delete({
+            where: { id: req.params.seasonId },
+        });
+
+        res.json({ message: 'Season deleted successfully', id: req.params.seasonId });
     } catch (err) {
         next(err);
     }

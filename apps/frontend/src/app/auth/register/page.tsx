@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/authContext';
 import { useTheme } from '@/lib/themeContext';
 import { useI18n } from '@/lib/i18nContext';
 import { UserPlus, AlertCircle } from 'lucide-react';
+import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -180,6 +181,7 @@ export default function RegisterPage() {
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                             />
+                            {password && <PasswordRequirements password={password} className="mt-2" />}
                         </div>
 
                         <div>

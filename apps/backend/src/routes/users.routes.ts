@@ -227,6 +227,13 @@ router.put('/admin/:id', validate(adminUpdateUserSchema), async (req: AuthReques
             }
         }
 
+        // Safeguard: Prevent admin from removing their own admin rights
+        if (id === req.user!.id && isSuperAdmin === false && existingUser.isSuperAdmin) {
+            return res.status(400).json({
+                error: 'You cannot remove your own administrator rights.',
+            });
+        }
+
         // Safeguard: Prevent removing superadmin if user is editing themselves and they are the only superadmin
         if (isSuperAdmin === false && existingUser.isSuperAdmin) {
             const superAdminCount = await prisma.user.count({ where: { isSuperAdmin: true } });
@@ -382,6 +389,13 @@ router.post('/admin/:id/toggle-superadmin', async (req: AuthRequest, res: Respon
         }
 
         const newStatus = !targetUser.isSuperAdmin;
+
+        // Safeguard: Prevent admin from removing their own admin rights
+        if (id === req.user!.id && targetUser.isSuperAdmin) {
+            return res.status(400).json({
+                error: 'You cannot remove your own administrator rights.',
+            });
+        }
 
         // Safeguard: Do not allow demoting the last super admin
         if (!newStatus && targetUser.isSuperAdmin) {

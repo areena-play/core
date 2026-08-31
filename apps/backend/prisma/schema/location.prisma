@@ -1,0 +1,120 @@
+enum LocationUnitStatus {
+  AVAILABLE
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+enum ReservationType {
+  COMPETITION_BLOCK
+  CLUB_TRAINING
+  USER_RESERVATION
+  MAINTENANCE
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+model Location {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  address       String
+  city          String
+  postalCode    String
+  country       String   @default("Switzerland")
+  coordinates   Json?
+  googleMapsUrl String?
+  description   String?
+  imageUrl      String?
+  phone         String?
+  email         String?
+  website       String?
+  isActive      Boolean  @default(true)
+  metadata      Json?    @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  clubs         LocationClub[]
+  associations  LocationAssociation[]
+  units         LocationUnit[]
+  competitions  CompetitionLocation[]
+}
+
+model LocationClub {
+  id         String   @id @default(uuid())
+  locationId String
+  clubId     String
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  club     Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([locationId, clubId])
+}
+
+model LocationAssociation {
+  id            String   @id @default(uuid())
+  locationId    String
+  associationId String
+  createdAt     DateTime @default(now())
+
+  location    Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@unique([locationId, associationId])
+}
+
+model LocationUnit {
+  id          String             @id @default(uuid())
+  locationId  String
+  name        String
+  unitNumber  Int
+  customType  String?
+  features    String[]           @default([])
+  status      LocationUnitStatus @default(AVAILABLE)
+  orderIndex  Int                @default(0)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  location     Location                  @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  reservations LocationUnitReservation[]
+}
+
+model LocationUnitReservation {
+  id               String            @id @default(uuid())
+  unitId           String
+  type             ReservationType   @default(USER_RESERVATION)
+  status           ReservationStatus @default(CONFIRMED)
+  startTime        DateTime
+  endTime          DateTime
+  title            String
+  description      String?
+  reservedByUserId String?
+  clubId           String?
+  competitionId    String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  unit           LocationUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  reservedByUser User?        @relation(fields: [reservedByUserId], references: [id], onDelete: SetNull)
+  club           Club?        @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  competition    Competition? @relation(fields: [competitionId], references: [id], onDelete: SetNull)
+
+  @@index([unitId, startTime, endTime])
+}
+
+model CompetitionLocation {
+  id            String   @id @default(uuid())
+  competitionId String
+  locationId    String
+  createdAt     DateTime @default(now())
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  location    Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([competitionId, locationId])
+}

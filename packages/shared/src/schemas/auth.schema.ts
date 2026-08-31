@@ -1,9 +1,17 @@
 import { z } from 'zod';
 import { Gender } from '../types';
 
+export const strongPasswordSchema = z
+    .string()
+    .min(8, 'Password must be at least 8 characters long')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[^a-zA-Z0-9]/, 'Password must contain at least one special character');
+
 export const registerSchema = z.object({
     email: z.string().email(),
-    password: z.string().min(8),
+    password: strongPasswordSchema,
     firstName: z.string().min(1),
     lastName: z.string().min(1),
     phone: z.string().min(5),
@@ -13,6 +21,11 @@ export const registerSchema = z.object({
     country: z.string().default('Switzerland'),
     birthDate: z.string().optional().nullable(),
     gender: z.nativeEnum(Gender).optional().nullable(),
+});
+
+export const changePasswordSchema = z.object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: strongPasswordSchema,
 });
 
 export const loginSchema = z.object({
@@ -57,7 +70,7 @@ export const adminUpdateUserSchema = z.object({
 });
 
 export const adminResetPasswordSchema = z.object({
-    newPassword: z.string().min(8).optional(),
+    newPassword: strongPasswordSchema.optional(),
     autoGenerate: z.boolean().optional(),
 });
 
@@ -83,5 +96,6 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
     token: z.string().min(10),
-    password: z.string().min(8),
+    password: strongPasswordSchema,
 });
+

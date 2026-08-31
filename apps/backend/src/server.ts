@@ -23,6 +23,7 @@ import noticeRoutes from './routes/notices.routes';
 import userRoutes from './routes/users.routes';
 import supportRoutes from './routes/support.routes';
 import adminRoutes from './routes/admin.routes';
+import locationsRoutes from './routes/locations.routes';
 import { startDemoScheduler } from './services/demoScheduler.service';
 
 const app = express();
@@ -74,6 +75,7 @@ app.use('/setup', setupRoutes);
 app.use('/notices', noticeRoutes);
 app.use('/support', supportRoutes);
 app.use('/admin', adminRoutes);
+app.use('/locations', locationsRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

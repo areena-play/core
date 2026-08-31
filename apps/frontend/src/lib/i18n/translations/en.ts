@@ -57,6 +57,7 @@ export const en = {
         superAdminSection: 'Super Admin',
         adminDashboard: 'Admin Dashboard',
         systemSettings: 'System Settings',
+        locations: 'Locations',
     },
 
     // Main Views / Workspaces
@@ -384,6 +385,12 @@ export const en = {
 
     // Profile & Settings
     profile: {
+        securityTitle: 'Account Security & Password',
+        securitySubtitle: 'Keep your account secure by using a strong password with letters, numbers, and symbols.',
+        changePasswordBtn: 'Change Password',
+        changePasswordDesc: 'Enter your current password and create a new secure password.',
+        passwordProtection: 'Password Protection',
+        updatePasswordBtn: 'Update Password',
         title: 'User Profile & Hub',
         subtitle: 'Manage personal details, preferences, licenses, registered competitions, refresher courses, and administrative access.',
         tabs: {
@@ -461,6 +468,17 @@ export const en = {
 
     // Auth
     auth: {
+        reqMinLength: 'At least 8 characters',
+        reqLower: 'At least 1 lowercase letter (a-z)',
+        reqUpper: 'At least 1 uppercase letter (A-Z)',
+        reqNumber: 'At least 1 number (0-9)',
+        reqSpecial: 'At least 1 special character (!@#$...)',
+        passwordStrength: 'Password Strength',
+        strengthEmpty: 'Enter a password',
+        strengthWeak: 'Weak password',
+        strengthMedium: 'Moderate password',
+        strengthStrong: 'Strong password',
+        passwordRequirementsTitle: 'Password Requirements:',
         loginTitle: 'Sign In to AREENA',
         loginSubtitle: 'Access your federation portal, license credentials, and tournament entries.',
         loginButton: 'Sign In',
@@ -739,6 +757,42 @@ export const en = {
         coreInfo: 'AREENA Core v1.0 • Multilingual Sports Governance',
         lastUpdated: 'Last Updated: August 2026',
     },
+    // Locations & Playing Units (Courts / Tables)
+    locations: {
+        title: 'Competition & Sports Locations',
+        subtitle: 'Explore official federation competition halls, club training facilities, court and table reservations, and tournament schedules.',
+        addLocationBtn: 'Add Location',
+        searchPlaceholder: 'Search location, city, hall...',
+        allCities: 'All Cities',
+        allAssociations: 'All Associations',
+        allClubs: 'All Clubs',
+        createLocationTitle: 'Add New Sports Location',
+        unitsMatrix: 'Playing Units Matrix',
+        scheduleAndBlocks: 'Reservations & Tournament Blocks',
+    },
+
+    // Association Settings & Governance Hub
+    assocSettings: {
+        title: 'Association Settings',
+        subtitle: 'Configure sports rules, age categories, competition structures, seasons, and licensing engine.',
+        tabIdentity: 'Identity & Branding',
+        tabSports: 'Sports & Rules',
+        tabAgeSeries: 'Age Series & Divisions',
+        tabSeasons: 'Seasons & Transition',
+        tabLicenseEngine: 'License ID Engine',
+        sportDiscipline: 'Sport Discipline',
+        unitTerminology: 'Playing Unit Terminology',
+        matchFormat: 'Default Match Format',
+        maxForeigners: 'Max Foreign / Non-National Players per Team',
+        refresherPeriod: 'Referee Course Validity Period (Months)',
+        allowTCard: 'Allow T-Card / Dual Club Registration',
+        requireRefereeSenior: 'Mandatory Refresher Course for Seniors',
+        cutoffDate: 'Annual Birth Year Cutoff Reference Date',
+        activeCurrent: 'ACTIVE CURRENT',
+        createSeason: 'Create New Season',
+        addAgeSeries: 'Add Custom Age Series',
+    },
+
     // Support & FAQ System
     support: {
         title: 'Help & Support Center',

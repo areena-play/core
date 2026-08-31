@@ -62,6 +62,8 @@ model Competition {
   calendarEvents  CalendarEvent[]
   faqItems        FaqItem[]
   supportSubjects SupportSubject[]
+  locations       CompetitionLocation[]
+  unitReservations LocationUnitReservation[]
 
   @@index([seriesSlug])
 }

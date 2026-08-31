@@ -59,6 +59,7 @@ export const it: TranslationDictionary = {
         superAdminSection: 'Super Admin',
         adminDashboard: 'Cruscotto Admin',
         systemSettings: 'Impostazioni di sistema',
+        locations: 'Impianti',
     },
 
     // Main Views / Workspaces
@@ -386,6 +387,12 @@ export const it: TranslationDictionary = {
 
     // Profile & Settings
     profile: {
+        securityTitle: 'Sicurezza dell\'account e password',
+        securitySubtitle: 'Proteggi il tuo account utilizzando una password complessa con lettere, numeri e simboli.',
+        changePasswordBtn: 'Modifica password',
+        changePasswordDesc: 'Inserisci la password attuale e crea una nuova password sicura.',
+        passwordProtection: 'Protezione con password',
+        updatePasswordBtn: 'Aggiorna password',
         title: 'Profilo Utente & Hub',
         subtitle: 'Gestisci dati personali, preferenze, licenze, competizioni registrate, corsi di aggiornamento e accessi amministrativi.',
         tabs: {
@@ -463,6 +470,17 @@ export const it: TranslationDictionary = {
 
     // Auth
     auth: {
+        reqMinLength: 'Almeno 8 caratteri',
+        reqLower: 'Almeno 1 lettera minuscola (a-z)',
+        reqUpper: 'Almeno 1 lettera maiuscola (A-Z)',
+        reqNumber: 'Almeno 1 numero (0-9)',
+        reqSpecial: 'Almeno 1 carattere speciale (!@#$...)',
+        passwordStrength: 'Forza della password',
+        strengthEmpty: 'Inserisci una password',
+        strengthWeak: 'Password debole',
+        strengthMedium: 'Password moderata',
+        strengthStrong: 'Password forte',
+        passwordRequirementsTitle: 'Requisiti della password:',
         loginTitle: 'Accedi ad AREENA',
         loginSubtitle: 'Accesso al portale federale, tesseramenti e iscrizioni gare.',
         loginButton: 'Accedi',
@@ -742,6 +760,42 @@ export const it: TranslationDictionary = {
         coreInfo: 'AREENA Core v1.0 • Governance Sportiva Multilingue',
         lastUpdated: 'Ultimo aggiornamento: Agosto 2026',
     },
+    // Locations & Playing Units (Courts / Tables)
+    locations: {
+        title: 'Impianti sportivi e di competizione',
+        subtitle: 'Palestre ufficiali della federazione, strutture di allenamento dei club, prenotazione campi/tavoli e calendari tornei.',
+        addLocationBtn: 'Aggiungi impianto',
+        searchPlaceholder: 'Cerca impianto, città, palestra...',
+        allCities: 'Tutte le città',
+        allAssociations: 'Tutte le associazioni',
+        allClubs: 'Tutti i club',
+        createLocationTitle: 'Aggiungi nuovo impianto sportivo',
+        unitsMatrix: 'Matrice campi e tavoli',
+        scheduleAndBlocks: 'Prenotazioni e blocchi torneo',
+    },
+
+    // Association Settings & Governance Hub
+    assocSettings: {
+        title: 'Impostazioni associazione',
+        subtitle: 'Configura regole sportive, categorie di età, strutture di gara, stagioni e motore licenze.',
+        tabIdentity: 'Identità e Branding',
+        tabSports: 'Sport e Regolamenti',
+        tabAgeSeries: 'Categorie di età e Serie',
+        tabSeasons: 'Stagioni e Transizione',
+        tabLicenseEngine: 'Generatore ID licenza',
+        sportDiscipline: 'Disciplina sportiva',
+        unitTerminology: 'Terminologia campi/tavoli',
+        matchFormat: 'Formato partita predefinito',
+        maxForeigners: 'Max giocatori stranieri per squadra',
+        refresherPeriod: 'Validità corso arbitro (mesi)',
+        allowTCard: 'Consenti registrazione doppia T-Card',
+        requireRefereeSenior: 'Corso arbitro obbligatorio per senior',
+        cutoffDate: 'Data di riferimento per anno di nascita',
+        activeCurrent: 'STAGIONE ATTIVA',
+        createSeason: 'Crea nuova stagione',
+        addAgeSeries: 'Aggiungi categoria di età personalizzata',
+    },
+
     // Support & FAQ System
     support: {
         title: 'Centro Assistenza & Supporto',

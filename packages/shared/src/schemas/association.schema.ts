@@ -22,10 +22,27 @@ export const updateAssociationSettingsSchema = z.object({
     licenseIdTemplate: z.string().min(3).optional(),
     counter: z.number().int().nonnegative().optional(),
     regionDigit: z.number().int().min(1).max(9).optional(),
+    rules: z.record(z.any()).optional(),
+    activeSeasonId: z.string().uuid().optional().nullable(),
+    expectedUpdatedAt: z.string().optional(),
 });
 
 export const updateLicenseIdTemplateSchema = z.object({
     licenseIdTemplate: z.string().min(3), // e.g. "{regionDigit}{year2}{counter3}"
     counter: z.number().int().nonnegative().optional(),
+});
+
+export const createSeasonSchema = z.object({
+    name: z.string().min(2),
+    startDate: z.string(),
+    endDate: z.string(),
+    isCurrent: z.boolean().optional().default(false),
+});
+
+export const updateSeasonSchema = z.object({
+    name: z.string().min(2).optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    isCurrent: z.boolean().optional(),
 });
 

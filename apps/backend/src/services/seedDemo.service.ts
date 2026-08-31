@@ -27,6 +27,12 @@ export async function clearDatabase() {
     await prisma.adminNotice.deleteMany();
     await prisma.messageRecipient.deleteMany();
     await prisma.broadcastMessage.deleteMany();
+    await prisma.locationUnitReservation.deleteMany();
+    await prisma.locationUnit.deleteMany();
+    await prisma.locationClub.deleteMany();
+    await prisma.locationAssociation.deleteMany();
+    await prisma.competitionLocation.deleteMany();
+    await prisma.location.deleteMany();
     await prisma.calendarEvent.deleteMany();
     await prisma.auditLog.deleteMany();
     await prisma.invoiceLineItem.deleteMany();
@@ -1255,6 +1261,186 @@ export async function seedDemoDatabase() {
             createdById: userClubZurichAdmin.id,
         },
     });
+
+
+    // 14. SPORTS LOCATIONS & PLAYING UNITS (COURTS / TABLES)
+    console.log('  📍 Seeding Sports Arenas, Locations & Playing Units (Tables/Courts)...');
+
+    // 1. Sporthalle Hardau (Zürich)
+    const locZurich = await prisma.location.create({
+        data: {
+            name: 'Sporthalle Hardau Zürich',
+            slug: 'sporthalle-hardau-zurich',
+            address: 'Bullingerstrasse 60',
+            city: 'Zürich',
+            postalCode: '8004',
+            country: 'Switzerland',
+            description: 'Premier multi-sport arena in Zürich featuring 16 competition table tennis tables, Taraflex sports flooring, professional 1000 lux lighting, and spectator grandstand.',
+            phone: '+41 44 413 90 00',
+            email: 'hardau@sportamt-zurich.ch',
+            website: 'https://sportamt.ch/hardau',
+            googleMapsUrl: 'https://maps.google.com/?q=Bullingerstrasse+60+8004+Z%C3%BCrich',
+            clubs: {
+                create: [{ clubId: clubZurich.id, isPrimary: true }],
+            },
+            associations: {
+                create: [
+                    { associationId: sttfNational.id },
+                    { associationId: sttfOst.id },
+                ],
+            },
+        },
+    });
+
+    for (let i = 1; i <= 16; i++) {
+        await prisma.locationUnit.create({
+            data: {
+                locationId: locZurich.id,
+                name: `Table ${i}`,
+                unitNumber: i,
+                orderIndex: i,
+                features: i <= 4 ? ['CENTER_COURT', 'PRO_LIGHTING', 'STREAMING_CAMERA', 'WHEELCHAIR_ACCESSIBLE'] : ['PRO_LIGHTING'],
+                status: 'AVAILABLE',
+            },
+        });
+    }
+
+    // 2. STTF National Training Center Magglingen
+    const locMagglingen = await prisma.location.create({
+        data: {
+            name: 'Nationales Sportzentrum Magglingen • STTF Arena',
+            slug: 'sttf-arena-magglingen',
+            address: 'Hauptstrasse 247',
+            city: 'Magglingen',
+            postalCode: '2532',
+            country: 'Switzerland',
+            description: 'National High-Performance Training Center and Elite Tournament Venue with 24 competition tables, video replay analysis, and physiotherapy facilities.',
+            phone: '+41 58 467 61 11',
+            email: 'performance@sttf.ch',
+            website: 'https://sttf.ch/national-center',
+            associations: {
+                create: [{ associationId: sttfNational.id }],
+            },
+        },
+    });
+
+    for (let i = 1; i <= 24; i++) {
+        await prisma.locationUnit.create({
+            data: {
+                locationId: locMagglingen.id,
+                name: `Table ${i}`,
+                unitNumber: i,
+                orderIndex: i,
+                features: ['PRO_LIGHTING', 'STREAMING_CAMERA', 'WHEELCHAIR_ACCESSIBLE'],
+                status: 'AVAILABLE',
+            },
+        });
+    }
+
+    // 3. Centre Sportif du Bout-du-Monde (Genève)
+    const locGeneve = await prisma.location.create({
+        data: {
+            name: 'Centre Sportif du Bout-du-Monde',
+            slug: 'centre-sportif-bout-du-monde-geneve',
+            address: 'Route de Vessy 12',
+            city: 'Genève',
+            postalCode: '1206',
+            country: 'Switzerland',
+            description: 'Major regional sports complex in Geneva hosting Western Switzerland regional championships and Swiss Cup fixtures.',
+            phone: '+41 22 418 44 00',
+            email: 'boutdumonde@ville-ge.ch',
+            clubs: {
+                create: [{ clubId: clubGeneva.id, isPrimary: true }],
+            },
+            associations: {
+                create: [{ associationId: sttfRomandie.id }, { associationId: sttfNational.id }],
+            },
+        },
+    });
+
+    for (let i = 1; i <= 12; i++) {
+        await prisma.locationUnit.create({
+            data: {
+                locationId: locGeneve.id,
+                name: `Table ${i}`,
+                unitNumber: i,
+                orderIndex: i,
+                features: ['PRO_LIGHTING'],
+                status: 'AVAILABLE',
+            },
+        });
+    }
+
+    // 4. Sportcenter Rankhof (Basel)
+    const locBasel = await prisma.location.create({
+        data: {
+            name: 'Sportcenter Rankhof Basel',
+            slug: 'sportcenter-rankhof-basel',
+            address: 'Grenzacherstrasse 405',
+            city: 'Basel',
+            postalCode: '4058',
+            country: 'Switzerland',
+            description: 'Home venue of TTC Basel with 10 tables and dedicated spectator area.',
+            phone: '+41 61 690 99 00',
+            email: 'info@rankhof-basel.ch',
+            clubs: {
+                create: [{ clubId: clubBasel.id, isPrimary: true }],
+            },
+            associations: {
+                create: [{ associationId: sttfOst.id }],
+            },
+        },
+    });
+
+    for (let i = 1; i <= 10; i++) {
+        await prisma.locationUnit.create({
+            data: {
+                locationId: locBasel.id,
+                name: `Table ${i}`,
+                unitNumber: i,
+                orderIndex: i,
+                features: ['PRO_LIGHTING'],
+                status: 'AVAILABLE',
+            },
+        });
+    }
+
+    // Link Tournament Swiss Championship to Hardau Zurich and Magglingen
+    const swissChamp = await prisma.competition.findFirst({ where: { slug: 'swiss-championship' } });
+    if (swissChamp) {
+        await prisma.competitionLocation.createMany({
+            data: [
+                { competitionId: swissChamp.id, locationId: locZurich.id },
+                { competitionId: swissChamp.id, locationId: locMagglingen.id },
+            ],
+        });
+
+        // Block Tables 1-8 at Hardau Zürich for Swiss Championship
+        const hardauUnits = await prisma.locationUnit.findMany({
+            where: { locationId: locZurich.id, unitNumber: { lte: 8 } },
+        });
+
+        const blockStart = new Date(Date.now() + 5 * 24 * 3600 * 1000);
+        blockStart.setHours(9, 0, 0, 0);
+        const blockEnd = new Date(Date.now() + 5 * 24 * 3600 * 1000);
+        blockEnd.setHours(20, 0, 0, 0);
+
+        for (const unit of hardauUnits) {
+            await prisma.locationUnitReservation.create({
+                data: {
+                    unitId: unit.id,
+                    type: 'COMPETITION_BLOCK',
+                    status: 'CONFIRMED',
+                    startTime: blockStart,
+                    endTime: blockEnd,
+                    title: 'Swiss Championship 2026 • Main Draw & Semi-Finals',
+                    description: 'Reserved for Swiss National Championship 2026 encounters.',
+                    competitionId: swissChamp.id,
+                    reservedByUserId: userSttfPresident.id,
+                },
+            });
+        }
+    }
 
     console.log('\n✨ AREENA Demo Database Seeding Completed Successfully!\n');
 }

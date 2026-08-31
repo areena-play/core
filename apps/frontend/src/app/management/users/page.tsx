@@ -673,14 +673,19 @@ export default function AdminUsersPage() {
                                                     {/* SuperAdmin Toggle */}
                                                     <button
                                                         type="button"
+                                                        disabled={u.id === currentUser.id}
                                                         onClick={() => handleToggleSuperAdmin(u)}
                                                         title={
-                                                            u.isSuperAdmin
+                                                            u.id === currentUser.id
+                                                                ? 'Cannot revoke your own administrator privileges'
+                                                                : u.isSuperAdmin
                                                                 ? 'Revoke Super Administrator'
                                                                 : 'Grant Super Administrator'
                                                         }
                                                         className={`p-1.5 rounded-lg border transition ${
-                                                            u.isSuperAdmin
+                                                            u.id === currentUser.id
+                                                                ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed opacity-60'
+                                                                : u.isSuperAdmin
                                                                 ? 'border-red-500/30 bg-red-500/10 text-red-500 hover:bg-red-500/20'
                                                                 : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-400 hover:text-red-500 hover:border-red-500/40'
                                                         }`}

@@ -12,11 +12,15 @@ export function validate(schema: ZodSchema, target: 'body' | 'query' | 'params' 
                 req.body = schema.parse(req.body);
             }
             next();
-        } catch (err) {
-            if (err instanceof ZodError) {
+        } catch (err: any) {
+            if (err instanceof ZodError || err?.name === 'ZodError' || Array.isArray(err?.issues)) {
+                const issues = err.errors || err.issues || [];
                 return res.status(400).json({
                     error: 'Validation error',
-                    details: err.errors.map((e) => ({ path: e.path.join('.'), message: e.message })),
+                    details: issues.map((e: any) => ({
+                        path: Array.isArray(e.path) ? e.path.join('.') : e.path,
+                        message: e.message,
+                    })),
                 });
             }
             next(err);

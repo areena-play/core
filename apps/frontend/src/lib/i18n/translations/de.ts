@@ -59,6 +59,7 @@ export const de: TranslationDictionary = {
         superAdminSection: 'Super-Admin',
         adminDashboard: 'Admin-Übersicht',
         systemSettings: 'Systemeinstellungen',
+        locations: 'Standorte',
     },
 
     // Main Views / Workspaces
@@ -386,6 +387,12 @@ export const de: TranslationDictionary = {
 
     // Profile & Settings
     profile: {
+        securityTitle: 'Kontosicherheit & Passwort',
+        securitySubtitle: 'Schützen Sie Ihr Konto mit einem starken Passwort aus Buchstaben, Zahlen und Sonderzeichen.',
+        changePasswordBtn: 'Passwort ändern',
+        changePasswordDesc: 'Geben Sie Ihr aktuelles Passwort ein und erstellen Sie ein neues sicheres Passwort.',
+        passwordProtection: 'Passwortschutz',
+        updatePasswordBtn: 'Passwort aktualisieren',
         title: 'Benutzerprofil & Hub',
         subtitle: 'Persönliche Daten, Präferenzen, Lizenzen, angemeldete Wettbewerbe, Fortbildungskurse und Administrationsrechte verwalten.',
         tabs: {
@@ -463,6 +470,17 @@ export const de: TranslationDictionary = {
 
     // Auth
     auth: {
+        reqMinLength: 'Mindestens 8 Zeichen',
+        reqLower: 'Mindestens 1 Kleinbuchstabe (a-z)',
+        reqUpper: 'Mindestens 1 Grossbuchstabe (A-Z)',
+        reqNumber: 'Mindestens 1 Zahl (0-9)',
+        reqSpecial: 'Mindestens 1 Sonderzeichen (!@#$...)',
+        passwordStrength: 'Passwort-Stärke',
+        strengthEmpty: 'Passwort eingeben',
+        strengthWeak: 'Schwaches Passwort',
+        strengthMedium: 'Mittleres Passwort',
+        strengthStrong: 'Starkes Passwort',
+        passwordRequirementsTitle: 'Passwort-Anforderungen:',
         loginTitle: 'Bei AREENA anmelden',
         loginSubtitle: 'Zugriff auf Verbandsportal, Lizenzen und Turnieranmeldungen.',
         loginButton: 'Anmelden',
@@ -741,6 +759,42 @@ export const de: TranslationDictionary = {
         coreInfo: 'AREENA Core v1.0 • Mehrsprachige Verbandsführung',
         lastUpdated: 'Zuletzt aktualisiert: August 2026',
     },
+    // Locations & Playing Units (Courts / Tables)
+    locations: {
+        title: 'Wettkampf- & Sportstätten',
+        subtitle: 'Offizielle Wettkampfhallen des Verbands, Club-Trainingsanlagen, Tisch- und Platzreservationen sowie Turnierpläne.',
+        addLocationBtn: 'Standort hinzufügen',
+        searchPlaceholder: 'Standort, Stadt, Halle suchen...',
+        allCities: 'Alle Städte',
+        allAssociations: 'Alle Verbände',
+        allClubs: 'Alle Clubs',
+        createLocationTitle: 'Neuen Sportstandort hinzufügen',
+        unitsMatrix: 'Spielfeld- / Tisch-Matrix',
+        scheduleAndBlocks: 'Reservationen & Turniersperren',
+    },
+
+    // Association Settings & Governance Hub
+    assocSettings: {
+        title: 'Verbandseinstellungen',
+        subtitle: 'Sportregeln, Altersklassen, Wettbewerbsstrukturen, Saisons und Lizenz-Engine konfigurieren.',
+        tabIdentity: 'Identität & Branding',
+        tabSports: 'Sportart & Regeln',
+        tabAgeSeries: 'Altersklassen & Serien',
+        tabSeasons: 'Saisons & Übergänge',
+        tabLicenseEngine: 'Lizenz-ID Generator',
+        sportDiscipline: 'Sportart',
+        unitTerminology: 'Spielfeld- / Tisch-Bezeichnung',
+        matchFormat: 'Standard-Matchformat',
+        maxForeigners: 'Max. ausländische Spieler pro Team',
+        refresherPeriod: 'Gültigkeitsdauer Schiedsrichterkurs (Monate)',
+        allowTCard: 'T-Card / Doppel-Vereinslizenz erlauben',
+        requireRefereeSenior: 'Obligatorischer Schiedsrichterkurs für Senioren',
+        cutoffDate: 'Jährlicher Stichtag für Geburtsjahrgang',
+        activeCurrent: 'AKTIVE SAISON',
+        createSeason: 'Neue Saison erstellen',
+        addAgeSeries: 'Benutzerdefinierte Altersklasse hinzufügen',
+    },
+
     // Support & FAQ System
     support: {
         title: 'Hilfe- & Support-Center',

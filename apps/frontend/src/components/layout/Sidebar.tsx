@@ -32,6 +32,7 @@ import {
     Building2,
     ShieldAlert,
     Settings,
+    MapPin,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18nContext';
 import { useMainView } from '@/lib/mainViewContext';
@@ -319,6 +320,11 @@ export function Sidebar() {
                         label: t('nav.refresherCourses'),
                         href: coursesHref,
                         icon: GraduationCap,
+                    },
+                    {
+                        label: t('nav.locations') || 'Locations',
+                        href: '/locations',
+                        icon: MapPin,
                     },
                     {
                         label: t('nav.calendar'),

@@ -49,6 +49,7 @@ model User {
   oauthTokens          OAuthToken[]
   invoicesReceived     Invoice[]             @relation("InvoiceRecipientUser")
   auditLogs            AuditLog[]            @relation("UserAuditLogs")
+  unitReservations     LocationUnitReservation[]
   createdNotices       AdminNotice[]         @relation("CreatedAdminNotices")
   dismissedNotices     NoticeDismissal[]     @relation("UserNoticeDismissals")
   createdFaqs          FaqItem[]             @relation("CreatedFaqs")

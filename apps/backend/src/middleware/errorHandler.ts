@@ -19,6 +19,16 @@ export function validate(schema: ZodSchema) {
 }
 
 export function errorHandler(err: any, req: Request, res: Response, next: NextFunction) {
+    if (err instanceof ZodError || err?.name === 'ZodError' || Array.isArray(err?.issues)) {
+        const issues = err.errors || err.issues || [];
+        return res.status(400).json({
+            error: 'Validation error',
+            details: issues.map((e: any) => ({
+                path: Array.isArray(e.path) ? e.path.join('.') : e.path,
+                message: e.message,
+            })),
+        });
+    }
     console.error('[Error Handler]', err);
     const status = err.status || 500;
     res.status(status).json({
