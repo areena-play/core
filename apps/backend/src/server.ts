@@ -26,11 +26,14 @@ import { startDemoScheduler } from './services/demoScheduler.service';
 
 const app = express();
 
+// Trust reverse proxy (Caddy / Cloudflare) to extract accurate client IP addresses
+app.set('trust proxy', true);
+
 // Middlewares
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan('dev'));
+app.use(morgan(':remote-addr - :method :url :status :response-time ms - :res[content-length]'));
 
 // Health & Public Config endpoints (allowed unauthenticated)
 app.get('/health', (req, res) => {

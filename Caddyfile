@@ -4,6 +4,12 @@
 }
 
 {$DOMAIN_NAME:localhost} {
+    # Enable structured HTTP access logging with client IP addresses
+    log {
+        output stdout
+        format json
+    }
+
     # 1. WebSocket endpoint (/ws and /ws/*)
     handle /ws* {
         reverse_proxy websocket:5000

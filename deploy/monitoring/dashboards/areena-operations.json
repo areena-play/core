@@ -259,37 +259,68 @@
         "y": 4
       },
       "id": 6,
-      "title": "Log Activity Volume by Service",
-      "type": "timeseries",
+      "title": "🌐 Top Client IP Addresses (Traffic Volume)",
+      "type": "barchart",
       "datasource": {
         "type": "loki",
         "uid": "loki"
       },
       "targets": [
         {
-          "expr": "sum by (service) (count_over_time({host=~\"$host\", service=~\"$service\"} [$__interval]))",
-          "legendFormat": "{{ service }}",
+          "expr": "topk(10, sum by (request_client_ip) (count_over_time({host=~\"$host\", service=~\".*caddy.*\"} | json | request_client_ip != \"\" [$__interval])))",
+          "legendFormat": "{{ request_client_ip }}",
           "refId": "A"
         }
       ],
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "groupWidth": 0.7
+      },
       "fieldConfig": {
         "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "fillOpacity": 15
+          "color": {
+            "mode": "palette-classic"
           }
         }
       }
     },
     {
       "gridPos": {
-        "h": 10,
+        "h": 9,
         "w": 24,
         "x": 0,
         "y": 12
       },
       "id": 7,
+      "title": "🌐 HTTP Access Logs (Client IPs, Routes & Status Codes)",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "expr": "{host=~\"$host\", service=~\".*caddy.*|.*backend.*\"} |= \"$search\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "prettifyLogMessage": true
+      }
+    },
+    {
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
+      "id": 8,
       "title": "🚨 Error & Exception Stream",
       "type": "logs",
       "datasource": {
@@ -315,9 +346,9 @@
         "h": 14,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 30
       },
-      "id": 8,
+      "id": 9,
       "title": "📄 Live Log Explorer (All Containers)",
       "type": "logs",
       "datasource": {
@@ -433,5 +464,5 @@
   "timezone": "browser",
   "title": "AREENA Operations & Log Explorer",
   "uid": "areena-ops-logs",
-  "version": 1
+  "version": 2
 }
