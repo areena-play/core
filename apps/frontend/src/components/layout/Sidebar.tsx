@@ -267,10 +267,6 @@ export function Sidebar() {
                         icon: Trophy,
                         children: [
                             {
-                                label: t('nav.overview'),
-                                href: competitionsHref,
-                            },
-                            {
                                 label: t('nav.leagues'),
                                 href: leaguesHref,
                             },
@@ -289,10 +285,6 @@ export function Sidebar() {
                         href: usersHref,
                         icon: Users,
                         children: [
-                            {
-                                label: t('nav.overview'),
-                                href: usersHref,
-                            },
                             {
                                 label: t('nav.players'),
                                 href: `${usersHref}?role=player`,
