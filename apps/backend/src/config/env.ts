@@ -39,14 +39,14 @@ export const config = {
         port: parseInt(process.env.SMTP_PORT || '587', 10),
         user: process.env.SMTP_USER || '',
         pass: process.env.SMTP_PASS || process.env.SMTP_PASSWORD || '',
-        from: process.env.SMTP_FROM || 'AREENA Platform <no-reply@areena.ch>',
+        from: process.env.EMAIL_FROM_DEFAULT || '',
         secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465',
     },
     mailgun: {
         apiKey: process.env.MAILGUN_API_KEY || '',
         domain: process.env.MAILGUN_DOMAIN || '',
         url: process.env.MAILGUN_HOST || (process.env.MAILGUN_EU === 'true' ? 'https://api.eu.mailgun.net' : 'https://api.mailgun.net'),
-        from: process.env.MAILGUN_FROM || process.env.SMTP_FROM || 'AREENA Platform <no-reply@areena.ch>',
+        from: process.env.EMAIL_FROM_DEFAULT || '',
     },
 };
 
