@@ -15,7 +15,7 @@ interface CompetitionsOverviewViewProps {
     defaultType?: string;
 }
 
-export function CompetitionsOverviewView({ scopedAssociationId, defaultType }: CompetitionsOverviewViewProps) {
+function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: CompetitionsOverviewViewProps) {
     const { user } = useAuth();
     const { t } = useI18n();
     const searchParams = useSearchParams();
@@ -526,5 +526,14 @@ export function CompetitionsOverviewView({ scopedAssociationId, defaultType }: C
                 </ModalPortal>
             )}
         </div>
+    );
+}
+
+
+export function CompetitionsOverviewView(props: CompetitionsOverviewViewProps) {
+    return (
+        <React.Suspense fallback={<div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" /></div>}>
+            <CompetitionsOverviewViewContent {...props} />
+        </React.Suspense>
     );
 }

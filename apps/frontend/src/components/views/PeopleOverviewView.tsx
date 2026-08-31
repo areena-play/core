@@ -26,7 +26,7 @@ interface PeopleOverviewViewProps {
     scopedAssociationId?: string;
 }
 
-export function PeopleOverviewView({ scopedAssociationId }: PeopleOverviewViewProps) {
+function PeopleOverviewViewContent({ scopedAssociationId }: PeopleOverviewViewProps) {
     const { user: currentUser } = useAuth();
     const { t } = useI18n();
     const searchParams = useSearchParams();
@@ -285,5 +285,14 @@ export function PeopleOverviewView({ scopedAssociationId }: PeopleOverviewViewPr
                 </div>
             )}
         </div>
+    );
+}
+
+
+export function PeopleOverviewView(props: PeopleOverviewViewProps) {
+    return (
+        <React.Suspense fallback={<div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" /></div>}>
+            <PeopleOverviewViewContent {...props} />
+        </React.Suspense>
     );
 }

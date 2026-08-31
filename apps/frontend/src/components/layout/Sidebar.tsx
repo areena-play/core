@@ -65,7 +65,7 @@ interface NavSection {
     items: NavItem[];
 }
 
-export function Sidebar() {
+function SidebarContent() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const { t } = useI18n();
@@ -696,5 +696,13 @@ export function Sidebar() {
                 </div>
             </div>
         </aside>
+    );
+}
+
+export function Sidebar() {
+    return (
+        <React.Suspense fallback={<aside className="w-64 h-full flex-shrink-0 border-r border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-950/70 hidden md:flex" />}>
+            <SidebarContent />
+        </React.Suspense>
     );
 }
