@@ -42,6 +42,7 @@ import {
     Receipt,
     Activity,
     Cookie,
+    HelpCircle,
 } from 'lucide-react';
 
 interface NavItem {
@@ -290,6 +291,7 @@ export function Navbar() {
                         : []),
                     { label: t('nav.communications'), href: '/communications', icon: Mail },
                     { label: t('nav.developerApi'), href: '/developers', icon: Code2 },
+                    { label: t('nav.support'), href: '/support', icon: HelpCircle },
                 ],
             },
         ];
@@ -607,6 +609,15 @@ export function Navbar() {
                                             >
                                                 <User className="h-4 w-4 text-slate-400" />
                                                 <span>{t('userMenu.myProfile')}</span>
+                                            </Link>
+
+                                            <Link
+                                                href="/support"
+                                                onClick={() => setUserMenuOpen(false)}
+                                                className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                            >
+                                                <HelpCircle className="h-4 w-4 text-red-500" />
+                                                <span>{t('nav.support')}</span>
                                             </Link>
 
                                             {user?.isSuperAdmin && (

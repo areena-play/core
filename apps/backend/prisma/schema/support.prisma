@@ -1,0 +1,85 @@
+model FaqItem {
+  id            String       @id @default(uuid())
+  question      String
+  answer        String
+  questionI18n  Json?
+  answerI18n    Json?
+  category      String       @default("GENERAL")
+  categoryI18n  Json?
+  order         Int          @default(0)
+  isPublished   Boolean      @default(true)
+  associationId String?
+  clubId        String?
+  competitionId String?
+  createdById   String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  association   Association? @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  club          Club?        @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  competition   Competition? @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  createdBy     User?        @relation("CreatedFaqs", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([associationId])
+  @@index([clubId])
+  @@index([competitionId])
+  @@index([category])
+  @@index([isPublished])
+}
+
+model SupportSubject {
+  id             String            @id @default(uuid())
+  title          String
+  titleI18n      Json?
+  description    String?
+  descriptionI18n Json?
+  targetType     String            @default("SYSTEM") // SYSTEM, ASSOCIATION, CLUB, TOURNAMENT, CUSTOM_EMAIL
+  recipientEmail String?
+  associationId  String?
+  clubId         String?
+  competitionId  String?
+  isSystem       Boolean           @default(false)
+  isActive       Boolean           @default(true)
+  order          Int               @default(0)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  association    Association?      @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  club           Club?             @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  competition    Competition?      @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  inquiries      SupportInquiry[]
+
+  @@index([associationId])
+  @@index([clubId])
+  @@index([competitionId])
+  @@index([targetType])
+  @@index([isActive])
+}
+
+model SupportInquiry {
+  id             String          @id @default(uuid())
+  ticketNumber   String          @unique
+  senderName     String
+  senderEmail    String
+  senderUserId   String?
+  subjectId      String?
+  subjectTitle   String
+  message        String
+  contextType    String          @default("SYSTEM") // SYSTEM, ASSOCIATION, CLUB, TOURNAMENT
+  contextId      String?
+  recipientEmail String
+  status         String          @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  faqsConfirmed  Boolean         @default(true)
+  metadata       Json            @default("{}")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  senderUser     User?           @relation("UserSupportInquiries", fields: [senderUserId], references: [id], onDelete: SetNull)
+  subject        SupportSubject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+
+  @@index([senderEmail])
+  @@index([contextType])
+  @@index([contextId])
+  @@index([status])
+  @@index([createdAt])
+}

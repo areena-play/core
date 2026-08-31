@@ -53,10 +53,12 @@ model Competition {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
-  association    Association     @relation(fields: [associationId], references: [id], onDelete: Cascade)
-  season         Season?         @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  association    Association      @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  season         Season?          @relation(fields: [seasonId], references: [id], onDelete: SetNull)
   categories     Category[]
   calendarEvents CalendarEvent[]
+  faqItems       FaqItem[]
+  supportSubjects SupportSubject[]
 }
 
 model Category {

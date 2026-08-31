@@ -42,4 +42,48 @@ export class EmailService {
 
         return true;
     }
+
+    /**
+     * Sends a support inquiry to the designated admin / support recipient.
+     */
+    static async sendSupportInquiryEmail(data: {
+        to: string;
+        ticketNumber: string;
+        senderName: string;
+        senderEmail: string;
+        subjectTitle: string;
+        contextLabel: string;
+        message: string;
+    }): Promise<boolean> {
+        console.log('\n================== [SUPPORT EMAIL SERVICE] ==================');
+        console.log(`🎫 Ticket: ${data.ticketNumber}`);
+        console.log(`✉️  Destination: ${data.to}`);
+        console.log(`👤 From: ${data.senderName} <${data.senderEmail}>`);
+        console.log(`🏛️  Context: ${data.contextLabel}`);
+        console.log(`📋 Subject: [${data.ticketNumber}] ${data.subjectTitle}`);
+        console.log(`📝 Message:\n${data.message}`);
+        console.log('✅ FAQ Review Confirmed by User: YES');
+        console.log('=============================================================\n');
+
+        return true;
+    }
+
+    /**
+     * Sends an automated confirmation receipt to the user who filed the inquiry.
+     */
+    static async sendSupportReceiptEmail(data: {
+        to: string;
+        senderName: string;
+        ticketNumber: string;
+        subjectTitle: string;
+        contextLabel: string;
+    }): Promise<boolean> {
+        console.log('\n================== [SUPPORT RECEIPT EMAIL] ==================');
+        console.log(`✉️  Recipient: ${data.to} (${data.senderName})`);
+        console.log(`📋 Subject: [Receipt] Support Inquiry Received #${data.ticketNumber}`);
+        console.log(`🏛️  Target: ${data.contextLabel} - ${data.subjectTitle}`);
+        console.log('=============================================================\n');
+
+        return true;
+    }
 }

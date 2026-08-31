@@ -24,6 +24,8 @@ model Club {
   bexioConfig       BexioConfig?
   auditLogs         AuditLog[]            @relation("ClubAuditLogs")
   adminNotices      AdminNotice[]
+  faqItems          FaqItem[]
+  supportSubjects   SupportSubject[]
 }
 
 model ClubAssociation {

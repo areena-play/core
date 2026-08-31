@@ -33,6 +33,8 @@ model Association {
   bexioConfig       BexioConfig?
   auditLogs         AuditLog[]            @relation("AssociationAuditLogs")
   adminNotices      AdminNotice[]
+  faqItems          FaqItem[]
+  supportSubjects   SupportSubject[]
 }
 
 model AssociationHierarchy {

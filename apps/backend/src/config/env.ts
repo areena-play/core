@@ -34,6 +34,7 @@ export const config = {
         bucketName: process.env.AWS_BUCKET_NAME || process.env.MINIO_BUCKET_NAME || 'areena-local-storage',
     },
     isDemo: process.env.IS_DEMO === 'true',
+    supportEmail: process.env.AREENA_SUPPORT_EMAIL || process.env.SUPPORT_EMAIL || 'support@areena.ch',
 };
 
 export default config;

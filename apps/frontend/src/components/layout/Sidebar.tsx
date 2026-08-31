@@ -24,6 +24,7 @@ import {
     Receipt,
     Activity,
     Cookie,
+    HelpCircle,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18nContext';
 import { useMainView } from '@/lib/mainViewContext';
@@ -234,6 +235,7 @@ export function Sidebar() {
                         : []),
                     { label: t('nav.communications'), href: '/communications', icon: Mail },
                     { label: t('nav.developerApi'), href: '/developers', icon: Code2 },
+                    { label: t('nav.support'), href: '/support', icon: HelpCircle },
                 ],
             },
         ];
@@ -356,6 +358,12 @@ export function Sidebar() {
                             className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
                         >
                             {t('nav.impressum')}
+                        </Link>
+                        <Link
+                            href="/support"
+                            className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
+                        >
+                            Support
                         </Link>
                     </div>
                 </div>

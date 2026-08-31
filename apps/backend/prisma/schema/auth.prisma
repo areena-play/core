@@ -48,6 +48,8 @@ model User {
   auditLogs            AuditLog[]            @relation("UserAuditLogs")
   createdNotices       AdminNotice[]         @relation("CreatedAdminNotices")
   dismissedNotices     NoticeDismissal[]     @relation("UserNoticeDismissals")
+  createdFaqs          FaqItem[]             @relation("CreatedFaqs")
+  supportInquiries     SupportInquiry[]      @relation("UserSupportInquiries")
 
   // Matches where user is player
   homeMatchesP1 Match[] @relation("HomePlayer1")
