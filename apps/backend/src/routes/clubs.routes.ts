@@ -3,6 +3,7 @@ import { prisma } from '../config/prisma';
 import { validate } from '../middleware/validate';
 import { createClubSchema } from '@areena/shared';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { slugify } from '../utils/slugify';
 
 const router = Router();
 
@@ -22,11 +23,18 @@ router.get('/', async (req, res, next) => {
     }
 });
 
-// GET /clubs/:id
+// GET /clubs/:id - Lookup by UUID, slug, or code
 router.get('/:id', async (req, res, next) => {
     try {
-        const club = await prisma.club.findUnique({
-            where: { id: req.params.id },
+        const idOrSlug = req.params.id;
+        const club = await prisma.club.findFirst({
+            where: {
+                OR: [
+                    { id: idOrSlug },
+                    { slug: idOrSlug.toLowerCase() },
+                    { code: idOrSlug.toUpperCase() },
+                ],
+            },
             include: {
                 associations: { include: { association: true } },
                 adminRoles: { include: { user: true } },
@@ -51,17 +59,24 @@ router.get('/:id', async (req, res, next) => {
 // POST /clubs
 router.post('/', authenticateToken, validate(createClubSchema), async (req: AuthRequest, res: Response, next) => {
     try {
-        const { name, code, address, city, postalCode, country, email, phone, website, associationIds } = req.body;
+        const { name, code, slug: customSlug, address, city, postalCode, country, email, phone, website, associationIds } = req.body;
 
         const existingCode = await prisma.club.findUnique({ where: { code } });
         if (existingCode) {
             return res.status(400).json({ error: `Club with code '${code}' already exists` });
         }
 
+        const finalSlug = customSlug ? customSlug.trim().toLowerCase() : slugify(name || code);
+        const existingSlug = await prisma.club.findUnique({ where: { slug: finalSlug } });
+        if (existingSlug) {
+            return res.status(400).json({ error: `Club with slug '${finalSlug}' already exists` });
+        }
+
         const club = await prisma.club.create({
             data: {
                 name,
                 code,
+                slug: finalSlug,
                 address,
                 city,
                 postalCode,

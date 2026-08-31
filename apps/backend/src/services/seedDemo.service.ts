@@ -70,6 +70,7 @@ export async function seedDemoDatabase() {
             name: 'Swiss Table Tennis Federation',
             shortName: 'STTF',
             code: 'STTF',
+            slug: 'sttf',
             level: AssociationLevel.NATIONAL,
             isTopLevel: true,
             licenseIdTemplate: '{regionDigit}{year2}{counter3}',
@@ -88,6 +89,7 @@ export async function seedDemoDatabase() {
             name: 'STTF Ostschweiz (OTTV)',
             shortName: 'OTTV',
             code: 'STTF-OST',
+            slug: 'ottv',
             level: AssociationLevel.REGIONAL,
             isTopLevel: false,
             licenseIdTemplate: '{regionDigit}{year2}{counter3}',
@@ -100,6 +102,7 @@ export async function seedDemoDatabase() {
             name: 'Association Romande de Tennis de Table (ARTT)',
             shortName: 'ARTT',
             code: 'STTF-WEST',
+            slug: 'artt',
             level: AssociationLevel.REGIONAL,
             isTopLevel: false,
             licenseIdTemplate: '{regionDigit}{year2}{counter3}',
@@ -107,10 +110,55 @@ export async function seedDemoDatabase() {
         },
     });
 
+    const sttfZurich = await prisma.association.create({
+        data: {
+            name: 'Tischtennisverband Zürich (TTVZ)',
+            shortName: 'TTVZ',
+            code: 'TTVZ',
+            slug: 'ttvz',
+            level: AssociationLevel.LOCAL,
+            isTopLevel: false,
+            licenseIdTemplate: '{regionDigit}{year2}{counter3}',
+            regionDigit: 4,
+        },
+    });
+
+    const sttfStGallen = await prisma.association.create({
+        data: {
+            name: 'Tischtennisverband St. Gallen (TTSG)',
+            shortName: 'TTSG',
+            code: 'TTSG',
+            slug: 'ttsg',
+            level: AssociationLevel.LOCAL,
+            isTopLevel: false,
+            licenseIdTemplate: '{regionDigit}{year2}{counter3}',
+            regionDigit: 5,
+        },
+    });
+
+    const sttfVaud = await prisma.association.create({
+        data: {
+            name: 'Association Vaudoise de Tennis de Table (AVTT)',
+            shortName: 'AVTT',
+            code: 'AVTT',
+            slug: 'avtt',
+            level: AssociationLevel.LOCAL,
+            isTopLevel: false,
+            licenseIdTemplate: '{regionDigit}{year2}{counter3}',
+            regionDigit: 6,
+        },
+    });
+
     await prisma.associationHierarchy.createMany({
         data: [
+            // National -> Regionals
             { parentId: sttfNational.id, childId: sttfOst.id },
             { parentId: sttfNational.id, childId: sttfRomandie.id },
+            // Regional OTTV -> Local Sub-Associations
+            { parentId: sttfOst.id, childId: sttfZurich.id },
+            { parentId: sttfOst.id, childId: sttfStGallen.id },
+            // Regional ARTT -> Local Sub-Association
+            { parentId: sttfRomandie.id, childId: sttfVaud.id },
         ],
     });
 
@@ -124,12 +172,11 @@ export async function seedDemoDatabase() {
         },
     });
 
-    // 2. CLUBS
-    console.log('  🏓 Creating Clubs & Association Affiliations...');
     const clubZurich = await prisma.club.create({
         data: {
             name: 'Tischtennisclub Zürich-Affoltern',
             code: 'TTC-ZH',
+            slug: 'ttc-zurich',
             address: 'Fronwaldstrasse 115',
             city: 'Zürich',
             postalCode: '8046',
@@ -144,6 +191,7 @@ export async function seedDemoDatabase() {
         data: {
             name: 'TTC Bern Capitals',
             code: 'TTC-BE',
+            slug: 'ttc-bern',
             address: 'Brunnmattstrasse 20',
             city: 'Bern',
             postalCode: '3007',
@@ -158,6 +206,7 @@ export async function seedDemoDatabase() {
         data: {
             name: 'Club de Tennis de Table de Genève',
             code: 'CTTG-GE',
+            slug: 'ctt-geneve',
             address: 'Rue de Vermont 37',
             city: 'Genève',
             postalCode: '1202',
@@ -172,6 +221,7 @@ export async function seedDemoDatabase() {
         data: {
             name: 'TTC Basel Rheinfelden',
             code: 'TTC-BS',
+            slug: 'ttc-basel',
             address: 'St. Alban-Vorstadt 12',
             city: 'Basel',
             postalCode: '4052',
@@ -614,6 +664,8 @@ export async function seedDemoDatabase() {
         data: {
             name: 'Swiss National Table Tennis Championship 2026',
             type: CompetitionType.TOURNAMENT,
+            slug: 'swiss-championship-2026',
+            seriesSlug: 'swiss-championship',
             description: 'The premier national championship tournament bringing together the top licensed athletes.',
             associationId: sttfNational.id,
             seasonId: currentSeason.id,
@@ -655,6 +707,54 @@ export async function seedDemoDatabase() {
         ],
     });
 
+    const swissChampionship2025 = await prisma.competition.create({
+        data: {
+            name: 'Swiss National Table Tennis Championship 2025',
+            type: CompetitionType.TOURNAMENT,
+            slug: 'swiss-championship-2025',
+            seriesSlug: 'swiss-championship',
+            description: 'Previous year edition of the Swiss National Table Tennis Championship.',
+            associationId: sttfNational.id,
+            seasonId: currentSeason.id,
+            startDate: new Date('2025-06-13T08:00:00Z'),
+            endDate: new Date('2025-06-15T19:00:00Z'),
+            location: 'St. Jakobshalle, Basel',
+            status: CompetitionStatus.COMPLETED,
+        },
+    });
+
+    const nationalLeagueA = await prisma.competition.create({
+        data: {
+            name: 'National League A (NLA) 2025/2026',
+            type: CompetitionType.LEAGUE,
+            slug: 'national-league-a-2025-26',
+            seriesSlug: 'national-league-a',
+            description: 'Swiss top division team championship league with round-robin encounters.',
+            associationId: sttfNational.id,
+            seasonId: currentSeason.id,
+            startDate: new Date('2025-09-01T09:00:00Z'),
+            endDate: new Date('2026-05-30T18:00:00Z'),
+            location: 'Multiple Club Arenas',
+            status: CompetitionStatus.IN_PROGRESS,
+        },
+    });
+
+    const swissCup = await prisma.competition.create({
+        data: {
+            name: 'Swiss National Cup 2025/2026',
+            type: CompetitionType.SEASON_TOURNAMENT,
+            slug: 'swiss-cup-2025-26',
+            seriesSlug: 'swiss-cup',
+            description: 'Full-season knockout cup competition spanning across national and regional associations.',
+            associationId: sttfNational.id,
+            seasonId: currentSeason.id,
+            startDate: new Date('2025-10-01T08:00:00Z'),
+            endDate: new Date('2026-06-20T20:00:00Z'),
+            location: 'National Cup Finals, Bern',
+            status: CompetitionStatus.IN_PROGRESS,
+        },
+    });
+
     const encounterFinal = await prisma.encounter.create({
         data: {
             categoryId: menEliteCategory.id,
@@ -688,19 +788,6 @@ export async function seedDemoDatabase() {
                 { setNumber: 3, homeScore: 11, awayScore: 7 },
                 { setNumber: 4, homeScore: 11, awayScore: 9 },
             ],
-        },
-    });
-
-    await prisma.competition.create({
-        data: {
-            name: 'Swiss National League A (NLA) 2025/2026',
-            type: CompetitionType.LEAGUE,
-            description: 'Official Swiss National League A championship season.',
-            associationId: sttfNational.id,
-            seasonId: currentSeason.id,
-            startDate: new Date('2025-09-01T00:00:00Z'),
-            endDate: new Date('2026-05-30T00:00:00Z'),
-            status: CompetitionStatus.IN_PROGRESS,
         },
     });
 

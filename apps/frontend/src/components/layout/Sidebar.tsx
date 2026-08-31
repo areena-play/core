@@ -64,10 +64,13 @@ export function Sidebar() {
     const { user } = useAuth();
     const { activeView, entityId, entityMeta, currentViewMeta, mainAssoc, associations } = useMainView();
 
-    // Track expanded status of collapsible groups (e.g. Competitions, People)
+    // Track expanded status of collapsible groups (e.g. Competitions, People, Associations)
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
         competitions: true,
         people: true,
+        associations: true,
+        verbände: true,
+        associazioni: true,
     });
 
     const toggleGroup = (key: string) => {
@@ -215,17 +218,38 @@ export function Sidebar() {
         const supportHref = isSubAssoc ? `${subAssocPrefix}/support` : '/support';
         const mgmtPrefix = isSubAssoc ? `${subAssocPrefix}/management` : '/management';
 
-        const currentAssocId = isSubAssoc ? entityId : (mainAssoc?.id || 'main');
-        const currentAssoc = associations?.find((a: any) => a.id === currentAssocId) || (isSubAssoc ? null : mainAssoc);
+        // Recursive DAG resolver to get ALL descendant sub-associations
+        const getAllDescendantAssocs = (rootId: string, allAssocs: any[]): any[] => {
+            const result: any[] = [];
+            const visited = new Set<string>();
 
-        // Direct child / sub-associations of current association
-        const directSubAssocs = (associations || []).filter((a: any) =>
-            a.id !== currentAssoc?.id &&
-            (
-                a.parentHierarchies?.some((ph: any) => ph.parentId === currentAssoc?.id) ||
-                currentAssoc?.childHierarchies?.some((ch: any) => ch.childId === a.id || ch.child?.id === a.id)
-            )
-        );
+            const walk = (parentId: string) => {
+                for (const assoc of allAssocs) {
+                    if (assoc.id === parentId || visited.has(assoc.id)) continue;
+                    const isChild =
+                        assoc.parentHierarchies?.some((ph: any) => ph.parentId === parentId || ph.parent?.id === parentId) ||
+                        allAssocs.find((p) => p.id === parentId)?.childHierarchies?.some((ch: any) => ch.childId === assoc.id || ch.child?.id === assoc.id);
+                    if (isChild) {
+                        visited.add(assoc.id);
+                        result.push(assoc);
+                        walk(assoc.id);
+                    }
+                }
+            };
+
+            if (rootId) {
+                walk(rootId);
+            }
+            return result;
+        };
+
+        const currentAssocId = isSubAssoc ? entityId : (mainAssoc?.id || 'main');
+        const currentAssoc = associations?.find((a: any) => a.id === currentAssocId || a.slug === currentAssocId || a.code?.toLowerCase() === currentAssocId.toLowerCase()) || (isSubAssoc ? null : mainAssoc);
+
+        // Resolve all descendant sub-associations (recursively, not just direct)
+        const subAssocsList = isSubAssoc && currentAssoc?.id
+            ? getAllDescendantAssocs(currentAssoc.id, associations || [])
+            : (associations || []).filter((a: any) => !a.isTopLevel && a.id !== mainAssoc?.id);
 
         const sectionsList: NavSection[] = [
             // 1. Core Section: Dashboard, Competitions, People, Clubs, Refresher Courses, Calendar
@@ -301,28 +325,26 @@ export function Sidebar() {
                         href: calendarHref,
                         icon: Calendar,
                     },
-                ],
-            },
-
-            // 2. Association Section: Overview on top + Direct Sub-Associations listed below
-            {
-                sectionTitle: t('nav.associationsSection'),
-                items: [
                     {
-                        label: t('nav.associationsOverview'),
+                        label: t('nav.associationsSection'),
                         href: associationsHref,
                         icon: Building2,
+                        children: [
+                            {
+                                label: t('nav.overview'),
+                                href: associationsHref,
+                            },
+                            ...subAssocsList.map((sub: any) => ({
+                                label: sub.name,
+                                href: `/association/${sub.slug || sub.id}`,
+                                badge: sub.code || sub.shortName,
+                            })),
+                        ],
                     },
-                    ...directSubAssocs.map((sub: any) => ({
-                        label: sub.name,
-                        href: `/association/${sub.id}`,
-                        icon: Network,
-                        badge: sub.code || sub.shortName,
-                    })),
                 ],
             },
 
-            // 3. Utility Section: Elo calculator, Level table, Developer API, Support
+            // 2. Utility Section: Elo calculator, Level table, Developer API, Support
             {
                 sectionTitle: t('nav.utilitiesSection'),
                 items: [
@@ -350,7 +372,7 @@ export function Sidebar() {
             },
         ];
 
-        // 4. Operations / Governance Section: Shown to Association Admins
+        // 3. Operations / Governance Section: Shown to Association Admins
         if (isAssocAdmin) {
             sectionsList.push({
                 sectionTitle: t('nav.operationsGovernance'),
@@ -394,7 +416,7 @@ export function Sidebar() {
             });
         }
 
-        // 5. Super Admin Section: Visible ONLY to Super Admins
+        // 4. Super Admin Section: Visible ONLY to Super Admins
         if (user?.isSuperAdmin) {
             sectionsList.push({
                 sectionTitle: t('nav.superAdminSection'),
@@ -562,11 +584,6 @@ export function Sidebar() {
                                                             }`}
                                                         >
                                                             <span>{sub.label}</span>
-                                                            {sub.badge && (
-                                                                <span className="rounded bg-slate-100 px-1 py-0.5 text-[8px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                                                                    {sub.badge}
-                                                                </span>
-                                                            )}
                                                         </Link>
                                                     );
                                                 })}

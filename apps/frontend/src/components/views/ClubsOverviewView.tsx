@@ -39,6 +39,7 @@ export function ClubsOverviewView({ scopedAssociationId }: ClubsOverviewViewProp
     const [showModal, setShowModal] = useState(false);
     const [formName, setFormName] = useState('');
     const [formCode, setFormCode] = useState('');
+    const [formSlug, setFormSlug] = useState('');
     const [formCity, setFormCity] = useState('');
     const [formPostalCode, setFormPostalCode] = useState('');
     const [formAddress, setFormAddress] = useState('');
@@ -86,6 +87,7 @@ export function ClubsOverviewView({ scopedAssociationId }: ClubsOverviewViewProp
             await api.createClub({
                 name: formName,
                 code: formCode.toUpperCase(),
+                slug: formSlug ? formSlug.trim().toLowerCase() : undefined,
                 address: formAddress,
                 postalCode: formPostalCode,
                 city: formCity,
@@ -96,6 +98,7 @@ export function ClubsOverviewView({ scopedAssociationId }: ClubsOverviewViewProp
             setShowModal(false);
             setFormName('');
             setFormCode('');
+            setFormSlug('');
             setFormCity('');
             setFormPostalCode('');
             setFormAddress('');
@@ -237,7 +240,7 @@ export function ClubsOverviewView({ scopedAssociationId }: ClubsOverviewViewProp
                     {filteredClubs.map((club: any) => (
                         <Link
                             key={club.id}
-                            href={`/club/${club.id}`}
+                            href={`/club/${club.slug || club.id}`}
                             className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-xs hover:shadow-md hover:border-blue-500/50 transition flex flex-col justify-between space-y-4 group"
                         >
                             <div className="space-y-3">
@@ -317,18 +320,32 @@ export function ClubsOverviewView({ scopedAssociationId }: ClubsOverviewViewProp
                             )}
 
                             <form onSubmit={handleCreateClub} className="space-y-4 text-xs">
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        Club Official Name *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="e.g. BC Zurich Nord"
-                                        value={formName}
-                                        onChange={(e) => setFormName(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
-                                    />
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                            Club Official Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            placeholder="e.g. BC Zurich Nord"
+                                            value={formName}
+                                            onChange={(e) => setFormName(e.target.value)}
+                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                            Custom URL Slug (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. bc-zurich-nord"
+                                            value={formSlug}
+                                            onChange={(e) => setFormSlug(e.target.value)}
+                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                                        />
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">

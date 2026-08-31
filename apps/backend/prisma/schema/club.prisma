@@ -2,6 +2,7 @@ model Club {
   id         String   @id @default(uuid())
   name       String
   code       String   @unique
+  slug       String   @unique
   address    String
   city       String
   postalCode String

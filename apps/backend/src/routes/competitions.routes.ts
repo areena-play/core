@@ -4,6 +4,7 @@ import { validate } from '../middleware/validate';
 import { createCompetitionSchema, createCategorySchema, updateMatchScoreSchema } from '@areena/shared';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { CompetitionService } from '../services/competition.service';
+import { slugify } from '../utils/slugify';
 
 const router = Router();
 
@@ -50,7 +51,7 @@ router.get('/', async (req, res, next) => {
                 ...(status ? { status: status as any } : {}),
             },
             include: {
-                association: { select: { id: true, name: true, code: true } },
+                association: { select: { id: true, name: true, code: true, slug: true } },
                 season: { select: { id: true, name: true } },
                 categories: {
                     include: {
@@ -67,59 +68,95 @@ router.get('/', async (req, res, next) => {
     }
 });
 
-// GET /competitions/:id - Single competition details
+// GET /competitions/:id - Single competition details (by UUID, unique slug, or seriesSlug)
 router.get('/:id', async (req, res, next) => {
     try {
-        const competition = await prisma.competition.findUnique({
-            where: { id: req.params.id },
-            include: {
-                association: true,
-                season: true,
-                categories: {
-                    include: {
-                        groups: {
-                            include: {
-                                standings: {
-                                    include: { team: true },
-                                    orderBy: [{ tablePoints: 'desc' }, { matchesWon: 'desc' }, { setsWon: 'desc' }],
+        const idOrSlug = req.params.id;
+
+        const includeConfig = {
+            association: true,
+            season: true,
+            categories: {
+                include: {
+                    groups: {
+                        include: {
+                            standings: {
+                                include: { team: true },
+                                orderBy: [{ tablePoints: 'desc' as const }, { matchesWon: 'desc' as const }, { setsWon: 'desc' as const }],
+                            },
+                        },
+                    },
+                    teams: {
+                        include: {
+                            team: {
+                                include: {
+                                    members: { include: { user: true } },
+                                    club: true,
                                 },
                             },
                         },
-                        teams: {
-                            include: {
-                                team: {
-                                    include: {
-                                        members: { include: { user: true } },
-                                        club: true,
-                                    },
+                    },
+                    encounters: {
+                        include: {
+                            homeTeam: true,
+                            awayTeam: true,
+                            matches: {
+                                include: {
+                                    homePlayer1: true,
+                                    homePlayer2: true,
+                                    awayPlayer1: true,
+                                    awayPlayer2: true,
                                 },
                             },
                         },
-                        encounters: {
-                            include: {
-                                homeTeam: true,
-                                awayTeam: true,
-                                matches: {
-                                    include: {
-                                        homePlayer1: true,
-                                        homePlayer2: true,
-                                        awayPlayer1: true,
-                                        awayPlayer2: true,
-                                    },
-                                },
-                            },
-                            orderBy: [{ round: 'asc' }, { scheduledAt: 'asc' }],
-                        },
+                        orderBy: [{ round: 'asc' as const }, { scheduledAt: 'asc' as const }],
                     },
                 },
             },
+        };
+
+        // 1. Try finding by direct ID or unique slug
+        let competition = await prisma.competition.findFirst({
+            where: {
+                OR: [
+                    { id: idOrSlug },
+                    { slug: idOrSlug },
+                ],
+            },
+            include: includeConfig,
         });
+
+        // 2. If not found, resolve canonical recurring series slug (latest active/most recent edition)
+        if (!competition) {
+            competition = await prisma.competition.findFirst({
+                where: { seriesSlug: idOrSlug },
+                orderBy: [{ startDate: 'desc' }],
+                include: includeConfig,
+            });
+        }
 
         if (!competition) {
             return res.status(404).json({ error: 'Competition not found' });
         }
 
-        res.json(competition);
+        // Fetch sibling editions in the series if this competition belongs to a series
+        let editions: any[] = [];
+        if (competition.seriesSlug) {
+            editions = await prisma.competition.findMany({
+                where: { seriesSlug: competition.seriesSlug },
+                select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    startDate: true,
+                    endDate: true,
+                    status: true,
+                },
+                orderBy: { startDate: 'desc' },
+            });
+        }
+
+        res.json({ ...competition, editions });
     } catch (err) {
         next(err);
     }
@@ -132,11 +169,22 @@ router.post(
     validate(createCompetitionSchema),
     async (req: AuthRequest, res: Response, next) => {
         try {
-            const { name, description, type, associationId, seasonId, startDate, endDate, location } = req.body;
+            const { name, slug: customSlug, seriesSlug, description, type, associationId, seasonId, startDate, endDate, location } = req.body;
+
+            let finalSlug = customSlug ? customSlug.trim().toLowerCase() : slugify(name);
+            const existing = await prisma.competition.findUnique({ where: { slug: finalSlug } });
+            if (existing) {
+                if (customSlug) {
+                    return res.status(400).json({ error: `Competition slug '${finalSlug}' already exists` });
+                }
+                finalSlug = `${finalSlug}-${Date.now().toString().slice(-4)}`;
+            }
 
             const competition = await prisma.competition.create({
                 data: {
                     name,
+                    slug: finalSlug,
+                    seriesSlug: seriesSlug ? seriesSlug.trim().toLowerCase() : null,
                     description,
                     type,
                     associationId,

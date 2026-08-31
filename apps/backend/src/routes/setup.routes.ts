@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../config/prisma';
 import { config } from '../config/env';
+import { slugify } from '../utils/slugify';
 
 const router = Router();
 
@@ -81,11 +82,16 @@ router.post('/initialize', async (req: Request, res: Response) => {
             });
 
             // B. Create Primary Main Association
+            const finalSlug = association.slug
+                ? association.slug.trim().toLowerCase()
+                : slugify(association.code || association.shortName || association.name);
+
             const assoc = await tx.association.create({
                 data: {
                     name: association.name.trim(),
                     shortName: association.shortName ? association.shortName.trim() : association.name.substring(0, 10),
                     code: association.code ? association.code.toUpperCase().trim() : 'MAIN',
+                    slug: finalSlug,
                     level: (association.level as any) || 'NATIONAL',
                     isTopLevel: true,
                     regionDigit: association.regionDigit || 1,

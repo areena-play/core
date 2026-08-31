@@ -1,6 +1,7 @@
 export enum CompetitionType {
     LEAGUE = 'LEAGUE',
     TOURNAMENT = 'TOURNAMENT',
+    SEASON_TOURNAMENT = 'SEASON_TOURNAMENT',
 }
 
 export enum CompetitionStatus {

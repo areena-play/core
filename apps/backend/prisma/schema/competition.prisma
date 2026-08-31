@@ -1,6 +1,7 @@
 enum CompetitionType {
   LEAGUE
   TOURNAMENT
+  SEASON_TOURNAMENT
 }
 
 enum CompetitionStatus {
@@ -43,6 +44,8 @@ model Competition {
   id            String            @id @default(uuid())
   type          CompetitionType
   name          String
+  slug          String            @unique
+  seriesSlug    String?
   description   String?
   associationId String
   seasonId      String?
@@ -53,12 +56,14 @@ model Competition {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
-  association    Association      @relation(fields: [associationId], references: [id], onDelete: Cascade)
-  season         Season?          @relation(fields: [seasonId], references: [id], onDelete: SetNull)
-  categories     Category[]
-  calendarEvents CalendarEvent[]
-  faqItems       FaqItem[]
+  association     Association      @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  season          Season?          @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  categories      Category[]
+  calendarEvents  CalendarEvent[]
+  faqItems        FaqItem[]
   supportSubjects SupportSubject[]
+
+  @@index([seriesSlug])
 }
 
 model Category {

@@ -9,6 +9,7 @@ model Association {
   name              String
   shortName         String
   code              String           @unique
+  slug              String           @unique
   level             AssociationLevel
   isTopLevel        Boolean          @default(false)
   rules             Json             @default("{}")

@@ -56,8 +56,15 @@ router.get('/', async (req, res, next) => {
 // GET /associations/:id - Single association details
 router.get('/:id', async (req, res, next) => {
     try {
-        const association = await prisma.association.findUnique({
-            where: { id: req.params.id },
+        const idOrSlug = req.params.id;
+        const association = await prisma.association.findFirst({
+            where: {
+                OR: [
+                    { id: idOrSlug },
+                    { slug: idOrSlug.toLowerCase() },
+                    { code: idOrSlug.toUpperCase() },
+                ],
+            },
             include: {
                 parentHierarchies: { include: { parent: true } },
                 childHierarchies: { include: { child: true } },
@@ -80,7 +87,22 @@ router.get('/:id', async (req, res, next) => {
 // GET /associations/:id/rules - Effective rules with national overrides
 router.get('/:id/rules', async (req, res, next) => {
     try {
-        const effectiveRules = await HierarchyService.getEffectiveRules(req.params.id);
+        const idOrSlug = req.params.id;
+        const assoc = await prisma.association.findFirst({
+            where: {
+                OR: [
+                    { id: idOrSlug },
+                    { slug: idOrSlug.toLowerCase() },
+                    { code: idOrSlug.toUpperCase() },
+                ],
+            },
+        });
+
+        if (!assoc) {
+            return res.status(404).json({ error: 'Association not found' });
+        }
+
+        const effectiveRules = await HierarchyService.getEffectiveRules(assoc.id);
         res.json(effectiveRules);
     } catch (err) {
         next(err);
@@ -99,6 +121,7 @@ router.post(
                 name,
                 shortName,
                 code,
+                slug: customSlug,
                 level,
                 isTopLevel,
                 parentAssociationIds,
@@ -112,11 +135,18 @@ router.post(
                 return res.status(400).json({ error: `Association with code '${code}' already exists` });
             }
 
+            const finalSlug = customSlug ? customSlug.trim().toLowerCase() : (code ? code.toLowerCase() : shortName.toLowerCase());
+            const existingSlug = await prisma.association.findUnique({ where: { slug: finalSlug } });
+            if (existingSlug) {
+                return res.status(400).json({ error: `Association with slug '${finalSlug}' already exists` });
+            }
+
             const association = await prisma.association.create({
                 data: {
                     name,
                     shortName,
                     code,
+                    slug: finalSlug,
                     level,
                     isTopLevel: !!isTopLevel,
                     rules: rules || {},

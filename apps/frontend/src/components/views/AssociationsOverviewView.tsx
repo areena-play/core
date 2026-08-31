@@ -119,7 +119,7 @@ export function AssociationsOverviewView({ scopedAssociationId }: AssociationsOv
                         {childAssocs.map((sub: any) => (
                             <Link
                                 key={sub.id}
-                                href={`/association/${sub.id}`}
+                                href={`/association/${sub.slug || sub.id}`}
                                 className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-xs hover:shadow-md hover:border-red-500/50 transition space-y-3 group"
                             >
                                 <div className="flex items-center justify-between">

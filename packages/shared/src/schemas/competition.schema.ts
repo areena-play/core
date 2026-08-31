@@ -3,6 +3,8 @@ import { CompetitionType, GenderRestriction, LicenseType } from '../types';
 
 export const createCompetitionSchema = z.object({
     name: z.string().min(2),
+    slug: z.string().min(2).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must contain only lowercase alphanumeric characters and hyphens').optional(),
+    seriesSlug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Series slug must contain only lowercase alphanumeric characters and hyphens').optional().nullable(),
     description: z.string().optional(),
     type: z.nativeEnum(CompetitionType),
     associationId: z.string().uuid(),
