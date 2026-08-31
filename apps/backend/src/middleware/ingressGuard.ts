@@ -24,13 +24,13 @@ const rateLimitMap = new Map<string, RateLimitBucket>();
 const RATE_LIMIT_CAPACITY = 120; // 120 requests capacity
 const REFILL_RATE_PER_SEC = 2; // +2 requests per second refill (120 req/min sustained)
 
-function checkFrontendRateLimit(ip: string): { allowed: boolean; remaining: number; retryAfter: number } {
+function checkFrontendRateLimit(rateLimitKey: string): { allowed: boolean; remaining: number; retryAfter: number } {
     const now = Date.now();
-    let bucket = rateLimitMap.get(ip);
+    let bucket = rateLimitMap.get(rateLimitKey);
 
     if (!bucket) {
         bucket = { tokens: RATE_LIMIT_CAPACITY, lastRefill: now };
-        rateLimitMap.set(ip, bucket);
+        rateLimitMap.set(rateLimitKey, bucket);
     } else {
         const timePassed = (now - bucket.lastRefill) / 1000;
         bucket.tokens = Math.min(RATE_LIMIT_CAPACITY, bucket.tokens + timePassed * REFILL_RATE_PER_SEC);
@@ -135,7 +135,8 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
             const payload = jwt.verify(token, config.jwtSecret) as any;
             if (payload && payload.userId) {
                 req.user = payload;
-                const rl = checkFrontendRateLimit(clientIp);
+                // Key by User ID so multiple users sharing a single WiFi/NAT IP don't exhaust each other's quota
+                const rl = checkFrontendRateLimit(`user:${payload.userId}`);
                 if (!rl.allowed) {
                     return res.status(429).json({
                         error: 'Too Many Requests',
@@ -162,7 +163,7 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
 
     if (isDev && isLocalhost) {
         req.isFrontend = true;
-        const rl = checkFrontendRateLimit(clientIp);
+        const rl = checkFrontendRateLimit(`ip:${clientIp}`);
         res.setHeader('X-RateLimit-Remaining', String(rl.remaining));
         return next();
     }
@@ -182,7 +183,7 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
     if (isSameOriginFetch || isMatchingOrigin) {
         req.isFrontend = true;
 
-        const rl = checkFrontendRateLimit(clientIp);
+        const rl = checkFrontendRateLimit(`ip:${clientIp}`);
         if (!rl.allowed) {
             return res.status(429).json({
                 error: 'Too Many Requests',

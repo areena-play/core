@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { SupportService } from '../services/support.service';
 import { authenticateToken, optionalAuth, AuthRequest } from '../middleware/auth';
-import { AuditService } from '../services/auditService';
+import { AuditService } from '../services/audit.service';
 import { AuditCategory } from '@areena/shared';
 import { prisma } from '../config/prisma';
 

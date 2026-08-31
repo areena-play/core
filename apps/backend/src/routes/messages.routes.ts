@@ -3,8 +3,8 @@ import { prisma } from '../config/prisma';
 import { validate } from '../middleware/validate';
 import { createBroadcastSchema, AuditCategory } from '@areena/shared';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
-import { BroadcastService } from '../services/broadcastService';
-import { AuditService } from '../services/auditService';
+import { BroadcastService } from '../services/broadcast.service';
+import { AuditService } from '../services/audit.service';
 
 const router = Router();
 

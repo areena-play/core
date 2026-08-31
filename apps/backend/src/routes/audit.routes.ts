@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { auditLogQuerySchema } from '@areena/shared';
-import { AuditService } from '../services/auditService';
+import { AuditService } from '../services/audit.service';
 
 const router = Router();
 

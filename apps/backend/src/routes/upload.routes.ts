@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import multer from 'multer';
-import { S3Service } from '../services/s3Service';
+import { S3Service } from '../services/s3.service';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 
 const router = Router();

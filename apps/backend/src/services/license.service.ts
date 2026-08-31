@@ -1,7 +1,7 @@
 import { prisma } from '../config/prisma';
 import { LicenseType, LicenseStatus } from '@areena/shared';
 import { redisPub } from '../config/redis';
-import { DistributedLockService } from './distributedLockService';
+import { DistributedLockService } from './distributedLock.service';
 
 export class LicenseService {
     /**

@@ -14,7 +14,7 @@ import {
     AuditCategory,
 } from '@areena/shared';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
-import { AuditService } from '../services/auditService';
+import { AuditService } from '../services/audit.service';
 import { EmailService } from '../services/email.service';
 
 const router = Router();

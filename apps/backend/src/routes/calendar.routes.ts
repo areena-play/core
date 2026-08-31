@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../config/prisma';
-import { HierarchyService } from '../services/hierarchyService';
+import { HierarchyService } from '../services/hierarchy.service';
 
 const router = Router();
 

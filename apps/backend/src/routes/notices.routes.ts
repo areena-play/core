@@ -3,7 +3,7 @@ import { prisma } from '../config/prisma';
 import { validate } from '../middleware/validate';
 import { createNoticeSchema, updateNoticeSchema, AuditCategory, NoticeTargetGroup } from '@areena/shared';
 import { authenticateToken, optionalAuth, AuthRequest } from '../middleware/auth';
-import { AuditService } from '../services/auditService';
+import { AuditService } from '../services/audit.service';
 
 const router = Router();
 

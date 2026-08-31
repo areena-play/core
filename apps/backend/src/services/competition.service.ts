@@ -1,7 +1,7 @@
 import { prisma } from '../config/prisma';
 import { EncounterStatus, MatchWinner, MatchType } from '@areena/shared';
 import { redisPub } from '../config/redis';
-import { DistributedLockService } from './distributedLockService';
+import { DistributedLockService } from './distributedLock.service';
 
 export class CompetitionService {
     /**

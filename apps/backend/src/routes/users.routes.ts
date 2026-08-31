@@ -9,7 +9,7 @@ import {
     adminResetPasswordSchema,
     AuditCategory,
 } from '@areena/shared';
-import { AuditService } from '../services/auditService';
+import { AuditService } from '../services/audit.service';
 import { EmailService } from '../services/email.service';
 
 const router = Router();

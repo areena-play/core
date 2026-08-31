@@ -3,7 +3,7 @@ import multer from 'multer';
 import { prisma } from '../config/prisma';
 import { validate } from '../middleware/validate';
 import { authenticateToken, requireSuperAdmin, AuthRequest } from '../middleware/auth';
-import { S3Service } from '../services/s3Service';
+import { S3Service } from '../services/s3.service';
 import { config } from '../config/env';
 import {
     createAssociationSchema,
@@ -11,8 +11,8 @@ import {
     updateAssociationSettingsSchema,
     AuditCategory,
 } from '@areena/shared';
-import { HierarchyService } from '../services/hierarchyService';
-import { AuditService } from '../services/auditService';
+import { HierarchyService } from '../services/hierarchy.service';
+import { AuditService } from '../services/audit.service';
 
 const router = Router();
 const uploadLogo = multer({

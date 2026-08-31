@@ -3,7 +3,7 @@ import { prisma } from '../config/prisma';
 import { validate } from '../middleware/validate';
 import { createCompetitionSchema, createCategorySchema, updateMatchScoreSchema } from '@areena/shared';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
-import { CompetitionService } from '../services/competitionService';
+import { CompetitionService } from '../services/competition.service';
 
 const router = Router();
 

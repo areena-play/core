@@ -10,9 +10,9 @@ import {
     InvoiceCategory,
     AuditCategory,
 } from '@areena/shared';
-import { BexioService } from '../services/bexioService';
-import { AuditService } from '../services/auditService';
-import { DistributedLockService } from '../services/distributedLockService';
+import { BexioService } from '../services/bexio.service';
+import { AuditService } from '../services/audit.service';
+import { DistributedLockService } from '../services/distributedLock.service';
 
 const router = Router();
 
