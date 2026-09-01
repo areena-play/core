@@ -27,6 +27,9 @@ export async function clearDatabase() {
     await prisma.adminNotice.deleteMany();
     await prisma.messageRecipient.deleteMany();
     await prisma.broadcastMessage.deleteMany();
+    await prisma.supportInquiry.deleteMany();
+    await prisma.faqItem.deleteMany();
+    await prisma.supportSubject.deleteMany();
     await prisma.locationUnitReservation.deleteMany();
     await prisma.locationUnit.deleteMany();
     await prisma.locationClub.deleteMany();
@@ -48,6 +51,8 @@ export async function clearDatabase() {
     await prisma.team.deleteMany();
     await prisma.competitionGroup.deleteMany();
     await prisma.category.deleteMany();
+    await prisma.competitionSpeakerCallout.deleteMany();
+    await prisma.competitionUserRole.deleteMany();
     await prisma.competition.deleteMany();
     await prisma.license.deleteMany();
     await prisma.season.deleteMany();

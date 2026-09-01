@@ -34,6 +34,7 @@ export const de: TranslationDictionary = {
         dataProtection: 'Datenschutz',
         subAssociations: 'Unterverbände',
         support: 'Support & FAQs',
+        userManual: 'Benutzerhandbuch',
         people: 'Personen',
         overview: 'Übersicht',
         peopleOverview: 'Übersicht',

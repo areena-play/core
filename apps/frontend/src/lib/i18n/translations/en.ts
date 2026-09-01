@@ -32,6 +32,7 @@ export const en = {
         dataProtection: 'Data Protection',
         subAssociations: 'Sub-Associations',
         support: 'Support & FAQs',
+        userManual: 'User Manual',
         people: 'People',
         overview: 'Overview',
         peopleOverview: 'Overview',

@@ -745,6 +745,17 @@ class ApiClient {
             body: JSON.stringify({ toEmail }),
         });
     }
+
+    exportDatabase() {
+        return this.request('/admin/database/export');
+    }
+
+    importDatabase(dumpData: any) {
+        return this.request('/admin/database/import', {
+            method: 'POST',
+            body: JSON.stringify(dumpData),
+        });
+    }
 }
 
 export const api = new ApiClient();

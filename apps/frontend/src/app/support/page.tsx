@@ -84,15 +84,19 @@ function SupportPageContent() {
                     api.getClubs().catch(() => []),
                     api.getCompetitions().catch(() => []),
                 ]);
-                setAssociations(assocData || []);
-                setClubs(clubData || []);
-                setCompetitions(compData || []);
+                const aList = Array.isArray(assocData) ? assocData : assocData?.associations || [];
+                const cList = Array.isArray(clubData) ? clubData : clubData?.clubs || [];
+                const compList = Array.isArray(compData) ? compData : compData?.competitions || [];
+
+                setAssociations(aList);
+                setClubs(cList);
+                setCompetitions(compList);
 
                 // If contextId not set yet, pick first available
                 if (!contextId) {
-                    if (contextType === 'ASSOCIATION' && assocData?.[0]) setContextId(assocData[0].id);
-                    if (contextType === 'CLUB' && clubData?.[0]) setContextId(clubData[0].id);
-                    if (contextType === 'TOURNAMENT' && compData?.[0]) setContextId(compData[0].id);
+                    if (contextType === 'ASSOCIATION' && aList[0]) setContextId(aList[0].id);
+                    if (contextType === 'CLUB' && cList[0]) setContextId(cList[0].id);
+                    if (contextType === 'TOURNAMENT' && compList[0]) setContextId(compList[0].id);
                 }
             } catch (err) {
                 console.error('Failed to load support context entities', err);
@@ -105,28 +109,38 @@ function SupportPageContent() {
     useEffect(() => {
         if (contextType === 'SYSTEM') {
             setContextId('');
-        } else if (contextType === 'ASSOCIATION' && associations.length > 0 && !associations.some((a) => a.id === contextId)) {
-            setContextId(associations[0].id);
-        } else if (contextType === 'CLUB' && clubs.length > 0 && !clubs.some((c) => c.id === contextId)) {
-            setContextId(clubs[0].id);
-        } else if (contextType === 'TOURNAMENT' && competitions.length > 0 && !competitions.some((c) => c.id === contextId)) {
-            setContextId(competitions[0].id);
+        } else if (contextType === 'ASSOCIATION') {
+            if (associations.length > 0 && !associations.some((a) => a.id === contextId)) {
+                setContextId(associations[0].id);
+            }
+        } else if (contextType === 'CLUB') {
+            if (clubs.length > 0 && !clubs.some((c) => c.id === contextId)) {
+                setContextId(clubs[0].id);
+            }
+        } else if (contextType === 'TOURNAMENT') {
+            if (competitions.length > 0 && !competitions.some((c) => c.id === contextId)) {
+                setContextId(competitions[0].id);
+            }
         }
-    }, [contextType, associations, clubs, competitions]);
+    }, [contextType, associations, clubs, competitions, contextId]);
 
     // Fetch FAQs & Subjects whenever context changes
     const fetchSupportData = async () => {
         setLoadingFaqs(true);
         setLoadingSubjects(true);
         try {
+            const queryParams: any = { contextType };
+            if (contextId) queryParams.contextId = contextId;
+
             const [faqsData, subsData] = await Promise.all([
-                api.getFaqs({ contextType, contextId }),
-                api.getSupportSubjects({ contextType, contextId }),
+                api.getFaqs(queryParams),
+                api.getSupportSubjects(queryParams),
             ]);
-            setFaqs(faqsData || []);
-            setSubjects(subsData || []);
-            if (subsData && subsData.length > 0) {
-                setSelectedSubjectId(subsData[0].id);
+            setFaqs(Array.isArray(faqsData) ? faqsData : faqsData?.faqs || []);
+            const subjectsList = Array.isArray(subsData) ? subsData : subsData?.subjects || [];
+            setSubjects(subjectsList);
+            if (subjectsList && subjectsList.length > 0) {
+                setSelectedSubjectId(subjectsList[0].id);
             } else {
                 setSelectedSubjectId('');
             }
@@ -139,6 +153,10 @@ function SupportPageContent() {
     };
 
     useEffect(() => {
+        // If an entity context is active but contextId is not resolved yet, wait for it
+        if (contextType !== 'SYSTEM' && !contextId) {
+            return;
+        }
         fetchSupportData();
     }, [contextType, contextId]);
 
