@@ -262,6 +262,7 @@ function SidebarContent() {
         const usersHref = isSubAssoc ? `${subAssocPrefix}/users` : '/users';
         const clubsHref = isSubAssoc ? `${subAssocPrefix}/clubs` : '/clubs';
         const coursesHref = isSubAssoc ? `${subAssocPrefix}/courses` : '/courses';
+        const locationsHref = isSubAssoc ? `${subAssocPrefix}/locations` : '/locations';
         const calendarHref = isSubAssoc ? `${subAssocPrefix}/calendar` : '/calendar';
         const associationsHref = isSubAssoc ? `${subAssocPrefix}/associations` : '/associations';
         const eloCalculatorHref = isSubAssoc ? `${subAssocPrefix}/utilities/elo-calculator` : '/utilities/elo-calculator';
@@ -365,8 +366,8 @@ function SidebarContent() {
                         icon: GraduationCap,
                     },
                     {
-                        label: t('nav.locations') || 'Locations',
-                        href: '/locations',
+                        label: t('nav.locations'),
+                        href: locationsHref,
                         icon: MapPin,
                     },
                     {
