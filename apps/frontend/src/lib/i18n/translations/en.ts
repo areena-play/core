@@ -52,6 +52,7 @@ export const en = {
         federationSettings: 'Association Settings',
         licensingHub: 'Licensing Hub',
         financingHub: 'Financing Hub',
+        competitionHub: 'Tournament Hub',
         clubOverview: 'Clubs Overview',
         managementDashboard: 'Management Dashboard',
         superAdminSection: 'Super Admin',

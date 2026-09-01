@@ -452,6 +452,11 @@ function SidebarContent() {
                         icon: Award,
                     },
                     {
+                        label: t('nav.competitionHub'),
+                        href: `${mgmtPrefix}/competitions`,
+                        icon: Trophy,
+                    },
+                    {
                         label: t('nav.auditLogs'),
                         href: `${mgmtPrefix}/audit-logs`,
                         icon: Activity,

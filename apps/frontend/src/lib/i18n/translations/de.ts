@@ -54,6 +54,7 @@ export const de: TranslationDictionary = {
         federationSettings: 'Verbandseinstellungen',
         licensingHub: 'Lizenzverwaltung',
         financingHub: 'Finanz- & Rechnungshub',
+        competitionHub: 'Turnier-Hub',
         clubOverview: 'Vereinsübersicht',
         managementDashboard: 'Management-Übersicht',
         superAdminSection: 'Super-Admin',
