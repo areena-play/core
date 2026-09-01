@@ -571,7 +571,7 @@ function SupportPageContent() {
                                     </label>
                                     <select
                                         required
-                                        value={selectedSubjectId}
+                                        value={selectedSubjectId ?? ''}
                                         onChange={(e) => setSelectedSubjectId(e.target.value)}
                                         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white shadow-xs focus:border-red-500 focus:outline-none"
                                     >
