@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { authenticateToken, requireSuperAdmin, AuthRequest } from '../middleware/auth';
 import { SystemService } from '../services/system.service';
 import { AuditService } from '../services/audit.service';
+import { DatabaseBackupService } from '../services/databaseBackup.service';
 
 const router = Router();
 
@@ -231,6 +232,66 @@ router.post('/settings/smtp/test', async (req: AuthRequest, res: Response) => {
     } catch (err: any) {
         console.error('Test SMTP Error:', err);
         res.status(500).json({ error: err.message || 'Failed to send SMTP test email' });
+    }
+});
+
+/**
+ * GET /api/admin/database/export
+ * Dumps the whole database to a structured JSON file/payload
+ */
+router.get('/database/export', async (req: AuthRequest, res: Response) => {
+    try {
+        const dump = await DatabaseBackupService.exportFullDatabase();
+
+        await AuditService.record({
+            req,
+            action: 'EXPORT_DATABASE_DUMP',
+            entityType: 'Database',
+            entityId: 'FULL_BACKUP',
+            description: `SuperAdmin ${req.user?.email} exported full database JSON dump (${Object.values(dump.counts).reduce((a, b) => a + b, 0)} total rows)`,
+            metadata: { counts: dump.counts, exportedAt: dump.exportedAt },
+        });
+
+        const filename = `areena-database-dump-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.json(dump);
+    } catch (err: any) {
+        console.error('Database Export Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to export database' });
+    }
+});
+
+/**
+ * POST /api/admin/database/import
+ * Imports and restores the whole database from JSON
+ */
+router.post('/database/import', async (req: AuthRequest, res: Response) => {
+    try {
+        const dump = req.body;
+        if (!dump || !dump.tables) {
+            return res.status(400).json({ error: 'Invalid database dump: "tables" object is missing.' });
+        }
+
+        const result = await DatabaseBackupService.importFullDatabase(dump);
+
+        await AuditService.record({
+            req,
+            action: 'IMPORT_DATABASE_DUMP',
+            entityType: 'Database',
+            entityId: 'FULL_RESTORE',
+            description: `SuperAdmin ${req.user?.email} imported and restored full database JSON dump (${Object.values(result.importedCounts).reduce((a, b) => a + b, 0)} total rows restored)`,
+            metadata: { importedCounts: result.importedCounts },
+        });
+
+        res.json({
+            success: true,
+            message: 'Database dump successfully imported and database restored.',
+            importedCounts: result.importedCounts,
+        });
+    } catch (err: any) {
+        console.error('Database Import Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to import database dump' });
     }
 });
 
