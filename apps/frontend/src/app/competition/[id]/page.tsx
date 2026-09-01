@@ -34,9 +34,11 @@ import {
     Eye,
     Plus,
     Clock,
+    FileText,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { LiveTicker } from '@/components/layout/LiveTicker';
+import { generateTournamentInvitationPdf } from '@/lib/pdfInvitation';
 
 export default function CompetitionDashboardPage() {
     const params = useParams();
@@ -232,6 +234,22 @@ export default function CompetitionDashboardPage() {
 
                     {/* Header Action Buttons */}
                     <div className="flex flex-wrap items-center gap-2.5">
+                        <button
+                            type="button"
+                            onClick={() =>
+                                generateTournamentInvitationPdf({
+                                    competition,
+                                    roles,
+                                    players,
+                                    categories: competition.categories || [],
+                                })
+                            }
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/40 px-3.5 py-2 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/60 shadow-xs transition"
+                            title="Download Tournament Invitation PDF"
+                        >
+                            <FileText className="h-3.5 w-3.5 text-red-500" />
+                            <span>Download Invitation (PDF)</span>
+                        </button>
                         <Link
                             href={`/competition/${competitionId}/settings`}
                             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-xs transition"
