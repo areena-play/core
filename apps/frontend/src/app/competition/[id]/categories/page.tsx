@@ -6,19 +6,23 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
-import { ModalPortal } from '@/components/ui/ModalPortal';
 import {
-    Trophy,
-    ChevronLeft,
+    Layers,
+    ChevronRight,
+    ArrowLeft,
     Plus,
     Users,
-    Layers,
+    Trophy,
     Play,
-    Zap,
     CheckCircle2,
+    AlertCircle,
     Calendar,
-    ChevronRight,
+    Flame,
+    ArrowUpRight,
+    MapPin,
+    Shield,
 } from 'lucide-react';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 
 export default function CompetitionCategoriesPage() {
     const params = useParams();
@@ -29,43 +33,36 @@ export default function CompetitionCategoriesPage() {
 
     const [competition, setCompetition] = useState<any | null>(null);
     const [roles, setRoles] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-    const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
-    const [showRegisterTeamModal, setShowRegisterTeamModal] = useState(false);
+    const [clubs, setClubs] = useState<any[]>([]);
     const [usersList, setUsersList] = useState<any[]>([]);
-    const [successMessage, setSuccessMessage] = useState('');
-    const [errorMessage, setErrorMessage] = useState('');
+    const [loading, setLoading] = useState(true);
 
-    const [categoryForm, setCategoryForm] = useState({
-        name: '',
-        teamSize: 1,
-        genderRestriction: 'ANY',
-        minElo: '',
-        maxElo: '',
-        roundsPerGroup: 1,
-    });
-
-    const [teamForm, setTeamForm] = useState({
-        teamName: '',
-        playerUserIds: [] as string[],
-    });
+    const [activeCategoryId, setActiveCategoryId] = useState<string>('');
+    const [showAddCatModal, setShowAddCatModal] = useState(false);
+    const [showAddTeamModal, setShowAddTeamModal] = useState(false);
+    const [newCat, setNewCat] = useState({ name: '', teamSize: 1, minElo: '', maxElo: '', genderRestriction: 'ANY', roundsPerGroup: 1 });
+    const [newTeam, setNewTeam] = useState({ name: '', clubId: '', playerUserIds: [] as string[] });
+    const [groupCount, setGroupCount] = useState(2);
+    const [generatingGroups, setGeneratingGroups] = useState(false);
+    const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     const fetchData = async () => {
         try {
-            const [comp, r, u] = await Promise.all([
+            const [comp, r, c, u] = await Promise.all([
                 api.getCompetition(competitionId),
                 api.getCompetitionRoles(competitionId).catch(() => []),
-                api.getUsers().catch(() => ({ users: [] })),
+                api.getClubs().catch(() => ({ clubs: [] })),
+                api.getUsers ? api.getUsers().catch(() => []) : Promise.resolve([]),
             ]);
             setCompetition(comp);
             setRoles(r || []);
-            setUsersList(u.users || (Array.isArray(u) ? u : []));
-            if (!selectedCategoryId && comp.categories?.length > 0) {
-                setSelectedCategoryId(comp.categories[0].id);
+            setClubs(Array.isArray(c) ? c : c?.clubs || []);
+            setUsersList(Array.isArray(u) ? u : u?.users || []);
+            if (comp.categories && comp.categories.length > 0 && !activeCategoryId) {
+                setActiveCategoryId(comp.categories[0].id);
             }
         } catch (err: any) {
-            setErrorMessage(err.message || 'Failed to load categories');
+            setActionMsg({ type: 'error', text: err.message || 'Failed to load categories' });
         } finally {
             setLoading(false);
         }
@@ -78,384 +75,434 @@ export default function CompetitionCategoriesPage() {
     const isAssocAdmin = user?.associationRoles?.some(
         (r) => r.role === 'ADMIN' && r.associationId === competition?.associationId
     );
-    const hasAdminRole = isSuperAdmin || isAssocAdmin || roles.some((r) => r.userId === user?.id && r.role === 'ADMIN');
+    const canManage = isSuperAdmin || isAssocAdmin || roles.some((r) => r.userId === user?.id && r.role === 'ADMIN');
 
     const handleCreateCategory = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const newCat = await api.createCategory(competitionId, {
-                name: categoryForm.name,
-                teamSize: Number(categoryForm.teamSize),
-                genderRestriction: categoryForm.genderRestriction,
-                minElo: categoryForm.minElo ? Number(categoryForm.minElo) : null,
-                maxElo: categoryForm.maxElo ? Number(categoryForm.maxElo) : null,
-                roundsPerGroup: Number(categoryForm.roundsPerGroup),
+            await api.createCompetitionCategory(competitionId, {
+                name: newCat.name,
+                teamSize: Number(newCat.teamSize),
+                minElo: newCat.minElo ? Number(newCat.minElo) : undefined,
+                maxElo: newCat.maxElo ? Number(newCat.maxElo) : undefined,
+                genderRestriction: newCat.genderRestriction,
+                roundsPerGroup: Number(newCat.roundsPerGroup),
             });
-            setShowAddCategoryModal(false);
-            setSuccessMessage('Category created successfully.');
-            await fetchData();
-            setSelectedCategoryId(newCat.id);
-            setTimeout(() => setSuccessMessage(''), 3000);
+            setShowAddCatModal(false);
+            setNewCat({ name: '', teamSize: 1, minElo: '', maxElo: '', genderRestriction: 'ANY', roundsPerGroup: 1 });
+            setActionMsg({ type: 'success', text: 'Category created successfully.' });
+            fetchData();
+            setTimeout(() => setActionMsg(null), 3000);
         } catch (err: any) {
-            setErrorMessage(err.message || 'Failed to create category');
+            setActionMsg({ type: 'error', text: err.message || 'Failed to create category' });
         }
     };
 
     const handleRegisterTeam = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedCategoryId) return;
+        if (!activeCategoryId) return;
         try {
-            await api.registerTeam(selectedCategoryId, teamForm);
-            setShowRegisterTeamModal(false);
-            setSuccessMessage('Team registered successfully.');
-            setTeamForm({ teamName: '', playerUserIds: [] });
-            await fetchData();
-            setTimeout(() => setSuccessMessage(''), 3000);
+            await api.createCategoryTeam(activeCategoryId, newTeam);
+            setShowAddTeamModal(false);
+            setNewTeam({ name: '', clubId: '', playerUserIds: [] });
+            setActionMsg({ type: 'success', text: 'Team registered successfully.' });
+            fetchData();
+            setTimeout(() => setActionMsg(null), 3000);
         } catch (err: any) {
-            setErrorMessage(err.message || 'Failed to register team');
+            setActionMsg({ type: 'error', text: err.message || 'Failed to register team' });
         }
     };
 
     const handleGenerateGroups = async () => {
-        if (!selectedCategoryId) return;
-        if (!confirm('Generate groups & round-robin draw fixtures for this category?')) return;
+        if (!activeCategoryId) return;
+        setGeneratingGroups(true);
         try {
-            await api.generateGroups(selectedCategoryId, { numberOfGroups: 2 });
-            setSuccessMessage('Draw & Groups generated successfully!');
-            await fetchData();
-            setTimeout(() => setSuccessMessage(''), 3000);
+            await api.generateCategoryGroups(activeCategoryId, { groupCount });
+            setActionMsg({ type: 'success', text: 'Round-robin groups and encounters generated successfully!' });
+            fetchData();
+            setTimeout(() => setActionMsg(null), 3000);
         } catch (err: any) {
-            setErrorMessage(err.message || 'Failed to generate groups');
+            setActionMsg({ type: 'error', text: err.message || 'Failed to generate groups' });
+        } finally {
+            setGeneratingGroups(false);
         }
     };
 
     if (loading) {
         return (
-            <div className="flex h-96 items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
+            <div className="flex h-64 items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
             </div>
         );
     }
 
-    const categories = competition?.categories || [];
-    const activeCategory = categories.find((c: any) => c.id === selectedCategoryId) || categories[0];
+    const activeCategory = competition?.categories?.find((c: any) => c.id === activeCategoryId) || competition?.categories?.[0];
 
     return (
-        <div className="min-h-screen bg-black p-6 md:p-8 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
-                <div className="flex items-center gap-3">
-                    <Link
-                        href={`/competition/${competitionId}`}
-                        className="rounded-xl border border-zinc-800 bg-zinc-900 p-2.5 text-zinc-400 hover:border-zinc-700 hover:text-white transition"
-                    >
-                        <ChevronLeft className="h-5 w-5" />
-                    </Link>
-                    <div>
-                        <div className="flex items-center gap-2 text-xs font-semibold text-orange-400 uppercase tracking-wider">
-                            <span>Competition Workspace</span>
-                            <span>•</span>
-                            <span>{competition?.name}</span>
-                        </div>
-                        <h1 className="text-2xl font-extrabold text-white tracking-tight sm:text-3xl flex items-center gap-2.5 mt-0.5">
-                            <Trophy className="h-7 w-7 text-blue-400" />
-                            Categories, Divisions & Draws
-                        </h1>
-                    </div>
-                </div>
-                {hasAdminRole && (
-                    <button
-                        onClick={() => setShowAddCategoryModal(true)}
-                        className="flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-orange-600/30 hover:bg-orange-500"
-                    >
-                        <Plus className="h-4 w-4" /> Add Category
-                    </button>
-                )}
+        <div className="space-y-6 md:space-y-8 pb-16">
+            {/* Breadcrumbs */}
+            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <Link href="/competitions" className="hover:underline flex items-center gap-1">
+                    <Trophy className="h-3.5 w-3.5 text-red-500" />
+                    <span>{t('nav.competitions') || 'Competitions'}</span>
+                </Link>
+                <ChevronRight className="h-3 w-3" />
+                <Link href={`/competition/${competitionId}`} className="hover:underline text-slate-700 dark:text-slate-300 font-medium">
+                    {competition?.name || 'Tournament'}
+                </Link>
+                <ChevronRight className="h-3 w-3" />
+                <span className="font-semibold text-slate-900 dark:text-white">Categories & Draws</span>
             </div>
 
-            {successMessage && (
-                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm font-medium text-emerald-400">
-                    {successMessage}
+            {/* Header Hero Card */}
+            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-gradient-to-r dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-5 sm:p-6 md:p-8 shadow-sm dark:shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                            <span className="rounded px-2.5 py-0.5 text-xs font-bold uppercase border bg-red-100 text-red-800 border-red-200 dark:bg-red-950/60 dark:text-red-400 dark:border-red-800/50">
+                                Divisions & Draws
+                            </span>
+                            <span className="font-mono text-xs text-slate-400">{competition?.categories?.length || 0} Categories</span>
+                        </div>
+                        <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <Layers className="h-6 w-6 text-red-500" />
+                            <span>Categories, Teams & Draws</span>
+                        </h1>
+                        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                            Create tournament divisions, register participant squads, and generate round-robin groups
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                        <Link
+                            href={`/competition/${competitionId}`}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-xs transition"
+                        >
+                            <ArrowLeft className="h-3.5 w-3.5" />
+                            <span>Dashboard</span>
+                        </Link>
+                        {canManage && (
+                            <button
+                                type="button"
+                                onClick={() => setShowAddCatModal(true)}
+                                className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-xs sm:text-sm font-bold text-white shadow-sm transition"
+                            >
+                                <Plus className="h-4 w-4" />
+                                <span>Add Category</span>
+                            </button>
+                        )}
+                    </div>
                 </div>
-            )}
-            {errorMessage && (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm font-medium text-red-400">
-                    {errorMessage}
+            </div>
+
+            {/* Feedback Banner */}
+            {actionMsg && (
+                <div
+                    className={`p-4 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-2 border ${
+                        actionMsg.type === 'success'
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300'
+                    }`}
+                >
+                    {actionMsg.type === 'success' ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                    <span>{actionMsg.text}</span>
                 </div>
             )}
 
             {/* Category Selector Tabs */}
-            {categories.length > 0 && (
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-zinc-800">
-                    {categories.map((cat: any) => (
-                        <button
-                            key={cat.id}
-                            onClick={() => setSelectedCategoryId(cat.id)}
-                            className={`rounded-xl px-4 py-2 text-xs font-bold transition whitespace-nowrap ${
-                                (activeCategory?.id === cat.id)
-                                    ? 'bg-orange-600 text-white shadow-md shadow-orange-600/30'
-                                    : 'border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white'
-                            }`}
-                        >
-                            {cat.name} ({cat.teams?.length || 0} teams)
-                        </button>
-                    ))}
-                </div>
-            )}
+            {competition?.categories && competition.categories.length > 0 ? (
+                <div className="space-y-6">
+                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                        {competition.categories.map((c: any) => (
+                            <button
+                                key={c.id}
+                                onClick={() => setActiveCategoryId(c.id)}
+                                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition ${
+                                    activeCategoryId === c.id
+                                        ? 'bg-red-600 text-white shadow-sm'
+                                        : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60'
+                                }`}
+                            >
+                                {c.name} ({c.teams?.length || 0} teams)
+                            </button>
+                        ))}
+                    </div>
 
-            {categories.length === 0 ? (
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-12 text-center">
-                    <Trophy className="mx-auto h-12 w-12 text-zinc-600" />
-                    <h3 className="mt-4 text-lg font-bold text-white">No Categories Created Yet</h3>
-                    <p className="mt-1 text-xs text-zinc-400">
-                        Create categories such as Men Open Singles, U18 Juniors, or Mixed Doubles.
-                    </p>
-                    {hasAdminRole && (
+                    {activeCategory && (
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Teams Roster in this category */}
+                            <div className="lg:col-span-1 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 shadow-sm space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                        <Users className="h-4 w-4 text-red-500" />
+                                        <span>Registered Teams ({activeCategory.teams?.length || 0})</span>
+                                    </h3>
+                                    {canManage && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAddTeamModal(true)}
+                                            className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-100 transition"
+                                            title="Register Team"
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    {(!activeCategory.teams || activeCategory.teams.length === 0) ? (
+                                        <div className="p-4 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                                            No teams registered in this category yet.
+                                        </div>
+                                    ) : (
+                                        activeCategory.teams.map((t: any) => (
+                                            <div key={t.id} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-1">
+                                                <div className="font-bold text-xs text-slate-900 dark:text-white flex items-center justify-between">
+                                                    <span>{t.name}</span>
+                                                    <span className="font-mono text-[10px] text-slate-400">{t.club?.code || 'IND'}</span>
+                                                </div>
+                                                <div className="text-[11px] text-slate-500">
+                                                    {t.members?.map((m: any) => `${m.user?.firstName || ''} ${m.user?.lastName || ''}`).join(', ') || 'No members'}
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                {canManage && (
+                                    <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Draw / Group Generator</h4>
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                value={groupCount}
+                                                onChange={(e) => setGroupCount(Number(e.target.value))}
+                                                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-slate-900 dark:text-white outline-none focus:border-red-500"
+                                            >
+                                                <option value={1}>1 Group (Single Round-Robin)</option>
+                                                <option value={2}>2 Groups (Group A & B)</option>
+                                                <option value={4}>4 Groups (A, B, C, D)</option>
+                                                <option value={8}>8 Groups</option>
+                                            </select>
+                                            <button
+                                                type="button"
+                                                disabled={generatingGroups || (activeCategory.teams?.length || 0) < 2}
+                                                onClick={handleGenerateGroups}
+                                                className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold text-xs shadow-xs shrink-0 transition"
+                                            >
+                                                {generatingGroups ? 'Generating...' : 'Generate'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Groups & Encounters in this category */}
+                            <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 shadow-sm space-y-4">
+                                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    <Trophy className="h-4 w-4 text-red-500" />
+                                    <span>Draws & Encounters</span>
+                                </h3>
+
+                                {(!activeCategory.encounters || activeCategory.encounters.length === 0) ? (
+                                    <div className="p-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                                        <p>No encounters generated yet for this category.</p>
+                                        <p className="text-[11px] text-slate-500">Register at least 2 teams and use the Group Generator to create match fixtures.</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {activeCategory.encounters.map((enc: any) => (
+                                            <Link
+                                                key={enc.id}
+                                                href={`/competition/${competitionId}/encounter/${enc.id}`}
+                                                className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 hover:border-red-500/50 transition space-y-2 block group"
+                                            >
+                                                <div className="flex items-center justify-between text-[11px]">
+                                                    <span className="font-mono text-slate-400">Round {enc.round || 1} • {enc.location || 'Hall'}</span>
+                                                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                                                        enc.status === 'LIVE' ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                                                    }`}>
+                                                        {enc.status}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center justify-between">
+                                                    <span>{enc.homeTeam?.name || 'TBD'}</span>
+                                                    <span className="font-mono text-sm text-red-600 dark:text-red-400">{enc.homeScore ?? 0} : {enc.awayScore ?? 0}</span>
+                                                    <span>{enc.awayTeam?.name || 'TBD'}</span>
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-8 text-center text-slate-500 space-y-3">
+                    <Layers className="mx-auto h-8 w-8 text-slate-400" />
+                    <p className="text-xs font-medium">No competition categories created yet.</p>
+                    {canManage && (
                         <button
-                            onClick={() => setShowAddCategoryModal(true)}
-                            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-orange-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-orange-600/30 hover:bg-orange-500"
+                            type="button"
+                            onClick={() => setShowAddCatModal(true)}
+                            className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-xs font-bold text-white shadow-xs"
                         >
                             <Plus className="h-4 w-4" /> Create First Category
                         </button>
                     )}
                 </div>
-            ) : (
-                <div className="space-y-6">
-                    {/* Active Category Overview Bar */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6">
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <span className="rounded-full bg-blue-500/10 border border-blue-500/30 px-2.5 py-0.5 text-xs font-semibold text-blue-400">
-                                    Team Size: {activeCategory?.teamSize === 1 ? 'Singles (1)' : `Doubles (${activeCategory?.teamSize})`}
-                                </span>
-                                <span className="rounded-full bg-zinc-800 px-2.5 py-0.5 text-xs font-semibold text-zinc-400">
-                                    Gender: {activeCategory?.genderRestriction}
-                                </span>
-                            </div>
-                            <h2 className="mt-2 text-xl font-bold text-white">{activeCategory?.name}</h2>
-                        </div>
-
-                        {hasAdminRole && (
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={() => setShowRegisterTeamModal(true)}
-                                    className="flex items-center gap-2 rounded-xl bg-zinc-800 border border-zinc-700 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-700"
-                                >
-                                    <Plus className="h-4 w-4" /> Register Team / Player
-                                </button>
-                                <button
-                                    onClick={handleGenerateGroups}
-                                    className="flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-orange-600/30 hover:bg-orange-500"
-                                >
-                                    <Layers className="h-4 w-4" /> Generate Draw & Groups
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Registered Teams & Encounters */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Teams Box */}
-                        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6">
-                            <h3 className="text-base font-bold text-white mb-4 flex items-center justify-between">
-                                <span>Registered Teams & Players</span>
-                                <span className="text-xs text-zinc-400 font-normal">
-                                    {activeCategory?.teams?.length || 0} teams
-                                </span>
-                            </h3>
-
-                            <div className="space-y-2">
-                                {(!activeCategory?.teams || activeCategory.teams.length === 0) ? (
-                                    <p className="text-xs text-zinc-500 py-6 text-center">No teams registered yet.</p>
-                                ) : (
-                                    activeCategory.teams.map((reg: any) => (
-                                        <div key={reg.id} className="flex items-center justify-between rounded-xl border border-zinc-800 bg-black/40 p-3">
-                                            <div className="flex items-center gap-2">
-                                                <Users className="h-4 w-4 text-orange-400" />
-                                                <span className="text-sm font-semibold text-white">{reg.team?.name}</span>
-                                            </div>
-                                            <span className={`rounded px-2 py-0.5 text-[10px] font-bold ${
-                                                reg.paymentStatus === 'PAID'
-                                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                                                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                                            }`}>
-                                                {reg.paymentStatus}
-                                            </span>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Fixtures / Encounters */}
-                        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6">
-                            <h3 className="text-base font-bold text-white mb-4 flex items-center justify-between">
-                                <span>Fixtures & Encounters</span>
-                                <Link
-                                    href={`/competition/${competitionId}/results`}
-                                    className="text-xs text-orange-400 hover:underline"
-                                >
-                                    Open Score Desk →
-                                </Link>
-                            </h3>
-
-                            <div className="space-y-2">
-                                {(!activeCategory?.encounters || activeCategory.encounters.length === 0) ? (
-                                    <p className="text-xs text-zinc-500 py-6 text-center">
-                                        No fixtures generated yet. Click "Generate Draw" above.
-                                    </p>
-                                ) : (
-                                    activeCategory.encounters.map((enc: any) => (
-                                        <Link
-                                            key={enc.id}
-                                            href={`/competition/${competitionId}/encounter/${enc.id}`}
-                                            className="flex items-center justify-between rounded-xl border border-zinc-800 bg-black/40 p-3 hover:border-orange-500/40 transition group"
-                                        >
-                                            <div>
-                                                <div className="text-xs font-semibold text-white group-hover:text-orange-400">
-                                                    {enc.homeTeam?.name} vs {enc.awayTeam?.name}
-                                                </div>
-                                                <div className="text-[10px] text-zinc-500">
-                                                    Round {enc.round} • {enc.status}
-                                                </div>
-                                            </div>
-                                            <div className="text-sm font-extrabold text-orange-400 font-mono">
-                                                {enc.homeScore} : {enc.awayScore}
-                                            </div>
-                                        </Link>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
             )}
 
-            {/* Modal Add Category */}
-            {showAddCategoryModal && (
+            {/* Add Category Modal */}
+            {showAddCatModal && (
                 <ModalPortal>
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
-                        <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl space-y-4">
-                            <h3 className="text-lg font-bold text-white">Create New Category</h3>
-                            <form onSubmit={handleCreateCategory} className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-semibold uppercase text-zinc-400 mb-1">
-                                        Category Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={categoryForm.name}
-                                        onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                                        placeholder="e.g. Men Singles A, Mixed Doubles"
-                                        required
-                                        className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-white focus:border-orange-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-semibold uppercase text-zinc-400 mb-1">
-                                            Team Size
-                                        </label>
-                                        <select
-                                            value={categoryForm.teamSize}
-                                            onChange={(e) => setCategoryForm({ ...categoryForm, teamSize: Number(e.target.value) })}
-                                            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-white"
-                                        >
-                                            <option value="1">Singles (1)</option>
-                                            <option value="2">Doubles (2)</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold uppercase text-zinc-400 mb-1">
-                                            Gender
-                                        </label>
-                                        <select
-                                            value={categoryForm.genderRestriction}
-                                            onChange={(e) => setCategoryForm({ ...categoryForm, genderRestriction: e.target.value })}
-                                            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-white"
-                                        >
-                                            <option value="ANY">Any</option>
-                                            <option value="MALE_ONLY">Male Only</option>
-                                            <option value="FEMALE_ONLY">Female Only</option>
-                                            <option value="MIXED">Mixed</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="flex justify-end gap-3 pt-3 border-t border-zinc-800">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowAddCategoryModal(false)}
-                                        className="rounded-xl border border-zinc-700 px-4 py-2 text-xs font-semibold text-zinc-300"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="rounded-xl bg-orange-600 px-5 py-2 text-xs font-bold text-white hover:bg-orange-500"
-                                    >
-                                        Create Category
-                                    </button>
-                                </div>
-                            </form>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-xl space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-base text-slate-900 dark:text-white">Create Competition Category</h3>
+                                <button type="button" onClick={() => setShowAddCatModal(false)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">✕</button>
+                            </div>
+                <form onSubmit={handleCreateCategory} className="space-y-4">
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Category Name</label>
+                        <input
+                            type="text"
+                            required
+                            placeholder="e.g. Men Singles A, Mixed Doubles U18"
+                            value={newCat.name}
+                            onChange={(e) => setNewCat({ ...newCat, name: e.target.value })}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-red-500"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Team Size</label>
+                            <select
+                                value={newCat.teamSize}
+                                onChange={(e) => setNewCat({ ...newCat, teamSize: Number(e.target.value) })}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-white outline-none focus:border-red-500"
+                            >
+                                <option value={1}>1 (Singles)</option>
+                                <option value={2}>2 (Doubles)</option>
+                                <option value={3}>3 (Team / Squad)</option>
+                                <option value={4}>4 (Team)</option>
+                            </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Gender Restriction</label>
+                            <select
+                                value={newCat.genderRestriction}
+                                onChange={(e) => setNewCat({ ...newCat, genderRestriction: e.target.value })}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-white outline-none focus:border-red-500"
+                            >
+                                <option value="ANY">Open / Any</option>
+                                <option value="MEN">Men Only</option>
+                                <option value="WOMEN">Women Only</option>
+                                <option value="MIXED">Mixed (Men + Women)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Min ELO (Optional)</label>
+                            <input
+                                type="number"
+                                placeholder="e.g. 1200"
+                                value={newCat.minElo}
+                                onChange={(e) => setNewCat({ ...newCat, minElo: e.target.value })}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-white outline-none focus:border-red-500"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Max ELO (Optional)</label>
+                            <input
+                                type="number"
+                                placeholder="e.g. 1800"
+                                value={newCat.maxElo}
+                                onChange={(e) => setNewCat({ ...newCat, maxElo: e.target.value })}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-white outline-none focus:border-red-500"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-3">
+                        <button
+                            type="button"
+                            onClick={() => setShowAddCatModal(false)}
+                            className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white shadow-xs"
+                        >
+                            Create Category
+                        </button>
+                    </div>
+                </form>
                         </div>
                     </div>
                 </ModalPortal>
             )}
 
-            {/* Modal Register Team */}
-            {showRegisterTeamModal && (
+            {/* Add Team Modal */}
+            {showAddTeamModal && (
                 <ModalPortal>
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
-                        <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl space-y-4">
-                            <h3 className="text-lg font-bold text-white">Register Team / Athlete</h3>
-                            <form onSubmit={handleRegisterTeam} className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-semibold uppercase text-zinc-400 mb-1">
-                                        Team / Athlete Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={teamForm.teamName}
-                                        onChange={(e) => setTeamForm({ ...teamForm, teamName: e.target.value })}
-                                        placeholder="e.g. Roger Federer"
-                                        required
-                                        className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-white focus:border-orange-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold uppercase text-zinc-400 mb-1">
-                                        Select Athlete Account
-                                    </label>
-                                    <select
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            if (val) setTeamForm({ ...teamForm, playerUserIds: [val] });
-                                        }}
-                                        className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-white"
-                                    >
-                                        <option value="">-- Choose Athlete --</option>
-                                        {usersList.map((u) => (
-                                            <option key={u.id} value={u.id}>
-                                                {u.firstName} {u.lastName} ({u.email})
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="flex justify-end gap-3 pt-3 border-t border-zinc-800">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowRegisterTeamModal(false)}
-                                        className="rounded-xl border border-zinc-700 px-4 py-2 text-xs font-semibold text-zinc-300"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="rounded-xl bg-orange-600 px-5 py-2 text-xs font-bold text-white hover:bg-orange-500"
-                                    >
-                                        Register
-                                    </button>
-                                </div>
-                            </form>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-xl space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-base text-slate-900 dark:text-white">Register Team in Category</h3>
+                                <button type="button" onClick={() => setShowAddTeamModal(false)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">✕</button>
+                            </div>
+                <form onSubmit={handleRegisterTeam} className="space-y-4">
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Team / Participant Name</label>
+                        <input
+                            type="text"
+                            required
+                            placeholder="e.g. Zurich Alpha or Player Full Name"
+                            value={newTeam.name}
+                            onChange={(e) => setNewTeam({ ...newTeam, name: e.target.value })}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-red-500"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Club Affiliation</label>
+                        <select
+                            value={newTeam.clubId}
+                            onChange={(e) => setNewTeam({ ...newTeam, clubId: e.target.value })}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-red-500"
+                        >
+                            <option value="">-- Independent / No Club --</option>
+                            {clubs.map((c: any) => (
+                                <option key={c.id} value={c.id}>
+                                    {c.name} ({c.code})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-3">
+                        <button
+                            type="button"
+                            onClick={() => setShowAddTeamModal(false)}
+                            className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white shadow-xs"
+                        >
+                            Register Team
+                        </button>
+                    </div>
+                </form>
                         </div>
                     </div>
                 </ModalPortal>

@@ -6,19 +6,19 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
-import { useWebSocket } from '@/lib/useWebSocket';
 import {
     Mic,
-    ChevronLeft,
-    Volume2,
+    ChevronRight,
+    ArrowLeft,
     Plus,
+    Volume2,
     CheckCircle2,
-    Trash2,
-    Play,
+    XCircle,
     AlertCircle,
-    BellRing,
+    Bell,
+    Trophy,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { ModalPortal } from '@/components/ui/ModalPortal';
 
 export default function CompetitionSpeakerPage() {
     const params = useParams();
@@ -31,15 +31,9 @@ export default function CompetitionSpeakerPage() {
     const [callouts, setCallouts] = useState<any[]>([]);
     const [roles, setRoles] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [successMessage, setSuccessMessage] = useState('');
-    const [errorMessage, setErrorMessage] = useState('');
-
-    const [calloutForm, setCalloutForm] = useState({
-        title: '',
-        message: '',
-        type: 'MATCH_CALL',
-        unitName: 'Table 1',
-    });
+    const [showModal, setShowModal] = useState(false);
+    const [newCallout, setNewCallout] = useState({ title: '', message: '', type: 'MATCH_CALL', unitName: '' });
+    const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     const fetchData = async () => {
         try {
@@ -52,7 +46,7 @@ export default function CompetitionSpeakerPage() {
             setCallouts(c || []);
             setRoles(r || []);
         } catch (err: any) {
-            setErrorMessage(err.message || 'Failed to load speaker console');
+            setActionMsg({ type: 'error', text: err.message || 'Failed to load speaker console' });
         } finally {
             setLoading(false);
         }
@@ -62,244 +56,288 @@ export default function CompetitionSpeakerPage() {
         fetchData();
     }, [competitionId]);
 
-    useWebSocket((event) => {
-        if (event.channel === 'areena:speaker') {
-            fetchData();
-        }
-    });
-
     const isAssocAdmin = user?.associationRoles?.some(
         (r) => r.role === 'ADMIN' && r.associationId === competition?.associationId
     );
-    const canSpeak =
-        isSuperAdmin ||
-        isAssocAdmin ||
-        roles.some((r) => r.userId === user?.id && ['ADMIN', 'SPEAKER', 'HEAD_REFEREE'].includes(r.role));
+    const canManage = isSuperAdmin || isAssocAdmin || roles.some((r) => r.userId === user?.id && ['ADMIN', 'CALLOUTS'].includes(r.role));
+
+    const playChime = () => {
+        try {
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const now = ctx.currentTime;
+            const osc1 = ctx.createOscillator();
+            const osc2 = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(587.33, now); // D5
+            osc1.frequency.setValueAtTime(880.0, now + 0.2); // A5
+
+            osc2.type = 'triangle';
+            osc2.frequency.setValueAtTime(440.0, now);
+            osc2.frequency.setValueAtTime(659.25, now + 0.2);
+
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+            osc1.connect(gain);
+            osc2.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc1.start(now);
+            osc2.start(now);
+            osc1.stop(now + 0.8);
+            osc2.stop(now + 0.8);
+        } catch (e) {
+            console.warn('Web Audio API not supported', e);
+        }
+    };
 
     const handleCreateCallout = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await api.createCompetitionSpeakerCallout(competitionId, calloutForm);
-            setSuccessMessage('Announcement broadcasted to callout queue.');
-            setCalloutForm({ title: '', message: '', type: 'MATCH_CALL', unitName: 'Table 1' });
+            await api.createCompetitionSpeakerCallout(competitionId, newCallout);
+            playChime();
+            setShowModal(false);
+            setNewCallout({ title: '', message: '', type: 'MATCH_CALL', unitName: '' });
+            setActionMsg({ type: 'success', text: 'Callout broadcasted over speaker console.' });
             fetchData();
-            setTimeout(() => setSuccessMessage(''), 3000);
+            setTimeout(() => setActionMsg(null), 3000);
         } catch (err: any) {
-            setErrorMessage(err.message || 'Failed to trigger callout');
+            setActionMsg({ type: 'error', text: err.message || 'Failed to create callout' });
         }
     };
 
     const handleDismissCallout = async (calloutId: string) => {
         try {
             await api.updateCompetitionSpeakerCallout(competitionId, calloutId, { status: 'DISMISSED' });
+            setActionMsg({ type: 'success', text: 'Callout dismissed.' });
             fetchData();
-        } catch (err) {
-            console.error('Failed to dismiss callout:', err);
-        }
-    };
-
-    const playChime = () => {
-        try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-            osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
-            gain.gain.setValueAtTime(0.3, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.8);
-        } catch (e) {
-            console.error('AudioContext error:', e);
+            setTimeout(() => setActionMsg(null), 2500);
+        } catch (err: any) {
+            setActionMsg({ type: 'error', text: err.message || 'Failed to dismiss callout' });
         }
     };
 
     if (loading) {
         return (
-            <div className="flex h-96 items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
+            <div className="flex h-64 items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
             </div>
         );
     }
 
-    const activeCallouts = callouts.filter((c) => c.status !== 'DISMISSED');
+    const activeCallouts = callouts.filter((c) => c.status === 'ACTIVE');
+    const dismissedCallouts = callouts.filter((c) => c.status === 'DISMISSED');
 
     return (
-        <div className="min-h-screen bg-black p-6 md:p-8 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
-                <div className="flex items-center gap-3">
-                    <Link
-                        href={`/competition/${competitionId}`}
-                        className="rounded-xl border border-zinc-800 bg-zinc-900 p-2.5 text-zinc-400 hover:border-zinc-700 hover:text-white transition"
-                    >
-                        <ChevronLeft className="h-5 w-5" />
-                    </Link>
-                    <div>
-                        <div className="flex items-center gap-2 text-xs font-semibold text-orange-400 uppercase tracking-wider">
-                            <span>Competition Workspace</span>
-                            <span>•</span>
-                            <span>{competition?.name}</span>
-                        </div>
-                        <h1 className="text-2xl font-extrabold text-white tracking-tight sm:text-3xl flex items-center gap-2.5 mt-0.5">
-                            <Mic className="h-7 w-7 text-indigo-400" />
-                            Speaker & Audio Announcer Console
-                        </h1>
-                    </div>
-                </div>
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={playChime}
-                        className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-500"
-                    >
-                        <Volume2 className="h-4 w-4" /> Play Audio Chime
-                    </button>
-                </div>
+        <div className="space-y-6 md:space-y-8 pb-16">
+            {/* Breadcrumbs */}
+            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <Link href="/competitions" className="hover:underline flex items-center gap-1">
+                    <Trophy className="h-3.5 w-3.5 text-red-500" />
+                    <span>{t('nav.competitions') || 'Competitions'}</span>
+                </Link>
+                <ChevronRight className="h-3 w-3" />
+                <Link href={`/competition/${competitionId}`} className="hover:underline text-slate-700 dark:text-slate-300 font-medium">
+                    {competition?.name || 'Tournament'}
+                </Link>
+                <ChevronRight className="h-3 w-3" />
+                <span className="font-semibold text-slate-900 dark:text-white">Speaker & Announcer Desk</span>
             </div>
 
-            {successMessage && (
-                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm font-medium text-emerald-400">
-                    {successMessage}
-                </div>
-            )}
-            {errorMessage && (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm font-medium text-red-400">
-                    {errorMessage}
-                </div>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Announcement Trigger Form */}
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 space-y-4">
-                    <h3 className="text-base font-bold text-white flex items-center gap-2">
-                        <BellRing className="h-4 w-4 text-orange-400" />
-                        Trigger New Live Announcement
-                    </h3>
-
-                    <form onSubmit={handleCreateCallout} className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-semibold uppercase text-zinc-400 mb-1">
-                                Callout Title
-                            </label>
-                            <input
-                                type="text"
-                                value={calloutForm.title}
-                                onChange={(e) => setCalloutForm({ ...calloutForm, title: e.target.value })}
-                                placeholder="e.g. Next Match on Table 3"
-                                required
-                                disabled={!canSpeak}
-                                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-white focus:border-orange-500 focus:outline-none"
-                            />
+            {/* Header Hero Card */}
+            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-gradient-to-r dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-5 sm:p-6 md:p-8 shadow-sm dark:shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                            <span className="rounded px-2.5 py-0.5 text-xs font-bold uppercase border bg-red-100 text-red-800 border-red-200 dark:bg-red-950/60 dark:text-red-400 dark:border-red-800/50">
+                                Audio Broadcasts
+                            </span>
+                            <span className="font-mono text-xs text-slate-400">{activeCallouts.length} Active Callouts</span>
                         </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-semibold uppercase text-zinc-400 mb-1">
-                                    Type
-                                </label>
-                                <select
-                                    value={calloutForm.type}
-                                    onChange={(e) => setCalloutForm({ ...calloutForm, type: e.target.value })}
-                                    disabled={!canSpeak}
-                                    className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-white"
-                                >
-                                    <option value="MATCH_CALL">Match Call</option>
-                                    <option value="PLAYER_SUMMON">Missing Player</option>
-                                    <option value="GENERAL_ANNOUNCEMENT">General</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold uppercase text-zinc-400 mb-1">
-                                    Court / Table
-                                </label>
-                                <input
-                                    type="text"
-                                    value={calloutForm.unitName}
-                                    onChange={(e) => setCalloutForm({ ...calloutForm, unitName: e.target.value })}
-                                    disabled={!canSpeak}
-                                    className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-white"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold uppercase text-zinc-400 mb-1">
-                                Spoken Message
-                            </label>
-                            <textarea
-                                rows={3}
-                                value={calloutForm.message}
-                                onChange={(e) => setCalloutForm({ ...calloutForm, message: e.target.value })}
-                                placeholder="Table 3: Dominic Sonderegger vs Open Challenger. Please report to the table umpire."
-                                required
-                                disabled={!canSpeak}
-                                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-white focus:border-orange-500 focus:outline-none"
-                            />
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={!canSpeak}
-                            className="w-full rounded-xl bg-orange-600 py-2.5 text-xs font-bold text-white shadow-lg shadow-orange-600/30 hover:bg-orange-500 disabled:opacity-50"
-                        >
-                            Broadcast Announcement
-                        </button>
-                    </form>
-                </div>
-
-                {/* Active Callout Queue */}
-                <div className="lg:col-span-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h3 className="text-base font-bold text-white">Live Callout Queue</h3>
-                            <p className="text-xs text-zinc-400">Announcements displayed on venue monitors and speaker desk</p>
-                        </div>
-                        <span className="rounded-full bg-indigo-500/10 border border-indigo-500/30 px-3 py-1 text-xs font-bold text-indigo-400">
-                            {activeCallouts.length} in Queue
-                        </span>
+                        <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <Mic className="h-6 w-6 text-red-500" />
+                            <span>Speaker Console & Match Callouts</span>
+                        </h1>
+                        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                            Venue speaker announcer desk, audio chime synthesizer, missing player summons, and queue
+                        </p>
                     </div>
 
-                    <div className="space-y-3 pt-2">
-                        {activeCallouts.length === 0 ? (
-                            <p className="text-xs text-zinc-500 py-12 text-center">
-                                No active announcements in the speaker queue.
-                            </p>
-                        ) : (
-                            activeCallouts.map((c) => (
-                                <div
-                                    key={c.id}
-                                    className="flex items-start justify-between gap-4 rounded-xl border border-indigo-500/30 bg-indigo-950/20 p-4"
-                                >
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-white text-sm">{c.title}</span>
-                                            {c.unitName && (
-                                                <span className="rounded bg-indigo-500/30 px-2 py-0.5 text-[10px] font-bold text-indigo-300">
-                                                    {c.unitName}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <p className="text-xs text-zinc-300 leading-relaxed">{c.message}</p>
-                                        <span className="text-[10px] text-zinc-500 block pt-1">
-                                            Broadcasted: {format(new Date(c.createdAt), 'HH:mm:ss')}
-                                        </span>
-                                    </div>
-
-                                    {canSpeak && (
-                                        <button
-                                            onClick={() => handleDismissCallout(c.id)}
-                                            className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-700"
-                                        >
-                                            Done
-                                        </button>
-                                    )}
-                                </div>
-                            ))
+                    <div className="flex items-center gap-2.5">
+                        <button
+                            type="button"
+                            onClick={playChime}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-xs transition"
+                        >
+                            <Volume2 className="h-3.5 w-3.5 text-purple-500" />
+                            <span>Test Chime</span>
+                        </button>
+                        <Link
+                            href={`/competition/${competitionId}`}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-xs transition"
+                        >
+                            <ArrowLeft className="h-3.5 w-3.5" />
+                            <span>Dashboard</span>
+                        </Link>
+                        {canManage && (
+                            <button
+                                type="button"
+                                onClick={() => setShowModal(true)}
+                                className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-xs sm:text-sm font-bold text-white shadow-sm transition"
+                            >
+                                <Plus className="h-4 w-4" />
+                                <span>New Callout</span>
+                            </button>
                         )}
                     </div>
                 </div>
             </div>
+
+            {/* Feedback Banner */}
+            {actionMsg && (
+                <div
+                    className={`p-4 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-2 border ${
+                        actionMsg.type === 'success'
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300'
+                    }`}
+                >
+                    {actionMsg.type === 'success' ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                    <span>{actionMsg.text}</span>
+                </div>
+            )}
+
+            {/* Active Callouts Queue */}
+            <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 sm:p-6 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <span className="flex h-2.5 w-2.5 rounded-full bg-red-500 animate-ping" />
+                        <span>Active Callouts Queue ({activeCallouts.length})</span>
+                    </h3>
+                </div>
+
+                <div className="space-y-3">
+                    {activeCallouts.length === 0 ? (
+                        <div className="p-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                            No active speaker announcements in queue.
+                        </div>
+                    ) : (
+                        activeCallouts.map((c) => (
+                            <div
+                                key={c.id}
+                                className="p-4 rounded-xl border border-red-200 dark:border-red-900/40 bg-red-500/5 dark:bg-red-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs"
+                            >
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="rounded px-2 py-0.5 text-[10px] font-bold uppercase bg-red-600 text-white">
+                                            {c.type}
+                                        </span>
+                                        {c.unitName && (
+                                            <span className="font-mono text-xs font-bold text-red-600 dark:text-red-400">
+                                                [{c.unitName}]
+                                            </span>
+                                        )}
+                                        <h4 className="font-bold text-xs text-slate-900 dark:text-white">{c.title}</h4>
+                                    </div>
+                                    <p className="text-xs text-slate-600 dark:text-slate-300">{c.message}</p>
+                                </div>
+
+                                {canManage && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleDismissCallout(c.id)}
+                                        className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0 transition"
+                                    >
+                                        Dismiss
+                                    </button>
+                                )}
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
+
+            {/* Callout Creation Modal */}
+            {showModal && (
+                <ModalPortal>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-xl space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-base text-slate-900 dark:text-white">Broadcast Announcement</h3>
+                                <button type="button" onClick={() => setShowModal(false)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">✕</button>
+                            </div>
+                <form onSubmit={handleCreateCallout} className="space-y-4">
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Callout Type</label>
+                        <select
+                            value={newCallout.type}
+                            onChange={(e) => setNewCallout({ ...newCallout, type: e.target.value })}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-red-500"
+                        >
+                            <option value="MATCH_CALL">MATCH CALL (Athletes to table)</option>
+                            <option value="MISSING_PLAYER">MISSING PLAYER SUMMONS</option>
+                            <option value="GENERAL_ANNOUNCEMENT">GENERAL ANNOUNCEMENT</option>
+                            <option value="CEREMONY">AWARD CEREMONY</option>
+                        </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Unit / Table (Optional)</label>
+                        <input
+                            type="text"
+                            placeholder="e.g. Table 4, Court 2"
+                            value={newCallout.unitName}
+                            onChange={(e) => setNewCallout({ ...newCallout, unitName: e.target.value })}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-red-500"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Announcement Title</label>
+                        <input
+                            type="text"
+                            required
+                            placeholder="e.g. Round of 16 Match 4"
+                            value={newCallout.title}
+                            onChange={(e) => setNewCallout({ ...newCallout, title: e.target.value })}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-red-500"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Detailed Message</label>
+                        <textarea
+                            rows={3}
+                            required
+                            placeholder="e.g. Müller vs Schneider please report immediately to Table 4"
+                            value={newCallout.message}
+                            onChange={(e) => setNewCallout({ ...newCallout, message: e.target.value })}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-red-500"
+                        />
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-3">
+                        <button
+                            type="button"
+                            onClick={() => setShowModal(false)}
+                            className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white shadow-xs"
+                        >
+                            Broadcast & Play Chime
+                        </button>
+                    </div>
+                </form>
+                        </div>
+                    </div>
+                </ModalPortal>
+            )}
         </div>
     );
 }

@@ -1,448 +1,318 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
-import { useWebSocket } from '@/lib/useWebSocket';
-import { ModalPortal } from '@/components/ui/ModalPortal';
 import {
-    Trophy,
+    Flame,
+    ChevronRight,
+    ArrowLeft,
+    Save,
+    CheckCircle2,
+    AlertCircle,
     Calendar,
     MapPin,
-    Flame,
-    CheckCircle2,
-    ChevronLeft,
-    Edit3,
-    Award,
-    Radio,
-    Plus,
-    Trash2,
+    Trophy,
+    Shield,
 } from 'lucide-react';
-import { format } from 'date-fns';
 
-export default function EncounterScoreSheetPage() {
+export default function EncounterScoresheetPage() {
     const params = useParams();
+    const router = useRouter();
     const competitionId = params.id as string;
     const encounterId = params.encounterId as string;
     const { user } = useAuth();
+    const isSuperAdmin = user?.isSuperAdmin;
     const { t } = useI18n();
 
     const [encounter, setEncounter] = useState<any | null>(null);
+    const [competition, setCompetition] = useState<any | null>(null);
+    const [roles, setRoles] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeScoringMatch, setActiveScoringMatch] = useState<any | null>(null);
-    const [setsInput, setSetsInput] = useState<Array<{ home: number; away: number }>>([]);
-    const [isFinishedMatch, setIsFinishedMatch] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [selectedMatch, setSelectedMatch] = useState<any | null>(null);
+    const [sets, setSets] = useState<Array<{ home: number; away: number }>>([{ home: 0, away: 0 }]);
+    const [isFinished, setIsFinished] = useState(false);
+    const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    const fetchEncounter = async () => {
+    const fetchData = async () => {
         try {
-            const data = await api.getEncounter(encounterId);
-            setEncounter(data);
-        } catch (err) {
-            console.error('Failed to load encounter:', err);
+            const [enc, comp, r] = await Promise.all([
+                api.getEncounter(encounterId),
+                api.getCompetition(competitionId),
+                api.getCompetitionRoles(competitionId).catch(() => []),
+            ]);
+            setEncounter(enc);
+            setCompetition(comp);
+            setRoles(r || []);
+            if (enc.matches && enc.matches.length > 0 && !selectedMatch) {
+                setSelectedMatch(enc.matches[0]);
+                setSets(enc.matches[0].sets?.length > 0 ? enc.matches[0].sets : [{ home: 0, away: 0 }]);
+                setIsFinished(enc.matches[0].status === 'FINISHED');
+            }
+        } catch (err: any) {
+            setActionMsg({ type: 'error', text: err.message || 'Failed to load encounter' });
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchEncounter();
-    }, [encounterId]);
+        fetchData();
+    }, [encounterId, competitionId]);
 
-    // Realtime Live Score sync via WebSocket
-    useWebSocket((event) => {
-        if (event.channel === 'areena:scores' || event.channel === 'areena:encounters') {
-            fetchEncounter();
-        }
-    });
+    const isAssocAdmin = user?.associationRoles?.some(
+        (r) => r.role === 'ADMIN' && r.associationId === competition?.associationId
+    );
+    const canScore = isSuperAdmin || isAssocAdmin || roles.some((r) => r.userId === user?.id && ['ADMIN', 'ENTERING_RESULTS', 'REFEREE', 'HEAD_REFEREE'].includes(r.role));
 
-    const openScoringModal = (match: any) => {
-        setActiveScoringMatch(match);
-        const existingSets =
-            Array.isArray(match.sets) && match.sets.length > 0
-                ? match.sets
-                : [
-                      { home: 11, away: 8 },
-                      { home: 11, away: 9 },
-                      { home: 11, away: 7 },
-                  ];
-        setSetsInput(existingSets);
-        setIsFinishedMatch(match.status === 'FINISHED');
+    const handleSelectMatch = (m: any) => {
+        setSelectedMatch(m);
+        setSets(m.sets?.length > 0 ? m.sets : [{ home: 0, away: 0 }]);
+        setIsFinished(m.status === 'FINISHED');
     };
 
-    const handleAddSet = () => {
-        setSetsInput([...setsInput, { home: 0, away: 0 }]);
-    };
-
-    const handleRemoveSet = (idx: number) => {
-        setSetsInput(setsInput.filter((_, i) => i !== idx));
-    };
-
-    const handleSetChange = (idx: number, field: 'home' | 'away', val: number) => {
-        const updated = [...setsInput];
-        updated[idx][field] = val;
-        setSetsInput(updated);
-    };
-
-    const handleSubmitScore = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!activeScoringMatch) return;
-        setSubmitting(true);
+    const handleSaveScore = async () => {
+        if (!selectedMatch) return;
+        setSaving(true);
         try {
-            await api.updateMatchScore(activeScoringMatch.id, {
-                sets: setsInput,
-                isFinished: isFinishedMatch,
-            });
-            setActiveScoringMatch(null);
-            fetchEncounter();
+            await api.updateMatchScore(selectedMatch.id, { sets, isFinished });
+            setActionMsg({ type: 'success', text: 'Match score recorded successfully.' });
+            fetchData();
+            setTimeout(() => setActionMsg(null), 3000);
         } catch (err: any) {
-            alert(err.message || 'Failed to update match score');
+            setActionMsg({ type: 'error', text: err.message || 'Failed to update score' });
         } finally {
-            setSubmitting(false);
+            setSaving(false);
         }
     };
 
     if (loading) {
         return (
-            <div className="flex h-64 items-center justify-center text-slate-500 dark:text-slate-400">
-                {t('common.loading')}
+            <div className="flex h-64 items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
             </div>
         );
     }
 
     if (!encounter) {
         return (
-            <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/50 p-8 text-center text-slate-700 dark:text-slate-300">
-                Encounter not found.
+            <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/50 p-8 text-center text-slate-700 dark:text-slate-300">
+                <AlertCircle className="mx-auto h-12 w-12 text-rose-500 mb-3" />
+                <h2 className="text-xl font-bold">Encounter Not Found</h2>
+                <Link href={`/competition/${competitionId}/results`} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-sm">
+                    Back to Results
+                </Link>
             </div>
         );
     }
 
     return (
         <div className="space-y-6 md:space-y-8 pb-16">
-            {/* Back link */}
-            <Link
-                href={`/competition/${competitionId}`}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
-            >
-                <ChevronLeft className="h-4 w-4" />
-                <span>{t('competitions.backToStandings')}</span>
-            </Link>
+            {/* Breadcrumbs */}
+            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <Link href="/competitions" className="hover:underline flex items-center gap-1">
+                    <Trophy className="h-3.5 w-3.5 text-red-500" />
+                    <span>{t('nav.competitions') || 'Competitions'}</span>
+                </Link>
+                <ChevronRight className="h-3 w-3" />
+                <Link href={`/competition/${competitionId}`} className="hover:underline text-slate-700 dark:text-slate-300 font-medium">
+                    {competition?.name || 'Tournament'}
+                </Link>
+                <ChevronRight className="h-3 w-3" />
+                <Link href={`/competition/${competitionId}/results`} className="hover:underline text-slate-700 dark:text-slate-300 font-medium">
+                    Results
+                </Link>
+                <ChevronRight className="h-3 w-3" />
+                <span className="font-semibold text-slate-900 dark:text-white">Scoresheet #{encounter.id.slice(0, 8)}</span>
+            </div>
 
-            {/* Encounter Header Scoreboard */}
-            <div className="relative overflow-hidden rounded-2xl border border-red-200 bg-white dark:border-red-900/40 dark:bg-gradient-to-b dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-5 sm:p-6 md:p-8 shadow-sm dark:shadow-2xl">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400 pb-3 sm:pb-4 border-b border-slate-200 dark:border-slate-800">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-bold text-red-600 dark:text-red-500">
-                            {encounter.category?.competition?.name}
-                        </span>
-                        <span>•</span>
-                        <span>{encounter.category?.name}</span>
-                        <span>•</span>
-                        <span>
-                            {t('competitions.round')} {encounter.round}
-                        </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 self-start sm:self-auto">
-                        <span
-                            className={`rounded px-2.5 py-0.5 text-xs font-bold uppercase ${
-                                encounter.status === 'LIVE'
-                                    ? 'bg-red-100 text-red-700 border border-red-300 dark:bg-red-950 dark:text-red-400 dark:border-red-800 animate-pulse'
-                                    : encounter.status === 'FINISHED'
-                                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800'
-                                      : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                            }`}
-                        >
-                            {encounter.status}
-                        </span>
-                    </div>
-                </div>
-
-                {/* Big Match Scoreboard */}
-                <div className="my-4 sm:my-6 grid grid-cols-1 items-center gap-4 sm:gap-6 md:grid-cols-3">
-                    {/* Home Team */}
-                    <div className="text-center md:text-right">
-                        <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white md:text-3xl">
-                            {encounter.homeTeam?.name}
-                        </h2>
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                            {t('competitions.homePlayer')}
-                        </p>
-                    </div>
-
-                    {/* Center Score */}
-                    <div className="flex flex-col items-center justify-center">
-                        <div className="flex items-center gap-3 sm:gap-4 rounded-2xl bg-slate-100 dark:bg-slate-950 px-5 py-2.5 sm:px-6 sm:py-3 border border-slate-200 dark:border-slate-800 shadow-inner">
-                            <span className="font-mono text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
-                                {encounter.homeScore}
+            {/* Header Hero Card */}
+            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-gradient-to-r dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-5 sm:p-6 md:p-8 shadow-sm dark:shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                            <span className="rounded px-2.5 py-0.5 text-xs font-bold uppercase border bg-red-100 text-red-800 border-red-200 dark:bg-red-950/60 dark:text-red-400 dark:border-red-800/50">
+                                {encounter.category?.name || 'Division'}
                             </span>
-                            <span className="text-xl sm:text-2xl font-bold text-slate-400 dark:text-slate-600">:</span>
-                            <span className="font-mono text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
-                                {encounter.awayScore}
-                            </span>
+                            <span className="font-mono text-xs text-slate-400">Round {encounter.round || 1}</span>
                         </div>
-                        <span className="mt-2 text-[10px] sm:text-[11px] font-mono text-slate-500 dark:text-slate-400 uppercase tracking-widest">
-                            {t('competitions.totalMatchesWon')}
-                        </span>
-                    </div>
-
-                    {/* Away Team */}
-                    <div className="text-center md:text-left">
-                        <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white md:text-3xl">
-                            {encounter.awayTeam?.name}
-                        </h2>
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                            {t('competitions.awayPlayer')}
+                        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+                            <span>{encounter.homeTeam?.name || 'TBD'}</span>
+                            <span className="font-mono text-red-600 dark:text-red-400">{encounter.homeScore ?? 0} : {encounter.awayScore ?? 0}</span>
+                            <span>{encounter.awayTeam?.name || 'TBD'}</span>
+                        </h1>
+                        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex items-center gap-3">
+                            <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-rose-500" /> {encounter.location || 'Main Arena'}</span>
+                            <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5 text-blue-500" /> {encounter.scheduledAt ? new Date(encounter.scheduledAt).toLocaleString() : 'Scheduled'}</span>
                         </p>
                     </div>
-                </div>
 
-                <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 pt-3 sm:pt-4 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
-                    <span className="flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                        {format(new Date(encounter.scheduledAt), 'PPPP p')}
-                    </span>
-                    {encounter.location && (
-                        <span className="flex items-center gap-1.5">
-                            <MapPin className="h-3.5 w-3.5 text-red-500" />
-                            {encounter.location}
-                        </span>
-                    )}
+                    <Link
+                        href={`/competition/${competitionId}/results`}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-xs transition"
+                    >
+                        <ArrowLeft className="h-3.5 w-3.5" />
+                        <span>All Results</span>
+                    </Link>
                 </div>
             </div>
 
-            {/* Official Match Sheet / Matches List */}
-            <div className="space-y-4">
-                <div>
-                    <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <Trophy className="h-5 w-5 text-red-500" />
-                        <span>{t('competitions.officialMatchSheet')}</span>
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {t('competitions.scoringInstruction')}
-                    </p>
+            {/* Feedback Banner */}
+            {actionMsg && (
+                <div
+                    className={`p-4 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-2 border ${
+                        actionMsg.type === 'success'
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300'
+                    }`}
+                >
+                    {actionMsg.type === 'success' ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                    <span>{actionMsg.text}</span>
                 </div>
+            )}
 
-                <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 overflow-x-auto shadow-sm">
-                    <table className="w-full text-left text-xs min-w-[650px]">
-                        <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
-                            <tr>
-                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">{t('competitions.matches')}</th>
-                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">{t('competitions.matchType')}</th>
-                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">{t('competitions.homePlayer')}</th>
-                                <th className="px-3 py-2.5 sm:px-4 sm:py-3">{t('competitions.awayPlayer')}</th>
-                                <th className="px-3 py-2.5 sm:px-4 sm:py-3 text-center">
-                                    {t('competitions.setsBreakdown')}
-                                </th>
-                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">
-                                    {t('competitions.setsScore')}
-                                </th>
-                                <th className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">{t('common.status')}</th>
-                                <th className="px-3 py-2.5 sm:px-4 sm:py-3 text-right">{t('common.actions')}</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60">
-                            {encounter.matches?.map((m: any) => {
-                                const sets = (m.sets as Array<{ home: number; away: number }>) || [];
-                                return (
-                                    <tr
-                                        key={m.id}
-                                        className="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition"
-                                    >
-                                        <td className="px-3 py-2.5 sm:px-4 sm:py-3 font-semibold text-slate-700 dark:text-slate-300">
-                                            {m.label || `Match ${m.orderIndex}`}
-                                        </td>
-                                        <td className="px-3 py-2.5 sm:px-4 sm:py-3">
-                                            <span className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-mono text-slate-700 dark:text-slate-300">
-                                                {m.matchType}
-                                            </span>
-                                        </td>
-                                        <td className="px-3 py-2.5 sm:px-4 sm:py-3 font-medium text-slate-900 dark:text-white">
-                                            {m.homePlayer1
-                                                ? `${m.homePlayer1.firstName} ${m.homePlayer1.lastName}`
-                                                : 'Home Player'}
-                                            {m.homePlayer2 && ` / ${m.homePlayer2.firstName} ${m.homePlayer2.lastName}`}
-                                        </td>
-                                        <td className="px-3 py-2.5 sm:px-4 sm:py-3 font-medium text-slate-900 dark:text-white">
-                                            {m.awayPlayer1
-                                                ? `${m.awayPlayer1.firstName} ${m.awayPlayer1.lastName}`
-                                                : 'Away Player'}
-                                            {m.awayPlayer2 && ` / ${m.awayPlayer2.firstName} ${m.awayPlayer2.lastName}`}
-                                        </td>
-                                        <td className="px-3 py-2.5 sm:px-4 sm:py-3 text-center font-mono">
-                                            {sets.length > 0 ? (
-                                                <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                                                    {sets.map((s, idx) => (
-                                                        <span
-                                                            key={idx}
-                                                            className={`rounded px-1.5 py-0.5 text-[11px] ${
-                                                                s.home > s.away
-                                                                    ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 border border-red-300 dark:border-red-800/40 font-bold'
-                                                                    : s.away > s.home
-                                                                      ? 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
-                                                                      : 'bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-400'
-                                                            }`}
-                                                        >
-                                                            {s.home}:{s.away}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <span className="text-slate-400">-</span>
-                                            )}
-                                        </td>
-                                        <td className="px-2 py-2.5 sm:px-3 sm:py-3 text-center font-mono font-bold text-sm text-slate-900 dark:text-white">
-                                            {m.homeWonSets} : {m.awayWonSets}
-                                        </td>
-                                        <td className="px-2 py-2.5 sm:px-3 sm:py-3 text-center">
-                                            <span
-                                                className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
-                                                    m.status === 'FINISHED'
-                                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800/40'
-                                                        : m.status === 'LIVE'
-                                                          ? 'bg-red-100 text-red-800 border border-red-300 dark:bg-red-950 dark:text-red-400 dark:border-red-800/40 animate-pulse'
-                                                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                                                }`}
-                                            >
-                                                {m.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-3 py-2.5 sm:px-4 sm:py-3 text-right">
-                                            <button
-                                                onClick={() => openScoringModal(m)}
-                                                className="inline-flex items-center gap-1 rounded-lg bg-slate-100 hover:bg-red-600 hover:text-white dark:bg-slate-800 dark:hover:bg-red-600 dark:hover:text-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition shadow-sm"
-                                            >
-                                                <Edit3 className="h-3 w-3" />
-                                                <span>{t('competitions.refereeScore')}</span>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            {/* Matches & Score Entry Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Match List in this Encounter */}
+                <div className="lg:col-span-1 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 shadow-sm space-y-3">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">Individual Matches ({encounter.matches?.length || 0})</h3>
 
-            {/* Referee Match Scoring Modal */}
-            {activeScoringMatch && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
-                        <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
-                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                                <div>
-                                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                        <Flame className="h-4 w-4 text-red-500" />
-                                        <span>
-                                            {t('competitions.liveScoring')}:{' '}
-                                            {activeScoringMatch.label || `Match ${activeScoringMatch.orderIndex}`}
-                                        </span>
-                                    </h3>
-                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                        {t('competitions.scoringInstruction')}
-                                    </p>
-                                </div>
+                    <div className="space-y-2">
+                        {(!encounter.matches || encounter.matches.length === 0) ? (
+                            <div className="p-4 text-center text-xs text-slate-400">No individual matches created for this encounter.</div>
+                        ) : (
+                            encounter.matches.map((m: any, idx: number) => (
                                 <button
-                                    onClick={() => setActiveScoringMatch(null)}
-                                    className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
+                                    key={m.id}
+                                    type="button"
+                                    onClick={() => handleSelectMatch(m)}
+                                    className={`w-full text-left p-3 rounded-xl border transition ${
+                                        selectedMatch?.id === m.id
+                                            ? 'border-red-500 bg-red-500/10 shadow-xs'
+                                            : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100'
+                                    }`}
                                 >
-                                    ✕
+                                    <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+                                        <span>Match #{idx + 1}</span>
+                                        <span className="font-bold uppercase text-[10px] text-red-600 dark:text-red-400">{m.status}</span>
+                                    </div>
+                                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                                        {m.homePlayer1 ? `${m.homePlayer1.firstName} ${m.homePlayer1.lastName}` : 'TBD'} vs{' '}
+                                        {m.awayPlayer1 ? `${m.awayPlayer1.firstName} ${m.awayPlayer1.lastName}` : 'TBD'}
+                                    </div>
                                 </button>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                {/* Score Input Card */}
+                {selectedMatch && (
+                    <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 sm:p-6 shadow-sm space-y-5">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <Flame className="h-4 w-4 text-red-500" />
+                                <span>Table Scoresheet: {selectedMatch.homePlayer1?.lastName || 'Home'} vs {selectedMatch.awayPlayer1?.lastName || 'Away'}</span>
+                            </h3>
+                        </div>
+
+                        {/* Set by set inputs */}
+                        <div className="space-y-3">
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Set Scores (Points)</label>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                {sets.map((s, idx) => (
+                                    <div key={idx} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-2">
+                                        <div className="text-[11px] font-bold text-slate-500 text-center">Set {idx + 1}</div>
+                                        <div className="flex items-center justify-center gap-2">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                disabled={!canScore}
+                                                value={s.home}
+                                                onChange={(e) => {
+                                                    const updated = [...sets];
+                                                    updated[idx].home = Number(e.target.value);
+                                                    setSets(updated);
+                                                }}
+                                                className="w-14 text-center rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 py-1 font-mono font-bold text-sm text-slate-900 dark:text-white"
+                                            />
+                                            <span className="text-slate-400 font-bold">:</span>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                disabled={!canScore}
+                                                value={s.away}
+                                                onChange={(e) => {
+                                                    const updated = [...sets];
+                                                    updated[idx].away = Number(e.target.value);
+                                                    setSets(updated);
+                                                }}
+                                                className="w-14 text-center rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 py-1 font-mono font-bold text-sm text-slate-900 dark:text-white"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
 
-                            <form onSubmit={handleSubmitScore} className="space-y-4 text-xs">
-                                <div className="space-y-2">
-                                    <div className="grid grid-cols-12 gap-2 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">
-                                        <div className="col-span-3 sm:col-span-2">Set</div>
-                                        <div className="col-span-4 text-center">{t('competitions.homePoints')}</div>
-                                        <div className="col-span-4 text-center">{t('competitions.awayPoints')}</div>
-                                        <div className="col-span-1 sm:col-span-2"></div>
-                                    </div>
-
-                                    {setsInput.map((set, idx) => (
-                                        <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                                            <div className="col-span-3 sm:col-span-2 font-mono font-bold text-slate-700 dark:text-slate-300">
-                                                Set {idx + 1}
-                                            </div>
-                                            <div className="col-span-4">
-                                                <input
-                                                    type="number"
-                                                    min={0}
-                                                    value={set.home}
-                                                    onChange={(e) => handleSetChange(idx, 'home', Number(e.target.value))}
-                                                    className="w-full text-center rounded-lg border border-slate-300 bg-slate-50 px-2 py-2 font-mono text-base font-bold text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                                />
-                                            </div>
-                                            <div className="col-span-4">
-                                                <input
-                                                    type="number"
-                                                    min={0}
-                                                    value={set.away}
-                                                    onChange={(e) => handleSetChange(idx, 'away', Number(e.target.value))}
-                                                    className="w-full text-center rounded-lg border border-slate-300 bg-slate-50 px-2 py-2 font-mono text-base font-bold text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                                />
-                                            </div>
-                                            <div className="col-span-1 sm:col-span-2 text-right">
-                                                {setsInput.length > 1 && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveSet(idx)}
-                                                        className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800 dark:hover:text-red-400"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                            {canScore && (
+                                <div className="flex gap-2 pt-1">
                                     <button
                                         type="button"
-                                        onClick={handleAddSet}
-                                        className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 dark:text-red-400 hover:underline"
+                                        onClick={() => setSets([...sets, { home: 0, away: 0 }])}
+                                        className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800"
                                     >
-                                        <Plus className="h-3.5 w-3.5" />
-                                        <span>{t('competitions.addSet')}</span>
+                                        + Add Set
                                     </button>
-
-                                    <label className="flex items-center gap-2 cursor-pointer font-medium text-slate-700 dark:text-slate-300">
-                                        <input
-                                            type="checkbox"
-                                            checked={isFinishedMatch}
-                                            onChange={(e) => setIsFinishedMatch(e.target.checked)}
-                                            className="h-4 w-4 rounded border-slate-300 bg-slate-100 text-red-600 focus:ring-red-500 dark:border-slate-700 dark:bg-slate-950"
-                                        />
-                                        <span>{t('competitions.markFinished')}</span>
-                                    </label>
+                                    {sets.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setSets(sets.slice(0, -1))}
+                                            className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                                        >
+                                            Remove Last Set
+                                        </button>
+                                    )}
                                 </div>
-
-                                <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
-                                    <button
-                                        type="button"
-                                        onClick={() => setActiveScoringMatch(null)}
-                                        className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                                    >
-                                        {t('common.cancel')}
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={submitting}
-                                        className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50 shadow"
-                                    >
-                                        {submitting ? t('common.submitting') : t('competitions.saveAndPublish')}
-                                    </button>
-                                </div>
-                            </form>
+                            )}
                         </div>
+
+                        {/* Match Finish Toggle */}
+                        <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
+                            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
+                                <input
+                                    type="checkbox"
+                                    disabled={!canScore}
+                                    checked={isFinished}
+                                    onChange={(e) => setIsFinished(e.target.checked)}
+                                    className="h-4 w-4 rounded accent-red-600"
+                                />
+                                <div>
+                                    <span className="text-xs font-bold text-slate-900 dark:text-white block">Mark Match as Completed</span>
+                                    <span className="text-[11px] text-slate-500">Computes winner and updates ELO points (if competition counts for ELO).</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        {canScore && (
+                            <div className="flex justify-end pt-2">
+                                <button
+                                    type="button"
+                                    disabled={saving}
+                                    onClick={handleSaveScore}
+                                    className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm transition disabled:opacity-50"
+                                >
+                                    <Save className="h-4 w-4" />
+                                    <span>{saving ? 'Saving...' : 'Submit Scoresheet'}</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
-                </ModalPortal>
-            )}
+                )}
+            </div>
         </div>
     );
 }

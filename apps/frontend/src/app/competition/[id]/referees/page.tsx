@@ -7,25 +7,27 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import {
-    ShieldCheck,
-    ChevronLeft,
-    Users,
-    Award,
-    Plus,
+    UserCheck,
+    ChevronRight,
+    ArrowLeft,
     CheckCircle2,
+    AlertCircle,
     Shield,
+    Plus,
+    Award,
+    Trophy,
 } from 'lucide-react';
 
 export default function CompetitionRefereesPage() {
     const params = useParams();
     const competitionId = params.id as string;
     const { user } = useAuth();
-    const isSuperAdmin = user?.isSuperAdmin;
     const { t } = useI18n();
 
     const [competition, setCompetition] = useState<any | null>(null);
     const [roles, setRoles] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     const fetchData = async () => {
         try {
@@ -35,8 +37,8 @@ export default function CompetitionRefereesPage() {
             ]);
             setCompetition(comp);
             setRoles(r || []);
-        } catch (err) {
-            console.error('Failed to load referees:', err);
+        } catch (err: any) {
+            setActionMsg({ type: 'error', text: err.message || 'Failed to load referees' });
         } finally {
             setLoading(false);
         }
@@ -46,110 +48,115 @@ export default function CompetitionRefereesPage() {
         fetchData();
     }, [competitionId]);
 
+    const refereeRoles = roles.filter((r) => ['REFEREE', 'HEAD_REFEREE'].includes(r.role));
+
     if (loading) {
         return (
-            <div className="flex h-96 items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
+            <div className="flex h-64 items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
             </div>
         );
     }
 
-    const headReferees = roles.filter((r) => r.role === 'HEAD_REFEREE');
-    const tableReferees = roles.filter((r) => r.role === 'REFEREE');
-
     return (
-        <div className="min-h-screen bg-black p-6 md:p-8 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
-                <div className="flex items-center gap-3">
-                    <Link
-                        href={`/competition/${competitionId}`}
-                        className="rounded-xl border border-zinc-800 bg-zinc-900 p-2.5 text-zinc-400 hover:border-zinc-700 hover:text-white transition"
-                    >
-                        <ChevronLeft className="h-5 w-5" />
-                    </Link>
-                    <div>
-                        <div className="flex items-center gap-2 text-xs font-semibold text-orange-400 uppercase tracking-wider">
-                            <span>Competition Workspace</span>
-                            <span>•</span>
-                            <span>{competition?.name}</span>
-                        </div>
-                        <h1 className="text-2xl font-extrabold text-white tracking-tight sm:text-3xl flex items-center gap-2.5 mt-0.5">
-                            <ShieldCheck className="h-7 w-7 text-purple-400" />
-                            Referees & Umpires
-                        </h1>
-                    </div>
-                </div>
-                <Link
-                    href={`/competition/${competitionId}/access`}
-                    className="flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-orange-600/30 hover:bg-orange-500"
-                >
-                    <Plus className="h-4 w-4" /> Assign Referee Duties
+        <div className="space-y-6 md:space-y-8 pb-16">
+            {/* Breadcrumbs */}
+            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <Link href="/competitions" className="hover:underline flex items-center gap-1">
+                    <Trophy className="h-3.5 w-3.5 text-red-500" />
+                    <span>{t('nav.competitions') || 'Competitions'}</span>
                 </Link>
+                <ChevronRight className="h-3 w-3" />
+                <Link href={`/competition/${competitionId}`} className="hover:underline text-slate-700 dark:text-slate-300 font-medium">
+                    {competition?.name || 'Tournament'}
+                </Link>
+                <ChevronRight className="h-3 w-3" />
+                <span className="font-semibold text-slate-900 dark:text-white">Referees & Umpires</span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400">
-                                <Award className="h-5 w-5" />
-                            </div>
-                            <div>
-                                <h3 className="text-base font-bold text-white">Head Referee / Tournament Director</h3>
-                                <p className="text-xs text-zinc-400">Final authority on rules, disputes & appeals</p>
-                            </div>
+            {/* Header Hero Card */}
+            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-gradient-to-r dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-5 sm:p-6 md:p-8 shadow-sm dark:shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                            <span className="rounded px-2.5 py-0.5 text-xs font-bold uppercase border bg-red-100 text-red-800 border-red-200 dark:bg-red-950/60 dark:text-red-400 dark:border-red-800/50">
+                                Match Officials
+                            </span>
+                            <span className="font-mono text-xs text-slate-400">Table Umpires & Chiefs</span>
                         </div>
-                        <span className="rounded-full bg-purple-500/10 border border-purple-500/30 px-3 py-1 text-xs font-bold text-purple-400">
-                            {headReferees.length} Assigned
-                        </span>
+                        <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <UserCheck className="h-6 w-6 text-red-500" />
+                            <span>Referees & Match Officials</span>
+                        </h1>
+                        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                            Designated Head Referees, licensed table umpires, and official match adjudicators
+                        </p>
                     </div>
 
-                    <div className="space-y-2 pt-2">
-                        {headReferees.length === 0 ? (
-                            <p className="text-xs text-zinc-500 py-4 text-center">No Head Referee assigned yet.</p>
-                        ) : (
-                            headReferees.map((r) => (
-                                <div key={r.id} className="flex items-center justify-between rounded-xl border border-zinc-800 bg-black/40 p-3">
-                                    <span className="text-sm font-semibold text-white">
-                                        {r.user?.firstName} {r.user?.lastName}
-                                    </span>
-                                    <span className="text-xs text-zinc-400">{r.user?.email}</span>
-                                </div>
-                            ))
-                        )}
+                    <div className="flex items-center gap-2.5">
+                        <Link
+                            href={`/competition/${competitionId}`}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-xs transition"
+                        >
+                            <ArrowLeft className="h-3.5 w-3.5" />
+                            <span>Dashboard</span>
+                        </Link>
+                        <Link
+                            href={`/competition/${competitionId}/access`}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition"
+                        >
+                            <Plus className="h-3.5 w-3.5" />
+                            <span>Manage In Access Rights</span>
+                        </Link>
                     </div>
                 </div>
+            </div>
 
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
-                                <Shield className="h-5 w-5" />
-                            </div>
-                            <div>
-                                <h3 className="text-base font-bold text-white">Table Umpires & Match Referees</h3>
-                                <p className="text-xs text-zinc-400">Match scorekeeping and table supervision</p>
-                            </div>
-                        </div>
-                        <span className="rounded-full bg-blue-500/10 border border-blue-500/30 px-3 py-1 text-xs font-bold text-blue-400">
-                            {tableReferees.length} Assigned
-                        </span>
-                    </div>
+            {/* Referee Roster Card */}
+            <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 sm:p-6 shadow-sm space-y-4">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Active Match Officials ({refereeRoles.length})</h3>
 
-                    <div className="space-y-2 pt-2">
-                        {tableReferees.length === 0 ? (
-                            <p className="text-xs text-zinc-500 py-4 text-center">No Table Referees assigned yet.</p>
-                        ) : (
-                            tableReferees.map((r) => (
-                                <div key={r.id} className="flex items-center justify-between rounded-xl border border-zinc-800 bg-black/40 p-3">
-                                    <span className="text-sm font-semibold text-white">
-                                        {r.user?.firstName} {r.user?.lastName}
-                                    </span>
-                                    <span className="text-xs text-zinc-400">{r.user?.email}</span>
-                                </div>
-                            ))
-                        )}
-                    </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs sm:text-sm text-slate-700 dark:text-slate-200">
+                        <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-800">
+                            <tr>
+                                <th className="p-3">Official Name</th>
+                                <th className="p-3">Email Address</th>
+                                <th className="p-3">Designation</th>
+                                <th className="p-3">Assigned On</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                            {refereeRoles.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="p-6 text-center text-xs text-slate-400">
+                                        No designated referees assigned yet. Go to Access Rights to appoint Head Referees and Table Umpires.
+                                    </td>
+                                </tr>
+                            ) : (
+                                refereeRoles.map((r) => (
+                                    <tr key={r.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                                        <td className="p-3 font-semibold text-slate-900 dark:text-white">
+                                            {r.user?.firstName} {r.user?.lastName}
+                                        </td>
+                                        <td className="p-3 font-mono text-xs text-slate-500">{r.user?.email}</td>
+                                        <td className="p-3">
+                                            <span className={`rounded px-2 py-0.5 text-[11px] font-bold uppercase border ${
+                                                r.role === 'HEAD_REFEREE'
+                                                    ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/40'
+                                                    : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/40'
+                                            }`}>
+                                                {r.role === 'HEAD_REFEREE' ? 'Head Referee (Chief)' : 'Table Umpire'}
+                                            </span>
+                                        </td>
+                                        <td className="p-3 text-xs text-slate-400">
+                                            {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '–'}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import {
-    Settings,
-    ChevronLeft,
+    Sliders,
+    ChevronRight,
     Save,
     AlertCircle,
     CheckCircle2,
@@ -17,11 +17,15 @@ import {
     DollarSign,
     Shield,
     Flame,
-    ShieldCheck,
+    Check,
+    XCircle,
+    ArrowLeft,
+    Trophy,
 } from 'lucide-react';
 
 export default function CompetitionSettingsPage() {
     const params = useParams();
+    const router = useRouter();
     const competitionId = params.id as string;
     const { user } = useAuth();
     const isSuperAdmin = user?.isSuperAdmin;
@@ -31,8 +35,7 @@ export default function CompetitionSettingsPage() {
     const [roles, setRoles] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [successMessage, setSuccessMessage] = useState('');
-    const [errorMessage, setErrorMessage] = useState('');
+    const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     const [settingsForm, setSettingsForm] = useState({
         name: '',
@@ -64,7 +67,7 @@ export default function CompetitionSettingsPage() {
             const r = await api.getCompetitionRoles(competitionId).catch(() => []);
             setRoles(r || []);
         } catch (err: any) {
-            setErrorMessage(err.message || 'Failed to load settings');
+            setActionMsg({ type: 'error', text: err.message || 'Failed to load settings' });
         } finally {
             setLoading(false);
         }
@@ -84,11 +87,11 @@ export default function CompetitionSettingsPage() {
         setSaving(true);
         try {
             await api.updateCompetition(competitionId, settingsForm);
-            setSuccessMessage('Competition settings updated successfully.');
+            setActionMsg({ type: 'success', text: 'Competition settings updated successfully.' });
             fetchData();
-            setTimeout(() => setSuccessMessage(''), 3000);
+            setTimeout(() => setActionMsg(null), 3000);
         } catch (err: any) {
-            setErrorMessage(err.message || 'Failed to update settings');
+            setActionMsg({ type: 'error', text: err.message || 'Failed to update settings' });
         } finally {
             setSaving(false);
         }
@@ -97,253 +100,254 @@ export default function CompetitionSettingsPage() {
     const handleApproval = async (approved: boolean) => {
         try {
             await api.approveCompetition(competitionId, { status: approved ? 'APPROVED' : 'REJECTED' });
-            setSuccessMessage(`Competition ${approved ? 'approved' : 'rejected'} successfully.`);
+            setActionMsg({ type: 'success', text: `Competition ${approved ? 'approved' : 'rejected'} successfully.` });
             fetchData();
-            setTimeout(() => setSuccessMessage(''), 3000);
+            setTimeout(() => setActionMsg(null), 3000);
         } catch (err: any) {
-            setErrorMessage(err.message || 'Approval action failed');
+            setActionMsg({ type: 'error', text: err.message || 'Approval action failed' });
         }
     };
 
     if (loading) {
         return (
-            <div className="flex h-96 items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
+            <div className="flex h-64 items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-black p-6 md:p-8 space-y-6">
-            
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
-                <div className="flex items-center gap-3">
-                    <Link
-                        href={`/competition/${competitionId}`}
-                        className="rounded-xl border border-zinc-800 bg-zinc-900 p-2.5 text-zinc-400 hover:border-zinc-700 hover:text-white transition"
-                    >
-                        <ChevronLeft className="h-5 w-5" />
-                    </Link>
-                    <div>
-                        <div className="flex items-center gap-2 text-xs font-semibold text-orange-400 uppercase tracking-wider">
-                            <span>Competition Workspace</span>
-                            <span>•</span>
-                            <span>{competition?.name}</span>
+        <div className="space-y-6 md:space-y-8 pb-16">
+            {/* Breadcrumb Navigation */}
+            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <Link href="/competitions" className="hover:underline flex items-center gap-1">
+                    <Trophy className="h-3.5 w-3.5 text-red-500" />
+                    <span>{t('nav.competitions') || 'Competitions'}</span>
+                </Link>
+                <ChevronRight className="h-3 w-3" />
+                <Link href={`/competition/${competitionId}`} className="hover:underline text-slate-700 dark:text-slate-300 font-medium">
+                    {competition?.name || 'Tournament'}
+                </Link>
+                <ChevronRight className="h-3 w-3" />
+                <span className="font-semibold text-slate-900 dark:text-white">Settings & Governance</span>
+            </div>
+
+            {/* Header Hero Card */}
+            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-gradient-to-r dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-5 sm:p-6 md:p-8 shadow-sm dark:shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                            <span className="rounded px-2.5 py-0.5 text-xs font-bold uppercase border bg-red-100 text-red-800 border-red-200 dark:bg-red-950/60 dark:text-red-400 dark:border-red-800/50">
+                                {competition?.type}
+                            </span>
+                            <span className="font-mono text-xs text-slate-400">Governance Console</span>
                         </div>
-                        <h1 className="text-2xl font-extrabold text-white tracking-tight sm:text-3xl flex items-center gap-2.5 mt-0.5">
-                            <Settings className="h-7 w-7 text-orange-400" />
-                            General Settings & Governance
+                        <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <Sliders className="h-6 w-6 text-red-500" />
+                            <span>Tournament Configuration</span>
                         </h1>
+                        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                            Configure competition dates, official licensing tier, ELO calculation rules, and approval status
+                        </p>
                     </div>
-                </div>
-                <div className="flex items-center gap-2">
+
                     <Link
                         href={`/competition/${competitionId}`}
-                        className="rounded-xl border border-zinc-800 bg-zinc-900 px-3.5 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 hover:text-white transition"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-xs transition"
                     >
-                        Dashboard Overview
+                        <ArrowLeft className="h-3.5 w-3.5" />
+                        <span>Dashboard</span>
                     </Link>
                 </div>
             </div>
 
+            {/* Feedback Banner */}
+            {actionMsg && (
+                <div
+                    className={`p-4 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-2 border ${
+                        actionMsg.type === 'success'
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300'
+                    }`}
+                >
+                    {actionMsg.type === 'success' ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                    <span>{actionMsg.text}</span>
+                </div>
+            )}
 
-            {competition?.approvalStatus === 'PENDING_APPROVAL' && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-5 text-amber-200">
-                    <div className="flex items-center gap-3">
-                        <AlertCircle className="h-6 w-6 text-amber-400 flex-shrink-0" />
+            {/* Association Approval Banner */}
+            {competition?.requiresApproval && (
+                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 shadow-sm space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
-                            <p className="font-semibold text-white">This competition is pending Main Association Approval</p>
-                            <p className="text-xs text-amber-300/80">
-                                Current approval status: <strong>{competition.approvalStatus}</strong>
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <Shield className="h-4 w-4 text-red-500" />
+                                <span>Main Association Approval Status</span>
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                                Current Status: <strong className="text-slate-900 dark:text-white uppercase font-mono">{competition.approvalStatus}</strong>
                             </p>
                         </div>
+                        {isAssocAdmin && competition.approvalStatus === 'PENDING_APPROVAL' && (
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => handleApproval(true)}
+                                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition"
+                                >
+                                    <Check className="h-3.5 w-3.5" /> Approve
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleApproval(false)}
+                                    className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition"
+                                >
+                                    <XCircle className="h-3.5 w-3.5" /> Reject
+                                </button>
+                            </div>
+                        )}
                     </div>
-                    {(isSuperAdmin || isAssocAdmin) && (
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => handleApproval(true)}
-                                className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500 shadow-md shadow-emerald-600/30"
-                            >
-                                Approve Competition
-                            </button>
-                            <button
-                                onClick={() => handleApproval(false)}
-                                className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-xs font-bold text-red-400 hover:bg-red-500/20"
-                            >
-                                Reject
-                            </button>
-                        </div>
-                    )}
                 </div>
             )}
 
-            {successMessage && (
-                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm font-medium text-emerald-400">
-                    {successMessage}
-                </div>
-            )}
-            {errorMessage && (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm font-medium text-red-400">
-                    {errorMessage}
-                </div>
-            )}
-
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 md:p-8">
-                <form onSubmit={handleSaveSettings} className="space-y-6 max-w-3xl">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="md:col-span-2">
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
-                                Competition Name
-                            </label>
-                            <input
-                                type="text"
-                                value={settingsForm.name}
-                                onChange={(e) => setSettingsForm({ ...settingsForm, name: e.target.value })}
-                                required
-                                disabled={!hasAdminRole}
-                                className="w-full rounded-xl border border-zinc-700 bg-zinc-800/80 px-4 py-2.5 text-sm text-white focus:border-orange-500 focus:outline-none disabled:opacity-60"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
-                                Start Date
-                            </label>
-                            <input
-                                type="date"
-                                value={settingsForm.startDate}
-                                onChange={(e) => setSettingsForm({ ...settingsForm, startDate: e.target.value })}
-                                required
-                                disabled={!hasAdminRole}
-                                className="w-full rounded-xl border border-zinc-700 bg-zinc-800/80 px-4 py-2.5 text-sm text-white focus:border-orange-500 focus:outline-none disabled:opacity-60"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
-                                End Date
-                            </label>
-                            <input
-                                type="date"
-                                value={settingsForm.endDate}
-                                onChange={(e) => setSettingsForm({ ...settingsForm, endDate: e.target.value })}
-                                required
-                                disabled={!hasAdminRole}
-                                className="w-full rounded-xl border border-zinc-700 bg-zinc-800/80 px-4 py-2.5 text-sm text-white focus:border-orange-500 focus:outline-none disabled:opacity-60"
-                            />
-                        </div>
-
-                        <div className="md:col-span-2">
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
-                                Venue / Playing Hall Location
-                            </label>
-                            <input
-                                type="text"
-                                value={settingsForm.location}
-                                onChange={(e) => setSettingsForm({ ...settingsForm, location: e.target.value })}
-                                placeholder="e.g. St. Jakobshalle, Basel"
-                                disabled={!hasAdminRole}
-                                className="w-full rounded-xl border border-zinc-700 bg-zinc-800/80 px-4 py-2.5 text-sm text-white focus:border-orange-500 focus:outline-none disabled:opacity-60"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
-                                Entry Fee (CHF per Player / Team)
-                            </label>
-                            <input
-                                type="number"
-                                min="0"
-                                step="1"
-                                value={settingsForm.entryFee}
-                                onChange={(e) => setSettingsForm({ ...settingsForm, entryFee: parseFloat(e.target.value) || 0 })}
-                                disabled={!hasAdminRole}
-                                className="w-full rounded-xl border border-zinc-700 bg-zinc-800/80 px-4 py-2.5 text-sm text-white focus:border-orange-500 focus:outline-none disabled:opacity-60"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
-                                Competition Lifecycle Status
-                            </label>
-                            <select
-                                value={settingsForm.status}
-                                onChange={(e) => setSettingsForm({ ...settingsForm, status: e.target.value })}
-                                disabled={!hasAdminRole}
-                                className="w-full rounded-xl border border-zinc-700 bg-zinc-800/80 px-4 py-2.5 text-sm text-white focus:border-orange-500 focus:outline-none disabled:opacity-60"
-                            >
-                                <option value="DRAFT">DRAFT</option>
-                                <option value="REGISTRATION_OPEN">REGISTRATION_OPEN</option>
-                                <option value="REGISTRATION_CLOSED">REGISTRATION_CLOSED</option>
-                                <option value="IN_PROGRESS">IN_PROGRESS</option>
-                                <option value="COMPLETED">COMPLETED</option>
-                                <option value="CANCELLED">CANCELLED</option>
-                            </select>
-                        </div>
-
-                        <div className="md:col-span-2">
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
-                                Description & Tournament Regulations
-                            </label>
-                            <textarea
-                                rows={4}
-                                value={settingsForm.description}
-                                onChange={(e) => setSettingsForm({ ...settingsForm, description: e.target.value })}
-                                disabled={!hasAdminRole}
-                                className="w-full rounded-xl border border-zinc-700 bg-zinc-800/80 px-4 py-2.5 text-sm text-white focus:border-orange-500 focus:outline-none disabled:opacity-60"
-                            />
-                        </div>
-
-                        <div className="md:col-span-2 space-y-4 rounded-xl border border-zinc-800 bg-black/40 p-5">
-                            <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                                <Shield className="h-4 w-4 text-orange-400" />
-                                Official Ranking & ELO Ratings Configuration
-                            </h4>
-
-                            <div className="flex items-center gap-3">
-                                <input
-                                    type="checkbox"
-                                    id="isOfficial"
-                                    checked={settingsForm.isOfficial}
-                                    onChange={(e) => setSettingsForm({ ...settingsForm, isOfficial: e.target.checked })}
-                                    disabled={!hasAdminRole}
-                                    className="h-4 w-4 rounded border-zinc-700 bg-zinc-800 text-orange-500 focus:ring-orange-500"
-                                />
-                                <label htmlFor="isOfficial" className="text-sm text-zinc-200">
-                                    <strong>Official Competition</strong> (Recognized by Main Association)
-                                </label>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <input
-                                    type="checkbox"
-                                    id="countsForElo"
-                                    checked={settingsForm.countsForElo}
-                                    onChange={(e) => setSettingsForm({ ...settingsForm, countsForElo: e.target.checked })}
-                                    disabled={!hasAdminRole}
-                                    className="h-4 w-4 rounded border-zinc-700 bg-zinc-800 text-orange-500 focus:ring-orange-500"
-                                />
-                                <label htmlFor="countsForElo" className="text-sm text-zinc-200">
-                                    <strong>Calculate ELO Rating Points</strong> (Matches affect player national/association rating points)
-                                </label>
-                            </div>
-                        </div>
+            {/* Settings Form Card */}
+            <form onSubmit={handleSaveSettings} className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 sm:p-6 shadow-sm space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="space-y-1.5 sm:col-span-2">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Competition Name</label>
+                        <input
+                            type="text"
+                            required
+                            disabled={!hasAdminRole}
+                            value={settingsForm.name}
+                            onChange={(e) => setSettingsForm({ ...settingsForm, name: e.target.value })}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition disabled:opacity-60"
+                        />
                     </div>
 
-                    {hasAdminRole && (
-                        <div className="flex justify-end pt-4 border-t border-zinc-800">
-                            <button
-                                type="submit"
-                                disabled={saving}
-                                className="flex items-center gap-2 rounded-xl bg-orange-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-600/30 hover:bg-orange-500 disabled:opacity-50"
-                            >
-                                <Save className="h-4 w-4" />
-                                {saving ? 'Saving...' : 'Save Settings'}
-                            </button>
-                        </div>
-                    )}
-                </form>
-            </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Description & Rules Summary</label>
+                        <textarea
+                            rows={3}
+                            disabled={!hasAdminRole}
+                            value={settingsForm.description}
+                            onChange={(e) => setSettingsForm({ ...settingsForm, description: e.target.value })}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition disabled:opacity-60"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Start Date</label>
+                        <input
+                            type="date"
+                            required
+                            disabled={!hasAdminRole}
+                            value={settingsForm.startDate}
+                            onChange={(e) => setSettingsForm({ ...settingsForm, startDate: e.target.value })}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition disabled:opacity-60"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">End Date</label>
+                        <input
+                            type="date"
+                            required
+                            disabled={!hasAdminRole}
+                            value={settingsForm.endDate}
+                            onChange={(e) => setSettingsForm({ ...settingsForm, endDate: e.target.value })}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition disabled:opacity-60"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Location / Venue</label>
+                        <input
+                            type="text"
+                            disabled={!hasAdminRole}
+                            value={settingsForm.location}
+                            onChange={(e) => setSettingsForm({ ...settingsForm, location: e.target.value })}
+                            placeholder="e.g. Sporthalle Wankdorf, Bern"
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition disabled:opacity-60"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Entry Fee (CHF)</label>
+                        <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            disabled={!hasAdminRole}
+                            value={settingsForm.entryFee}
+                            onChange={(e) => setSettingsForm({ ...settingsForm, entryFee: Number(e.target.value) })}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition disabled:opacity-60"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Lifecycle Status</label>
+                        <select
+                            disabled={!hasAdminRole}
+                            value={settingsForm.status}
+                            onChange={(e) => setSettingsForm({ ...settingsForm, status: e.target.value })}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition disabled:opacity-60"
+                        >
+                            <option value="DRAFT">DRAFT (Setup)</option>
+                            <option value="REGISTRATION_OPEN">REGISTRATION OPEN</option>
+                            <option value="IN_PROGRESS">IN PROGRESS (Live)</option>
+                            <option value="COMPLETED">COMPLETED</option>
+                            <option value="CANCELLED">CANCELLED</option>
+                        </select>
+                    </div>
+
+                    {/* Governance Toggles */}
+                    <div className="sm:col-span-2 pt-4 border-t border-slate-200 dark:border-slate-800/80 space-y-4">
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Official Classification & ELO Rules</h4>
+
+                        <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
+                            <input
+                                type="checkbox"
+                                disabled={!hasAdminRole}
+                                checked={settingsForm.isOfficial}
+                                onChange={(e) => setSettingsForm({ ...settingsForm, isOfficial: e.target.checked })}
+                                className="h-4 w-4 rounded accent-red-600"
+                            />
+                            <div>
+                                <span className="text-xs font-bold text-slate-900 dark:text-white block">Official Federation Competition</span>
+                                <span className="text-[11px] text-slate-500">Recognized by the national table tennis association with official certification.</span>
+                            </div>
+                        </label>
+
+                        <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
+                            <input
+                                type="checkbox"
+                                disabled={!hasAdminRole}
+                                checked={settingsForm.countsForElo}
+                                onChange={(e) => setSettingsForm({ ...settingsForm, countsForElo: e.target.checked })}
+                                className="h-4 w-4 rounded accent-red-600"
+                            />
+                            <div>
+                                <span className="text-xs font-bold text-slate-900 dark:text-white block">Calculate Match ELO Rating Points</span>
+                                <span className="text-[11px] text-slate-500">When disabled, encounters are treated as inofficial and do not affect official player ELO ratings.</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                {hasAdminRole && (
+                    <div className="flex justify-end pt-2">
+                        <button
+                            type="submit"
+                            disabled={saving}
+                            className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm transition disabled:opacity-60"
+                        >
+                            <Save className="h-4 w-4" />
+                            <span>{saving ? 'Saving...' : 'Save Settings'}</span>
+                        </button>
+                    </div>
+                )}
+            </form>
         </div>
     );
 }

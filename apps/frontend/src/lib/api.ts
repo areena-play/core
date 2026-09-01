@@ -374,6 +374,18 @@ class ApiClient {
         return this.request('/competitions', { method: 'POST', body: JSON.stringify(body) });
     }
 
+    createCompetitionCategory(competitionId: string, body: any) {
+        return this.createCategory(competitionId, body);
+    }
+
+    createCategoryTeam(categoryId: string, body: any) {
+        return this.registerTeam(categoryId, body);
+    }
+
+    generateCategoryGroups(categoryId: string, body: any) {
+        return this.generateGroups(categoryId, body);
+    }
+
     createCategory(competitionId: string, body: any) {
         return this.request(`/competitions/${competitionId}/categories`, {
             method: 'POST',
