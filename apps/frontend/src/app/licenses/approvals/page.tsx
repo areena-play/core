@@ -10,13 +10,22 @@ import { AccessDenied } from '@/components/auth/AccessDenied';
 import { ModalPortal } from '@/components/ui/ModalPortal';
 
 export default function ApprovalsQueuePage() {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const { t } = useI18n();
     const [pendingLicenses, setPendingLicenses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [rejectingId, setRejectingId] = useState<string | null>(null);
     const [rejectReason, setRejectReason] = useState('');
     const [processingId, setProcessingId] = useState<string | null>(null);
+
+    const isAuthorized =
+        user?.isSuperAdmin ||
+        user?.associationRoles?.some((r: any) =>
+            ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
+        ) ||
+        user?.clubRoles?.some((r: any) =>
+            ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
+        );
 
     const fetchPending = async () => {
         try {
@@ -33,8 +42,14 @@ export default function ApprovalsQueuePage() {
     };
 
     useEffect(() => {
-        fetchPending();
-    }, []);
+        if (!authLoading) {
+            if (isAuthorized) {
+                fetchPending();
+            } else {
+                setLoading(false);
+            }
+        }
+    }, [authLoading, isAuthorized]);
 
     const handleApprove = async (licenseId: string) => {
         setProcessingId(licenseId);
@@ -67,16 +82,15 @@ export default function ApprovalsQueuePage() {
         }
     };
 
-    const isAuthorized =
-        user?.isSuperAdmin ||
-        user?.associationRoles?.some((r: any) =>
-            ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
-        ) ||
-        user?.clubRoles?.some((r: any) =>
-            ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
+    if (authLoading || loading) {
+        return (
+            <div className="flex h-64 items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
+            </div>
         );
+    }
 
-    if (!loading && !isAuthorized) {
+    if (!isAuthorized) {
         return (
             <AccessDenied
                 title="License Approvals Restricted"

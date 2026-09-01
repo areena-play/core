@@ -30,6 +30,7 @@ export interface AuthContextType {
     user: User | null;
     token: string | null;
     loading: boolean;
+    justLoggedOut: boolean;
     login: (token: string, user: User) => void;
     logout: () => void;
     refreshUser: () => Promise<void>;
@@ -39,6 +40,7 @@ const AuthContext = createContext<AuthContextType>({
     user: null,
     token: null,
     loading: true,
+    justLoggedOut: false,
     login: () => {},
     logout: () => {},
     refreshUser: async () => {},
@@ -48,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [justLoggedOut, setJustLoggedOut] = useState(false);
 
     const refreshUser = async () => {
         if (typeof window === 'undefined') {
@@ -108,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('areena_user', JSON.stringify(newUser));
         setToken(newToken);
         setUser(newUser);
+        setJustLoggedOut(false);
         setLoading(false);
     };
 
@@ -116,10 +120,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('areena_user');
         setToken(null);
         setUser(null);
+        setJustLoggedOut(true);
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, logout, refreshUser }}>
+        <AuthContext.Provider value={{ user, token, loading, justLoggedOut, login, logout, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

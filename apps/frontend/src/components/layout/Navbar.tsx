@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useTheme } from '@/lib/themeContext';
@@ -51,6 +51,7 @@ import {
 } from 'lucide-react';
 
 export function Navbar() {
+    const router = useRouter();
     const { user, logout } = useAuth();
     const { isConnected } = useWebSocket();
     const { theme, resolvedTheme, setTheme } = useTheme();
@@ -439,13 +440,13 @@ export function Navbar() {
                         ) : (
                             <div className="flex items-center gap-1.5 sm:gap-2">
                                 <Link
-                                    href="/auth/login"
+                                    href={pathname && pathname !== '/auth/login' && pathname !== '/auth/register' ? `/auth/login?redirect=${encodeURIComponent(pathname)}` : '/auth/login'}
                                     className="rounded-lg px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white transition"
                                 >
                                     {t('nav.signIn')}
                                 </Link>
                                 <Link
-                                    href="/auth/register"
+                                    href={pathname && pathname !== '/auth/login' && pathname !== '/auth/register' ? `/auth/register?redirect=${encodeURIComponent(pathname)}` : '/auth/register'}
                                     className="rounded-lg bg-red-600 px-3 py-1 text-xs font-medium text-white shadow hover:bg-red-700 transition"
                                 >
                                     {t('nav.register')}

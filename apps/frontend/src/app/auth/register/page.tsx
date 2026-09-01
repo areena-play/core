@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useTheme } from '@/lib/themeContext';
@@ -11,8 +11,10 @@ import { useI18n } from '@/lib/i18nContext';
 import { UserPlus, AlertCircle } from 'lucide-react';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
 
-export default function RegisterPage() {
+function RegisterForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirectUrl = searchParams.get('redirect') || searchParams.get('returnUrl') || '/';
     const { login } = useAuth();
     const { resolvedTheme } = useTheme();
     const { t } = useI18n();
@@ -55,7 +57,7 @@ export default function RegisterPage() {
                 setRegisteredPendingEmail(email);
             } else {
                 login(res.token, res.user);
-                router.push('/');
+                router.push(redirectUrl);
             }
         } catch (err: any) {
             setErrorMsg(err.message || 'Registration failed.');
@@ -278,5 +280,19 @@ export default function RegisterPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function RegisterPage() {
+    return (
+        <React.Suspense
+            fallback={
+                <div className="min-h-[85vh] flex items-center justify-center">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
+                </div>
+            }
+        >
+            <RegisterForm />
+        </React.Suspense>
     );
 }

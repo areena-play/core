@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { ShieldAlert, LogIn, ArrowLeft, UserX, KeyRound, Sparkles } from 'lucide-react';
@@ -19,10 +20,26 @@ export function AccessDenied({
     requiredRole = 'Association Administrator or Super Administrator',
     returnHref = '/',
 }: AccessDeniedProps) {
-    const { user } = useAuth();
+    const { user, loading: authLoading, justLoggedOut } = useAuth();
     const { t } = useI18n();
+    const pathname = usePathname();
+    const router = useRouter();
 
     const isAnonymous = !user;
+    const loginHref = pathname && pathname !== '/auth/login' ? `/auth/login?redirect=${encodeURIComponent(pathname)}` : '/auth/login';
+
+    // If the user logs out and lands on an AccessDenied page, immediately redirect to homepage
+    const prevUserRef = React.useRef(user);
+    React.useEffect(() => {
+        if (justLoggedOut || (!authLoading && prevUserRef.current && !user)) {
+            router.replace('/');
+        }
+        prevUserRef.current = user;
+    }, [user, authLoading, justLoggedOut, router]);
+
+    if (justLoggedOut) {
+        return null;
+    }
 
     return (
         <div className="min-h-[60vh] flex items-center justify-center p-4">
@@ -88,7 +105,7 @@ export function AccessDenied({
 
                     {isAnonymous ? (
                         <Link
-                            href="/auth/login"
+                            href={loginHref}
                             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-xs font-semibold text-white shadow hover:bg-red-700 transition"
                         >
                             <LogIn className="h-4 w-4" />
@@ -96,7 +113,7 @@ export function AccessDenied({
                         </Link>
                     ) : (
                         <Link
-                            href="/auth/login"
+                            href={loginHref}
                             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
                         >
                             <LogIn className="h-4 w-4" />

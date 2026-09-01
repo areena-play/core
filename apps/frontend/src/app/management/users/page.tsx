@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 import {
     Users,
     Shield,
@@ -157,33 +158,13 @@ export default function AdminUsersPage() {
     }, [searchQuery]);
 
     // Check superadmin permissions
-    if (!currentUser) {
+    if (!currentUser || !currentUser.isSuperAdmin) {
         return (
-            <div className="max-w-7xl mx-auto px-4 py-12 text-center text-xs text-slate-500">
-                Please log in to view this page.
-            </div>
-        );
-    }
-
-    if (!currentUser.isSuperAdmin) {
-        return (
-            <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
-                <div className="w-14 h-14 rounded-full bg-red-500/20 border border-red-500/40 text-red-500 flex items-center justify-center mx-auto">
-                    <ShieldAlert className="w-8 h-8" />
-                </div>
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white">Super Admin Access Required</h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                    The User Management portal is restricted to platform Super Administrators.
-                </p>
-                <div className="pt-2">
-                    <Link
-                        href="/"
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-semibold hover:bg-slate-300 dark:hover:bg-slate-700 transition"
-                    >
-                        Back to Dashboard
-                    </Link>
-                </div>
-            </div>
+            <AccessDenied
+                title="Super Administrator Access Required"
+                description="The global User Management portal is restricted to platform Super Administrators. Please sign in with a Super Admin account to inspect, edit, or manage platform users."
+                requiredRole="Super Administrator"
+            />
         );
     }
 

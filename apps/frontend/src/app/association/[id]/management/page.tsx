@@ -27,7 +27,7 @@ import {
 import { AccessDenied } from '@/components/auth/AccessDenied';
 
 export default function ManagementDashboardPage() {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const { t } = useI18n();
 
     const [stats, setStats] = useState<any>({
@@ -47,7 +47,10 @@ export default function ManagementDashboardPage() {
         );
 
     useEffect(() => {
-        if (!isAssocAdmin) return;
+        if (!isAssocAdmin) {
+            setLoading(false);
+            return;
+        }
 
         async function loadDashboardData() {
             try {
@@ -86,7 +89,7 @@ export default function ManagementDashboardPage() {
         loadDashboardData();
     }, [isAssocAdmin]);
 
-    if (!user) {
+    if (authLoading) {
         return (
             <div className="flex h-96 items-center justify-center">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-500 border-t-transparent" />

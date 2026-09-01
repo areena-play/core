@@ -58,7 +58,7 @@ const DEFAULT_AGE_SERIES: AgeSeriesItem[] = [
 ];
 
 export default function AssociationSettingsPage() {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const { t } = useI18n();
     const [topAssoc, setTopAssoc] = useState<any | null>(null);
 
@@ -394,6 +394,17 @@ export default function AssociationSettingsPage() {
             .replace('{counter5}', pad(counter, 5))
             .replace('{counter6}', pad(counter, 6));
     })();
+
+    if (authLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" />
+                    <p className="text-xs text-slate-500">{t('common.loading')}</p>
+                </div>
+            </div>
+        );
+    }
 
     if (!isAuthorized) {
         return <AccessDenied />;

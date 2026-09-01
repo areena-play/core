@@ -19,6 +19,7 @@ import {
     Trophy,
 } from 'lucide-react';
 import { ModalPortal } from '@/components/ui/ModalPortal';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 
 export default function CompetitionSpeakerPage() {
     const params = useParams();
@@ -124,6 +125,17 @@ export default function CompetitionSpeakerPage() {
             <div className="flex h-64 items-center justify-center">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
             </div>
+        );
+    }
+
+    if (!canManage) {
+        return (
+            <AccessDenied
+                title="Speaker Console Restricted"
+                description="The live match callout and tournament loudspeaker console is restricted to tournament directors, announcers, and administrators."
+                requiredRole="Tournament Announcer / Administrator"
+                returnHref={`/competition/${competitionId}`}
+            />
         );
     }
 

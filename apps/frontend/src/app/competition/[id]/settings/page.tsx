@@ -22,6 +22,7 @@ import {
     ArrowLeft,
     Trophy,
 } from 'lucide-react';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 
 export default function CompetitionSettingsPage() {
     const params = useParams();
@@ -113,6 +114,17 @@ export default function CompetitionSettingsPage() {
             <div className="flex h-64 items-center justify-center">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
             </div>
+        );
+    }
+
+    if (!hasAdminRole) {
+        return (
+            <AccessDenied
+                title="Tournament Settings Restricted"
+                description="Modifying competition configurations and sanctioning approvals is restricted to tournament directors and federation administrators."
+                requiredRole="Competition Administrator"
+                returnHref={`/competition/${competitionId}`}
+            />
         );
     }
 

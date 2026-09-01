@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useTheme } from '@/lib/themeContext';
@@ -129,8 +129,10 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     },
 ];
 
-export default function LoginPage() {
+function LoginForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirectUrl = searchParams.get('redirect') || searchParams.get('returnUrl') || '/';
     const { login } = useAuth();
     const { resolvedTheme } = useTheme();
     const { t } = useI18n();
@@ -140,7 +142,7 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
-        const [resendStatus, setResendStatus] = useState<string | null>(null);
+    const [resendStatus, setResendStatus] = useState<string | null>(null);
     const [forgotMode, setForgotMode] = useState(false);
     const [forgotEmail, setForgotEmail] = useState('');
     const [forgotLoading, setForgotLoading] = useState(false);
@@ -187,7 +189,7 @@ export default function LoginPage() {
         try {
             const res = await api.login({ email: loginEmail, password: loginPass });
             login(res.token, res.user);
-            router.push('/');
+            router.push(redirectUrl);
         } catch (err: any) {
             const isUnverified =
                 err.status === 403 ||
@@ -547,6 +549,20 @@ export default function LoginPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <React.Suspense
+            fallback={
+                <div className="min-h-[85vh] flex items-center justify-center">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
+                </div>
+            }
+        >
+            <LoginForm />
+        </React.Suspense>
     );
 }
 

@@ -28,7 +28,7 @@ import {
 import { AccessDenied } from '@/components/auth/AccessDenied';
 
 export default function AdminDashboardPage() {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const { t } = useI18n();
     const [metrics, setMetrics] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -52,7 +52,7 @@ export default function AdminDashboardPage() {
         }
     }, [user]);
 
-    if (!user) {
+    if (authLoading) {
         return (
             <div className="flex h-96 items-center justify-center">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-500 border-t-transparent" />
@@ -60,7 +60,7 @@ export default function AdminDashboardPage() {
         );
     }
 
-    if (!user.isSuperAdmin) {
+    if (!user || !user.isSuperAdmin) {
         return (
             <AccessDenied
                 title="Super Admin Access Restricted"

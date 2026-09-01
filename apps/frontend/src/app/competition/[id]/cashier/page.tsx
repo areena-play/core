@@ -19,6 +19,8 @@ import {
     Trophy,
 } from 'lucide-react';
 
+import { AccessDenied } from '@/components/auth/AccessDenied';
+
 export default function CompetitionCashierPage() {
     const params = useParams();
     const competitionId = params.id as string;
@@ -79,6 +81,17 @@ export default function CompetitionCashierPage() {
             <div className="flex h-64 items-center justify-center">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
             </div>
+        );
+    }
+
+    if (!canManage) {
+        return (
+            <AccessDenied
+                title="Cashier Desk Restricted"
+                description="The entry fee ledger and tournament cashier desk is restricted to tournament directors and financial cashiers."
+                requiredRole="Tournament Cashier / Administrator"
+                returnHref={`/competition/${competitionId}`}
+            />
         );
     }
 

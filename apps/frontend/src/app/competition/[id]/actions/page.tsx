@@ -18,6 +18,8 @@ import {
     Trophy,
 } from 'lucide-react';
 
+import { AccessDenied } from '@/components/auth/AccessDenied';
+
 export default function CompetitionActionsPage() {
     const params = useParams();
     const competitionId = params.id as string;
@@ -80,6 +82,17 @@ export default function CompetitionActionsPage() {
             <div className="flex h-64 items-center justify-center">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
             </div>
+        );
+    }
+
+    if (!canManage) {
+        return (
+            <AccessDenied
+                title="Tournament Actions Restricted"
+                description="Exporting backups and managing administrative actions is restricted to authorized competition managers."
+                requiredRole="Competition Administrator"
+                returnHref={`/competition/${competitionId}`}
+            />
         );
     }
 

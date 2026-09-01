@@ -19,6 +19,7 @@ import {
     Trophy,
 } from 'lucide-react';
 import { ModalPortal } from '@/components/ui/ModalPortal';
+import { AccessDenied } from '@/components/auth/AccessDenied';
 
 export default function CompetitionAccessPage() {
     const params = useParams();
@@ -91,6 +92,17 @@ export default function CompetitionAccessPage() {
             <div className="flex h-64 items-center justify-center">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
             </div>
+        );
+    }
+
+    if (!canManage) {
+        return (
+            <AccessDenied
+                title="Tournament Staff Access Required"
+                description="Access rights management is restricted to tournament directors, competition administrators, and federation officials."
+                requiredRole="Competition Administrator"
+                returnHref={`/competition/${competitionId}`}
+            />
         );
     }
 
