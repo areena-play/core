@@ -10,6 +10,7 @@ import { useTheme } from '@/lib/themeContext';
 import { useI18n } from '@/lib/i18nContext';
 import { useMainView } from '@/lib/mainViewContext';
 import { useWebSocket } from '@/lib/useWebSocket';
+import { getCommonNavSections, NavSection, NavItem } from '@/lib/navigation';
 import {
     Menu,
     X,
@@ -49,50 +50,55 @@ import {
     BarChart3,
 } from 'lucide-react';
 
-interface NavItem {
-    label: string;
-    href: string;
-    icon: React.ComponentType<{ className?: string }>;
-    badge?: string;
-}
-
-interface NavSection {
-    sectionTitle: string;
-    items: NavItem[];
-}
-
 export function Navbar() {
     const { user, logout } = useAuth();
     const { isConnected } = useWebSocket();
     const { theme, resolvedTheme, setTheme } = useTheme();
     const { locale, setLocale, t, locales, supportedLocales } = useI18n();
     const { activeView, entityId, entityMeta, currentViewMeta, mainAssoc, associations } = useMainView();
+    const pathname = usePathname();
 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+    const [isDemo, setIsDemo] = useState(false);
+
+    // Track expanded status of collapsible groups in mobile menu
+    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
+        competitions: true,
+        people: true,
+        associations: true,
+        verbände: true,
+        associazioni: true,
+    });
+
+    const toggleGroup = (key: string) => {
+        setExpandedGroups((prev) => ({
+            ...prev,
+            [key]: !prev[key],
+        }));
+    };
 
     const userMenuRef = useRef<HTMLDivElement>(null);
     const langDropdownRef = useRef<HTMLDivElement>(null);
-    const pathname = usePathname();
-
-    const toggleTheme = () => {
-        if (resolvedTheme === 'dark') {
-            setTheme('light');
-        } else {
-            setTheme('dark');
-        }
-    };
-
-    const [isDemo, setIsDemo] = useState(process.env.NEXT_PUBLIC_IS_DEMO === 'true');
 
     useEffect(() => {
-        api.getPublicConfig()
-            .then((cfg) => {
-                if (typeof cfg?.isDemo === 'boolean') setIsDemo(cfg.isDemo);
+        api.getSetupStatus()
+            .then((status) => {
+                if (status?.isDemo) {
+                    setIsDemo(true);
+                }
             })
             .catch(() => {});
     }, []);
+
+    const toggleTheme = () => {
+        if (theme === 'system') {
+            setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+        } else {
+            setTheme(theme === 'dark' ? 'light' : 'dark');
+        }
+    };
 
     // Close dropdowns on outside click
     useEffect(() => {
@@ -111,202 +117,15 @@ export function Navbar() {
     const logoSrc = resolvedTheme === 'dark' ? '/areena-logo-dark.png' : '/areena-logo.png';
     const CurrentViewIcon = currentViewMeta.icon;
 
-    const isAssocAdmin =
-        user?.isSuperAdmin ||
-        user?.associationRoles?.some((r: any) =>
-            ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
-        );
-
-    const isApprover =
-        isAssocAdmin ||
-        user?.clubRoles?.some((r: any) =>
-            ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
-        );
-
-    const getNavSections = (): NavSection[] => {
-        if (activeView === 'tournament' && entityId) {
-            return [
-                {
-                    sectionTitle: 'Tournament Hub',
-                    items: [
-                        {
-                            label: t('tournamentWorkspace.overview'),
-                            href: `/competition/${entityId}`,
-                            icon: Trophy,
-                        },
-                        {
-                            label: t('tournamentWorkspace.categories'),
-                            href: `/competition/${entityId}/categories`,
-                            icon: Layers,
-                        },
-                        {
-                            label: t('tournamentWorkspace.players') || 'Players',
-                            href: `/competition/${entityId}/players`,
-                            icon: Users,
-                        },
-                    ],
-                },
-                {
-                    sectionTitle: 'Match Center & Operations',
-                    items: [
-                        {
-                            label: t('tournamentWorkspace.resultEntering') || 'Result Entering',
-                            href: `/competition/${entityId}/results`,
-                            icon: Flame,
-                            badge: 'LIVE',
-                        },
-                        {
-                            label: t('tournamentWorkspace.speakerPage') || 'Speaker Console',
-                            href: `/competition/${entityId}/speaker`,
-                            icon: Mic,
-                        },
-                        {
-                            label: t('tournamentWorkspace.cashierPage') || 'Cashier Desk',
-                            href: `/competition/${entityId}/cashier`,
-                            icon: DollarSign,
-                        },
-                        {
-                            label: t('tournamentWorkspace.statistics') || 'Statistics',
-                            href: `/competition/${entityId}/statistics`,
-                            icon: BarChart3,
-                        },
-                    ],
-                },
-                {
-                    sectionTitle: 'Navigation',
-                    items: [
-                        {
-                            label: t('nav.backToTournaments'),
-                            href: '/competitions',
-                            icon: ArrowLeft,
-                        },
-                    ],
-                },
-            ];
-        }
-
-        if (activeView === 'club' && entityId) {
-            return [
-                {
-                    sectionTitle: 'Club Management',
-                    items: [
-                        {
-                            label: t('clubWorkspace.overview'),
-                            href: `/club/${entityId}`,
-                            icon: Shield,
-                        },
-                        {
-                            label: t('clubWorkspace.members'),
-                            href: `/club/${entityId}#members`,
-                            icon: Users,
-                        },
-                        {
-                            label: t('clubWorkspace.teams'),
-                            href: `/club/${entityId}#teams`,
-                            icon: Trophy,
-                        },
-                    ],
-                },
-                {
-                    sectionTitle: 'Club Activities',
-                    items: [
-                        {
-                            label: t('clubWorkspace.calendar'),
-                            href: `/calendar?clubId=${entityId}`,
-                            icon: Calendar,
-                        },
-                        {
-                            label: t('clubWorkspace.communications'),
-                            href: `/communications?clubId=${entityId}`,
-                            icon: Mail,
-                        },
-                    ],
-                },
-                {
-                    sectionTitle: 'Navigation',
-                    items: [
-                        {
-                            label: t('nav.backToAssociation'),
-                            href: '/associations',
-                            icon: ArrowLeft,
-                        },
-                    ],
-                },
-            ];
-        }
-
-        // Default: Association Workspace
-        const isSubAssoc = pathname.startsWith('/association/') && entityId && entityId !== 'main';
-        const assocOverviewHref = isSubAssoc ? `/association/${entityId}` : '/';
-        const tournamentsHref = isSubAssoc ? `/association/${entityId}/competitions` : '/competitions';
-
-        const currentAssocId = isSubAssoc ? entityId : (mainAssoc?.id || 'main');
-        const currentAssoc = associations?.find((a: any) => a.id === currentAssocId) || (isSubAssoc ? null : mainAssoc);
-
-        // Find direct child / sub-associations of the currently viewed association
-        const directSubAssocs = (associations || []).filter((a: any) =>
-            a.id !== currentAssoc?.id &&
-            (
-                a.parentHierarchies?.some((ph: any) => ph.parentId === currentAssoc?.id) ||
-                currentAssoc?.childHierarchies?.some((ch: any) => ch.childId === a.id || ch.child?.id === a.id)
-            )
-        );
-
-        const subAssocsSection = directSubAssocs.length > 0 ? [
-            {
-                sectionTitle: t('nav.subAssociations'),
-                items: directSubAssocs.map((sub: any) => ({
-                    label: sub.name,
-                    href: `/association/${sub.id}`,
-                    icon: Network,
-                    badge: sub.code || sub.shortName,
-                })),
-            }
-        ] : [];
-
-        return [
-            {
-                sectionTitle: 'Federation Governance',
-                items: [
-                    { label: t('nav.dashboard'), href: assocOverviewHref, icon: LayoutDashboard },
-                    { label: t('nav.tournaments'), href: tournamentsHref, icon: Trophy },
-                    { label: t('nav.associations'), href: '/associations', icon: Network },
-                    ...(isAssocAdmin
-                        ? [
-                              { label: t('nav.finances'), href: isSubAssoc ? `/association/${entityId}/billing` : '/associations/billing', icon: Receipt },
-                              { label: t('nav.auditLogs'), href: isSubAssoc ? `/association/${entityId}/audit-logs` : '/associations/audit-logs', icon: Activity },
-                              { label: t('nav.associationSettings'), href: '/associations/settings', icon: Sliders },
-                          ]
-                        : []),
-                    { label: t('nav.calendar'), href: '/calendar', icon: Calendar },
-                ],
-            },
-            ...subAssocsSection,
-            {
-                sectionTitle: 'Licensing & Education',
-                items: [
-                    { label: t('nav.licenses'), href: '/licenses', icon: Award },
-                    ...(isApprover
-                        ? [{ label: t('nav.approvals'), href: '/licenses/approvals', icon: CheckSquare }]
-                        : []),
-                    { label: t('nav.refresherCourses'), href: '/licenses/refresher-courses', icon: GraduationCap },
-                ],
-            },
-            {
-                sectionTitle: 'Operations & Governance',
-                items: [
-                    ...(user?.isSuperAdmin
-                        ? [{ label: t('nav.users'), href: '/users', icon: Users }]
-                        : []),
-                    { label: t('nav.communications'), href: '/communications', icon: Mail },
-                    { label: t('nav.developerApi'), href: '/developers', icon: Code2 },
-                    { label: t('nav.support'), href: '/support', icon: HelpCircle },
-                ],
-            },
-        ];
-    };
-
-    const sections = getNavSections();
+    const sections = getCommonNavSections({
+        activeView,
+        entityId,
+        pathname,
+        t,
+        user,
+        mainAssoc,
+        associations,
+    });
 
     const headerTitle =
         entityMeta?.title ||
@@ -709,29 +528,74 @@ export function Navbar() {
                                                     !item.href.includes('#') &&
                                                     pathname.startsWith(item.href));
                                             const Icon = item.icon;
+                                            const hasChildren = item.children && item.children.length > 0;
+                                            const isGroupExpanded = expandedGroups[item.label.toLowerCase()] ?? true;
 
                                             return (
-                                                <Link
-                                                    key={`${item.href}-${itemIdx}`}
-                                                    href={item.href}
-                                                    onClick={() => setMobileMenuOpen(false)}
-                                                    className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition ${
-                                                        isActive
-                                                            ? 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-600/10 dark:text-red-500 dark:border-red-500/20 font-bold'
-                                                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-200'
-                                                    }`}
-                                                >
-                                                    <div className="flex items-center gap-2.5">
-                                                        <Icon
-                                                            className={`h-4 w-4 ${
-                                                                isActive
-                                                                    ? 'text-red-600 dark:text-red-500'
-                                                                    : 'text-slate-400'
+                                                <div key={`${item.href}-${itemIdx}`} className="space-y-1">
+                                                    <div className="flex items-center justify-between">
+                                                        <Link
+                                                            href={item.href}
+                                                            onClick={() => setMobileMenuOpen(false)}
+                                                            className={`flex-1 flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition ${
+                                                                isActive && !hasChildren
+                                                                    ? 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-600/10 dark:text-red-500 dark:border-red-500/20 font-bold'
+                                                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-200'
                                                             }`}
-                                                        />
-                                                        <span>{item.label}</span>
+                                                        >
+                                                            <div className="flex items-center gap-2.5">
+                                                                <Icon
+                                                                    className={`h-4 w-4 ${
+                                                                        isActive && !hasChildren
+                                                                            ? 'text-red-600 dark:text-red-500'
+                                                                            : 'text-slate-400'
+                                                                    }`}
+                                                                />
+                                                                <span>{item.label}</span>
+                                                            </div>
+                                                        </Link>
+                                                        {hasChildren && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => toggleGroup(item.label.toLowerCase())}
+                                                                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                                                            >
+                                                                {isGroupExpanded ? (
+                                                                    <ChevronDown className="h-3.5 w-3.5" />
+                                                                ) : (
+                                                                    <ChevronRight className="h-3.5 w-3.5" />
+                                                                )}
+                                                            </button>
+                                                        )}
                                                     </div>
-                                                </Link>
+
+                                                    {hasChildren && isGroupExpanded && (
+                                                        <div className="pl-6 space-y-0.5 border-l-2 border-slate-100 dark:border-slate-800 ml-4 my-1">
+                                                            {item.children!.map((child, cIdx) => {
+                                                                const isChildActive = pathname === child.href;
+                                                                return (
+                                                                    <Link
+                                                                        key={cIdx}
+                                                                        href={child.href}
+                                                                        onClick={() => setMobileMenuOpen(false)}
+                                                                        className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition ${
+                                                                            isChildActive
+                                                                                ? 'font-bold text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/30'
+                                                                                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                                                                        }`}
+                                                                    >
+                                                                        <span>{child.label}</span>
+                                                                        {child.badge && (
+                                                                            <span className="text-[9px] font-mono px-1 py-0.2 bg-slate-100 dark:bg-slate-800 rounded text-slate-400">
+                                                                                {child.badge}
+                                                                            </span>
+                                                                        )}
+                                                                    </Link>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             );
                                         })}
                                     </div>
@@ -781,6 +645,13 @@ export function Navbar() {
                                         className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
                                     >
                                         {t('nav.impressum')}
+                                    </Link>
+                                    <Link
+                                        href="/support"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
+                                    >
+                                        Support
                                     </Link>
                                 </div>
                             </div>
