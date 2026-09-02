@@ -749,8 +749,7 @@ export const it: TranslationDictionary = {
         rightErasure: 'Diritto alla cancellazione (art. 32 LPD / art. 17 GDPR): Richiedere l’eliminazione dell’account, salvi gli obblighi legali di conservazione.',
         rightPortability: 'Diritto alla portabilità (art. 28 LPD / art. 20 GDPR): Ricevere i propri dati in formato strutturato e leggibile da dispositivo automatico.',
         contactPrompt: 'Per esercitare i propri diritti, contattare il nostro referente per la protezione dei dati via e-mail all’indirizzo',
-        contactPromptOr: 'oppure rivolgersi alla segreteria della propria federazione sportiva nazionale.',
-        footerStandard: 'Standard di Protezione Dati AREENA v1.0',
+        footerStandard: 'Standard di Protezione Dati AREENA v{version}',
         lastUpdated: 'Ultimo aggiornamento: Agosto 2026',
     },
 
@@ -770,7 +769,7 @@ export const it: TranslationDictionary = {
         copyrightTitle: 'Diritti d’Autore & Note Legali',
         copyrightText: 'AREENA (Advanced Resource and Event Engine for Next-gen Associations). Tutti i diritti riservati.',
         trademarkText: 'Tutti i marchi, i loghi federali e le risorse visive dei tornei appartengono alle rispettive federazioni sportive e club affiliati. È vietata la riproduzione non autorizzata.',
-        coreInfo: 'AREENA Core v1.0 • Governance Sportiva Multilingue',
+        coreInfo: 'AREENA Core v{version} • Governance Sportiva Multilingue',
         lastUpdated: 'Ultimo aggiornamento: Agosto 2026',
     },
     // Locations & Playing Units (Courts / Tables)

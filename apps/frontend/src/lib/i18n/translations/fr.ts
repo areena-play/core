@@ -748,8 +748,7 @@ export const fr: TranslationDictionary = {
         rightErasure: 'Recht auf Löschung (Art. 32 DSG / Art. 17 DSGVO): Verlangen Sie die Löschung Ihres Kontos unter Berücksichtigung gesetzlicher Aufbewahrungspflichten.',
         rightPortability: 'Recht auf Datenübertragbarkeit (Art. 28 DSG / Art. 20 DSGVO): Erhalten Sie Ihre Daten in einem gängigen, maschinenlesbaren Format.',
         contactPrompt: 'Zur Ausübung dieser Rechte wenden Sie sich bitte an unsere Datenschutz-Koordinationsstelle via E-Mail an',
-        contactPromptOr: 'oder kontaktieren Sie die Administration Ihres zuständigen nationalen Sportverbands.',
-        footerStandard: 'AREENA Datenschutz-Standard v1.0',
+        footerStandard: 'AREENA Datenschutz-Standard v{version}',
         lastUpdated: 'Zuletzt aktualisiert: August 2026',
     },
 
@@ -769,7 +768,7 @@ export const fr: TranslationDictionary = {
         copyrightTitle: 'Urheberrecht & Rechtlicher Hinweis',
         copyrightText: 'AREENA (Advanced Resource and Event Engine for Next-gen Associations). Alle Rechte vorbehalten.',
         trademarkText: 'Alle in diesem System dargestellten Marken, Verbandslogos und Wettkampf-Assets sind Eigentum der jeweiligen Sportverbände und Mitgliedsvereine. Eine unbefugte Vervielfältigung oder Weitergabe ist untersagt.',
-        coreInfo: 'AREENA Core v1.0 • Mehrsprachige Verbandsführung',
+        coreInfo: 'AREENA Core v{version} • Mehrsprachige Verbandsführung',
         lastUpdated: 'Zuletzt aktualisiert: August 2026',
     },
     // Locations & Playing Units (Courts / Tables)

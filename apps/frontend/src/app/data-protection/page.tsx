@@ -274,7 +274,7 @@ export default function DataProtectionPage() {
             <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-400">
                 <div className="flex items-center gap-2">
                     <Sparkles className="h-3.5 w-3.5 text-red-500" />
-                    <span>{t('privacyDoc.footerStandard')}</span>
+                    <span>{t('privacyDoc.footerStandard', { version: process.env.NEXT_PUBLIC_APP_VERSION })}</span>
                 </div>
                 <span>{t('privacyDoc.lastUpdated')}</span>
             </div>

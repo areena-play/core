@@ -12,7 +12,7 @@ const rootDir = path.resolve(__dirname, '..');
 const rootPkgPath = path.join(rootDir, 'package.json');
 
 const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, 'utf8'));
-const currentVersion = rootPkg.version || '1.0.0';
+const currentVersion = rootPkg.version;
 const [major, minor, patch] = currentVersion.split('.').map(Number);
 
 let newVersion;

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
@@ -411,7 +411,7 @@ export default function UserManualPage() {
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${currentRole.tagColor}`}>
                                     {currentRole.badge}
                                 </span>
-                                <span className="text-xs text-slate-400 font-mono">AREENA v1.0 Role Manual</span>
+                                <span className="text-xs text-slate-400 font-mono">AREENA v{process.env.NEXT_PUBLIC_APP_VERSION} Role Manual</span>
                             </div>
                             <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
                                 {currentRole.label} Guide

@@ -746,8 +746,7 @@ export const en = {
         rightErasure: 'Right to Erasure / Deletion (Art. 32 DSG / Art. 17 GDPR): Request deletion of your user account, subject to statutory retention periods.',
         rightPortability: 'Right to Data Portability (Art. 28 DSG / Art. 20 GDPR): Request your data in a structured, commonly used machine-readable format.',
         contactPrompt: 'To exercise any of these rights, please contact our Data Protection Coordinator via email at',
-        contactPromptOr: 'or reach out to your respective national sports federation administrator.',
-        footerStandard: 'AREENA Data Protection Standard v1.0',
+        footerStandard: 'AREENA Data Protection Standard v{version}',
         lastUpdated: 'Last Updated: August 2026',
     },
 
@@ -767,7 +766,7 @@ export const en = {
         copyrightTitle: 'Copyright & Legal Disclaimer',
         copyrightText: 'AREENA (Advanced Resource and Event Engine for Next-gen Associations). All rights reserved.',
         trademarkText: 'All trademarks, federation logos, and competition brand assets displayed within this system are the property of their respective sports federations and member clubs. Unauthorized reproduction or dissemination of data without authorization is prohibited.',
-        coreInfo: 'AREENA Core v1.0 • Multilingual Sports Governance',
+        coreInfo: 'AREENA Core v{version} • Multilingual Sports Governance',
         lastUpdated: 'Last Updated: August 2026',
     },
     // Locations & Playing Units (Courts / Tables)

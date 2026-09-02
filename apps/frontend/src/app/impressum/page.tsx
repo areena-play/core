@@ -240,7 +240,7 @@ export default function ImpressumPage() {
                         <span>Software Stack & Open Source Libraries</span>
                     </div>
                     <span className="text-[11px] font-mono text-slate-400 font-bold">
-                        AREENA Stack v{process.env.NEXT_PUBLIC_APP_VERSION || '1.0.2'}
+                        AREENA Stack v{process.env.NEXT_PUBLIC_APP_VERSION}
                     </span>
                 </div>
 
@@ -269,7 +269,7 @@ export default function ImpressumPage() {
                         <span>Changelog & Minor Version Updates</span>
                     </div>
                     <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
-                        Current: v{process.env.NEXT_PUBLIC_APP_VERSION || '1.0.2'}
+                        Current: v{process.env.NEXT_PUBLIC_APP_VERSION}
                     </span>
                 </div>
 
@@ -328,7 +328,7 @@ export default function ImpressumPage() {
                 <p>{t('impressumDoc.trademarkText')}</p>
 
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-400">
-                    <span>{t('impressumDoc.coreInfo')}</span>
+                    <span>{t('impressumDoc.coreInfo', { version: process.env.NEXT_PUBLIC_APP_VERSION })}</span>
                     <span>{t('impressumDoc.lastUpdated')}</span>
                 </div>
             </div>

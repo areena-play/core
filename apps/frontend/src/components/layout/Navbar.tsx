@@ -611,7 +611,7 @@ export function Navbar() {
                                         <span>AREENA</span>
                                         <span className="text-[9.5px] font-normal text-slate-400">© {new Date().getFullYear()}</span>
                                     </div>
-                                    <span className="text-[9px] font-mono text-slate-400">v1.0</span>
+                                    <span className="text-[9px] font-mono text-slate-400">v{process.env.NEXT_PUBLIC_APP_VERSION}</span>
                                 </div>
                                 <div className="mt-1.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-[8.5px] text-slate-400 dark:text-slate-500">
                                     <button

@@ -34,15 +34,9 @@ export const config = {
     },
     isDemo: process.env.IS_DEMO === 'true',
     supportEmail: process.env.AREENA_SUPPORT_EMAIL || 'support@areena.ch',
-    version: (() => {
-        try {
-            const rootPkgPath = path.resolve(__dirname, '../../../../package.json');
-            if (fs.existsSync(rootPkgPath)) {
-                return JSON.parse(fs.readFileSync(rootPkgPath, 'utf8')).version || '0.0.0';
-            }
-        } catch {}
-        return '0.0.0';
-    })(),
+    version: JSON.parse(
+        fs.readFileSync(path.resolve(__dirname, '../../../../package.json'), 'utf8')
+    ).version,
 };
 
 export default config;
