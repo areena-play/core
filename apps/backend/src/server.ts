@@ -27,6 +27,7 @@ import supportRoutes from './routes/support.routes';
 import adminRoutes from './routes/admin.routes';
 import locationsRoutes from './routes/locations.routes';
 import { startDemoScheduler } from './services/demoScheduler.service';
+import { CronSchedulerService } from './services/cronScheduler.service';
 
 const app = express();
 
@@ -96,6 +97,7 @@ app.listen(PORT, () => {
     });
 
     startDemoScheduler();
+    CronSchedulerService.start();
 });
 
 export default app;

@@ -35,4 +35,34 @@ export class DistributedLockService {
             },
         );
     }
+
+    /**
+     * Attempts to acquire an immediate advisory lock without waiting.
+     * If another instance/VPS already holds the lock, returns `null` (or skips)
+     * instead of blocking in line. Ideal for scheduled cronjobs!
+     */
+    static async tryWithLock<T>(
+        resource: string,
+        operation: (tx: Prisma.TransactionClient) => Promise<T>,
+        options: LockOptions = {},
+    ): Promise<{ acquired: boolean; result?: T }> {
+        return await prisma.$transaction(
+            async (tx) => {
+                const lockResult = await tx.$queryRaw<{ acquired: boolean }[]>`
+                    SELECT pg_try_advisory_xact_lock(hashtext(${resource})) AS acquired
+                `;
+
+                const acquired = lockResult?.[0]?.acquired ?? false;
+                if (!acquired) {
+                    return { acquired: false };
+                }
+
+                const result = await operation(tx as any);
+                return { acquired: true, result };
+            },
+            {
+                timeout: options.timeoutMs || 60000, // 60s timeout
+            },
+        );
+    }
 }

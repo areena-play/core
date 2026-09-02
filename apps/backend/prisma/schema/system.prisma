@@ -8,3 +8,4 @@ model SystemSetting {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+

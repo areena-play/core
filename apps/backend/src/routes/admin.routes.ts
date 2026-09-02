@@ -3,6 +3,7 @@ import { authenticateToken, requireSuperAdmin, AuthRequest } from '../middleware
 import { SystemService } from '../services/system.service';
 import { AuditService } from '../services/audit.service';
 import { DatabaseBackupService } from '../services/databaseBackup.service';
+import { CronSchedulerService } from '../services/cronScheduler.service';
 
 const router = Router();
 
@@ -292,6 +293,96 @@ router.post('/database/import', async (req: AuthRequest, res: Response) => {
     } catch (err: any) {
         console.error('Database Import Error:', err);
         res.status(500).json({ error: err.message || 'Failed to import database dump' });
+    }
+});
+
+/**
+ * GET /api/admin/cronjobs
+ * List all cluster-wide registered cron jobs and their last run status
+ */
+router.get('/cronjobs', async (req: AuthRequest, res: Response) => {
+    try {
+        const statuses = await CronSchedulerService.getJobStatuses();
+        res.json({ jobs: statuses });
+    } catch (err: any) {
+        console.error('Admin Cronjobs Error:', err);
+        res.status(500).json({ error: 'Failed to fetch cronjob statuses' });
+    }
+});
+
+/**
+ * POST /api/admin/cronjobs/:name/run
+ * Manually trigger a registered cronjob safely with distributed lock
+ */
+router.post('/cronjobs/:name/run', async (req: AuthRequest, res: Response) => {
+    try {
+        const { name } = req.params;
+        const result = await CronSchedulerService.triggerManual(name);
+
+        await AuditService.record({
+            req,
+            action: 'MANUAL_CRON_TRIGGER',
+            entityType: 'CronJob',
+            entityId: name,
+            description: `Admin ${req.user?.email} triggered cronjob '${name}'`,
+            metadata: { result },
+        });
+
+        res.json({ success: true, message: `Cronjob '${name}' executed`, result });
+    } catch (err: any) {
+        console.error(`Admin Cronjob Run Error (${req.params.name}):`, err);
+        res.status(500).json({ error: err.message || 'Failed to trigger cronjob' });
+    }
+});
+
+/**
+ * PATCH /api/admin/cronjobs/:name/toggle
+ * Enable or disable a cronjob cluster-wide
+ */
+router.patch('/cronjobs/:name/toggle', async (req: AuthRequest, res: Response) => {
+    try {
+        const { name } = req.params;
+        const { enabled } = req.body;
+        await CronSchedulerService.setJobEnabled(name, Boolean(enabled));
+
+        await AuditService.record({
+            req,
+            action: enabled ? 'ENABLE_CRONJOB' : 'DISABLE_CRONJOB',
+            entityType: 'CronJob',
+            entityId: name,
+            description: `Admin ${req.user?.email} ${enabled ? 'enabled' : 'disabled'} cronjob '${name}'`,
+            metadata: { enabled },
+        });
+
+        res.json({ success: true, message: `Cronjob '${name}' is now ${enabled ? 'enabled' : 'disabled'}` });
+    } catch (err: any) {
+        console.error(`Admin Cronjob Toggle Error (${req.params.name}):`, err);
+        res.status(500).json({ error: err.message || 'Failed to update cronjob status' });
+    }
+});
+
+/**
+ * DELETE /api/admin/cronjobs/:name
+ * Delete/unregister a cronjob from memory and clean up its stored state
+ */
+router.delete('/cronjobs/:name', async (req: AuthRequest, res: Response) => {
+    try {
+        const { name } = req.params;
+        const deleted = await CronSchedulerService.unregisterJob(name);
+
+        await AuditService.record({
+            req,
+            action: 'DELETE_CRONJOB',
+            entityType: 'CronJob',
+            entityId: name,
+            description: `Admin ${req.user?.email} deleted cronjob '${name}'`,
+            metadata: { deleted },
+        });
+
+        res.json({ success: true, message: `Cronjob '${name}' deleted successfully` });
+    } catch (err: any) {
+        console.error(`Admin Cronjob Delete Error (${req.params.name}):`, err);
+        res.status(500).json({ error: err.message || 'Failed to delete cronjob' });
     }
 });
 
