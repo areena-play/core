@@ -31,8 +31,8 @@ interface AgeSeriesItem {
     code: string;
     name: string;
     type: 'YOUTH' | 'ACTIVES' | 'SENIORS' | 'CUSTOM';
-    minAge?: number;
-    maxAge?: number;
+    minAge?: number; // inclusive minimum age
+    maxAge?: number; // inclusive maximum age
     description: string;
     active: boolean;
 }
@@ -63,7 +63,7 @@ export default function AssociationSettingsPage() {
     const [topAssoc, setTopAssoc] = useState<any | null>(null);
 
     // Active Navigation Tab
-    const [activeTab, setActiveTab] = useState<'branding' | 'sports' | 'age-series' | 'seasons' | 'license-engine'>('branding');
+    const [activeTab, setActiveTab] = useState<'branding' | 'sports' | 'age-series' | 'sub-associations' | 'seasons' | 'license-engine'>('branding');
 
     // 1. Identity & Branding
     const [assocName, setAssocName] = useState('');
@@ -517,6 +517,19 @@ export default function AssociationSettingsPage() {
                     <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                         {ageSeries.filter(a => a.active).length}
                     </span>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('sub-associations')}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition ${
+                        activeTab === 'sub-associations'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                >
+                    <Building2 className="h-4 w-4" />
+                    <span>Sub-Associations</span>
                 </button>
 
                 <button
@@ -989,6 +1002,109 @@ export default function AssociationSettingsPage() {
                                             </td>
                                         </tr>
                                     ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* SUB-ASSOCIATIONS CONFIGURATION */}
+            {activeTab === 'sub-associations' && (
+                <div className="space-y-6">
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="space-y-1">
+                                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    <Calendar className="h-5 w-5 text-amber-500" />
+                                    <span>Sub-Associations Configuration</span>
+                                </h2>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    Manage sub-associations and their configurations.
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSeasonName('');
+                                    setSeasonStartDate('');
+                                    setSeasonEndDate('');
+                                    setSeasonIsCurrent(false);
+                                    setSeasonModalOpen(true);
+                                }}
+                                className="inline-flex items-center gap-2 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 text-xs font-bold shadow-xs transition"
+                            >
+                                <Plus className="h-4 w-4" />
+                                <span>Create New Season</span>
+                            </button>
+                        </div>
+
+                        {/* Seasons List Table */}
+                        <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+                            <table className="w-full text-left text-xs">
+                                <thead className="bg-slate-50 dark:bg-slate-950/80 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200 dark:border-slate-800">
+                                    <tr>
+                                        <th className="px-4 py-3">Season Name</th>
+                                        <th className="px-4 py-3">Start Date</th>
+                                        <th className="px-4 py-3">End Date</th>
+                                        <th className="px-4 py-3 text-center">Status</th>
+                                        <th className="px-4 py-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                                    {seasons.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                                                No seasons registered yet. Create your first season.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        seasons.map((season) => (
+                                            <tr key={season.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                                                <td className="px-4 py-3 text-slate-900 dark:text-white font-bold">
+                                                    {season.name}
+                                                </td>
+                                                <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-300">
+                                                    {new Date(season.startDate).toLocaleDateString()}
+                                                </td>
+                                                <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-300">
+                                                    {new Date(season.endDate).toLocaleDateString()}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    {season.isCurrent ? (
+                                                        <span className="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                            ACTIVE CURRENT
+                                                        </span>
+                                                    ) : (
+                                                        <span className="px-3 py-1 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500">
+                                                            Inactive
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        {!season.isCurrent && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleActivateSeason(season.id)}
+                                                                className="px-3 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-[11px] font-bold transition"
+                                                            >
+                                                                Set as Current
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDeleteSeason(season.id)}
+                                                            className="p-1 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 transition"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
                         </div>

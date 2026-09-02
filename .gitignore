@@ -9,6 +9,7 @@ build/
 out/
 .next/
 *.tsbuildinfo
+apps/backend/prisma/*.js
 
 # Environment & Secrets
 .env
