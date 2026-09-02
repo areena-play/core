@@ -5,6 +5,7 @@ const nextConfig = {
     transpilePackages: ['@areena/shared'],
     env: {
         NEXT_PUBLIC_IS_DEMO: process.env.IS_DEMO || process.env.NEXT_PUBLIC_IS_DEMO || 'false',
+        NEXT_PUBLIC_APP_VERSION: require('../../package.json').version || '0.0.0',
     },
     images: {
         domains: ['localhost'],

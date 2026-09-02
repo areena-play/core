@@ -40,7 +40,7 @@ app.get('/health', (req, res) => {
     res.json({
         status: 'ok',
         service: 'areena-backend',
-        version: '1.0.0',
+        version: config.version,
         timestamp: new Date().toISOString(),
     });
 });
@@ -48,7 +48,7 @@ app.get('/health', (req, res) => {
 app.get('/config/public', (req, res) => {
     res.json({
         isDemo: config.isDemo,
-        version: '1.0.0',
+        version: config.version,
         timestamp: new Date().toISOString(),
     });
 });

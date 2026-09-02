@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
 import Link from 'next/link';
@@ -240,7 +240,7 @@ export default function ImpressumPage() {
                         <span>Software Stack & Open Source Libraries</span>
                     </div>
                     <span className="text-[11px] font-mono text-slate-400 font-bold">
-                        AREENA Stack v1.4
+                        AREENA Stack v{process.env.NEXT_PUBLIC_APP_VERSION || '1.0.2'}
                     </span>
                 </div>
 
@@ -269,7 +269,7 @@ export default function ImpressumPage() {
                         <span>Changelog & Minor Version Updates</span>
                     </div>
                     <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
-                        Current: v1.4.0
+                        Current: v{process.env.NEXT_PUBLIC_APP_VERSION || '1.0.2'}
                     </span>
                 </div>
 

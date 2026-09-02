@@ -1,4 +1,5 @@
 import { prisma } from '../config/prisma';
+import { config } from '../config/env';
 
 export interface DatabaseDump {
     version: string;
@@ -203,7 +204,7 @@ export class DatabaseBackupService {
         console.log('[DatabaseBackup] ✅ Database export complete. Total tables:', Object.keys(tables).length);
 
         return {
-            version: '1.0.0',
+            version: config.version,
             exportedAt: new Date().toISOString(),
             generator: 'AREENA Database Management Tool',
             tables,
