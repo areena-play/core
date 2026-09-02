@@ -3,6 +3,7 @@
 import { confirm, prompt } from '@/lib/dialog';
 import { loader } from '@/lib/loader';
 import { toast } from '@/lib/toast';
+import { popup } from '@/lib/popup';
 import { api } from '@/lib/api';
 import { translations } from '@/lib/i18n';
 import {
@@ -25,11 +26,12 @@ export const areena = {
     // 1. Version Information
     version: process.env.NEXT_PUBLIC_APP_VERSION!,
 
-    // 2. Interactive Dialogs, Loaders & Notifications
+    // 2. Interactive Dialogs, Loaders, Toasts & Popups
     confirm,
     prompt,
     loader,
     toast,
+    popup,
 
     // 3. Backend API Client
     api,
