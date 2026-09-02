@@ -64,8 +64,8 @@ if [ "$USE_PREBUILT_IMAGES" = "true" ]; then
         echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin || true
     fi
 
-    echo "📦 Pulling verified pre-built images from GitHub Container Registry..."
-    docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" pull
+    echo "📦 Pulling verified pre-built images in parallel from GitHub Container Registry..."
+    docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" pull --parallel
     
     echo "🚀 Starting updated production containers (Caddy SSL, Frontend, Backend, WS)..."
     docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" up -d --remove-orphans
@@ -78,9 +78,9 @@ fi
 echo "🗄️ Synchronizing Prisma database schema to external PostgreSQL..."
 docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" exec -T backend npx prisma db push --schema=apps/backend/prisma/schema --accept-data-loss || docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" exec -T backend npx prisma db push --schema=prisma/schema --accept-data-loss || true
 
-# 5. Clean up dangling images to keep server disk healthy
-echo "🧹 Pruning unused Docker build cache..."
-docker image prune -f
+# 5. Clean up old dangling images while preserving layer cache
+echo "🧹 Pruning old unused Docker images (older than 24h)..."
+docker image prune -f --filter "until=24h" || true
 
 echo "========================================="
 echo "  AREENA [$PROJECT_NAME] Deployed Successfully!"
