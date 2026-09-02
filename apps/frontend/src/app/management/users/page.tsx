@@ -197,7 +197,13 @@ export default function AdminUsersPage() {
         setEditError('');
 
         try {
-            await api.updateAdminUser(editingUser.id, editFormData);
+            const payload = {
+                ...editFormData,
+                birthDate: editFormData.birthDate ? editFormData.birthDate : null,
+                gender: editFormData.gender ? editFormData.gender : null,
+                licenseId: editFormData.licenseId ? editFormData.licenseId : null,
+            };
+            await api.updateAdminUser(editingUser.id, payload);
             setActionBanner({
                 type: 'success',
                 text: `User ${editFormData.firstName} ${editFormData.lastName} updated successfully.`,
@@ -796,6 +802,31 @@ export default function AdminUsersPage() {
                                 onChange={(e) => setEditFormData({ ...editFormData, licenseId: e.target.value })}
                                 className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
                             />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">Birth Date</label>
+                            <input
+                                type="date"
+                                value={editFormData.birthDate || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, birthDate: e.target.value })}
+                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">Gender</label>
+                            <select
+                                value={editFormData.gender || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, gender: e.target.value })}
+                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                            >
+                                <option value="">Not Specified</option>
+                                <option value="MALE">Male</option>
+                                <option value="FEMALE">Female</option>
+                                <option value="OTHER">Other</option>
+                            </select>
                         </div>
                     </div>
 

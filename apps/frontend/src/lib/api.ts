@@ -81,6 +81,7 @@ class ApiClient {
                 error.status = res.status;
                 error.code = errorData.error;
                 error.error = errorData.error;
+                error.details = errorData.details;
                 error.data = errorData;
                 throw error;
             }

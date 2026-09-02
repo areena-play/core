@@ -30,6 +30,7 @@ function RegisterForm() {
     const [postalCode, setPostalCode] = useState('');
     const [city, setCity] = useState('');
     const [country, setCountry] = useState('Switzerland');
+    const [gender, setGender] = useState('');
 
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
@@ -59,6 +60,7 @@ function RegisterForm() {
                 postalCode,
                 city,
                 country,
+                gender: gender || null,
             });
 
             if (res.requiresVerification) {
@@ -220,7 +222,7 @@ function RegisterForm() {
 
                         <div>
                             <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                {t('profile.phone')}
+                                {t('profile.phone')} *
                             </label>
                             <input
                                 type="text"
@@ -230,6 +232,22 @@ function RegisterForm() {
                                 onChange={(e) => setPhone(e.target.value)}
                                 className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                             />
+                        </div>
+
+                        <div>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                {t('profile.gender')}
+                            </label>
+                            <select
+                                value={gender}
+                                onChange={(e) => setGender(e.target.value)}
+                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                            >
+                                <option value="">{t('profile.genderAny') || 'Not Specified'}</option>
+                                <option value="MALE">{t('profile.genderMale') || 'Male'}</option>
+                                <option value="FEMALE">{t('profile.genderFemale') || 'Female'}</option>
+                                <option value="OTHER">{t('profile.genderOther') || 'Other / Diverse'}</option>
+                            </select>
                         </div>
 
                         <div>
