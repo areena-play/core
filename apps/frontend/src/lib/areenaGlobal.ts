@@ -3,7 +3,17 @@
 import { confirm, prompt } from '@/lib/dialog';
 import { api } from '@/lib/api';
 import { translations } from '@/lib/i18n';
-import { SupportedLocale, SUPPORTED_LOCALES } from '@areena/shared';
+import {
+    SupportedLocale,
+    SUPPORTED_LOCALES,
+    DEFAULT_TIMEZONE,
+    formatInTimezone,
+    getTimezoneAbbreviation,
+    localInputToUtcIso,
+    utcToLocalInputValue,
+    formatMatchSchedule,
+    getUserBrowserTimezone,
+} from '@areena/shared';
 
 /**
  * Global AREENA Developer Cockpit & Utility Toolkit.
@@ -96,6 +106,17 @@ export const areena = {
                 document.documentElement.classList.toggle('light', !isDark);
             }
         },
+    },
+
+    // 7. Multi-Timezone Utilities
+    datetime: {
+        DEFAULT: DEFAULT_TIMEZONE,
+        getUserBrowserTimezone,
+        formatInTimezone,
+        getTimezoneAbbreviation,
+        localInputToUtcIso,
+        utcToLocalInputValue,
+        formatMatchSchedule,
     },
 };
 
