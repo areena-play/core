@@ -1,5 +1,33 @@
 import { z } from 'zod';
 import { Gender } from '../types';
+import { normalizePhoneNumber, isValidPhoneNumber } from '../phone';
+
+export const phoneSchema = z.string().transform((val, ctx) => {
+    const trimmed = val.trim();
+    if (!trimmed) return trimmed;
+    if (!isValidPhoneNumber(trimmed)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Please enter a valid phone number (e.g. +41 79 123 45 67 or 079 123 45 67)',
+        });
+        return z.NEVER;
+    }
+    return normalizePhoneNumber(trimmed);
+});
+
+export const optionalPhoneSchema = z.string().optional().transform((val, ctx) => {
+    if (!val) return val;
+    const trimmed = val.trim();
+    if (!trimmed) return undefined;
+    if (!isValidPhoneNumber(trimmed)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Please enter a valid phone number (e.g. +41 79 123 45 67 or 079 123 45 67)',
+        });
+        return z.NEVER;
+    }
+    return normalizePhoneNumber(trimmed);
+});
 
 export const strongPasswordSchema = z
     .string()
@@ -14,7 +42,7 @@ export const registerSchema = z.object({
     password: strongPasswordSchema,
     firstName: z.string().min(1),
     lastName: z.string().min(1),
-    phone: z.string().min(5),
+    phone: phoneSchema,
     street: z.string().min(2),
     postalCode: z.string().min(2),
     city: z.string().min(1),
@@ -36,7 +64,7 @@ export const loginSchema = z.object({
 export const updateProfileSchema = z.object({
     firstName: z.string().min(1).optional(),
     lastName: z.string().min(1).optional(),
-    phone: z.string().min(5).optional(),
+    phone: optionalPhoneSchema,
     street: z.string().min(2).optional(),
     postalCode: z.string().min(2).optional(),
     city: z.string().min(1).optional(),
@@ -56,7 +84,7 @@ export const adminUpdateUserSchema = z.object({
     firstName: z.string().min(1).optional(),
     lastName: z.string().min(1).optional(),
     email: z.string().email().optional(),
-    phone: z.string().min(5).optional(),
+    phone: optionalPhoneSchema,
     street: z.string().min(2).optional(),
     postalCode: z.string().min(2).optional(),
     city: z.string().min(1).optional(),

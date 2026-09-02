@@ -11,6 +11,8 @@ import { useTheme } from '@/lib/themeContext';
 import { useI18n } from '@/lib/i18nContext';
 import { UserPlus, AlertCircle } from 'lucide-react';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
+import { normalizePhoneNumber } from '@areena/shared';
+import { PhoneInput } from '@/components/ui/PhoneInput';
 
 function RegisterForm() {
     const router = useRouter();
@@ -57,12 +59,13 @@ function RegisterForm() {
         setLoading(true);
 
         try {
+            const normalizedPhone = normalizePhoneNumber(phone);
             const res = await api.register({
                 email,
                 password,
                 firstName,
                 lastName,
-                phone,
+                phone: normalizedPhone || phone,
                 street,
                 postalCode,
                 city,
@@ -228,16 +231,13 @@ function RegisterForm() {
                         </div>
 
                         <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">
+                            <label className="font-semibold text-slate-700 dark:text-slate-300 mb-1 block">
                                 {t('profile.phone')} *
                             </label>
-                            <input
-                                type="text"
+                            <PhoneInput
                                 required
-                                placeholder="+41 79 123 45 67"
                                 value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
-                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                onChange={(val) => setPhone(val)}
                             />
                         </div>
 

@@ -8,6 +8,7 @@
         "dev": "tsc --watch"
     },
     "dependencies": {
+        "libphonenumber-js": "^1.13.12",
         "zod": "^3.24.2"
     },
     "devDependencies": {

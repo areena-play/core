@@ -6,6 +6,8 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { AccessDenied } from '@/components/auth/AccessDenied';
+import { normalizePhoneNumber } from '@areena/shared';
+import { PhoneInput } from '@/components/ui/PhoneInput';
 import {
     Users,
     Shield,
@@ -197,8 +199,10 @@ export default function AdminUsersPage() {
         setEditError('');
 
         try {
+            const normalizedPhone = editFormData.phone ? normalizePhoneNumber(editFormData.phone) : editFormData.phone;
             const payload = {
                 ...editFormData,
+                phone: normalizedPhone || editFormData.phone,
                 birthDate: editFormData.birthDate ? editFormData.birthDate : null,
                 gender: editFormData.gender ? editFormData.gender : null,
                 licenseId: editFormData.licenseId ? editFormData.licenseId : null,
@@ -786,12 +790,10 @@ export default function AdminUsersPage() {
 
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">Phone</label>
-                            <input
-                                type="text"
+                            <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Phone</label>
+                            <PhoneInput
                                 value={editFormData.phone || ''}
-                                onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
+                                onChange={(val) => setEditFormData({ ...editFormData, phone: val })}
                             />
                         </div>
                         <div>

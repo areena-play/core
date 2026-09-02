@@ -6,6 +6,8 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useTheme } from '@/lib/themeContext';
 import { useI18n } from '@/lib/i18nContext';
+import { normalizePhoneNumber } from '@areena/shared';
+import { PhoneInput } from '@/components/ui/PhoneInput';
 import {
     User,
     Award,
@@ -194,10 +196,11 @@ export default function ProfilePage() {
         setSuccessMsg('');
 
         try {
+            const normalizedPhone = normalizePhoneNumber(phone);
             await api.updateProfile({
                 firstName,
                 lastName,
-                phone,
+                phone: normalizedPhone || phone,
                 street,
                 postalCode,
                 city,
@@ -510,12 +513,10 @@ export default function ProfilePage() {
                                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                                     {t('profile.phone')} *
                                 </label>
-                                <input
-                                    type="text"
+                                <PhoneInput
                                     required
                                     value={phone}
-                                    onChange={(e) => setPhone(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                    onChange={(val) => setPhone(val)}
                                 />
                             </div>
                         </div>
