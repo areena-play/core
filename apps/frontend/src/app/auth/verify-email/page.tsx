@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -37,12 +37,19 @@ function VerifyEmailContent() {
     const [resendError, setResendError] = useState('');
 
     const logoSrc = resolvedTheme === 'dark' ? '/areena-logo-dark.png' : '/areena-logo.png';
+    const verifiedTokenRef = useRef<string | null>(null);
 
     useEffect(() => {
         if (!token) {
             setStatus('IDLE');
             return;
         }
+
+        // Prevent duplicate execution (e.g. React 18 StrictMode double-invoking effects)
+        if (verifiedTokenRef.current === token) {
+            return;
+        }
+        verifiedTokenRef.current = token;
 
         setStatus('LOADING');
         api.verifyEmail(token)

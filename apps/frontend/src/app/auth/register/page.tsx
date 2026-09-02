@@ -22,6 +22,7 @@ function RegisterForm() {
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [phone, setPhone] = useState('');
@@ -38,8 +39,14 @@ function RegisterForm() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
         setErrorMsg('');
+
+        if (password !== confirmPassword) {
+            setErrorMsg('Passwords do not match. Please re-enter your password.');
+            return;
+        }
+
+        setLoading(true);
 
         try {
             const res = await api.register({
@@ -173,7 +180,7 @@ function RegisterForm() {
 
                         <div>
                             <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                {t('auth.password')}
+                                {t('auth.password')} *
                             </label>
                             <input
                                 type="password"
@@ -185,6 +192,30 @@ function RegisterForm() {
                                 className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                             />
                             {password && <PasswordRequirements password={password} className="mt-2" />}
+                        </div>
+
+                        <div>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                {t('auth.confirmPasswordLabel')} *
+                            </label>
+                            <input
+                                type="password"
+                                required
+                                minLength={8}
+                                placeholder="••••••••"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                className={`mt-1 w-full rounded-lg border bg-slate-50 px-3 py-2 text-slate-900 dark:bg-slate-950 dark:text-white focus:outline-none ${
+                                    confirmPassword && password !== confirmPassword
+                                        ? 'border-red-500 focus:border-red-500'
+                                        : 'border-slate-300 dark:border-slate-800 focus:border-red-500'
+                                }`}
+                            />
+                            {confirmPassword && password !== confirmPassword && (
+                                <p className="mt-1 text-[11px] text-red-500 font-medium">
+                                    Passwords do not match
+                                </p>
+                            )}
                         </div>
 
                         <div>

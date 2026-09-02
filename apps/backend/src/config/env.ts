@@ -24,7 +24,6 @@ export const config = {
     databaseUrl:
         process.env.DATABASE_URL || '',
     redisUrl: process.env.REDIS_URL || '',
-    internalApiSecret: process.env.INTERNAL_API_SECRET || '',
     s3: {
         endpoint: process.env.S3_ENDPOINT || undefined,
         region: process.env.AWS_REGION || process.env.MINIO_REGION || '',

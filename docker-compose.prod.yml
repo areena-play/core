@@ -52,17 +52,8 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_BUCKET_NAME=${AWS_BUCKET_NAME}
       - JWT_SECRET=${JWT_SECRET}
-      - INTERNAL_API_SECRET=${INTERNAL_API_SECRET}
-      - SMTP_HOST=${SMTP_HOST:-}
-      - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USER=${SMTP_USER:-}
-      - SMTP_PASS=${SMTP_PASS:-${SMTP_PASSWORD:-}}
-      - SMTP_SECURE=${SMTP_SECURE:-}
-      - MAILGUN_API_KEY=${MAILGUN_API_KEY:-}
-      - MAILGUN_DOMAIN=${MAILGUN_DOMAIN:-}
-      - MAILGUN_HOST=${MAILGUN_HOST:-}
-      - MAILGUN_EU=${MAILGUN_EU:-false}
       - AREENA_SUPPORT_EMAIL=${AREENA_SUPPORT_EMAIL:-}
+      - DOMAIN_NAME=${DOMAIN_NAME:-}
     depends_on:
       - redis
 
@@ -95,7 +86,6 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=/api
       - BACKEND_INTERNAL_URL=http://backend:4000
-      - INTERNAL_API_SECRET=${INTERNAL_API_SECRET}
     depends_on:
       - backend
       - websocket

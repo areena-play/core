@@ -125,7 +125,7 @@ jobs:
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}
           REGISTRY_IMAGE_PREFIX: ${{ env.REGISTRY_IMAGE_PREFIX }}
-          DOMAIN_NAME: ${{ (matrix.server.domain_key && vars[matrix.server.domain_key]) || vars.PROD_DOMAIN || vars.DOMAIN_NAME || 'localhost' }}
+          DOMAIN_NAME: ${{ (matrix.server.domain_key && vars[matrix.server.domain_key]) || 'localhost' }}
           LETSENCRYPT_EMAIL: ${{ vars.LETSENCRYPT_EMAIL }}
           LOGGING_URL: ${{ vars.LOGGING_URL || vars.LOKI_URL || '' }}
           LOGGING_USER: ${{ vars.LOGGING_USER || 'shipper' }}

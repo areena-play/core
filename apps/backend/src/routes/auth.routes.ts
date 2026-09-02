@@ -70,7 +70,8 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
 
         // Dispatch verification email
         if (verificationToken) {
-            await EmailService.sendVerificationEmail(user.email, user.firstName, verificationToken);
+            const clientOrigin = (req.headers.origin || req.headers.referer) as string | undefined;
+            await EmailService.sendVerificationEmail(user.email, user.firstName, verificationToken, clientOrigin);
         }
 
         const token = jwt.sign({ userId: user.id }, config.jwtSecret, { expiresIn: '7d' });
@@ -347,7 +348,8 @@ router.post('/resend-verification', validate(resendVerificationSchema), async (r
             },
         });
 
-        await EmailService.sendVerificationEmail(user.email, user.firstName, verificationToken);
+        const clientOrigin = (req.headers.origin || req.headers.referer) as string | undefined;
+        await EmailService.sendVerificationEmail(user.email, user.firstName, verificationToken, clientOrigin);
 
         await AuditService.record({
             req,

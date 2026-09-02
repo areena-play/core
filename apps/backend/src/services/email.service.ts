@@ -24,9 +24,17 @@ export interface BulkEmailOptions {
 
 export class EmailService {
 
-    private static getAppBaseUrl(): string {
-        if (process.env.APP_URL) return process.env.APP_URL;
-        if (process.env.DOMAIN_NAME) return `https://${process.env.DOMAIN_NAME}`;
+    public static getAppBaseUrl(originOverride?: string): string {
+        if (originOverride && !originOverride.includes('localhost') && originOverride.startsWith('http')) {
+            return originOverride.replace(/\/$/, '');
+        }
+        if (process.env.DOMAIN_NAME) {
+            const domain = process.env.DOMAIN_NAME.replace(/\/$/, '');
+            return domain.startsWith('http') ? domain : `https://${domain}`;
+        }
+        if (originOverride && originOverride.startsWith('http')) {
+            return originOverride.replace(/\/$/, '');
+        }
         return 'http://localhost:3000';
     }
 
@@ -284,8 +292,8 @@ export class EmailService {
     /**
      * Sends an email verification link to a newly registered user.
      */
-    static async sendVerificationEmail(to: string, firstName: string, token: string): Promise<boolean> {
-        const baseUrl = this.getAppBaseUrl();
+    static async sendVerificationEmail(to: string, firstName: string, token: string, origin?: string): Promise<boolean> {
+        const baseUrl = this.getAppBaseUrl(origin);
         const verificationLink = `${baseUrl}/auth/verify-email?token=${encodeURIComponent(token)}`;
 
         const subject = 'Verify your AREENA Platform account';
