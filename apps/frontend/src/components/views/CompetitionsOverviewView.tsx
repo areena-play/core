@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { Trophy, Plus, Filter, Calendar, MapPin, Users, ChevronRight, Shield, Search, Lock, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
-import { ModalPortal } from '@/components/ui/ModalPortal';
+import { Modal } from '@/components/ui/Modal';
 
 interface CompetitionsOverviewViewProps {
     scopedAssociationId?: string;
@@ -327,204 +327,191 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                 </div>
             )}
 
-            {showCreateModal && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-                        <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                                <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                                    <Trophy className="h-4 w-4 text-amber-500" />
-                                    <span>Create New Competition</span>
-                                </h3>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowCreateModal(false)}
-                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                                >
-                                    ✕
-                                </button>
-                            </div>
+            {/* Create Competition Modal */}
+            <Modal
+                isOpen={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                title="Create New Competition"
+                subtitle="Configure tournament details, format, schedule, and hosting federation"
+                icon={<Trophy className="h-5 w-5 text-amber-500" />}
+                size="lg"
+            >
+                {errorMsg && (
+                    <div className="rounded-xl p-3 mb-4 text-xs bg-red-50 text-red-700 border border-red-200">
+                        {errorMsg}
+                    </div>
+                )}
 
-                            {errorMsg && (
-                                <div className="rounded-xl p-3 text-xs bg-red-50 text-red-700 border border-red-200">
-                                    {errorMsg}
-                                </div>
-                            )}
+                <form onSubmit={handleCreate} className="space-y-4 text-xs">
+                    <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Competition Title *
+                        </label>
+                        <input
+                            type="text"
+                            required
+                            placeholder="e.g. Zurich Regional Cup 2026"
+                            value={formName}
+                            onChange={(e) => setFormName(e.target.value)}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                        />
+                    </div>
 
-                            <form onSubmit={handleCreate} className="space-y-4 text-xs">
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        Competition Title *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="e.g. Zurich Regional Cup 2026"
-                                        value={formName}
-                                        onChange={(e) => setFormName(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Custom URL Slug (Optional)
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="e.g. zurich-cup-2026"
-                                            value={formSlug}
-                                            onChange={(e) => setFormSlug(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Recurring Series Key (Optional)
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="e.g. zurich-cup"
-                                            value={formSeriesSlug}
-                                            onChange={(e) => setFormSeriesSlug(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Format Type *
-                                        </label>
-                                        <select
-                                            value={formType}
-                                            onChange={(e) => setFormType(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none font-medium"
-                                        >
-                                            <option value="LEAGUE">League Championship</option>
-                                            <option value="TOURNAMENT">Single/Double Tournament</option>
-                                            <option value="SEASON_TOURNAMENT">Full-Season Tournament</option>
-                                            <option value="CUP">Cup Competition</option>
-                                            <option value="INOFFICIAL">Inofficial / Friendly (No ELO)</option>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Hosting Association *
-                                        </label>
-                                        {scopedAssociationId ? (
-                                            <input
-                                                type="text"
-                                                disabled
-                                                value={scopedAssoc ? scopedAssoc.name : 'Current Sub-Association'}
-                                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-500"
-                                            />
-                                        ) : (
-                                            <select
-                                                value={formAssocId}
-                                                onChange={(e) => setFormAssocId(e.target.value)}
-                                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none font-medium"
-                                            >
-                                                {associations.map((a: any) => (
-                                                    <option key={a.id} value={a.id}>
-                                                        {a.name} [{a.code}]
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Start Date *
-                                        </label>
-                                        <input
-                                            type="date"
-                                            required
-                                            value={formStartDate}
-                                            onChange={(e) => setFormStartDate(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            End Date
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={formEndDate}
-                                            onChange={(e) => setFormEndDate(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        Primary Venue / City
-                                    </label>
-                                    <input
-                                        type="text"
-                                        placeholder="e.g. Saalsporthalle, Zurich"
-                                        value={formLocation}
-                                        onChange={(e) => setFormLocation(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                    />
-                                </div>
-
-                                
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Entry Fee (CHF)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={formEntryFee}
-                                            onChange={(e) => setFormEntryFee(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div className="flex flex-col justify-center space-y-1 pt-4">
-                                        <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={formType !== 'INOFFICIAL' && formCountsForElo}
-                                                disabled={formType === 'INOFFICIAL'}
-                                                onChange={(e) => setFormCountsForElo(e.target.checked)}
-                                                className="rounded text-amber-500"
-                                            />
-                                            Count towards ELO Ratings
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowCreateModal(false)}
-                                        className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={creating}
-                                        className="rounded-xl bg-amber-600 hover:bg-amber-700 px-5 py-2 text-xs font-bold text-white shadow-xs transition disabled:opacity-50"
-                                    >
-                                        {creating ? 'Creating...' : 'Create Competition'}
-                                    </button>
-                                </div>
-                            </form>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Custom URL Slug (Optional)
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="e.g. zurich-cup-2026"
+                                value={formSlug}
+                                onChange={(e) => setFormSlug(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Recurring Series Key (Optional)
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="e.g. zurich-cup"
+                                value={formSeriesSlug}
+                                onChange={(e) => setFormSeriesSlug(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                            />
                         </div>
                     </div>
-                </ModalPortal>
-            )}
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Format Type *
+                            </label>
+                            <select
+                                value={formType}
+                                onChange={(e) => setFormType(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none font-medium"
+                            >
+                                <option value="LEAGUE">League Championship</option>
+                                <option value="TOURNAMENT">Single/Double Tournament</option>
+                                <option value="SEASON_TOURNAMENT">Full-Season Tournament</option>
+                                <option value="CUP">Cup Competition</option>
+                                <option value="INOFFICIAL">Inofficial / Friendly (No ELO)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Hosting Association *
+                            </label>
+                            {scopedAssociationId ? (
+                                <input
+                                    type="text"
+                                    disabled
+                                    value={scopedAssoc ? scopedAssoc.name : 'Current Sub-Association'}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-500"
+                                />
+                            ) : (
+                                <select
+                                    value={formAssocId}
+                                    onChange={(e) => setFormAssocId(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none font-medium"
+                                >
+                                    {associations.map((a: any) => (
+                                        <option key={a.id} value={a.id}>
+                                            {a.name} [{a.code}]
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Start Date *
+                            </label>
+                            <input
+                                type="date"
+                                required
+                                value={formStartDate}
+                                onChange={(e) => setFormStartDate(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                End Date
+                            </label>
+                            <input
+                                type="date"
+                                value={formEndDate}
+                                onChange={(e) => setFormEndDate(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Primary Venue / City
+                        </label>
+                        <input
+                            type="text"
+                            placeholder="e.g. Saalsporthalle, Zurich"
+                            value={formLocation}
+                            onChange={(e) => setFormLocation(e.target.value)}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Entry Fee (CHF)
+                            </label>
+                            <input
+                                type="number"
+                                value={formEntryFee}
+                                onChange={(e) => setFormEntryFee(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                            />
+                        </div>
+                        <div className="flex flex-col justify-center space-y-1 pt-4">
+                            <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={formType !== 'INOFFICIAL' && formCountsForElo}
+                                    disabled={formType === 'INOFFICIAL'}
+                                    onChange={(e) => setFormCountsForElo(e.target.checked)}
+                                    className="rounded text-amber-500"
+                                />
+                                Count towards ELO Ratings
+                            </label>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                            type="button"
+                            onClick={() => setShowCreateModal(false)}
+                            className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={creating}
+                            className="rounded-xl bg-amber-600 hover:bg-amber-700 px-5 py-2 text-xs font-bold text-white shadow-xs transition disabled:opacity-50"
+                        >
+                            {creating ? 'Creating...' : 'Create Competition'}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 }

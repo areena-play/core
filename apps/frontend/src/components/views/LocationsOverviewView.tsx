@@ -27,7 +27,7 @@ import {
     Sparkles,
     X,
 } from 'lucide-react';
-import { ModalPortal } from '@/components/ui/ModalPortal';
+import { Modal } from '@/components/ui/Modal';
 
 interface LocationsOverviewViewProps {
     scopedAssociationId?: string;
@@ -368,211 +368,196 @@ export function LocationsOverviewView({ scopedAssociationId }: LocationsOverview
             )}
 
             {/* Create Location Modal */}
-            {createModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-                    <div className="w-full max-w-lg rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
-                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-                            <div className="flex items-center gap-2.5">
-                                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                                    <MapPin className="h-5 w-5" />
-                                </div>
-                                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                                    {t('locations.createLocationTitle') || 'Add New Sports Location'}
-                                </h3>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setCreateModalOpen(false)}
-                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
+            <Modal
+                isOpen={createModalOpen}
+                onClose={() => setCreateModalOpen(false)}
+                title={t('locations.createLocationTitle') || 'Add New Sports Location'}
+                subtitle="Specify sports hall address, host club, federation, and court layout"
+                icon={<MapPin className="h-5 w-5 text-amber-500" />}
+                size="lg"
+            >
+                {createErr && (
+                    <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 mb-4 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300">
+                        <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                        <div>{createErr}</div>
+                    </div>
+                )}
+
+                <form onSubmit={handleCreateLocation} className="space-y-4 text-xs">
+                    <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Location / Hall Name *
+                        </label>
+                        <input
+                            type="text"
+                            required
+                            placeholder="e.g. Sporthalle Hardau"
+                            value={formName}
+                            onChange={(e) => setFormName(e.target.value)}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="sm:col-span-2">
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Street Address *
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="Bullingerstrasse 60"
+                                value={formAddress}
+                                onChange={(e) => setFormAddress(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                            />
                         </div>
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Postal Code *
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="8004"
+                                value={formPostalCode}
+                                onChange={(e) => setFormPostalCode(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none font-mono"
+                            />
+                        </div>
+                    </div>
 
-                        {createErr && (
-                            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300">
-                                <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                                <div>{createErr}</div>
-                            </div>
-                        )}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                City *
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="Zürich"
+                                value={formCity}
+                                onChange={(e) => setFormCity(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Country
+                            </label>
+                            <input
+                                type="text"
+                                value={formCountry}
+                                onChange={(e) => setFormCountry(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                            />
+                        </div>
+                    </div>
 
-                        <form onSubmit={handleCreateLocation} className="space-y-4 text-xs">
+                    {/* Playing Units Configuration */}
+                    <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-3">
+                        <div className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                            <Layers className="w-3.5 h-3.5" />
+                            <span>Playing Units (Courts / Tables / Pitches)</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                    Location / Hall Name *
+                                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                                    Unit Type Wording
+                                </label>
+                                <select
+                                    value={formUnitNaming}
+                                    onChange={(e) => setFormUnitNaming(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                >
+                                    <option value="Table">Table (Tisch / Table Tennis)</option>
+                                    <option value="Court">Court (Platz / Tennis / Squash)</option>
+                                    <option value="Pitch">Pitch (Spielfeld / Football)</option>
+                                    <option value="Lane">Lane (Bahn / Bowling)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                                    Initial Unit Count
                                 </label>
                                 <input
-                                    type="text"
-                                    required
-                                    placeholder="e.g. Sporthalle Hardau"
-                                    value={formName}
-                                    onChange={(e) => setFormName(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                    type="number"
+                                    min={1}
+                                    max={64}
+                                    value={formUnitCount}
+                                    onChange={(e) => setFormUnitCount(parseInt(e.target.value, 10) || 1)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none font-mono"
                                 />
                             </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div className="sm:col-span-2">
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        Street Address *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="Bullingerstrasse 60"
-                                        value={formAddress}
-                                        onChange={(e) => setFormAddress(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        Postal Code *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="8004"
-                                        value={formPostalCode}
-                                        onChange={(e) => setFormPostalCode(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none font-mono"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        City *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="Zürich"
-                                        value={formCity}
-                                        onChange={(e) => setFormCity(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        Country
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formCountry}
-                                        onChange={(e) => setFormCountry(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Playing Units Configuration */}
-                            <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-3">
-                                <div className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                                    <Layers className="w-3.5 h-3.5" />
-                                    <span>Playing Units (Courts / Tables / Pitches)</span>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                                            Unit Type Wording
-                                        </label>
-                                        <select
-                                            value={formUnitNaming}
-                                            onChange={(e) => setFormUnitNaming(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                        >
-                                            <option value="Table">Table (Tisch / Table Tennis)</option>
-                                            <option value="Court">Court (Platz / Tennis / Squash)</option>
-                                            <option value="Pitch">Pitch (Spielfeld / Football)</option>
-                                            <option value="Lane">Lane (Bahn / Bowling)</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                                            Initial Unit Count
-                                        </label>
-                                        <input
-                                            type="number"
-                                            min={1}
-                                            max={64}
-                                            value={formUnitCount}
-                                            onChange={(e) => setFormUnitCount(parseInt(e.target.value, 10) || 1)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none font-mono"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Affiliated Club & Association */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        Host / Home Club
-                                    </label>
-                                    <select
-                                        value={formClubId}
-                                        onChange={(e) => setFormClubId(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                    >
-                                        <option value="">None / Independent</option>
-                                        {clubs.map((c) => (
-                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        Federation / Association
-                                    </label>
-                                    <select
-                                        value={formAssocId}
-                                        onChange={(e) => setFormAssocId(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                    >
-                                        <option value="">None / Regional</option>
-                                        {associations.map((a) => (
-                                            <option key={a.id} value={a.id}>{a.name} ({a.shortName || a.code})</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                    Description & Features
-                                </label>
-                                <textarea
-                                    rows={2}
-                                    placeholder="Sports floor type, lighting specs, spectator capacity..."
-                                    value={formDescription}
-                                    onChange={(e) => setFormDescription(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                                <button
-                                    type="button"
-                                    onClick={() => setCreateModalOpen(false)}
-                                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={creating}
-                                    className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold shadow transition disabled:opacity-50 inline-flex items-center gap-1.5"
-                                >
-                                    {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                                    <span>{creating ? 'Creating...' : 'Create Location'}</span>
-                                </button>
-                            </div>
-                        </form>
+                        </div>
                     </div>
-                </div>
-            )}
+
+                    {/* Affiliated Club & Association */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Host / Home Club
+                            </label>
+                            <select
+                                value={formClubId}
+                                onChange={(e) => setFormClubId(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                            >
+                                <option value="">None / Independent</option>
+                                {clubs.map((c) => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Federation / Association
+                            </label>
+                            <select
+                                value={formAssocId}
+                                onChange={(e) => setFormAssocId(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                            >
+                                <option value="">None / Regional</option>
+                                {associations.map((a) => (
+                                    <option key={a.id} value={a.id}>{a.name} ({a.shortName || a.code})</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Description & Features
+                        </label>
+                        <textarea
+                            rows={2}
+                            placeholder="Sports floor type, lighting specs, spectator capacity..."
+                            value={formDescription}
+                            onChange={(e) => setFormDescription(e.target.value)}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                        />
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                            type="button"
+                            onClick={() => setCreateModalOpen(false)}
+                            className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={creating}
+                            className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold shadow transition disabled:opacity-50 inline-flex items-center gap-1.5"
+                        >
+                            {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                            <span>{creating ? 'Creating...' : 'Create Location'}</span>
+                        </button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 }

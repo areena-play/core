@@ -6,7 +6,6 @@ import { api } from '@/lib/api';
 import { useI18n } from '@/lib/i18nContext';
 import { Calendar as CalendarIcon, Filter, MapPin, Clock, ChevronLeft, ChevronRight, List, Grid, Lock, ExternalLink } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns';
-import { ModalPortal } from '@/components/ui/ModalPortal';
 
 interface CalendarOverviewViewProps {
     scopedAssociationId?: string;

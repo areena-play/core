@@ -6,7 +6,6 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { Network, Shield, Plus, ChevronRight, Info, Sliders, ExternalLink, MapPin, Mail, Phone, Lock } from 'lucide-react';
-import { ModalPortal } from '@/components/ui/ModalPortal';
 
 interface AssociationsOverviewViewProps {
     scopedAssociationId?: string;

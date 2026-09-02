@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { Code2, Key, ShieldCheck, Play, Copy, CheckCircle2, Plus, Lock, ExternalLink, Terminal } from 'lucide-react';
-import { ModalPortal } from '@/components/ui/ModalPortal';
+import { Modal } from '@/components/ui/Modal';
 
 export default function DevelopersPortalPage() {
     const { user } = useAuth();
@@ -315,175 +315,164 @@ export default function DevelopersPortalPage() {
             </div>
 
             {/* Register App Modal */}
-            {showCreateModal && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
-                        <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4 text-xs">
-                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                                    {t('developers.registerClient')}
-                                </h3>
-                                <button
-                                    onClick={() => setShowCreateModal(false)}
-                                    className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg font-bold"
-                                >
-                                    ✕
-                                </button>
+            <Modal
+                isOpen={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                title={t('developers.registerClient')}
+                subtitle="Configure API OAuth credentials and permissions for third-party integration"
+                icon={<Code2 className="h-5 w-5 text-red-500" />}
+                size="lg"
+            >
+                {createdSecret ? (
+                    <div className="space-y-4">
+                        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/80 p-4 space-y-2">
+                            <div className="flex items-center gap-2 font-bold text-emerald-800 dark:text-white text-sm">
+                                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                <span>Application Created Successfully!</span>
                             </div>
+                            <p className="text-slate-600 dark:text-slate-300">
+                                Save your Client Secret immediately. For security reasons, it will not be
+                                displayed again.
+                            </p>
+                        </div>
 
-                            {createdSecret ? (
-                                <div className="space-y-4">
-                                    <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/80 p-4 space-y-2">
-                                        <div className="flex items-center gap-2 font-bold text-emerald-800 dark:text-white text-sm">
-                                            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                                            <span>Application Created Successfully!</span>
-                                        </div>
-                                        <p className="text-slate-600 dark:text-slate-300">
-                                            Save your Client Secret immediately. For security reasons, it will not be
-                                            displayed again.
-                                        </p>
-                                    </div>
-
-                                    <div className="space-y-2 font-mono rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-4">
-                                        <div>
-                                            <span className="text-slate-500 dark:text-slate-400 text-[10px]">Client ID:</span>
-                                            <div className="text-slate-900 dark:text-white font-bold text-sm">
-                                                {createdClient?.clientId}
-                                            </div>
-                                        </div>
-                                        <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
-                                            <span className="text-red-600 dark:text-red-400 text-[10px]">Client Secret:</span>
-                                            <div className="text-emerald-700 dark:text-emerald-400 font-bold text-sm break-all">
-                                                {createdSecret}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex justify-end pt-2">
-                                        <button
-                                            onClick={() => {
-                                                setTestClientId(createdClient?.clientId);
-                                                setTestSecret(createdSecret);
-                                                setShowCreateModal(false);
-                                            }}
-                                            className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
-                                        >
-                                            Load into API Tester & Close
-                                        </button>
-                                    </div>
+                        <div className="space-y-2 font-mono rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-4">
+                            <div>
+                                <span className="text-slate-500 dark:text-slate-400 text-[10px]">Client ID:</span>
+                                <div className="text-slate-900 dark:text-white font-bold text-sm">
+                                    {createdClient?.clientId}
                                 </div>
-                            ) : (
-                                <form onSubmit={handleCreateApp} className="space-y-4">
-                                    <div>
-                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                            Application Name
-                                        </label>
-                                        <input
-                                            type="text"
-                                            required
-                                            placeholder="e.g. My Regional Sports App"
-                                            value={appName}
-                                            onChange={(e) => setAppName(e.target.value)}
-                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                        />
-                                    </div>
+                            </div>
+                            <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+                                <span className="text-red-600 dark:text-red-400 text-[10px]">Client Secret:</span>
+                                <div className="text-emerald-700 dark:text-emerald-400 font-bold text-sm break-all">
+                                    {createdSecret}
+                                </div>
+                            </div>
+                        </div>
 
-                                    <div>
-                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                            {t('common.details')}
-                                        </label>
-                                        <textarea
-                                            rows={2}
-                                            placeholder="Describe how your client app utilizes AREENA API feeds..."
-                                            value={appDesc}
-                                            onChange={(e) => setAppDesc(e.target.value)}
-                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                            Requested API Scopes
-                                        </label>
-                                        <div className="mt-2 space-y-2">
-                                            {[
-                                                {
-                                                    scope: 'read:public',
-                                                    label: 'read:public',
-                                                    desc: 'Basic federation metadata (Auto-approved)',
-                                                },
-                                                {
-                                                    scope: 'read:calendar',
-                                                    label: 'read:calendar',
-                                                    desc: 'Read unified master events schedule (Auto-approved)',
-                                                },
-                                                {
-                                                    scope: 'read:competitions',
-                                                    label: 'read:competitions',
-                                                    desc: 'Read leagues, categories and standings (Auto-approved)',
-                                                },
-                                                {
-                                                    scope: 'read:members_full',
-                                                    label: 'read:members_full',
-                                                    desc: 'Enhanced access to member directory (Requires Main Admin Approval)',
-                                                },
-                                                {
-                                                    scope: 'write:scores',
-                                                    label: 'write:scores',
-                                                    desc: 'Submit live match scores from partner systems (Requires Main Admin Approval)',
-                                                },
-                                            ].map((s) => (
-                                                <label
-                                                    key={s.scope}
-                                                    className="flex items-start gap-2.5 cursor-pointer rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-2.5"
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedScopes.includes(s.scope)}
-                                                        onChange={(e) => {
-                                                            if (e.target.checked)
-                                                                setSelectedScopes([...selectedScopes, s.scope]);
-                                                            else
-                                                                setSelectedScopes(
-                                                                    selectedScopes.filter((x) => x !== s.scope),
-                                                                );
-                                                        }}
-                                                        className="mt-0.5 rounded border-slate-300 bg-slate-100 text-red-600 focus:ring-red-500 dark:border-slate-700 dark:bg-slate-900"
-                                                    />
-                                                    <div>
-                                                        <strong className="font-mono text-slate-900 dark:text-slate-200">
-                                                            {s.label}
-                                                        </strong>
-                                                        <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                                                            {s.desc}
-                                                        </p>
-                                                    </div>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowCreateModal(false)}
-                                            className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                                        >
-                                            {t('common.cancel')}
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
-                                        >
-                                            Create Client
-                                        </button>
-                                    </div>
-                                </form>
-                            )}
+                        <div className="flex justify-end pt-2 border-t border-slate-200 dark:border-slate-800">
+                            <button
+                                onClick={() => {
+                                    setTestClientId(createdClient?.clientId);
+                                    setTestSecret(createdSecret);
+                                    setShowCreateModal(false);
+                                }}
+                                className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
+                            >
+                                Load into API Tester & Close
+                            </button>
                         </div>
                     </div>
-                </ModalPortal>
-            )}
+                ) : (
+                    <form onSubmit={handleCreateApp} className="space-y-4">
+                        <div>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                Application Name
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="e.g. My Regional Sports App"
+                                value={appName}
+                                onChange={(e) => setAppName(e.target.value)}
+                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                {t('common.details')}
+                            </label>
+                            <textarea
+                                rows={2}
+                                placeholder="Describe how your client app utilizes AREENA API feeds..."
+                                value={appDesc}
+                                onChange={(e) => setAppDesc(e.target.value)}
+                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                Requested API Scopes
+                            </label>
+                            <div className="mt-2 space-y-2">
+                                {[
+                                    {
+                                        scope: 'read:public',
+                                        label: 'read:public',
+                                        desc: 'Basic federation metadata (Auto-approved)',
+                                    },
+                                    {
+                                        scope: 'read:calendar',
+                                        label: 'read:calendar',
+                                        desc: 'Read unified master events schedule (Auto-approved)',
+                                    },
+                                    {
+                                        scope: 'read:competitions',
+                                        label: 'read:competitions',
+                                        desc: 'Read leagues, categories and standings (Auto-approved)',
+                                    },
+                                    {
+                                        scope: 'read:members_full',
+                                        label: 'read:members_full',
+                                        desc: 'Enhanced access to member directory (Requires Main Admin Approval)',
+                                    },
+                                    {
+                                        scope: 'write:scores',
+                                        label: 'write:scores',
+                                        desc: 'Submit live match scores from partner systems (Requires Main Admin Approval)',
+                                    },
+                                ].map((s) => (
+                                    <label
+                                        key={s.scope}
+                                        className="flex items-start gap-2.5 cursor-pointer rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-2.5"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedScopes.includes(s.scope)}
+                                            onChange={(e) => {
+                                                if (e.target.checked)
+                                                    setSelectedScopes([...selectedScopes, s.scope]);
+                                                else
+                                                    setSelectedScopes(
+                                                        selectedScopes.filter((x) => x !== s.scope),
+                                                    );
+                                            }}
+                                            className="mt-0.5 rounded border-slate-300 bg-slate-100 text-red-600 focus:ring-red-500 dark:border-slate-700 dark:bg-slate-900"
+                                        />
+                                        <div>
+                                            <strong className="font-mono text-slate-900 dark:text-slate-200">
+                                                {s.label}
+                                            </strong>
+                                            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                                                {s.desc}
+                                            </p>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                            <button
+                                type="button"
+                                onClick={() => setShowCreateModal(false)}
+                                className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                            >
+                                {t('common.cancel')}
+                            </button>
+                            <button
+                                type="submit"
+                                className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 shadow"
+                            >
+                                Create Client
+                            </button>
+                        </div>
+                    </form>
+                )}
+            </Modal>
         </div>
     );
 }

@@ -18,7 +18,7 @@ import {
     Bell,
     Trophy,
 } from 'lucide-react';
-import { ModalPortal } from '@/components/ui/ModalPortal';
+import { Modal } from '@/components/ui/Modal';
 import { AccessDenied } from '@/components/auth/AccessDenied';
 
 export default function CompetitionSpeakerPage() {
@@ -272,14 +272,14 @@ export default function CompetitionSpeakerPage() {
             </div>
 
             {/* Callout Creation Modal */}
-            {showModal && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-xl space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-base text-slate-900 dark:text-white">Broadcast Announcement</h3>
-                                <button type="button" onClick={() => setShowModal(false)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">✕</button>
-                            </div>
+            <Modal
+                isOpen={showModal}
+                onClose={() => setShowModal(false)}
+                title="Broadcast Announcement"
+                subtitle="Live arena speaker callout and chime notification"
+                icon={<Volume2 className="h-5 w-5 text-red-500" />}
+                size="md"
+            >
                 <form onSubmit={handleCreateCallout} className="space-y-4">
                     <div className="space-y-1.5">
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Callout Type</label>
@@ -330,7 +330,7 @@ export default function CompetitionSpeakerPage() {
                         />
                     </div>
 
-                    <div className="flex justify-end gap-2 pt-3">
+                    <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                         <button
                             type="button"
                             onClick={() => setShowModal(false)}
@@ -346,10 +346,7 @@ export default function CompetitionSpeakerPage() {
                         </button>
                     </div>
                 </form>
-                        </div>
-                    </div>
-                </ModalPortal>
-            )}
+            </Modal>
         </div>
     );
 }

@@ -7,7 +7,7 @@ import { useI18n } from '@/lib/i18nContext';
 import { CheckSquare, CheckCircle2, XCircle, Clock, Shield, Award, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { AccessDenied } from '@/components/auth/AccessDenied';
-import { ModalPortal } from '@/components/ui/ModalPortal';
+import { Modal } from '@/components/ui/Modal';
 
 export default function ApprovalsQueuePage() {
     const { user, loading: authLoading } = useAuth();
@@ -194,49 +194,46 @@ export default function ApprovalsQueuePage() {
             )}
 
             {/* Reject Modal */}
-            {rejectingId && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4">
-                            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                                {t('common.reject')} License Application
-                            </h3>
-                            <form onSubmit={handleReject} className="space-y-3 text-xs">
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                        Reason for Rejection
-                                    </label>
-                                    <textarea
-                                        required
-                                        rows={3}
-                                        placeholder="Explain why this license request is being rejected..."
-                                        value={rejectReason}
-                                        onChange={(e) => setRejectReason(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
-                                </div>
-
-                                <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
-                                    <button
-                                        type="button"
-                                        onClick={() => setRejectingId(null)}
-                                        className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                                    >
-                                        {t('common.cancel')}
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={processingId === rejectingId}
-                                        className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700"
-                                    >
-                                        {t('common.reject')}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+            <Modal
+                isOpen={Boolean(rejectingId)}
+                onClose={() => setRejectingId(null)}
+                title={`${t('common.reject')} License Application`}
+                subtitle="Provide an explanation for rejecting this license request"
+                size="md"
+            >
+                <form onSubmit={handleReject} className="space-y-4">
+                    <div>
+                        <label className="font-semibold text-slate-700 dark:text-slate-300">
+                            Reason for Rejection
+                        </label>
+                        <textarea
+                            required
+                            rows={3}
+                            placeholder="Explain why this license request is being rejected..."
+                            value={rejectReason}
+                            onChange={(e) => setRejectReason(e.target.value)}
+                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                        />
                     </div>
-                </ModalPortal>
-            )}
+
+                    <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                        <button
+                            type="button"
+                            onClick={() => setRejectingId(null)}
+                            className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                        >
+                            {t('common.cancel')}
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={processingId === rejectingId}
+                            className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                        >
+                            {t('common.reject')}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 }

@@ -19,7 +19,7 @@ import {
     ExternalLink,
     Lock,
 } from 'lucide-react';
-import { ModalPortal } from '@/components/ui/ModalPortal';
+import { Modal } from '@/components/ui/Modal';
 
 interface ClubsOverviewViewProps {
     scopedAssociationId?: string;
@@ -295,191 +295,179 @@ export function ClubsOverviewView({ scopedAssociationId }: ClubsOverviewViewProp
                 </div>
             )}
 
-            {showModal && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-                        <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                                <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                                    <Shield className="h-4 w-4 text-blue-500" />
-                                    <span>Register New Sports Club</span>
-                                </h3>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowModal(false)}
-                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                                >
-                                    ✕
-                                </button>
-                            </div>
+            {/* Register Club Modal */}
+            <Modal
+                isOpen={showModal}
+                onClose={() => setShowModal(false)}
+                title="Register New Sports Club"
+                subtitle="Create an affiliated club profile, primary address, and assign parent federations"
+                icon={<Shield className="h-5 w-5 text-blue-500" />}
+                size="lg"
+            >
+                {errorMsg && (
+                    <div className="rounded-xl p-3 mb-4 text-xs bg-red-50 text-red-700 border border-red-200">
+                        {errorMsg}
+                    </div>
+                )}
 
-                            {errorMsg && (
-                                <div className="rounded-xl p-3 text-xs bg-red-50 text-red-700 border border-red-200">
-                                    {errorMsg}
-                                </div>
-                            )}
-
-                            <form onSubmit={handleCreateClub} className="space-y-4 text-xs">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Club Official Name *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            required
-                                            placeholder="e.g. BC Zurich Nord"
-                                            value={formName}
-                                            onChange={(e) => setFormName(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Custom URL Slug (Optional)
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="e.g. bc-zurich-nord"
-                                            value={formSlug}
-                                            onChange={(e) => setFormSlug(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Club Code *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            required
-                                            maxLength={6}
-                                            placeholder="BCZN"
-                                            value={formCode}
-                                            onChange={(e) => setFormCode(e.target.value.toUpperCase())}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs font-mono text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none uppercase"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            City *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            required
-                                            placeholder="Zurich"
-                                            value={formCity}
-                                            onChange={(e) => setFormCity(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Postal Code *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            required
-                                            placeholder="8050"
-                                            value={formPostalCode}
-                                            onChange={(e) => setFormPostalCode(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Street Address *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            required
-                                            placeholder="Sportstrasse 12"
-                                            value={formAddress}
-                                            onChange={(e) => setFormAddress(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Official Email *
-                                        </label>
-                                        <input
-                                            type="email"
-                                            required
-                                            placeholder="info@bczn.ch"
-                                            value={formEmail}
-                                            onChange={(e) => setFormEmail(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Phone *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            required
-                                            placeholder="+41 44 123 45 67"
-                                            value={formPhone}
-                                            onChange={(e) => setFormPhone(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                {!scopedAssociationId && (
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Parent Associations *
-                                        </label>
-                                        <select
-                                            multiple
-                                            value={formAssocIds}
-                                            onChange={(e) => {
-                                                const selected = Array.from(e.target.selectedOptions, (option) => option.value);
-                                                setFormAssocIds(selected);
-                                            }}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none h-24"
-                                        >
-                                            {associations.map((a: any) => (
-                                                <option key={a.id} value={a.id}>
-                                                    {a.name} [{a.code}]
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-
-                                <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowModal(false)}
-                                        className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={creating}
-                                        className="rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs font-bold text-white shadow-xs transition disabled:opacity-50"
-                                    >
-                                        {creating ? 'Creating Club...' : 'Register Club'}
-                                    </button>
-                                </div>
-                            </form>
+                <form onSubmit={handleCreateClub} className="space-y-4 text-xs">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Club Official Name *
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="e.g. BC Zurich Nord"
+                                value={formName}
+                                onChange={(e) => setFormName(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Custom URL Slug (Optional)
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="e.g. bc-zurich-nord"
+                                value={formSlug}
+                                onChange={(e) => setFormSlug(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                            />
                         </div>
                     </div>
-                </ModalPortal>
-            )}
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Club Code *
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                maxLength={6}
+                                placeholder="BCZN"
+                                value={formCode}
+                                onChange={(e) => setFormCode(e.target.value.toUpperCase())}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs font-mono text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none uppercase"
+                            />
+                        </div>
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                City *
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="Zurich"
+                                value={formCity}
+                                onChange={(e) => setFormCity(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Postal Code *
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="8050"
+                                value={formPostalCode}
+                                onChange={(e) => setFormPostalCode(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Street Address *
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="Sportstrasse 12"
+                                value={formAddress}
+                                onChange={(e) => setFormAddress(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Official Email *
+                            </label>
+                            <input
+                                type="email"
+                                required
+                                placeholder="info@bczn.ch"
+                                value={formEmail}
+                                onChange={(e) => setFormEmail(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Phone *
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="+41 44 123 45 67"
+                                value={formPhone}
+                                onChange={(e) => setFormPhone(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    {!scopedAssociationId && (
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Parent Associations *
+                            </label>
+                            <select
+                                multiple
+                                value={formAssocIds}
+                                onChange={(e) => {
+                                    const selected = Array.from(e.target.selectedOptions, (option) => option.value);
+                                    setFormAssocIds(selected);
+                                }}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none h-24"
+                            >
+                                {associations.map((a: any) => (
+                                    <option key={a.id} value={a.id}>
+                                        {a.name} [{a.code}]
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                            type="button"
+                            onClick={() => setShowModal(false)}
+                            className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={creating}
+                            className="rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs font-bold text-white shadow-xs transition disabled:opacity-50"
+                        >
+                            {creating ? 'Creating Club...' : 'Register Club'}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 }

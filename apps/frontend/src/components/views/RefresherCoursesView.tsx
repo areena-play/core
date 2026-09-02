@@ -21,7 +21,7 @@ import {
     BookOpen,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { ModalPortal } from '@/components/ui/ModalPortal';
+import { Modal } from '@/components/ui/Modal';
 
 interface RefresherCoursesViewProps {
     scopedAssociationId?: string;
@@ -337,236 +337,226 @@ export function RefresherCoursesView({ scopedAssociationId }: RefresherCoursesVi
             )}
 
             {/* Create Course Modal */}
-            {showCreateModal && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-                        <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-2xl space-y-4">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                                <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                                    <GraduationCap className="h-4 w-4 text-emerald-500" />
-                                    <span>Host New Refresher Course</span>
-                                </h3>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowCreateModal(false)}
-                                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            <Modal
+                isOpen={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                title="Host New Refresher Course"
+                subtitle="Host an official education course to renew referee or coach licenses"
+                icon={<GraduationCap className="h-5 w-5 text-emerald-500" />}
+                size="lg"
+            >
+                <form onSubmit={handleCreateCourse} className="space-y-4 text-xs">
+                    <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Course Title *
+                        </label>
+                        <input
+                            type="text"
+                            required
+                            placeholder="e.g. 2026 Swiss Referee Recertification Module A"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Course Type *
+                            </label>
+                            <select
+                                value={type}
+                                onChange={(e) => setType(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none font-medium"
+                            >
+                                <option value="COACH_REFRESHER">Coach Refresher</option>
+                                <option value="REFEREE_REFRESHER">Referee Refresher</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Host Association *
+                            </label>
+                            {scopedAssociationId ? (
+                                <input
+                                    type="text"
+                                    disabled
+                                    value={scopedAssoc ? scopedAssoc.name : 'Current Sub-Association'}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-500"
+                                />
+                            ) : (
+                                <select
+                                    value={associationId}
+                                    onChange={(e) => setAssociationId(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
                                 >
-                                    ✕
-                                </button>
-                            </div>
-
-                            <form onSubmit={handleCreateCourse} className="space-y-4 text-xs">
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        Course Title *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="e.g. 2026 Swiss Referee Recertification Module A"
-                                        value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Course Type *
-                                        </label>
-                                        <select
-                                            value={type}
-                                            onChange={(e) => setType(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none font-medium"
-                                        >
-                                            <option value="COACH_REFRESHER">Coach Refresher</option>
-                                            <option value="REFEREE_REFRESHER">Referee Refresher</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Host Association *
-                                        </label>
-                                        {scopedAssociationId ? (
-                                            <input
-                                                type="text"
-                                                disabled
-                                                value={scopedAssoc ? scopedAssoc.name : 'Current Sub-Association'}
-                                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-500"
-                                            />
-                                        ) : (
-                                            <select
-                                                value={associationId}
-                                                onChange={(e) => setAssociationId(e.target.value)}
-                                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none font-medium"
-                                            >
-                                                {associations.map((a: any) => (
-                                                    <option key={a.id} value={a.id}>
-                                                        {a.name}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Date *
-                                        </label>
-                                        <input
-                                            type="date"
-                                            required
-                                            value={date}
-                                            onChange={(e) => setDate(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Location *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            required
-                                            placeholder="Bern Center / Online"
-                                            value={location}
-                                            onChange={(e) => setLocation(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Duration (Hours)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            min={1}
-                                            value={durationHours}
-                                            onChange={(e) => setDurationHours(Number(e.target.value))}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                            Validity Ext. (Months)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            min={1}
-                                            value={validityMonths}
-                                            onChange={(e) => setValidityMonths(Number(e.target.value))}
-                                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowCreateModal(false)}
-                                        className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={creating}
-                                        className="rounded-xl bg-emerald-600 hover:bg-emerald-700 px-5 py-2 text-xs font-bold text-white shadow-xs transition disabled:opacity-50"
-                                    >
-                                        {creating ? 'Creating...' : 'Create Course'}
-                                    </button>
-                                </div>
-                            </form>
+                                    {associations.map((a: any) => (
+                                        <option key={a.id} value={a.id}>
+                                            {a.name} ({a.code})
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
                     </div>
-                </ModalPortal>
-            )}
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Event Date & Time *
+                            </label>
+                            <input
+                                type="datetime-local"
+                                required
+                                value={date}
+                                onChange={(e) => setDate(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Duration (Hours)
+                            </label>
+                            <input
+                                type="number"
+                                min={1}
+                                value={durationHours}
+                                onChange={(e) => setDurationHours(Number(e.target.value))}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Location / Venue *
+                        </label>
+                        <input
+                            type="text"
+                            required
+                            placeholder="e.g. Sports Hall Wankdorf, Bern"
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value)}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Duration (Hours)
+                            </label>
+                            <input
+                                type="number"
+                                min={1}
+                                max={48}
+                                value={durationHours}
+                                onChange={(e) => setDurationHours(Number(e.target.value))}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none font-mono"
+                            />
+                        </div>
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Validity Extension (Months)
+                            </label>
+                            <input
+                                type="number"
+                                min={1}
+                                max={48}
+                                value={validityMonths}
+                                onChange={(e) => setValidityMonths(Number(e.target.value))}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none font-mono"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                            type="button"
+                            onClick={() => setShowCreateModal(false)}
+                            className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={creating}
+                            className="rounded-xl bg-emerald-600 hover:bg-emerald-700 px-5 py-2 text-xs font-bold text-white shadow-xs transition disabled:opacity-50"
+                        >
+                            {creating ? 'Creating...' : 'Create Course'}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
 
             {/* Attest Attendance Modal */}
-            {showAttestModal && selectedCourse && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-                        <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-2xl space-y-4">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                                    Attest Course Attendance
-                                </h3>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAttestModal(false)}
-                                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-
-                            {attestSuccess && (
-                                <div className="rounded-xl p-3 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-2">
-                                    <CheckCircle2 className="h-4 w-4 shrink-0" />
-                                    <span>{attestSuccess}</span>
-                                </div>
-                            )}
-
-                            <form onSubmit={handleAttest} className="space-y-4 text-xs">
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        Select Member / Official *
-                                    </label>
-                                    <select
-                                        required
-                                        value={attestUserId}
-                                        onChange={(e) => setAttestUserId(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
-                                    >
-                                        <option value="">-- Choose Member --</option>
-                                        {allUsers.map((u: any) => (
-                                            <option key={u.id} value={u.id}>
-                                                {u.firstName} {u.lastName} ({u.email})
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        Evaluation Notes / Comments
-                                    </label>
-                                    <textarea
-                                        rows={2}
-                                        value={attestNotes}
-                                        onChange={(e) => setAttestNotes(e.target.value)}
-                                        placeholder="Passed practical evaluation and theory exam."
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
-                                    />
-                                </div>
-
-                                <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowAttestModal(false)}
-                                        className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={attesting || !attestUserId}
-                                        className="rounded-xl bg-emerald-600 hover:bg-emerald-700 px-5 py-2 text-xs font-bold text-white shadow-xs transition disabled:opacity-50"
-                                    >
-                                        {attesting ? 'Attesting...' : 'Confirm & Extend License'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+            <Modal
+                isOpen={Boolean(showAttestModal && selectedCourse)}
+                onClose={() => setShowAttestModal(false)}
+                title="Attest Course Attendance"
+                subtitle={selectedCourse?.title}
+                icon={<Award className="h-5 w-5 text-emerald-500" />}
+                size="md"
+            >
+                {attestSuccess && (
+                    <div className="rounded-xl p-3 mb-4 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 shrink-0" />
+                        <span>{attestSuccess}</span>
                     </div>
-                </ModalPortal>
-            )}
+                )}
+
+                <form onSubmit={handleAttest} className="space-y-4 text-xs">
+                    <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Select Member / Official *
+                        </label>
+                        <select
+                            required
+                            value={attestUserId}
+                            onChange={(e) => setAttestUserId(e.target.value)}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
+                        >
+                            <option value="">-- Choose Member --</option>
+                            {allUsers.map((u: any) => (
+                                <option key={u.id} value={u.id}>
+                                    {u.firstName} {u.lastName} ({u.email})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Evaluation Notes / Comments
+                        </label>
+                        <textarea
+                            rows={2}
+                            value={attestNotes}
+                            onChange={(e) => setAttestNotes(e.target.value)}
+                            placeholder="Passed practical evaluation and theory exam."
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-emerald-500 focus:outline-none"
+                        />
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                            type="button"
+                            onClick={() => setShowAttestModal(false)}
+                            className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={attesting || !attestUserId}
+                            className="rounded-xl bg-emerald-600 hover:bg-emerald-700 px-5 py-2 text-xs font-bold text-white shadow-xs transition disabled:opacity-50"
+                        >
+                            {attesting ? 'Attesting...' : 'Confirm & Extend License'}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 }

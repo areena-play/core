@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { AdminNoticeDto, NoticeType, NoticeTargetGroup, NoticeDisplayMode } from '@areena/shared';
-import { ModalPortal } from '@/components/ui/ModalPortal';
+import { Modal } from '@/components/ui/Modal';
 
 interface Props {
     associations: any[];
@@ -348,228 +348,216 @@ export function AdminNoticesManager({ associations, clubs }: Props) {
             )}
 
             {/* Create Announcement Modal */}
-            {showCreateModal && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5 animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
-                            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                                    <Plus className="w-5 h-5 text-red-500" />
-                                    Create Admin Notice
-                                </h3>
-                                <button
-                                    onClick={() => setShowCreateModal(false)}
-                                    className="text-slate-400 hover:text-white"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
-                            </div>
+            <Modal
+                isOpen={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                title="Create Admin Notice"
+                subtitle="Publish system broadcast alerts, maintenance notices, and bulletins"
+                icon={<BellRing className="w-5 h-5 text-red-500" />}
+                size="lg"
+            >
+                {errorMsg && (
+                    <div className="p-3 mb-4 bg-red-500/10 border border-red-500/30 rounded-xl text-xs font-semibold text-red-400">
+                        {errorMsg}
+                    </div>
+                )}
 
-                            {errorMsg && (
-                                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs font-semibold text-red-400">
-                                    {errorMsg}
-                                </div>
-                            )}
-
-                            <form onSubmit={handleCreateNotice} className="space-y-4">
-                                {/* Multilingual Language Selector Tabs */}
-                                <div className="space-y-2 p-3 bg-slate-950/60 rounded-xl border border-slate-800">
-                                    <div className="flex items-center justify-between">
-                                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
-                                            Announcement Language Tabs
-                                        </label>
-                                        <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                                            <Globe className="w-3.5 h-3.5 text-blue-400" />
-                                            Translate per language
-                                        </span>
-                                    </div>
-                                    <div className="grid grid-cols-4 gap-1.5 p-1 bg-slate-900 rounded-lg border border-slate-800">
-                                        {[
-                                            { code: 'en', label: '🇬🇧 EN' },
-                                            { code: 'de', label: '🇩🇪 DE' },
-                                            { code: 'fr', label: '🇫🇷 FR' },
-                                            { code: 'it', label: '🇮🇹 IT' },
-                                        ].map((lang) => {
-                                            const hasData = !!(
-                                                titlesI18n[lang.code]?.trim() &&
-                                                contentsI18n[lang.code]?.trim()
-                                            );
-                                            const isActive = activeLangTab === lang.code;
-                                            return (
-                                                <button
-                                                    key={lang.code}
-                                                    type="button"
-                                                    onClick={() => setActiveLangTab(lang.code as any)}
-                                                    className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-md text-xs font-bold transition-all ${
-                                                        isActive
-                                                            ? 'bg-red-600 text-white shadow'
-                                                            : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                                                    }`}
-                                                >
-                                                    <span>{lang.label}</span>
-                                                    {hasData && (
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
-                                                    )}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                                            Notice Title ({activeLangTab.toUpperCase()}) *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={titlesI18n[activeLangTab] || ''}
-                                            onChange={(e) =>
-                                                setTitlesI18n({
-                                                    ...titlesI18n,
-                                                    [activeLangTab]: e.target.value,
-                                                })
-                                            }
-                                            placeholder={`Title in ${activeLangTab.toUpperCase()} (e.g. Scheduled System Maintenance)`}
-                                            className="w-full bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                                            Notice Message / Content ({activeLangTab.toUpperCase()}) *
-                                        </label>
-                                        <textarea
-                                            rows={3}
-                                            value={contentsI18n[activeLangTab] || ''}
-                                            onChange={(e) =>
-                                                setContentsI18n({
-                                                    ...contentsI18n,
-                                                    [activeLangTab]: e.target.value,
-                                                })
-                                            }
-                                            placeholder={`Message text in ${activeLangTab.toUpperCase()}...`}
-                                            className="w-full bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 resize-none leading-relaxed"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-3 gap-3">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                                            Display Format
-                                        </label>
-                                        <select
-                                            value={displayMode}
-                                            onChange={(e) => setDisplayMode(e.target.value as NoticeDisplayMode)}
-                                            className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500"
-                                        >
-                                            <option value={NoticeDisplayMode.BANNER}>Top Banner (Full Width)</option>
-                                            <option value={NoticeDisplayMode.MODAL}>Popup Modal (Dialog)</option>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                                            Severity / Type
-                                        </label>
-                                        <select
-                                            value={type}
-                                            onChange={(e) => setType(e.target.value as NoticeType)}
-                                            className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500"
-                                        >
-                                            <option value={NoticeType.INFO}>INFO (Blue)</option>
-                                            <option value={NoticeType.WARNING}>WARNING (Amber)</option>
-                                            <option value={NoticeType.CRITICAL}>CRITICAL (Red)</option>
-                                            <option value={NoticeType.SUCCESS}>SUCCESS (Emerald)</option>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                                            Target Audience
-                                        </label>
-                                        <select
-                                            value={targetGroup}
-                                            onChange={(e) => setTargetGroup(e.target.value as NoticeTargetGroup)}
-                                            className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500"
-                                        >
-                                            <option value={NoticeTargetGroup.ALL}>Everyone (All Users & Guests)</option>
-                                            <option value={NoticeTargetGroup.PLAYERS}>Athletes & Players</option>
-                                            <option value={NoticeTargetGroup.COACHES}>Certified Coaches</option>
-                                            <option value={NoticeTargetGroup.REFEREES}>Referees & Umpires</option>
-                                            <option value={NoticeTargetGroup.CLUB_ADMINS}>Club Administrators</option>
-                                            <option value={NoticeTargetGroup.ASSOCIATION_ADMINS}>Federation / Regional Admins</option>
-                                            <option value={NoticeTargetGroup.SUPER_ADMINS}>System Admins Only</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                {/* Dismissal Control Toggle */}
-                                <div className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60 space-y-2">
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={isDismissible}
-                                            onChange={(e) => setIsDismissible(e.target.checked)}
-                                            className="w-4 h-4 rounded text-red-600 bg-slate-800 border-slate-700 focus:ring-red-500"
-                                        />
-                                        <span className="text-xs font-bold text-white">
-                                            Allow users to permanently hide / dismiss this message
-                                        </span>
-                                    </label>
-                                    <p className="text-[11px] text-slate-400 pl-7">
-                                        {isDismissible
-                                            ? 'Users will see a "Don\'t show again" option. Once clicked, it will never show to that user again.'
-                                            : 'Users cannot dismiss this message. It will be shown every time until you deactivate or delete it.'}
-                                    </p>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                                            Priority (Higher = Shown First)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={priority}
-                                            onChange={(e) => setPriority(Number(e.target.value))}
-                                            className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-red-500"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                                            Expiration Date (Optional)
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={expiresAt}
-                                            onChange={(e) => setExpiresAt(e.target.value)}
-                                            className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-red-500"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <form onSubmit={handleCreateNotice} className="space-y-4 text-xs">
+                    {/* Multilingual Language Selector Tabs */}
+                    <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800">
+                        <div className="flex items-center justify-between">
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                Announcement Language Tabs
+                            </label>
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                <Globe className="w-3.5 h-3.5 text-blue-500" />
+                                Translate per language
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1.5 p-1 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+                            {[
+                                { code: 'en', label: '🇬🇧 EN' },
+                                { code: 'de', label: '🇩🇪 DE' },
+                                { code: 'fr', label: '🇫🇷 FR' },
+                                { code: 'it', label: '🇮🇹 IT' },
+                            ].map((lang) => {
+                                const hasData = !!(
+                                    titlesI18n[lang.code]?.trim() &&
+                                    contentsI18n[lang.code]?.trim()
+                                );
+                                const isActive = activeLangTab === lang.code;
+                                return (
                                     <button
+                                        key={lang.code}
                                         type="button"
-                                        onClick={() => setShowCreateModal(false)}
-                                        className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors"
+                                        onClick={() => setActiveLangTab(lang.code as any)}
+                                        className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-md text-xs font-bold transition-all ${
+                                            isActive
+                                                ? 'bg-red-600 text-white shadow'
+                                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+                                        }`}
                                     >
-                                        Cancel
+                                        <span>{lang.label}</span>
+                                        {hasData && (
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+                                        )}
                                     </button>
-                                    <button
-                                        type="submit"
-                                        disabled={submitting}
-                                        className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-500 transition-all shadow-md active:scale-95 disabled:opacity-50"
-                                    >
-                                        {submitting ? 'Publishing...' : 'Publish Notice'}
-                                    </button>
-                                </div>
-                            </form>
+                                );
+                            })}
+                        </div>
+
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                Notice Title ({activeLangTab.toUpperCase()}) *
+                            </label>
+                            <input
+                                type="text"
+                                value={titlesI18n[activeLangTab] || ''}
+                                onChange={(e) =>
+                                    setTitlesI18n({
+                                        ...titlesI18n,
+                                        [activeLangTab]: e.target.value,
+                                    })
+                                }
+                                placeholder={`Title in ${activeLangTab.toUpperCase()} (e.g. Scheduled System Maintenance)`}
+                                className="w-full bg-white dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-red-500"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                Notice Message / Content ({activeLangTab.toUpperCase()}) *
+                            </label>
+                            <textarea
+                                rows={3}
+                                value={contentsI18n[activeLangTab] || ''}
+                                onChange={(e) =>
+                                    setContentsI18n({
+                                        ...contentsI18n,
+                                        [activeLangTab]: e.target.value,
+                                    })
+                                }
+                                placeholder={`Message text in ${activeLangTab.toUpperCase()}...`}
+                                className="w-full bg-white dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-red-500 resize-none leading-relaxed"
+                            />
                         </div>
                     </div>
-                </ModalPortal>
-            )}
+
+                    <div className="grid grid-cols-3 gap-3">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Display Format
+                            </label>
+                            <select
+                                value={displayMode}
+                                onChange={(e) => setDisplayMode(e.target.value as NoticeDisplayMode)}
+                                className="w-full bg-white dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-red-500"
+                            >
+                                <option value={NoticeDisplayMode.BANNER}>Top Banner (Full Width)</option>
+                                <option value={NoticeDisplayMode.MODAL}>Popup Modal (Dialog)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Severity / Type
+                            </label>
+                            <select
+                                value={type}
+                                onChange={(e) => setType(e.target.value as NoticeType)}
+                                className="w-full bg-white dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-red-500"
+                            >
+                                <option value={NoticeType.INFO}>INFO (Blue)</option>
+                                <option value={NoticeType.WARNING}>WARNING (Amber)</option>
+                                <option value={NoticeType.CRITICAL}>CRITICAL (Red)</option>
+                                <option value={NoticeType.SUCCESS}>SUCCESS (Emerald)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Target Audience
+                            </label>
+                            <select
+                                value={targetGroup}
+                                onChange={(e) => setTargetGroup(e.target.value as NoticeTargetGroup)}
+                                className="w-full bg-white dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-red-500"
+                            >
+                                <option value={NoticeTargetGroup.ALL}>Everyone (All Users & Guests)</option>
+                                <option value={NoticeTargetGroup.PLAYERS}>Athletes & Players</option>
+                                <option value={NoticeTargetGroup.COACHES}>Certified Coaches</option>
+                                <option value={NoticeTargetGroup.REFEREES}>Referees & Umpires</option>
+                                <option value={NoticeTargetGroup.CLUB_ADMINS}>Club Administrators</option>
+                                <option value={NoticeTargetGroup.ASSOCIATION_ADMINS}>Federation / Regional Admins</option>
+                                <option value={NoticeTargetGroup.SUPER_ADMINS}>System Admins Only</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Dismissal Control Toggle */}
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 space-y-2">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={isDismissible}
+                                onChange={(e) => setIsDismissible(e.target.checked)}
+                                className="w-4 h-4 rounded text-red-600 bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 focus:ring-red-500"
+                            />
+                            <span className="text-xs font-bold text-slate-800 dark:text-white">
+                                Allow users to permanently hide / dismiss this message
+                            </span>
+                        </label>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 pl-7">
+                            {isDismissible
+                                ? 'Users will see a "Don\'t show again" option. Once clicked, it will never show to that user again.'
+                                : 'Users cannot dismiss this message. It will be shown every time until you deactivate or delete it.'}
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Priority (Higher = Shown First)
+                            </label>
+                            <input
+                                type="number"
+                                value={priority}
+                                onChange={(e) => setPriority(Number(e.target.value))}
+                                className="w-full bg-white dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-red-500"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Expiration Date (Optional)
+                            </label>
+                            <input
+                                type="date"
+                                value={expiresAt}
+                                onChange={(e) => setExpiresAt(e.target.value)}
+                                className="w-full bg-white dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-red-500"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+                        <button
+                            type="button"
+                            onClick={() => setShowCreateModal(false)}
+                            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-500 transition-all shadow-md active:scale-95 disabled:opacity-50"
+                        >
+                            {submitting ? 'Publishing...' : 'Publish Notice'}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 }

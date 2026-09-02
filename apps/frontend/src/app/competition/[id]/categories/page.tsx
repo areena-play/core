@@ -22,7 +22,7 @@ import {
     MapPin,
     Shield,
 } from 'lucide-react';
-import { ModalPortal } from '@/components/ui/ModalPortal';
+import { Modal } from '@/components/ui/Modal';
 
 export default function CompetitionCategoriesPage() {
     const params = useParams();
@@ -354,14 +354,14 @@ export default function CompetitionCategoriesPage() {
             )}
 
             {/* Add Category Modal */}
-            {showAddCatModal && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-xl space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-base text-slate-900 dark:text-white">Create Competition Category</h3>
-                                <button type="button" onClick={() => setShowAddCatModal(false)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">✕</button>
-                            </div>
+            <Modal
+                isOpen={showAddCatModal}
+                onClose={() => setShowAddCatModal(false)}
+                title="Create Competition Category"
+                subtitle="Define group format, team size, and rating thresholds"
+                icon={<Layers className="h-5 w-5 text-red-500" />}
+                size="md"
+            >
                 <form onSubmit={handleCreateCategory} className="space-y-4">
                     <div className="space-y-1.5">
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Category Name</label>
@@ -398,9 +398,9 @@ export default function CompetitionCategoriesPage() {
                                 className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-white outline-none focus:border-red-500"
                             >
                                 <option value="ANY">Open / Any</option>
-                                <option value="MEN">Men Only</option>
-                                <option value="WOMEN">Women Only</option>
-                                <option value="MIXED">Mixed (Men + Women)</option>
+                                <option value="MALE_ONLY">Men Only</option>
+                                <option value="FEMALE_ONLY">Women Only</option>
+                                <option value="MIXED">Mixed</option>
                             </select>
                         </div>
                     </div>
@@ -410,25 +410,25 @@ export default function CompetitionCategoriesPage() {
                             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Min ELO (Optional)</label>
                             <input
                                 type="number"
-                                placeholder="e.g. 1200"
+                                placeholder="None"
                                 value={newCat.minElo}
                                 onChange={(e) => setNewCat({ ...newCat, minElo: e.target.value })}
-                                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-white outline-none focus:border-red-500"
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-red-500 font-mono"
                             />
                         </div>
                         <div className="space-y-1.5">
                             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Max ELO (Optional)</label>
                             <input
                                 type="number"
-                                placeholder="e.g. 1800"
+                                placeholder="None"
                                 value={newCat.maxElo}
                                 onChange={(e) => setNewCat({ ...newCat, maxElo: e.target.value })}
-                                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-white outline-none focus:border-red-500"
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-red-500 font-mono"
                             />
                         </div>
                     </div>
 
-                    <div className="flex justify-end gap-2 pt-3">
+                    <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                         <button
                             type="button"
                             onClick={() => setShowAddCatModal(false)}
@@ -444,20 +444,17 @@ export default function CompetitionCategoriesPage() {
                         </button>
                     </div>
                 </form>
-                        </div>
-                    </div>
-                </ModalPortal>
-            )}
+            </Modal>
 
             {/* Add Team Modal */}
-            {showAddTeamModal && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-xl space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-base text-slate-900 dark:text-white">Register Team in Category</h3>
-                                <button type="button" onClick={() => setShowAddTeamModal(false)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">✕</button>
-                            </div>
+            <Modal
+                isOpen={showAddTeamModal}
+                onClose={() => setShowAddTeamModal(false)}
+                title="Register Team in Category"
+                subtitle="Assign participant or club team to this category"
+                icon={<Users className="h-5 w-5 text-red-500" />}
+                size="md"
+            >
                 <form onSubmit={handleRegisterTeam} className="space-y-4">
                     <div className="space-y-1.5">
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Team / Participant Name</label>
@@ -487,7 +484,7 @@ export default function CompetitionCategoriesPage() {
                         </select>
                     </div>
 
-                    <div className="flex justify-end gap-2 pt-3">
+                    <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                         <button
                             type="button"
                             onClick={() => setShowAddTeamModal(false)}
@@ -503,10 +500,7 @@ export default function CompetitionCategoriesPage() {
                         </button>
                     </div>
                 </form>
-                        </div>
-                    </div>
-                </ModalPortal>
-            )}
+            </Modal>
         </div>
     );
 }

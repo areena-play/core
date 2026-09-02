@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { AccessDenied } from '@/components/auth/AccessDenied';
-import { ModalPortal } from '@/components/ui/ModalPortal';
+import { Modal } from '@/components/ui/Modal';
 import {
     Receipt,
     Plus,
@@ -789,27 +789,15 @@ export function BillingDashboard({ associationId, isSubAssociation = false }: Bi
             </div>
 
             {/* CREATE INVOICE MODAL */}
-            {showCreateModal && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
-                        <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 sm:p-8 shadow-2xl space-y-6 my-8 max-h-[90vh] overflow-y-auto">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                                <div>
-                                    <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                                        <Receipt className="h-5 w-5 text-red-500" />
-                                        <span>{t('billing.modalTitle')}</span>
-                                    </h2>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                                        {t('billing.modalSubtitle')}
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => setShowCreateModal(false)}
-                                    className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                >
-                                    <X className="h-5 w-5" />
-                                </button>
-                            </div>
+            <Modal
+                isOpen={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                title={t('billing.modalTitle')}
+                subtitle={t('billing.modalSubtitle')}
+                icon={<Receipt className="h-5 w-5 text-red-500" />}
+                size="2xl"
+            >
+                <div className="space-y-6 text-xs">
 
                             {/* Quick Templates */}
                             <div className="space-y-2">
@@ -1091,32 +1079,18 @@ export function BillingDashboard({ associationId, isSubAssociation = false }: Bi
                             </div>
                         </form>
                     </div>
-                </div>
-            </ModalPortal>
-        )}
+            </Modal>
 
             {/* BEXIO CONFIG MODAL */}
-            {showBexioModal && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-                        <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 sm:p-8 shadow-2xl space-y-5">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                                <div>
-                                    <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                                        <Sliders className="h-5 w-5 text-emerald-500" />
-                                        <span>{t('bexio.title')}</span>
-                                    </h2>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                                        {t('bexio.subtitle')}
-                                    </p>
-                                </div>
-                            <button
-                                onClick={() => setShowBexioModal(false)}
-                                className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
+            <Modal
+                isOpen={showBexioModal}
+                onClose={() => setShowBexioModal(false)}
+                title={t('bexio.title')}
+                subtitle={t('bexio.subtitle')}
+                icon={<Sliders className="h-5 w-5 text-emerald-500" />}
+                size="lg"
+            >
+                <div className="space-y-5 text-xs">
 
                         {/* Status Alert */}
                         {bexioConfig?.isConnected ? (
@@ -1222,32 +1196,19 @@ export function BillingDashboard({ associationId, isSubAssociation = false }: Bi
                             </div>
                         </form>
                     </div>
-                </div>
-            </ModalPortal>
-        )}
+            </Modal>
 
             {/* SWISS QR-BILL & INVOICE VIEWER MODAL */}
-            {selectedInvoice && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
-                        <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 sm:p-8 shadow-2xl space-y-6 my-8 max-h-[90vh] overflow-y-auto">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                                <div>
-                                    <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                                        <FileText className="h-5 w-5 text-red-500" />
-                                        <span>{selectedInvoice.invoiceNumber}</span>
-                                    </h2>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                                        {selectedInvoice.recipientName} • Issued {format(new Date(selectedInvoice.issueDate), 'PPP')}
-                                    </p>
-                                </div>
-                            <button
-                                onClick={() => setSelectedInvoice(null)}
-                                className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
+            <Modal
+                isOpen={Boolean(selectedInvoice)}
+                onClose={() => setSelectedInvoice(null)}
+                title={selectedInvoice?.invoiceNumber || ''}
+                subtitle={selectedInvoice ? `${selectedInvoice.recipientName} • Issued ${format(new Date(selectedInvoice.issueDate), 'PPP')}` : undefined}
+                icon={<FileText className="h-5 w-5 text-red-500" />}
+                size="2xl"
+            >
+                {selectedInvoice && (
+                    <div className="space-y-6 text-xs">
 
                         {/* Invoice Summary Box */}
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 p-4 sm:p-5 space-y-3 text-xs">
@@ -1377,9 +1338,8 @@ export function BillingDashboard({ associationId, isSubAssociation = false }: Bi
                             </div>
                         </div>
                     </div>
-                </div>
-            </ModalPortal>
-        )}
+                )}
+            </Modal>
         </div>
     );
 }

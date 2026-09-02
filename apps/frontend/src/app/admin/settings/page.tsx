@@ -27,7 +27,7 @@ import {
     Lock,
 } from 'lucide-react';
 import { AccessDenied } from '@/components/auth/AccessDenied';
-import { ModalPortal } from '@/components/ui/ModalPortal';
+import { Modal } from '@/components/ui/Modal';
 
 export default function AdminSettingsPage() {
     const { user, loading: authLoading } = useAuth();
@@ -684,79 +684,66 @@ export default function AdminSettingsPage() {
             </div>
 
             {/* Test Email Modal */}
-            {testMode && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-                        <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-2xl space-y-4">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                                <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                                    <Send className="h-4 w-4 text-red-500" />
-                                    <span>Dispatch {testMode === 'mailgun' ? 'Mailgun' : 'SMTP'} Test Email</span>
-                                </h3>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setTestMode(null);
-                                        setTestResult(null);
-                                    }}
-                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-
-                            {testResult && (
-                                <div
-                                    className={`rounded-2xl p-3 text-xs font-semibold ${
-                                        testResult.success
-                                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                                            : 'bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300 border border-red-200 dark:border-red-800'
-                                    }`}
-                                >
-                                    {testResult.success ? testResult.message : testResult.error}
-                                </div>
-                            )}
-
-                            <form onSubmit={handleDispatchTest} className="space-y-4 text-xs">
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        Target Recipient Email Address
-                                    </label>
-                                    <input
-                                        type="email"
-                                        required
-                                        placeholder="admin@example.com"
-                                        value={testRecipient}
-                                        onChange={(e) => setTestRecipient(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
-                                    />
-                                </div>
-
-                                <div className="flex justify-end gap-2 pt-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setTestMode(null);
-                                            setTestResult(null);
-                                        }}
-                                        className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
-                                    >
-                                        Close
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={testing}
-                                        className="rounded-xl bg-red-600 hover:bg-red-700 px-5 py-2 text-xs font-bold text-white shadow transition disabled:opacity-50 flex items-center gap-1.5"
-                                    >
-                                        <Send className="h-3.5 w-3.5" />
-                                        <span>{testing ? 'Dispatching...' : 'Send Live Test'}</span>
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+            <Modal
+                isOpen={Boolean(testMode)}
+                onClose={() => {
+                    setTestMode(null);
+                    setTestResult(null);
+                }}
+                title={`Dispatch ${testMode === 'mailgun' ? 'Mailgun' : 'SMTP'} Test Email`}
+                subtitle="Verify live delivery to ensure transactional emails are working properly"
+                icon={<Send className="h-5 w-5 text-red-500" />}
+                size="md"
+            >
+                {testResult && (
+                    <div
+                        className={`rounded-2xl p-3 text-xs font-semibold mb-4 ${
+                            testResult.success
+                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                : 'bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300 border border-red-200 dark:border-red-800'
+                        }`}
+                    >
+                        {testResult.success ? testResult.message : testResult.error}
                     </div>
-                </ModalPortal>
-            )}
+                )}
+
+                <form onSubmit={handleDispatchTest} className="space-y-4 text-xs">
+                    <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Target Recipient Email Address
+                        </label>
+                        <input
+                            type="email"
+                            required
+                            placeholder="admin@example.com"
+                            value={testRecipient}
+                            onChange={(e) => setTestRecipient(e.target.value)}
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
+                        />
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setTestMode(null);
+                                setTestResult(null);
+                            }}
+                            className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
+                        >
+                            Close
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={testing}
+                            className="rounded-xl bg-red-600 hover:bg-red-700 px-5 py-2 text-xs font-bold text-white shadow transition disabled:opacity-50 flex items-center gap-1.5"
+                        >
+                            <Send className="h-3.5 w-3.5" />
+                            <span>{testing ? 'Dispatching...' : 'Send Live Test'}</span>
+                        </button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 }

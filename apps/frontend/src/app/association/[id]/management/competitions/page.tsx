@@ -23,7 +23,7 @@ import {
     Search,
 } from 'lucide-react';
 import { AccessDenied } from '@/components/auth/AccessDenied';
-import { ModalPortal } from '@/components/ui/ModalPortal';
+import { Modal } from '@/components/ui/Modal';
 
 type Competition = {
     id: string;
@@ -276,63 +276,89 @@ export default function CompetitionHubPage() {
             </div>
 
             {/* Approve/Reject Modal */}
-            {selectedComp && actionType && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-xl space-y-5">
-                            <div className="flex items-center gap-3">
-                                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${actionType === 'APPROVED' ? 'bg-green-100 dark:bg-green-950/60' : 'bg-red-100 dark:bg-red-950/60'}`}>
-                                    {actionType === 'APPROVED' ? <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" /> : <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />}
-                                </div>
-                                <div>
-                                    <h3 className="text-base font-bold text-slate-900 dark:text-white">{actionType === 'APPROVED' ? 'Approve Competition' : 'Reject Competition'}</h3>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">{selectedComp.name}</p>
-                                </div>
-                            </div>
-                            {actionType === 'APPROVED' ? (
-                                <p className="text-sm text-slate-600 dark:text-slate-300">This will approve <strong>{selectedComp.name}</strong> and make it visible to participants.</p>
-                            ) : (
-                                <div className="space-y-2">
-                                    <p className="text-sm text-slate-600 dark:text-slate-300">Please provide a reason for rejecting this competition:</p>
-                                    <textarea rows={3} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="e.g. Missing safety documentation..."
-                                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-400/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 resize-none" />
-                                </div>
-                            )}
-                            <div className="flex justify-end gap-3 pt-1">
-                                <button onClick={() => { setSelectedComp(null); setActionType(null); setRejectReason(''); }} disabled={submitting} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 transition-colors">Cancel</button>
-                                <button onClick={handleApproval} disabled={submitting || (actionType === 'REJECTED' && !rejectReason.trim())} className={`rounded-xl px-4 py-2 text-sm font-bold text-white transition-colors disabled:opacity-50 ${actionType === 'APPROVED' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
-                                    {submitting ? 'Saving...' : actionType === 'APPROVED' ? 'Approve' : 'Reject'}
-                                </button>
-                            </div>
+            <Modal
+                isOpen={Boolean(selectedComp && actionType)}
+                onClose={() => { setSelectedComp(null); setActionType(null); setRejectReason(''); }}
+                title={actionType === 'APPROVED' ? 'Approve Competition' : 'Reject Competition'}
+                subtitle={selectedComp?.name}
+                icon={actionType === 'APPROVED' ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
+                size="md"
+            >
+                <div className="space-y-4">
+                    {actionType === 'APPROVED' ? (
+                        <p className="text-sm text-slate-600 dark:text-slate-300">
+                            This will approve <strong>{selectedComp?.name}</strong> and make it visible to participants.
+                        </p>
+                    ) : (
+                        <div className="space-y-2">
+                            <p className="text-sm text-slate-600 dark:text-slate-300">Please provide a reason for rejecting this competition:</p>
+                            <textarea
+                                rows={3}
+                                value={rejectReason}
+                                onChange={(e) => setRejectReason(e.target.value)}
+                                placeholder="e.g. Missing safety documentation..."
+                                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-400/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 resize-none"
+                            />
                         </div>
+                    )}
+                    <div className="flex justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                            onClick={() => { setSelectedComp(null); setActionType(null); setRejectReason(''); }}
+                            disabled={submitting}
+                            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleApproval}
+                            disabled={submitting || (actionType === 'REJECTED' && !rejectReason.trim())}
+                            className={`rounded-xl px-4 py-2 text-sm font-bold text-white transition-colors disabled:opacity-50 ${actionType === 'APPROVED' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+                        >
+                            {submitting ? 'Saving...' : actionType === 'APPROVED' ? 'Approve' : 'Reject'}
+                        </button>
                     </div>
-                </ModalPortal>
-            )}
+                </div>
+            </Modal>
 
             {/* Validate Results Modal */}
-            {validateComp && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-xl space-y-5">
-                            <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100 dark:bg-red-950/60"><ShieldCheck className="h-5 w-5 text-red-600 dark:text-red-400" /></div>
-                                <div>
-                                    <h3 className="text-base font-bold text-slate-900 dark:text-white">Validate Results</h3>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">{validateComp.name}</p>
-                                </div>
-                            </div>
-                            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800/40 dark:bg-amber-950/30">
-                                <div className="flex items-start gap-2"><AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" /><p className="text-xs text-amber-700 dark:text-amber-300">Validating results is permanent. This officially locks the final standings, triggers ELO updates, and notifies all participants.</p></div>
-                            </div>
-                            <p className="text-sm text-slate-600 dark:text-slate-300">Confirm that you have reviewed the results of <strong>{validateComp.name}</strong> and they are correct.</p>
-                            <div className="flex justify-end gap-3 pt-1">
-                                <button onClick={() => setValidateComp(null)} disabled={validating} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 transition-colors">Cancel</button>
-                                <button onClick={handleValidate} disabled={validating} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 transition-colors disabled:opacity-50">{validating ? 'Validating...' : 'Confirm & Validate'}</button>
-                            </div>
+            <Modal
+                isOpen={Boolean(validateComp)}
+                onClose={() => setValidateComp(null)}
+                title="Validate Results"
+                subtitle={validateComp?.name}
+                icon={<ShieldCheck className="h-5 w-5 text-red-500" />}
+                size="md"
+            >
+                <div className="space-y-4">
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800/40 dark:bg-amber-950/30">
+                        <div className="flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                            <p className="text-xs text-amber-700 dark:text-amber-300">
+                                Validating results is permanent. This officially locks the final standings, triggers ELO updates, and notifies all participants.
+                            </p>
                         </div>
                     </div>
-                </ModalPortal>
-            )}
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                        Confirm that you have reviewed the results of <strong>{validateComp?.name}</strong> and they are correct.
+                    </p>
+                    <div className="flex justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                            onClick={() => setValidateComp(null)}
+                            disabled={validating}
+                            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleValidate}
+                            disabled={validating}
+                            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                        >
+                            {validating ? 'Validating...' : 'Confirm & Validate'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

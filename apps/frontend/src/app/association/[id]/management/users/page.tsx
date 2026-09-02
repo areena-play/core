@@ -32,7 +32,7 @@ import {
     AlertTriangle,
     Plus,
 } from 'lucide-react';
-import { ModalPortal } from '@/components/ui/ModalPortal';
+import { Modal } from '@/components/ui/Modal';
 
 interface AdminUserItem {
     id: string;
@@ -162,7 +162,7 @@ export default function AdminUsersPage() {
         return (
             <AccessDenied
                 title="Super Administrator Access Required"
-                description="The User Management portal is restricted to platform Super Administrators. Please sign in with a Super Admin account to inspect, edit, or manage users."
+                description="The global User Management portal is restricted to platform Super Administrators. Please sign in with a Super Admin account to inspect, edit, or manage platform users."
                 requiredRole="Super Administrator"
             />
         );
@@ -654,14 +654,19 @@ export default function AdminUsersPage() {
                                                     {/* SuperAdmin Toggle */}
                                                     <button
                                                         type="button"
+                                                        disabled={u.id === currentUser.id}
                                                         onClick={() => handleToggleSuperAdmin(u)}
                                                         title={
-                                                            u.isSuperAdmin
+                                                            u.id === currentUser.id
+                                                                ? 'Cannot revoke your own administrator privileges'
+                                                                : u.isSuperAdmin
                                                                 ? 'Revoke Super Administrator'
                                                                 : 'Grant Super Administrator'
                                                         }
                                                         className={`p-1.5 rounded-lg border transition ${
-                                                            u.isSuperAdmin
+                                                            u.id === currentUser.id
+                                                                ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed opacity-60'
+                                                                : u.isSuperAdmin
                                                                 ? 'border-red-500/30 bg-red-500/10 text-red-500 hover:bg-red-500/20'
                                                                 : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-400 hover:text-red-500 hover:border-red-500/40'
                                                         }`}
@@ -724,332 +729,304 @@ export default function AdminUsersPage() {
             {/* ========================================================================= */}
             {/* Modal: Edit User Profile */}
             {/* ========================================================================= */}
-            {editingUser && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-                        <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-2xl space-y-4 text-xs max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150">
-                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                                <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                    <Edit3 className="w-4 h-4 text-blue-500" />
-                                    Edit User Profile: {editingUser.firstName} {editingUser.lastName}
-                                </h2>
-                                <button
-                                    type="button"
-                                    onClick={() => setEditingUser(null)}
-                                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
-                            </div>
+            <Modal
+                isOpen={Boolean(editingUser)}
+                onClose={() => setEditingUser(null)}
+                title={editingUser ? `Edit User Profile: ${editingUser.firstName} ${editingUser.lastName}` : ''}
+                subtitle="Modify personal account details, address, and contact information"
+                icon={<Edit3 className="w-5 h-5 text-blue-500" />}
+                size="lg"
+            >
+                {editError && (
+                    <div className="p-3 mb-4 rounded-lg border border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300 text-xs">
+                        {editError}
+                    </div>
+                )}
 
-                            {editError && (
-                                <div className="p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300 text-xs">
-                                    {editError}
-                                </div>
-                            )}
-
-                            <form onSubmit={handleSaveEdit} className="space-y-4">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="font-semibold text-slate-700 dark:text-slate-300">First Name</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={editFormData.firstName || ''}
-                                            onChange={(e) => setEditFormData({ ...editFormData, firstName: e.target.value })}
-                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="font-semibold text-slate-700 dark:text-slate-300">Last Name</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={editFormData.lastName || ''}
-                                            onChange={(e) => setEditFormData({ ...editFormData, lastName: e.target.value })}
-                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="font-semibold text-slate-700 dark:text-slate-300">Email Address</label>
-                                    <input
-                                        type="email"
-                                        required
-                                        value={editFormData.email || ''}
-                                        onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="font-semibold text-slate-700 dark:text-slate-300">Phone</label>
-                                        <input
-                                            type="text"
-                                            value={editFormData.phone || ''}
-                                            onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="font-semibold text-slate-700 dark:text-slate-300">License ID</label>
-                                        <input
-                                            type="text"
-                                            value={editFormData.licenseId || ''}
-                                            onChange={(e) => setEditFormData({ ...editFormData, licenseId: e.target.value })}
-                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-3 gap-3">
-                                    <div className="col-span-2">
-                                        <label className="font-semibold text-slate-700 dark:text-slate-300">Street & Number</label>
-                                        <input
-                                            type="text"
-                                            value={editFormData.street || ''}
-                                            onChange={(e) => setEditFormData({ ...editFormData, street: e.target.value })}
-                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="font-semibold text-slate-700 dark:text-slate-300">Postal Code</label>
-                                        <input
-                                            type="text"
-                                            value={editFormData.postalCode || ''}
-                                            onChange={(e) => setEditFormData({ ...editFormData, postalCode: e.target.value })}
-                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="font-semibold text-slate-700 dark:text-slate-300">City</label>
-                                        <input
-                                            type="text"
-                                            value={editFormData.city || ''}
-                                            onChange={(e) => setEditFormData({ ...editFormData, city: e.target.value })}
-                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="font-semibold text-slate-700 dark:text-slate-300">Country</label>
-                                        <input
-                                            type="text"
-                                            value={editFormData.country || 'Switzerland'}
-                                            onChange={(e) => setEditFormData({ ...editFormData, country: e.target.value })}
-                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="font-semibold text-slate-700 dark:text-slate-300">ELO Points</label>
-                                        <input
-                                            type="number"
-                                            value={editFormData.eloPoints || 1000}
-                                            onChange={(e) => setEditFormData({ ...editFormData, eloPoints: parseInt(e.target.value, 10) || 1000 })}
-                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="font-semibold text-slate-700 dark:text-slate-300">Email Verification Status</label>
-                                        <select
-                                            value={editFormData.emailVerified ? 'true' : 'false'}
-                                            onChange={(e) => setEditFormData({ ...editFormData, emailVerified: e.target.value === 'true' })}
-                                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                                        >
-                                            <option value="true">Verified</option>
-                                            <option value="false">Pending Verification</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setEditingUser(null)}
-                                        className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={editLoading}
-                                        className="px-4 py-1.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-50 transition shadow"
-                                    >
-                                        {editLoading ? 'Saving...' : 'Save Changes'}
-                                    </button>
-                                </div>
-                            </form>
+                <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">First Name</label>
+                            <input
+                                type="text"
+                                required
+                                value={editFormData.firstName || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, firstName: e.target.value })}
+                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">Last Name</label>
+                            <input
+                                type="text"
+                                required
+                                value={editFormData.lastName || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, lastName: e.target.value })}
+                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                            />
                         </div>
                     </div>
-                </ModalPortal>
-            )}
+
+                    <div>
+                        <label className="font-semibold text-slate-700 dark:text-slate-300">Email Address</label>
+                        <input
+                            type="email"
+                            required
+                            value={editFormData.email || ''}
+                            onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">Phone</label>
+                            <input
+                                type="text"
+                                value={editFormData.phone || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
+                            />
+                        </div>
+                        <div>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">License ID</label>
+                            <input
+                                type="text"
+                                value={editFormData.licenseId || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, licenseId: e.target.value })}
+                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-2">
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">Street & Number</label>
+                            <input
+                                type="text"
+                                value={editFormData.street || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, street: e.target.value })}
+                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">Postal Code</label>
+                            <input
+                                type="text"
+                                value={editFormData.postalCode || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, postalCode: e.target.value })}
+                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">City</label>
+                            <input
+                                type="text"
+                                value={editFormData.city || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, city: e.target.value })}
+                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">Country</label>
+                            <input
+                                type="text"
+                                value={editFormData.country || 'Switzerland'}
+                                onChange={(e) => setEditFormData({ ...editFormData, country: e.target.value })}
+                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">ELO Points</label>
+                            <input
+                                type="number"
+                                value={editFormData.eloPoints || 1000}
+                                onChange={(e) => setEditFormData({ ...editFormData, eloPoints: parseInt(e.target.value, 10) || 1000 })}
+                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
+                            />
+                        </div>
+                        <div>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300">Email Verification Status</label>
+                            <select
+                                value={editFormData.emailVerified ? 'true' : 'false'}
+                                onChange={(e) => setEditFormData({ ...editFormData, emailVerified: e.target.value === 'true' })}
+                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                            >
+                                <option value="true">Verified</option>
+                                <option value="false">Pending Verification</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setEditingUser(null)}
+                            className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={editLoading}
+                            className="px-4 py-1.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-50 transition shadow"
+                        >
+                            {editLoading ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
 
             {/* ========================================================================= */}
             {/* Modal: Reset User Password */}
             {/* ========================================================================= */}
-            {resetPasswordUser && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-                        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-2xl space-y-4 text-xs animate-in zoom-in-95 duration-150">
-                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                                <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                    <KeyRound className="w-4 h-4 text-amber-500" />
-                                    Reset Password: {resetPasswordUser.firstName} {resetPasswordUser.lastName}
-                                </h2>
-                                <button
-                                    type="button"
-                                    onClick={() => setResetPasswordUser(null)}
-                                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
+            <Modal
+                isOpen={Boolean(resetPasswordUser)}
+                onClose={() => setResetPasswordUser(null)}
+                title={resetPasswordUser ? `Reset Password: ${resetPasswordUser.firstName} ${resetPasswordUser.lastName}` : ''}
+                subtitle="Issue temporary login credentials or set manual password"
+                icon={<KeyRound className="w-5 h-5 text-amber-500" />}
+                size="md"
+            >
+                {resetResult ? (
+                    <div className="space-y-4 py-2 text-xs">
+                        <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 space-y-2">
+                            <div className="flex items-center gap-1.5 font-bold">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                {resetResult.message}
                             </div>
-
-                            {resetResult ? (
-                                <div className="space-y-4 py-2">
-                                    <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 space-y-2">
-                                        <div className="flex items-center gap-1.5 font-bold">
-                                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                                            {resetResult.message}
-                                        </div>
-                                        {resetResult.temporaryPassword && (
-                                            <div className="pt-2 border-t border-emerald-500/20 space-y-1">
-                                                <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
-                                                    Temporary Password (Click to Copy):
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <code className="px-2.5 py-1.5 rounded-lg bg-black/30 text-white font-mono text-sm font-bold tracking-wider select-all">
-                                                        {resetResult.temporaryPassword}
-                                                    </code>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => copyToClipboard(resetResult.temporaryPassword!)}
-                                                        className="p-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
-                                                    >
-                                                        {copiedPass ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
+                            {resetResult.temporaryPassword && (
+                                <div className="pt-2 border-t border-emerald-500/20 space-y-1">
+                                    <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                                        Temporary Password (Click to Copy):
                                     </div>
-
-                                    <div className="text-right">
+                                    <div className="flex items-center gap-2">
+                                        <code className="px-2.5 py-1.5 rounded-lg bg-black/30 text-white font-mono text-sm font-bold tracking-wider select-all">
+                                            {resetResult.temporaryPassword}
+                                        </code>
                                         <button
                                             type="button"
-                                            onClick={() => setResetPasswordUser(null)}
-                                            className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold hover:bg-slate-300 dark:hover:bg-slate-700 transition"
+                                            onClick={() => copyToClipboard(resetResult.temporaryPassword!)}
+                                            className="p-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
                                         >
-                                            Done
+                                            {copiedPass ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                                         </button>
                                     </div>
                                 </div>
-                            ) : (
-                                <form onSubmit={handleResetPassword} className="space-y-4">
-                                    <div className="space-y-2">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={autoGeneratePass}
-                                                onChange={(e) => setAutoGeneratePass(e.target.checked)}
-                                                className="rounded border-slate-300 text-red-600 focus:ring-red-500"
-                                            />
-                                            <span className="font-semibold text-slate-800 dark:text-slate-200">
-                                                Auto-generate secure temporary password (Recommended)
-                                            </span>
-                                        </label>
-                                    </div>
-
-                                    {!autoGeneratePass && (
-                                        <div>
-                                            <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                                Set Custom Password
-                                            </label>
-                                            <input
-                                                type="password"
-                                                required
-                                                placeholder="Enter new password (min. 8 chars)"
-                                                value={customPassword}
-                                                onChange={(e) => setCustomPassword(e.target.value)}
-                                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
-                                            />
-                                        </div>
-                                    )}
-
-                                    <p className="text-[11px] text-slate-500">
-                                        The user will receive an email notification indicating their password was reset by an administrator.
-                                    </p>
-
-                                    <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setResetPasswordUser(null)}
-                                            className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            disabled={resetLoading}
-                                            className="px-4 py-1.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-50 transition shadow"
-                                        >
-                                            {resetLoading ? 'Resetting...' : 'Confirm Reset Password'}
-                                        </button>
-                                    </div>
-                                </form>
                             )}
                         </div>
+
+                        <div className="text-right pt-2 border-t border-slate-200 dark:border-slate-800">
+                            <button
+                                type="button"
+                                onClick={() => setResetPasswordUser(null)}
+                                className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold hover:bg-slate-300 dark:hover:bg-slate-700 transition"
+                            >
+                                Done
+                            </button>
+                        </div>
                     </div>
-                </ModalPortal>
-            )}
+                ) : (
+                    <form onSubmit={handleResetPassword} className="space-y-4 text-xs">
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={autoGeneratePass}
+                                    onChange={(e) => setAutoGeneratePass(e.target.checked)}
+                                    className="rounded border-slate-300 text-red-600 focus:ring-red-500"
+                                />
+                                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                    Auto-generate secure temporary password (Recommended)
+                                </span>
+                            </label>
+                        </div>
+
+                        {!autoGeneratePass && (
+                            <div>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                    Set Custom Password
+                                </label>
+                                <input
+                                    type="password"
+                                    required
+                                    placeholder="Enter new password (min. 8 chars)"
+                                    value={customPassword}
+                                    onChange={(e) => setCustomPassword(e.target.value)}
+                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
+                                />
+                            </div>
+                        )}
+
+                        <p className="text-[11px] text-slate-500">
+                            The user will receive an email notification indicating their password was reset by an administrator.
+                        </p>
+
+                        <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setResetPasswordUser(null)}
+                                className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={resetLoading}
+                                className="px-4 py-1.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-50 transition shadow"
+                            >
+                                {resetLoading ? 'Resetting...' : 'Confirm Reset Password'}
+                            </button>
+                        </div>
+                    </form>
+                )}
+            </Modal>
 
             {/* ========================================================================= */}
             {/* Modal: Delete User Confirmation */}
             {/* ========================================================================= */}
-            {deleteUser && (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-                        <div className="w-full max-w-sm rounded-2xl border border-red-500/30 bg-white dark:border-red-500/30 dark:bg-slate-900 p-6 shadow-2xl space-y-4 text-xs animate-in zoom-in-95 duration-150">
-                            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold text-sm">
-                                <AlertTriangle className="w-5 h-5 shrink-0" />
-                                <span>Delete User Account</span>
-                            </div>
+            <Modal
+                isOpen={Boolean(deleteUser)}
+                onClose={() => setDeleteUser(null)}
+                title="Delete User Account"
+                subtitle="Permanent and irreversible account deletion"
+                icon={<AlertTriangle className="w-5 h-5 text-red-500" />}
+                size="sm"
+            >
+                <div className="space-y-4 text-xs">
+                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                        Are you sure you want to permanently delete{' '}
+                        <strong className="text-slate-900 dark:text-white">
+                            {deleteUser?.firstName} {deleteUser?.lastName}
+                        </strong>{' '}
+                        (<span className="font-mono">{deleteUser?.email}</span>)? All associated club and federation roles will be revoked.
+                    </p>
 
-                            <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                                Are you sure you want to permanently delete{' '}
-                                <strong className="text-slate-900 dark:text-white">
-                                    {deleteUser.firstName} {deleteUser.lastName}
-                                </strong>{' '}
-                                (<span className="font-mono">{deleteUser.email}</span>)? All associated club and federation roles will be revoked.
-                            </p>
-
-                            <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setDeleteUser(null)}
-                                    className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled={deleteLoading}
-                                    onClick={handleDeleteUser}
-                                    className="px-4 py-1.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-50 transition shadow"
-                                >
-                                    {deleteLoading ? 'Deleting...' : 'Permanently Delete'}
-                                </button>
-                            </div>
-                        </div>
+                    <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setDeleteUser(null)}
+                            className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            disabled={deleteLoading}
+                            onClick={handleDeleteUser}
+                            className="px-4 py-1.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-50 transition shadow"
+                        >
+                            {deleteLoading ? 'Deleting...' : 'Permanently Delete'}
+                        </button>
                     </div>
-                </ModalPortal>
-            )}
+                </div>
+            </Modal>
         </div>
     );
 }
