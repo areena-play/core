@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { AreenaLogo } from '@/components/ui/AreenaLogo';
@@ -16,9 +16,16 @@ function RegisterForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const redirectUrl = searchParams.get('redirect') || searchParams.get('returnUrl') || '/';
-    const { login } = useAuth();
+    const { user, loading: authLoading, login } = useAuth();
     const { resolvedTheme } = useTheme();
     const { t } = useI18n();
+
+    // Redirect to profile if already authenticated
+    useEffect(() => {
+        if (!authLoading && user) {
+            router.replace('/profile');
+        }
+    }, [user, authLoading, router]);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
