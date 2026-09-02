@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { AreenaLogo } from '@/components/ui/AreenaLogo';
 import { usePathname, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
@@ -149,14 +150,7 @@ export function Navbar() {
                         <div className="flex items-center gap-2">
                             <Link href="/" className="flex items-center gap-3">
                                 <div className="relative h-8 w-24 sm:h-10 sm:w-32">
-                                    <Image
-                                        key={logoSrc}
-                                        src={logoSrc}
-                                        alt="AREENA Logo"
-                                        fill
-                                        priority
-                                        className="object-contain"
-                                    />
+                                    <AreenaLogo />
                                 </div>
                             </Link>
                             {isDemo && (

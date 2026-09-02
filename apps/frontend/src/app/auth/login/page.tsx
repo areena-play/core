@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { AreenaLogo } from '@/components/ui/AreenaLogo';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
@@ -262,7 +263,7 @@ function LoginForm() {
                 {/* Brand Logo Header */}
                 <div className="text-center space-y-2">
                     <div className="relative h-12 w-40 mx-auto">
-                        <Image key={logoSrc} src={logoSrc} alt="AREENA Logo" fill priority className="object-contain" />
+                        <AreenaLogo />
                     </div>
                     <div className="flex items-center justify-center gap-2">
                         <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('auth.loginTitle')}</h1>

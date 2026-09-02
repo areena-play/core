@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import { AreenaLogo } from '@/components/ui/AreenaLogo';
 import { useMainView } from '@/lib/mainViewContext';
 import { useI18n } from '@/lib/i18nContext';
 import { useTheme } from '@/lib/themeContext';
@@ -10,12 +11,10 @@ import { Loader2, Sparkles } from 'lucide-react';
 export function FullscreenViewLoader() {
     const { isTransitioning, currentViewMeta, entityMeta } = useMainView();
     const { t } = useI18n();
-    const { resolvedTheme } = useTheme();
 
     if (!isTransitioning) return null;
 
     const Icon = currentViewMeta.icon;
-    const logoSrc = resolvedTheme === 'dark' ? '/areena-logo-dark.png' : '/areena-logo.png';
     const viewName = entityMeta?.title || t(currentViewMeta.labelKey);
 
     return (
@@ -31,14 +30,7 @@ export function FullscreenViewLoader() {
                 {/* Brand Logo */}
                 <div className="relative">
                     <div className="relative h-12 w-44 mx-auto">
-                        <Image
-                            key={logoSrc}
-                            src={logoSrc}
-                            alt="AREENA Logo"
-                            fill
-                            priority
-                            className="object-contain drop-shadow-lg"
-                        />
+                        <AreenaLogo className="object-contain drop-shadow-lg" />
                     </div>
                 </div>
 

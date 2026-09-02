@@ -39,7 +39,31 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="en" className="dark">
+        <html lang="en" suppressHydrationWarning>
+            <head>
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `
+                            (function() {
+                                try {
+                                    var stored = localStorage.getItem('areena_theme');
+                                    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                                    var isDark = stored === 'dark' || (!stored && prefersDark) || (stored === 'system' && prefersDark);
+                                    if (isDark) {
+                                        document.documentElement.classList.add('dark');
+                                        document.documentElement.classList.remove('light');
+                                        document.documentElement.style.colorScheme = 'dark';
+                                    } else {
+                                        document.documentElement.classList.remove('dark');
+                                        document.documentElement.classList.add('light');
+                                        document.documentElement.style.colorScheme = 'light';
+                                    }
+                                } catch (e) {}
+                            })();
+                        `,
+                    }}
+                />
+            </head>
             <body className="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 h-screen w-screen overflow-hidden flex flex-col antialiased selection:bg-red-600 selection:text-white transition-colors duration-200">
                 <ThemeProvider>
                     <I18nProvider>

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { AreenaLogo } from '@/components/ui/AreenaLogo';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
@@ -110,7 +111,7 @@ function RegisterForm() {
             <div className="w-full max-w-lg space-y-6">
                 <div className="text-center space-y-2">
                     <div className="relative h-12 w-40 mx-auto">
-                        <Image key={logoSrc} src={logoSrc} alt="AREENA Logo" fill priority className="object-contain" />
+                        <AreenaLogo />
                     </div>
                     <h1 className="text-xl font-bold text-slate-900 dark:text-white">{t('auth.registerTitle')}</h1>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
