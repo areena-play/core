@@ -1,132 +1,51 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { api } from '@/lib/api';
-import { useAuth } from '@/lib/authContext';
+import React, { useState, useEffect } from 'react';
 import { useI18n } from '@/lib/i18nContext';
+import { useAdminNotices } from '@/lib/adminNoticeContext';
 import {
     Info,
     AlertTriangle,
     ShieldAlert,
     CheckCircle2,
     X,
-    EyeOff,
-    ChevronLeft,
-    ChevronRight,
-    Bell,
     Check,
 } from 'lucide-react';
-import { AdminNoticeDto, NoticeType, NoticeDisplayMode } from '@areena/shared';
+import { NoticeType } from '@areena/shared';
 import { getLocalizedValue } from '@/lib/i18nHelper';
 
-const LOCAL_PERMANENT_DISMISSED_KEY = 'areena_dismissed_notices';
-const SESSION_CLOSED_KEY = 'areena_session_closed_notices';
-
-function getLocalPermanentDismissed(): string[] {
-    if (typeof window === 'undefined') return [];
-    try {
-        const raw = localStorage.getItem(LOCAL_PERMANENT_DISMISSED_KEY);
-        return raw ? JSON.parse(raw) : [];
-    } catch {
-        return [];
-    }
-}
-
-function addLocalPermanentDismissed(id: string) {
-    if (typeof window === 'undefined') return;
-    try {
-        const existing = getLocalPermanentDismissed();
-        if (!existing.includes(id)) {
-            existing.push(id);
-            localStorage.setItem(LOCAL_PERMANENT_DISMISSED_KEY, JSON.stringify(existing));
-        }
-    } catch {}
-}
-
-function getSessionClosed(): string[] {
-    if (typeof window === 'undefined') return [];
-    try {
-        const raw = sessionStorage.getItem(SESSION_CLOSED_KEY);
-        return raw ? JSON.parse(raw) : [];
-    } catch {
-        return [];
-    }
-}
-
-function addSessionClosed(id: string) {
-    if (typeof window === 'undefined') return;
-    try {
-        const existing = getSessionClosed();
-        if (!existing.includes(id)) {
-            existing.push(id);
-            sessionStorage.setItem(SESSION_CLOSED_KEY, JSON.stringify(existing));
-        }
-    } catch {}
-}
-
 export function AdminNoticeModal() {
-    const { user } = useAuth();
-    const { t, locale } = useI18n();
+    const { locale } = useI18n();
+    const { modalNotices, closeForSession, dismissPermanently } = useAdminNotices();
 
-    const [notices, setNotices] = useState<AdminNoticeDto[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
     const [dontShowAgain, setDontShowAgain] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
-    const fetchActiveNotices = async () => {
-        try {
-            const data: AdminNoticeDto[] = await api.getActiveNotices();
-            const permDismissed = getLocalPermanentDismissed();
-            const sessionClosed = getSessionClosed();
-
-            // 1. Filter out permanently dismissed notices & non-modal notices
-            const modalNotices = (data || []).filter(
-                (n) => n.displayMode === NoticeDisplayMode.MODAL,
-            );
-
-            const nonDismissed = modalNotices.filter((n) => {
-                if (n.isDismissible && permDismissed.includes(n.id)) {
-                    return false;
-                }
-                return true;
-            });
-
-            // 2. Filter out notices already closed in the current browser session
-            const pendingModalNotices = nonDismissed.filter((n) => !sessionClosed.includes(n.id));
-
-            setNotices(pendingModalNotices);
-            if (pendingModalNotices.length > 0) {
-                setCurrentIndex(0);
-                setIsOpen(true);
-                setDontShowAgain(false);
-            } else {
-                setIsOpen(false);
-            }
-        } catch (err) {
-            // Silently ignore active notice load error
-        }
-    };
-
     useEffect(() => {
-        fetchActiveNotices();
-    }, [user]);
+        if (modalNotices.length > 0) {
+            setCurrentIndex(0);
+            setIsOpen(true);
+            setDontShowAgain(false);
+        } else {
+            setIsOpen(false);
+        }
+    }, [modalNotices.length]);
 
-    // Whenever current notice changes, reset the "Don't show again" checkbox
+    // Whenever current notice index changes, reset the "Don't show again" checkbox
     useEffect(() => {
         setDontShowAgain(false);
     }, [currentIndex]);
 
-    if (!isOpen || notices.length === 0) return null;
+    if (!isOpen || modalNotices.length === 0) return null;
 
-    const currentNotice = notices[currentIndex] || notices[0];
+    const currentNotice = modalNotices[currentIndex] || modalNotices[0];
 
-    // Handles temporary close (X button, backdrop click, or ESC)
+    // Handles temporary close (X button, Close for now)
     const handleTemporaryClose = () => {
-        // Record as closed for current session only
-        addSessionClosed(currentNotice.id);
-
-        if (currentIndex < notices.length - 1) {
+        closeForSession(currentNotice.id);
+        if (currentIndex < modalNotices.length - 1) {
             setCurrentIndex(currentIndex + 1);
         } else {
             setIsOpen(false);
@@ -136,26 +55,14 @@ export function AdminNoticeModal() {
     // Handles Acknowledge button click
     const handleAcknowledge = async () => {
         setSubmitting(true);
-
         if (dontShowAgain && currentNotice.isDismissible) {
-            // PERMANENT DISMISSAL
-            addLocalPermanentDismissed(currentNotice.id);
-            if (user) {
-                try {
-                    await api.dismissNotice(currentNotice.id);
-                } catch (err) {
-                    console.warn('Server notice dismissal error:', err);
-                }
-            }
+            await dismissPermanently(currentNotice.id);
         } else {
-            // TEMPORARY SESSION CLOSE
-            addSessionClosed(currentNotice.id);
+            closeForSession(currentNotice.id);
         }
-
         setSubmitting(false);
 
-        // Advance to next notice or close modal
-        if (currentIndex < notices.length - 1) {
+        if (currentIndex < modalNotices.length - 1) {
             setCurrentIndex(currentIndex + 1);
         } else {
             setIsOpen(false);
@@ -270,13 +177,13 @@ export function AdminNoticeModal() {
 
                     {/* Multi-notice navigation & Action Buttons */}
                     <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                        {notices.length > 1 && (
+                        {modalNotices.length > 1 && (
                             <div className="flex items-center gap-1 text-xs text-slate-400 mr-2">
                                 <span className="font-semibold text-white">
                                     {currentIndex + 1}
                                 </span>
                                 <span>/</span>
-                                <span>{notices.length}</span>
+                                <span>{modalNotices.length}</span>
                             </div>
                         )}
 
@@ -301,4 +208,3 @@ export function AdminNoticeModal() {
         </div>
     );
 }
-

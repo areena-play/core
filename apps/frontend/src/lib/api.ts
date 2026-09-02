@@ -23,12 +23,37 @@ function notifyLoading() {
 }
 
 class ApiClient {
+    private inFlightRequests = new Map<string, Promise<any>>();
+
     private getToken(): string | null {
         if (typeof window === 'undefined') return null;
         return localStorage.getItem('areena_token');
     }
 
     async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+        const method = (options.method || 'GET').toUpperCase();
+
+        // In-flight deduplication: Only for idempotent GET requests
+        if (method === 'GET') {
+            const token = this.getToken();
+            const dedupeKey = `${token ? 'auth:' : 'anon:'}${endpoint}`;
+            const existing = this.inFlightRequests.get(dedupeKey);
+            if (existing) {
+                return existing as Promise<T>;
+            }
+
+            const promise = this.executeRequest<T>(endpoint, options).finally(() => {
+                this.inFlightRequests.delete(dedupeKey);
+            });
+
+            this.inFlightRequests.set(dedupeKey, promise);
+            return promise;
+        }
+
+        return this.executeRequest<T>(endpoint, options);
+    }
+
+    private async executeRequest<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
         activeRequests++;
         notifyLoading();
 

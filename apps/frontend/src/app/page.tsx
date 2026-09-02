@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
+import { useMainView } from '@/lib/mainViewContext';
 import {
     Trophy,
     Award,
@@ -23,7 +24,7 @@ import { LiveTicker } from '@/components/layout/LiveTicker';
 export default function DashboardPage() {
     const { user } = useAuth();
     const { t } = useI18n();
-    const [associations, setAssociations] = useState<any[]>([]);
+    const { associations } = useMainView();
     const [clubs, setClubs] = useState<any[]>([]);
     const [competitions, setCompetitions] = useState<any[]>([]);
     const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
@@ -33,15 +34,13 @@ export default function DashboardPage() {
     useEffect(() => {
         async function loadData() {
             try {
-                const [assocRes, clubsRes, compRes, calRes, licRes] = await Promise.allSettled([
-                    api.getAssociations(),
+                const [clubsRes, compRes, calRes, licRes] = await Promise.allSettled([
                     api.getClubs(),
                     api.getCompetitions(),
                     api.getCalendarEvents(),
                     api.getLicenses(),
                 ]);
 
-                if (assocRes.status === 'fulfilled') setAssociations(assocRes.value.associations || []);
                 if (clubsRes.status === 'fulfilled') setClubs(clubsRes.value || []);
                 if (compRes.status === 'fulfilled') setCompetitions(compRes.value || []);
                 if (calRes.status === 'fulfilled') setCalendarEvents(calRes.value || []);
