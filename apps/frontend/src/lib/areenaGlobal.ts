@@ -1,6 +1,7 @@
 'use client';
 
 import { confirm, prompt } from '@/lib/dialog';
+import { loader } from '@/lib/loader';
 import { api } from '@/lib/api';
 import { translations } from '@/lib/i18n';
 import {
@@ -23,9 +24,10 @@ export const areena = {
     // 1. Version Information
     version: process.env.NEXT_PUBLIC_APP_VERSION!,
 
-    // 2. Interactive Dialogs
+    // 2. Interactive Dialogs & Loaders
     confirm,
     prompt,
+    loader,
 
     // 3. Backend API Client
     api,

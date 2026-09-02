@@ -70,3 +70,19 @@ html.dark .glass-card {
 .glow-red {
     box-shadow: 0 0 20px rgba(226, 56, 40, 0.25);
 }
+
+@keyframes areena-indeterminate {
+    0% {
+        transform: translateX(-100%);
+    }
+    50% {
+        transform: translateX(30%);
+    }
+    100% {
+        transform: translateX(200%);
+    }
+}
+
+.animate-indeterminate {
+    animation: areena-indeterminate 1.5s infinite ease-in-out;
+}
