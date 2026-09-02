@@ -16,6 +16,7 @@ import { TopLoadingBar } from '@/components/layout/TopLoadingBar';
 import { DialogContainer } from '@/lib/dialog';
 import { AreenaDevTools } from '@/components/layout/AreenaDevTools';
 import { AdminNoticeProvider } from '@/lib/adminNoticeContext';
+import { ToastContainer } from '@/lib/toast';
 
 export const metadata: Metadata = {
     title: {
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                                 <AdminNoticeProvider>
                                     <TopLoadingBar />
                                     <AreenaDevTools />
+                                    <ToastContainer />
                                     <DialogContainer />
                                     <PageTitleManager />
                                     <FullscreenViewLoader />
