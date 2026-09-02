@@ -6,22 +6,97 @@ on:
       - dev/main
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 concurrency:
   group: dev_deploy
   cancel-in-progress: true
 
 jobs:
+  # -------------------------------------------------------------
+  # 1. BUILD ALL DOCKER IMAGES IN PARALLEL ON GITHUB ACTIONS
+  # -------------------------------------------------------------
+  build-and-push:
+    name: Build Dev Image (${{ matrix.target.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: true
+      matrix:
+        target:
+          - name: "backend"
+            image: "areena-backend"
+            dockerfile: "apps/backend/Dockerfile"
+            build_args: ""
+          - name: "websocket"
+            image: "areena-websocket"
+            dockerfile: "apps/websocket-server/Dockerfile"
+            build_args: ""
+          - name: "frontend"
+            image: "areena-frontend"
+            dockerfile: "apps/frontend/Dockerfile"
+            build_args: "NEXT_PUBLIC_API_URL=/api"
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Prepare Registry Variables
+        id: prep
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "OWNER_LC=${OWNER_LC}" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push Dev ${{ matrix.target.name }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.target.dockerfile }}
+          build-args: ${{ matrix.target.build_args }}
+          push: true
+          tags: |
+            ghcr.io/${{ env.OWNER_LC }}/${{ matrix.target.image }}:dev-latest
+            ghcr.io/${{ env.OWNER_LC }}/${{ matrix.target.image }}:dev-${{ github.sha }}
+          cache-from: type=gha,scope=dev-${{ matrix.target.name }}
+          cache-to: type=gha,mode=max,scope=dev-${{ matrix.target.name }}
+
+  # -------------------------------------------------------------
+  # 2. FAST PULL & RESTART ON DEV VPS (SELF-HOSTED)
+  # -------------------------------------------------------------
   deploy-dev:
-    name: Build & Deploy on Dev VPS
+    name: Fast Deploy on Dev VPS
+    needs: build-and-push
     runs-on: self-hosted
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Run Deploy Script
+      - name: Set lower case owner name
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "REGISTRY_IMAGE_PREFIX=ghcr.io/${OWNER_LC}/" >> $GITHUB_ENV
+
+      - name: Run Fast Deploy Script
         env:
           APP_ENV_CONTENT: ${{ secrets.DEV_ENV }}
+          USE_PREBUILT_IMAGES: "true"
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}
+          REGISTRY_IMAGE_PREFIX: ${{ env.REGISTRY_IMAGE_PREFIX }}
+          IMAGE_TAG: "dev-latest"
           DOMAIN_NAME: ${{ vars.DEV_DOMAIN || 'localhost' }}
           LETSENCRYPT_EMAIL: ${{ vars.LETSENCRYPT_EMAIL }}
           LOGGING_URL: ${{ vars.LOGGING_URL || vars.LOKI_URL || '' }}

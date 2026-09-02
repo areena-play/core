@@ -53,6 +53,10 @@ sync_var "LOGGING_PASSWORD" "$LOGGING_PASSWORD"
 # Sync Support & Governance
 sync_var "AREENA_SUPPORT_EMAIL" "$AREENA_SUPPORT_EMAIL"
 
+# Sync Container Registry & Image Tags
+sync_var "IMAGE_TAG" "$IMAGE_TAG"
+sync_var "REGISTRY_IMAGE_PREFIX" "$REGISTRY_IMAGE_PREFIX"
+
 # 3. Pull pre-built images or build locally
 if [ "$USE_PREBUILT_IMAGES" = "true" ]; then
     if [ -n "$GHCR_TOKEN" ] && [ -n "$GHCR_USER" ]; then
