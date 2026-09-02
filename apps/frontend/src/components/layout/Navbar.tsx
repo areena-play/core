@@ -66,11 +66,7 @@ export function Navbar() {
 
     // Track expanded status of collapsible groups in mobile menu
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-        competitions: true,
-        people: true,
-        associations: true,
-        verbände: true,
-        associazioni: true,
+        // keep the list empty, default is false for all groups
     });
 
     const toggleGroup = (key: string) => {
@@ -530,7 +526,7 @@ export function Navbar() {
                                                     pathname.startsWith(item.href));
                                             const Icon = item.icon;
                                             const hasChildren = item.children && item.children.length > 0;
-                                            const isGroupExpanded = expandedGroups[item.label.toLowerCase()] ?? true;
+                                            const isGroupExpanded = expandedGroups[item.id] ?? false;
 
                                             return (
                                                 <div key={`${item.href}-${itemIdx}`} className="space-y-1">
@@ -558,7 +554,7 @@ export function Navbar() {
                                                         {hasChildren && (
                                                             <button
                                                                 type="button"
-                                                                onClick={() => toggleGroup(item.label.toLowerCase())}
+                                                                onClick={() => toggleGroup(item.id)}
                                                                 className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
                                                             >
                                                                 {isGroupExpanded ? (

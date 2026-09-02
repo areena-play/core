@@ -56,11 +56,7 @@ function SidebarContent() {
 
     // Track expanded status of collapsible groups (e.g. Competitions, People, Associations)
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-        competitions: true,
-        people: true,
-        associations: true,
-        verbände: true,
-        associazioni: true,
+        // keep the list empty, default is false for all groups
     });
 
     const toggleGroup = (key: string) => {
@@ -175,7 +171,7 @@ function SidebarContent() {
                             )}
                             {section.items.map((item, itemIdx) => {
                                 const hasChildren = item.children && item.children.length > 0;
-                                const isGroupExpanded = expandedGroups[item.label.toLowerCase()] ?? true;
+                                const isGroupExpanded = expandedGroups[item.id] ?? false;
                                 const isItemActive = isNavActive(item.href);
 
                                 const Icon = item.icon;
@@ -203,7 +199,7 @@ function SidebarContent() {
                                             {hasChildren && (
                                                 <button
                                                     type="button"
-                                                    onClick={() => toggleGroup(item.label.toLowerCase())}
+                                                    onClick={() => toggleGroup(item.id)}
                                                     className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
                                                 >
                                                     {isGroupExpanded ? (

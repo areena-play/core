@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 
 export interface SubNavItem {
+    id: string;
     label: string;
     href: string;
     icon?: React.ComponentType<{ className?: string }>;
@@ -46,6 +47,7 @@ export interface SubNavItem {
 }
 
 export interface NavItem {
+    id: string;
     label: string;
     href: string;
     icon: React.ComponentType<{ className?: string }>;
@@ -90,6 +92,7 @@ export function getCommonNavSections({
                 sectionTitle: 'Dashboard',
                 items: [
                     {
+                        id: 'tournament-dashboard',
                         label: 'Tournament Dashboard',
                         href: `/competition/${entityId}`,
                         icon: Trophy,
@@ -100,58 +103,67 @@ export function getCommonNavSections({
                 sectionTitle: t('tournamentWorkspace.navConfiguration') || 'Configuration',
                 items: [
                     {
-                        label: t('tournamentWorkspace.settings') || 'Settings',
+                        id: 'tournament-settings',
+                        label: t('tournamentWorkspace.settings'),
                         href: `/competition/${entityId}/settings`,
                         icon: Settings,
                     },
                     {
-                        label: t('tournamentWorkspace.accessRights') || 'Access Rights',
+                        id: 'tournament-access',
+                        label: t('tournamentWorkspace.accessRights'),
                         href: `/competition/${entityId}/access`,
                         icon: Key,
                     },
                     {
-                        label: t('tournamentWorkspace.locationsUnits') || 'Locations / Units',
+                        id: 'tournament-locations',
+                        label: t('tournamentWorkspace.locationsUnits'),
                         href: `/competition/${entityId}/locations`,
                         icon: MapPin,
                     },
                     {
-                        label: t('tournamentWorkspace.referees') || 'Referees',
+                        id: 'tournament-referees',
+                        label: t('tournamentWorkspace.referees'),
                         href: `/competition/${entityId}/referees`,
                         icon: UserCheck,
                     },
                 ],
             },
             {
-                sectionTitle: t('tournamentWorkspace.navCategories') || 'Categories / Divisions',
+                sectionTitle: t('tournamentWorkspace.navCategories'),
                 items: [
                     {
-                        label: t('tournamentWorkspace.categoriesOverview') || 'Categories & Draws',
+                        id: 'tournament-categories',
+                        label: t('tournamentWorkspace.categoriesOverview'),
                         href: `/competition/${entityId}/categories`,
                         icon: Layers,
                     },
                 ],
             },
             {
-                sectionTitle: t('tournamentWorkspace.navOperations') || 'Operations & Live Desk',
+                sectionTitle: t('tournamentWorkspace.navOperations'),
                 items: [
                     {
+                        id: 'tournament-players',
                         label: t('tournamentWorkspace.players') || 'Players Roster',
                         href: `/competition/${entityId}/players`,
                         icon: Users,
                     },
                     {
-                        label: t('tournamentWorkspace.resultEntering') || 'Result Entering',
+                        id: 'tournament-results',
+                        label: t('tournamentWorkspace.resultEntering'),
                         href: `/competition/${entityId}/results`,
                         icon: Flame,
                         badge: 'LIVE',
                     },
                     {
-                        label: t('tournamentWorkspace.speakerPage') || 'Speaker Console',
+                        id: 'tournament-speaker',
+                        label: t('tournamentWorkspace.speakerPage'),
                         href: `/competition/${entityId}/speaker`,
                         icon: Mic,
                     },
                     {
-                        label: t('tournamentWorkspace.cashierPage') || 'Cashier Desk',
+                        id: 'tournament-cashier',
+                        label: t('tournamentWorkspace.cashierPage'),
                         href: `/competition/${entityId}/cashier`,
                         icon: DollarSign,
                     },
@@ -161,24 +173,22 @@ export function getCommonNavSections({
                 sectionTitle: t('tournamentWorkspace.navInsights') || 'Insights & Control',
                 items: [
                     {
-                        label: t('tournamentWorkspace.communication') || 'Communication',
+                        id: 'tournament-communication',
+                        label: t('tournamentWorkspace.communication'),
                         href: `/competition/${entityId}/communication`,
                         icon: MessageSquare,
                     },
                     {
-                        label: t('tournamentWorkspace.actions') || 'Actions & Backups',
+                        id: 'tournament-actions',
+                        label: t('tournamentWorkspace.actions') ,
                         href: `/competition/${entityId}/actions`,
                         icon: Activity,
                     },
                     {
-                        label: t('tournamentWorkspace.statistics') || 'Statistics',
+                        id: 'tournament-statistics',
+                        label: t('tournamentWorkspace.statistics'),
                         href: `/competition/${entityId}/statistics`,
                         icon: BarChart3,
-                    },
-                    {
-                        label: t('nav.backToTournaments') || 'All Competitions',
-                        href: '/competitions',
-                        icon: ArrowLeft,
                     },
                 ],
             },
@@ -192,17 +202,20 @@ export function getCommonNavSections({
                 sectionTitle: 'Club Management',
                 items: [
                     {
-                        label: t('clubWorkspace.overview') || 'Overview',
+                        id: 'club-overview',
+                        label: t('clubWorkspace.overview'),
                         href: `/club/${entityId}`,
                         icon: Shield,
                     },
                     {
-                        label: t('clubWorkspace.members') || 'Members',
+                        id: 'club-members',
+                        label: t('clubWorkspace.members'),
                         href: `/club/${entityId}#members`,
                         icon: Users,
                     },
                     {
-                        label: t('clubWorkspace.teams') || 'Teams',
+                        id: 'club-teams',
+                        label: t('clubWorkspace.teams'),
                         href: `/club/${entityId}#teams`,
                         icon: Trophy,
                     },
@@ -212,24 +225,16 @@ export function getCommonNavSections({
                 sectionTitle: 'Club Activities',
                 items: [
                     {
-                        label: t('clubWorkspace.calendar') || 'Calendar',
+                        id: 'club-calendar',
+                        label: t('clubWorkspace.calendar'),
                         href: `/calendar?clubId=${entityId}`,
                         icon: Calendar,
                     },
                     {
-                        label: t('clubWorkspace.communications') || 'Communications',
+                        id: 'club-communications',
+                        label: t('clubWorkspace.communications'),
                         href: `/communications?clubId=${entityId}`,
                         icon: Mail,
-                    },
-                ],
-            },
-            {
-                sectionTitle: 'Navigation',
-                items: [
-                    {
-                        label: t('nav.backToAssociation') || 'Back to Association',
-                        href: '/associations',
-                        icon: ArrowLeft,
                     },
                 ],
             },
@@ -311,82 +316,94 @@ export function getCommonNavSections({
         {
             items: [
                 {
+                    id: 'dashboard',
                     label: t('nav.dashboard'),
                     href: assocOverviewHref,
                     icon: LayoutDashboard,
                 },
                 {
+                    id: 'competitions',
                     label: t('nav.competitions'),
                     href: competitionsHref,
                     icon: Trophy,
                     children: [
                         {
+                            id: 'leagues',
                             label: t('nav.leagues'),
                             href: leaguesHref,
                         },
                         {
+                            id: 'tournaments',
                             label: t('nav.tournamentsOnly'),
                             href: tournamentsHref,
                         },
                         {
+                            id: 'season-tournaments',
                             label: t('nav.seasonTournaments'),
                             href: seasonTournamentsHref,
                         },
                     ],
                 },
                 {
+                    id: 'people',
                     label: t('nav.people'),
                     href: usersHref,
                     icon: Users,
                     children: [
                         {
+                            id: 'players',
                             label: t('nav.players'),
                             href: `${usersHref}?role=player`,
                         },
                         {
+                            id: 'referees',
                             label: t('nav.referees'),
                             href: `${usersHref}?role=referee`,
                         },
                         {
+                            id: 'coaches',
                             label: t('nav.coaches'),
                             href: `${usersHref}?role=coach`,
                         },
                         {
+                            id: 'officials',
                             label: t('nav.officials'),
                             href: `${usersHref}?role=official`,
                         },
                     ],
                 },
                 {
+                    id: 'club-overview',
                     label: t('nav.clubOverview'),
                     href: clubsHref,
                     icon: Shield,
                 },
                 {
+                    id: 'refresher-courses',
                     label: t('nav.refresherCourses'),
                     href: coursesHref,
                     icon: GraduationCap,
                 },
                 {
+                    id: 'locations',
                     label: t('nav.locations'),
                     href: locationsHref,
                     icon: MapPin,
                 },
                 {
+                    id: 'calendar',
                     label: t('nav.calendar'),
                     href: calendarHref,
                     icon: Calendar,
                 },
                 {
+                    id: 'associations',
                     label: t('nav.associationsSection'),
                     href: associationsHref,
                     icon: Building2,
                     children: [
-                        {
-                            label: t('nav.overview'),
-                            href: associationsHref,
-                        },
                         ...subAssocsList.map((sub: any) => ({
+                            id: sub.slug || sub.id,
                             label: sub.name,
                             href: `/association/${sub.slug || sub.id}`,
                             badge: sub.code || sub.shortName,
@@ -401,26 +418,31 @@ export function getCommonNavSections({
             sectionTitle: t('nav.utilitiesSection'),
             items: [
                 {
+                    id: 'elo-calculator',
                     label: t('nav.eloCalculator'),
                     href: eloCalculatorHref,
                     icon: Calculator,
                 },
                 {
+                    id: 'level-table',
                     label: t('nav.levelTable'),
                     href: levelTableHref,
                     icon: TableIcon,
                 },
                 {
+                    id: 'developer-api',
                     label: t('nav.developerApi'),
                     href: developerApiHref,
                     icon: Code2,
                 },
                 {
+                    id: 'support',
                     label: t('nav.support'),
                     href: supportHref,
                     icon: HelpCircle,
                 },
                 {
+                    id: 'user-manual',
                     label: t('nav.userManual') || 'User Manual',
                     href: '/manual',
                     icon: BookOpen,
@@ -435,41 +457,49 @@ export function getCommonNavSections({
             sectionTitle: t('nav.operationsGovernance'),
             items: [
                 {
+                    id: 'management-dashboard',
                     label: t('nav.managementDashboard'),
                     href: mgmtPrefix,
                     icon: LayoutDashboard,
                 },
                 {
+                    id: 'association-settings',
                     label: t('nav.associationSettings'),
                     href: `${mgmtPrefix}/settings`,
                     icon: Sliders,
                 },
                 {
+                    id: 'association-users',
                     label: t('nav.users'),
                     href: `${mgmtPrefix}/users`,
                     icon: Users,
                 },
                 {
+                    id: 'communications',
                     label: t('nav.communications'),
                     href: `${mgmtPrefix}/communications`,
                     icon: Mail,
                 },
                 {
+                    id: 'licensing-hub',
                     label: t('nav.licensingHub'),
                     href: `${mgmtPrefix}/licenses`,
                     icon: Award,
                 },
                 {
+                    id: 'competition-hub',
                     label: t('nav.competitionHub'),
                     href: `${mgmtPrefix}/competitions`,
                     icon: Trophy,
                 },
                 {
+                    id: 'audit-logs',
                     label: t('nav.auditLogs'),
                     href: `${mgmtPrefix}/audit-logs`,
                     icon: Activity,
                 },
                 {
+                    id: 'financing-hub',
                     label: t('nav.financingHub'),
                     href: `${mgmtPrefix}/finances`,
                     icon: Receipt,
@@ -484,11 +514,13 @@ export function getCommonNavSections({
             sectionTitle: t('nav.superAdminSection'),
             items: [
                 {
+                    id: 'admin-dashboard',
                     label: t('nav.adminDashboard'),
                     href: '/admin',
                     icon: ShieldAlert,
                 },
                 {
+                    id: 'system-settings',
                     label: t('nav.systemSettings'),
                     href: '/admin/settings',
                     icon: Settings,
