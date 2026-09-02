@@ -27,7 +27,7 @@ const router = Router();
 // Helper to check if email verification is mandatory in current environment
 export function isEmailVerificationRequired(): boolean {
     const isProd = process.env.NODE_ENV === 'production';
-    const isDemo = config.isDemo || process.env.IS_DEMO === 'true';
+    const isDemo = config.isDemo;
     return isProd && !isDemo;
 }
 

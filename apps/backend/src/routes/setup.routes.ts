@@ -20,6 +20,7 @@ router.get('/status', async (req: Request, res: Response) => {
         res.json({
             isInitialized,
             mainAssociation: topAssoc ? { id: topAssoc.id, name: topAssoc.name, code: topAssoc.code } : null,
+            isDemo: config.isDemo,
         });
     } catch (err: any) {
         res.status(500).json({ error: 'Failed to check initialization status', details: err.message });
