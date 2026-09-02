@@ -4,6 +4,8 @@ import morgan from 'morgan';
 import { config } from './config/env';
 import { errorHandler } from './middleware/errorHandler';
 import { apiIngressGuard } from './middleware/ingressGuard';
+import { prismaCacheContext } from './middleware/prismaCacheContext';
+import { autoTransaction } from './middleware/autoTransaction';
 import { ensureBucketExists } from './config/s3';
 
 // Route imports
@@ -32,6 +34,7 @@ const app = express();
 app.set('trust proxy', true);
 
 // Middlewares
+app.use(prismaCacheContext);
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -55,6 +58,9 @@ app.get('/config/public', (req, res) => {
 
 // API Ingress Guard (OAuth unrestricted / Frontend rate-limited / Direct blocked)
 app.use(apiIngressGuard);
+
+// Automatic Transaction Rollback Guard for all mutating requests (POST, PUT, PATCH, DELETE)
+app.use(autoTransaction);
 
 // Mount Routes
 app.use('/auth', authRoutes);

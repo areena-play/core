@@ -28,7 +28,7 @@ export class DistributedLockService {
             async (tx) => {
                 // Acquire cluster-wide transaction-scoped advisory lock
                 await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${resource}))`;
-                return await operation(tx);
+                return await operation(tx as any);
             },
             {
                 timeout: options.timeoutMs || 20000, // 20s default timeout
