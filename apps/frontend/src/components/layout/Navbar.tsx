@@ -316,7 +316,7 @@ export function Navbar() {
 
                                             {/* My Competitions */}
                                             <Link
-                                                href="/profile#competitions"
+                                                href="/profile?tab=competitions"
                                                 onClick={() => setUserMenuOpen(false)}
                                                 className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                             >
@@ -326,7 +326,7 @@ export function Navbar() {
 
                                             {/* My Licenses */}
                                             <Link
-                                                href="/profile#licenses"
+                                                href="/profile?tab=licenses"
                                                 onClick={() => setUserMenuOpen(false)}
                                                 className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                             >
@@ -336,7 +336,7 @@ export function Navbar() {
 
                                             {/* My Courses */}
                                             <Link
-                                                href="/profile#courses"
+                                                href="/profile?tab=courses"
                                                 onClick={() => setUserMenuOpen(false)}
                                                 className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                             >
@@ -347,7 +347,7 @@ export function Navbar() {
                                             {/* (Only if any) My Admin Access */}
                                             {(user.isSuperAdmin || (user.associationRoles && user.associationRoles.length > 0) || (user.clubRoles && user.clubRoles.length > 0)) && (
                                                 <Link
-                                                    href="/profile#admin-access"
+                                                    href="/profile?tab=admin-access"
                                                     onClick={() => setUserMenuOpen(false)}
                                                     className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                                 >
@@ -379,7 +379,7 @@ export function Navbar() {
 
                                             {/* My Profile & Settings */}
                                             <Link
-                                                href="/profile#personal"
+                                                href="/profile?tab=personal"
                                                 onClick={() => setUserMenuOpen(false)}
                                                 className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                             >

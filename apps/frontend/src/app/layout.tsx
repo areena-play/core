@@ -101,7 +101,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     }}
                 />
             </head>
-            <body className="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 h-screen w-screen overflow-hidden flex flex-col antialiased selection:bg-red-600 selection:text-white transition-colors duration-200">
+            <body className="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 h-dvh h-screen w-screen overflow-hidden flex flex-col antialiased selection:bg-red-600 selection:text-white transition-colors duration-200">
                 <ThemeProvider>
                     <I18nProvider>
                         <AuthProvider>

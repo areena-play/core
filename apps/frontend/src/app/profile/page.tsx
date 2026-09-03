@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useTheme } from '@/lib/themeContext';
@@ -97,21 +98,38 @@ export default function ProfilePage() {
     const [passwordSuccessMsg, setPasswordSuccessMsg] = useState('');
     const [passwordErrorMsg, setPasswordErrorMsg] = useState('');
 
-    // Synchronize tab with URL Hash
+    const searchParams = useSearchParams();
+
+    // Reset window scroll on mount to prevent mobile browser offset behind navbar
     useEffect(() => {
         if (typeof window !== 'undefined') {
+            window.scrollTo(0, 0);
+        }
+    }, []);
+
+    // Synchronize tab with URL Query parameter or fallback Hash
+    useEffect(() => {
+        const validTabs: ProfileTab[] = ['personal', 'preferences', 'licenses', 'competitions', 'courses', 'admin-access'];
+        const tabParam = searchParams.get('tab') as ProfileTab;
+        if (tabParam && validTabs.includes(tabParam)) {
+            setActiveTab(tabParam);
+            return;
+        }
+        if (typeof window !== 'undefined' && window.location.hash) {
             const hash = window.location.hash.replace('#', '') as ProfileTab;
-            const validTabs: ProfileTab[] = ['personal', 'preferences', 'licenses', 'competitions', 'courses', 'admin-access'];
             if (validTabs.includes(hash)) {
                 setActiveTab(hash);
             }
         }
-    }, []);
+    }, [searchParams]);
 
     const handleTabChange = (tab: ProfileTab) => {
         setActiveTab(tab);
         if (typeof window !== 'undefined') {
-            window.location.hash = tab;
+            const url = new URL(window.location.href);
+            url.searchParams.set('tab', tab);
+            url.hash = '';
+            window.history.replaceState(null, '', url.pathname + url.search);
         }
     };
 

@@ -209,7 +209,7 @@ export default function LocationDetailPage() {
     ).sort((a: any, b: any) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
     return (
-        <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
+        <div className="space-y-8 pb-16 max-w-7xl mx-auto">
             {/* Top Navigation */}
             <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <Link href="/locations" className="hover:text-amber-600 flex items-center gap-1 font-semibold">
