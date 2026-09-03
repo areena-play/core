@@ -24,6 +24,10 @@ export interface UserProfile {
     avatarUrl?: string | null;
     isSuperAdmin: boolean;
     emailVerified: boolean;
+    isPubliclyHidden?: boolean;
+    displayNameChoice?: 'FULL_NAME' | 'INITIALS' | 'ANONYMOUS';
+    hideEloRanking?: boolean;
+    hideContactInfo?: boolean;
     createdAt: string;
     updatedAt: string;
 }

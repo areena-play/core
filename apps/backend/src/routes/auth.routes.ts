@@ -23,6 +23,7 @@ import {
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { AuditService } from '../services/audit.service';
 import { EmailService } from '../services/email.service';
+import { PrivacyService } from '../services/privacy.service';
 
 const router = Router();
 
@@ -952,8 +953,22 @@ router.put(
     validate(updateProfileSchema),
     async (req: AuthRequest, res: Response, next) => {
         try {
-            const { firstName, lastName, phone, street, postalCode, city, country, birthDate, gender, avatarUrl } =
-                req.body;
+            const {
+                firstName,
+                lastName,
+                phone,
+                street,
+                postalCode,
+                city,
+                country,
+                birthDate,
+                gender,
+                avatarUrl,
+                isPubliclyHidden,
+                displayNameChoice,
+                hideEloRanking,
+                hideContactInfo,
+            } = req.body;
 
             const updated = await prisma.user.update({
                 where: { id: req.user!.id },
@@ -968,6 +983,10 @@ router.put(
                     ...(birthDate !== undefined ? { birthDate: birthDate ? new Date(birthDate) : null } : {}),
                     ...(gender !== undefined ? { gender } : {}),
                     ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+                    ...(isPubliclyHidden !== undefined ? { isPubliclyHidden } : {}),
+                    ...(displayNameChoice !== undefined ? { displayNameChoice } : {}),
+                    ...(hideEloRanking !== undefined ? { hideEloRanking } : {}),
+                    ...(hideContactInfo !== undefined ? { hideContactInfo } : {}),
                 },
             });
 
@@ -1173,6 +1192,10 @@ router.get('/users/:identifier', async (req, res, next) => {
                 birthDate: true,
                 gender: true,
                 createdAt: true,
+                isPubliclyHidden: true,
+                displayNameChoice: true,
+                hideEloRanking: true,
+                hideContactInfo: true,
                 associationRoles: {
                     select: {
                         id: true,
@@ -1253,7 +1276,8 @@ router.get('/users/:identifier', async (req, res, next) => {
             return res.status(404).json({ error: 'Person not found' });
         }
 
-        res.json(user);
+        const sanitized = PrivacyService.sanitizePlayerProfile(user);
+        res.json(sanitized);
     } catch (err) {
         next(err);
     }

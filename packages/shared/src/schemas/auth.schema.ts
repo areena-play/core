@@ -72,6 +72,10 @@ export const updateProfileSchema = z.object({
     birthDate: z.string().optional().nullable(),
     gender: z.nativeEnum(Gender).optional().nullable(),
     avatarUrl: z.string().url().optional().nullable(),
+    isPubliclyHidden: z.boolean().optional(),
+    displayNameChoice: z.enum(['FULL_NAME', 'INITIALS', 'ANONYMOUS']).optional(),
+    hideEloRanking: z.boolean().optional(),
+    hideContactInfo: z.boolean().optional(),
 });
 
 export const createOAuthClientSchema = z.object({

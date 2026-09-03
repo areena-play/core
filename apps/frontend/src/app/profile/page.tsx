@@ -43,6 +43,8 @@ import {
     CalendarCheck,
     X,
     Loader2,
+    Eye,
+    EyeOff,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { AccessDenied } from '@/components/auth/AccessDenied';
@@ -73,6 +75,10 @@ export default function ProfilePage() {
     // Preferences Form State
     const [emailMatchAlerts, setEmailMatchAlerts] = useState(true);
     const [emailLicensingAlerts, setEmailLicensingAlerts] = useState(true);
+    const [isPubliclyHidden, setIsPubliclyHidden] = useState(false);
+    const [displayNameChoice, setDisplayNameChoice] = useState<'FULL_NAME' | 'INITIALS' | 'ANONYMOUS'>('FULL_NAME');
+    const [hideEloRanking, setHideEloRanking] = useState(false);
+    const [hideContactInfo, setHideContactInfo] = useState(true);
 
     const [saving, setSaving] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
@@ -124,6 +130,10 @@ export default function ProfilePage() {
                 setCountry(data.user.country || 'Switzerland');
                 setBirthDate(data.user.birthDate ? data.user.birthDate.substring(0, 10) : '');
                 setGender(data.user.gender || '');
+                setIsPubliclyHidden(data.user.isPubliclyHidden === true);
+                setDisplayNameChoice(data.user.displayNameChoice || 'FULL_NAME');
+                setHideEloRanking(data.user.hideEloRanking === true);
+                setHideContactInfo(data.user.hideContactInfo !== false);
             }
         } catch (err) {
             console.error('Failed to load profile overview:', err);
@@ -207,6 +217,10 @@ export default function ProfilePage() {
                 country,
                 birthDate: birthDate || null,
                 gender: gender || null,
+                isPubliclyHidden,
+                displayNameChoice,
+                hideEloRanking,
+                hideContactInfo,
             });
             await refreshUser();
             await fetchOverview();
@@ -809,6 +823,140 @@ export default function ProfilePage() {
                                     className="h-4 w-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300"
                                 />
                             </label>
+                        </div>
+                    </div>
+
+                    {/* Privacy & Public Visibility Card */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-sm space-y-5">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                <Shield className="h-5 w-5 text-amber-500" />
+                                <span>Privacy & Public Visibility</span>
+                            </h2>
+                            <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-500">
+                                FADP & GDPR
+                            </span>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xl">
+                            Control how your personal name, rankings, and contact information appear on public draw brackets, live scores, and member directories.
+                        </p>
+
+                        <div className="space-y-4 pt-2">
+                            {/* Display Name Selection */}
+                            <div className="space-y-2">
+                                <label className="block font-bold text-xs text-slate-800 dark:text-slate-200">
+                                    Display Name in Public Brackets & Results
+                                </label>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setDisplayNameChoice('FULL_NAME');
+                                            setIsPubliclyHidden(false);
+                                        }}
+                                        className={`flex flex-col text-left p-3.5 rounded-2xl border transition ${
+                                            displayNameChoice === 'FULL_NAME' && !isPubliclyHidden
+                                                ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-slate-900 dark:text-white font-bold'
+                                                : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Eye className="h-4 w-4 text-amber-500 shrink-0" />
+                                            <span className="text-xs font-bold">Full Name</span>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 mt-1">e.g. {firstName || 'John'} {lastName || 'Doe'}</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setDisplayNameChoice('INITIALS');
+                                            setIsPubliclyHidden(false);
+                                        }}
+                                        className={`flex flex-col text-left p-3.5 rounded-2xl border transition ${
+                                            displayNameChoice === 'INITIALS' && !isPubliclyHidden
+                                                ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-slate-900 dark:text-white font-bold'
+                                                : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Eye className="h-4 w-4 text-indigo-400 shrink-0" />
+                                            <span className="text-xs font-bold">Initials Only</span>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 mt-1">
+                                            e.g. {firstName ? `${firstName[0]}.` : 'J.'} {lastName ? `${lastName[0]}.` : 'D.'}
+                                        </span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setDisplayNameChoice('ANONYMOUS');
+                                            setIsPubliclyHidden(true);
+                                        }}
+                                        className={`flex flex-col text-left p-3.5 rounded-2xl border transition ${
+                                            displayNameChoice === 'ANONYMOUS' || isPubliclyHidden
+                                                ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-slate-900 dark:text-white font-bold'
+                                                : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <EyeOff className="h-4 w-4 text-rose-500 shrink-0" />
+                                            <span className="text-xs font-bold">Anonymous</span>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 mt-1">e.g. Anonymous Player</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Additional Privacy Toggles */}
+                            <div className="space-y-3 pt-2">
+                                <label className="flex items-center justify-between p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition">
+                                    <div className="space-y-0.5">
+                                        <span className="text-xs font-bold text-slate-900 dark:text-white">
+                                            Hide ELO Points & Rankings from Public Lists
+                                        </span>
+                                        <p className="text-[11px] text-slate-500">
+                                            Your rating will still be calculated for tournament seedings, but concealed from unauthenticated viewers.
+                                        </p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={hideEloRanking}
+                                        onChange={(e) => setHideEloRanking(e.target.checked)}
+                                        className="h-4 w-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300"
+                                    />
+                                </label>
+
+                                <label className="flex items-center justify-between p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition">
+                                    <div className="space-y-0.5">
+                                        <span className="text-xs font-bold text-slate-900 dark:text-white">
+                                            Hide Email & Contact Details
+                                        </span>
+                                        <p className="text-[11px] text-slate-500">
+                                            Keep your email and phone number private from public club and member directories.
+                                        </p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={hideContactInfo}
+                                        onChange={(e) => setHideContactInfo(e.target.checked)}
+                                        className="h-4 w-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300"
+                                    />
+                                </label>
+                            </div>
+
+                            <div className="flex justify-end pt-2">
+                                <button
+                                    type="button"
+                                    onClick={handleSave}
+                                    disabled={saving}
+                                    className="inline-flex items-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 px-5 py-2 text-xs font-bold text-white shadow-xs transition disabled:opacity-50"
+                                >
+                                    <Save className="h-3.5 w-3.5" />
+                                    <span>{saving ? t('common.saving') : 'Save Privacy Preferences'}</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

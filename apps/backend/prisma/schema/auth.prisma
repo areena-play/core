@@ -22,6 +22,10 @@ model User {
   rank         Int?
   avatarUrl    String?
   isSuperAdmin Boolean   @default(false)
+  isPubliclyHidden  Boolean @default(false)
+  displayNameChoice String  @default("FULL_NAME")
+  hideEloRanking    Boolean @default(false)
+  hideContactInfo   Boolean @default(true)
   emailVerified            Boolean   @default(false)
   emailVerificationToken   String?   @unique
   emailVerificationExpires DateTime?

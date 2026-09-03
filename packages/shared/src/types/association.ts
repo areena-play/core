@@ -4,12 +4,23 @@ export enum AssociationLevel {
     LOCAL = 'LOCAL',
 }
 
+export type VisibilityScope = 'PUBLIC' | 'AUTHENTICATED' | 'FEDERATION_ONLY';
+
+export interface PrivacyRuleConfig {
+    competitionsVisibility?: VisibilityScope;
+    clubsVisibility?: VisibilityScope;
+    peopleVisibility?: VisibilityScope;
+    allowPlayerAnonymization?: boolean;
+    maskMinorNamesByDefault?: boolean;
+}
+
 export interface AssociationRuleConfig {
     rankingSystem?: string;
     matchRules?: Record<string, any>;
     autoApproveDomesticTCards?: boolean;
     refresherValidityMonths?: number;
     licenseIdTemplate?: string;
+    privacy?: PrivacyRuleConfig;
     customRules?: Record<string, any>;
 }
 
