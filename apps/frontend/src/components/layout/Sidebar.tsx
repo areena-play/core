@@ -89,7 +89,6 @@ function SidebarContent() {
         entityMeta?.title ||
         (activeView === 'association' ? (mainAssoc?.name || 'Sports Federation') : t(currentViewMeta.labelKey));
     const headerBadge = entityMeta?.badge || t(currentViewMeta.badgeKey);
-    const headerDesc = entityMeta?.subtitle || t(currentViewMeta.descKey);
 
     // Precise active navigation resolver
     const isNavActive = (targetHref: string) => {
@@ -126,26 +125,33 @@ function SidebarContent() {
             {/* Scrollable Navigation Area */}
             <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-6 scrollbar-none">
                 {/* Active Workspace Header Card */}
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60 p-3 space-y-2">
-                    <div className="flex items-center justify-between">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60 p-2.5 space-y-1.5 transition">
+                    <div className="flex items-center justify-between gap-2">
                         <span
-                            className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase border ${currentViewMeta.badgeColor}`}
+                            className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${currentViewMeta.badgeColor}`}
                         >
                             {headerBadge}
                         </span>
-                        <div
-                            className={`flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br ${currentViewMeta.gradientBg} text-white shadow-xs`}
-                        >
-                            <ActiveIcon className="h-3.5 w-3.5" />
-                        </div>
+                        {activeView === 'association' && mainAssoc?.logoUrl ? (
+                            <div className="relative h-5 max-w-[80px] shrink-0 flex items-center justify-end">
+                                <img
+                                    src={mainAssoc.logoUrl}
+                                    alt={headerTitle}
+                                    className="h-4.5 max-w-[80px] object-contain"
+                                />
+                            </div>
+                        ) : (
+                            <div
+                                className={`flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br ${currentViewMeta.gradientBg} text-white shadow-xs shrink-0`}
+                            >
+                                <ActiveIcon className="h-3 w-3" />
+                            </div>
+                        )}
                     </div>
                     <div>
-                        <h3 className="font-bold text-xs text-slate-900 dark:text-white leading-tight line-clamp-1">
+                        <h3 className="font-bold text-xs text-slate-900 dark:text-white leading-snug break-words">
                             {headerTitle}
                         </h3>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
-                            {headerDesc}
-                        </p>
                     </div>
                 </div>
 

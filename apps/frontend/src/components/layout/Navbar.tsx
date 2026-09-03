@@ -131,14 +131,13 @@ export function Navbar() {
         entityMeta?.title ||
         (activeView === 'association' ? (mainAssoc?.name || 'Sports Federation') : t(currentViewMeta.labelKey));
     const headerBadge = entityMeta?.badge || t(currentViewMeta.badgeKey);
-    const headerDesc = entityMeta?.subtitle || t(currentViewMeta.descKey);
 
     return (
         <>
             <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-950/80 backdrop-blur-md transition-colors duration-200">
                 <div className="flex h-16 items-center justify-between px-3 sm:px-6">
-                    {/* Left: Mobile Menu Toggle, Brand Logo & Entity Breadcrumb */}
-                    <div className="flex items-center gap-2 sm:gap-4 lg:gap-6">
+                    {/* Left: Mobile Menu Toggle & Brand Logo */}
+                    <div className="flex items-center gap-2 sm:gap-4 md:w-[232px] shrink-0">
                         {/* Mobile Hamburger Toggle */}
                         <button
                             type="button"
@@ -149,65 +148,32 @@ export function Navbar() {
                             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                         </button>
 
-                        <div className="flex items-center gap-2">
-                            <Link href="/" className="flex items-center gap-3">
-                                <div className="relative h-8 w-24 sm:h-10 sm:w-32">
-                                    <AreenaLogo />
-                                </div>
-                            </Link>
-                            {isDemo && (
-                                <Link
-                                    href="/auth/login"
-                                    title="Demo Instance Active - Click to switch demo accounts"
-                                    className="hidden sm:inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider bg-red-600/90 hover:bg-red-600 text-white px-2 py-0.5 rounded-full shadow-sm transition hover:scale-105"
-                                >
-                                    <Sparkles className="w-2.5 h-2.5" />
-                                    Demo Mode
-                                </Link>
-                            )}
-                        </div>
-
-                        {/* Breadcrumb / Main Association Name or Custom Logo */}
-                        {entityMeta && activeView !== 'association' ? (
-                            <div className="hidden md:flex items-center gap-2 text-xs border-l border-slate-300 dark:border-slate-700 pl-4">
-                                <Link
-                                    href="/"
-                                    className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
-                                >
-                                    {mainAssoc?.shortName || mainAssoc?.name || 'Federation'}
-                                </Link>
-                                <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-                                <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white max-w-[240px] lg:max-w-md truncate">
-                                    <CurrentViewIcon className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
-                                    <span className="truncate">{entityMeta.title}</span>
-                                </div>
+                        <Link href="/" className="flex items-center gap-3">
+                            <div className="relative h-8 w-24 sm:h-10 sm:w-32">
+                                <AreenaLogo />
                             </div>
-                        ) : (
-                            <div className="hidden lg:flex items-center border-l border-slate-300 dark:border-slate-700 pl-4">
-                                {mainAssoc?.logoUrl ? (
-                                    <div className="relative h-8 max-w-[140px] flex items-center">
-                                        <img
-                                            src={mainAssoc.logoUrl}
-                                            alt={mainAssoc.name}
-                                            className="h-7 max-w-[140px] object-contain"
-                                        />
-                                    </div>
-                                ) : (
-                                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 tracking-wide max-w-sm truncate">
-                                        {mainAssoc?.name || ''}
-                                    </span>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Global Cross-site Search Bar */}
-                        <div className="hidden md:flex items-center flex-1 max-w-sm lg:max-w-xl xl:max-w-2xl mx-2 lg:mx-4">
-                            <GlobalSearchBar compact />
-                        </div>
+                        </Link>
                     </div>
 
-                    {/* Right: Live Connection, Language Selector, Theme Toggle & Enhanced User Menu */}
-                    <div className="flex items-center gap-1.5 sm:gap-3">
+                    {/* Global Cross-site Search Bar (aligned with main content area) */}
+                    <div className="hidden md:flex items-center flex-1 max-w-xl lg:max-w-2xl xl:max-w-3xl md:pl-8">
+                        <GlobalSearchBar compact className="w-full" />
+                    </div>
+
+                    {/* Right: Demo Mode, Live Connection, Language Selector, Theme Toggle & Enhanced User Menu */}
+                    <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+                        {/* Demo Mode Indicator (left of WebSocket indicator) */}
+                        {isDemo && (
+                            <Link
+                                href="/auth/login"
+                                title="Demo Instance Active - Click to switch demo accounts"
+                                className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-red-600/90 hover:bg-red-600 text-white px-2.5 py-1 rounded-full shadow-xs transition hover:scale-105"
+                            >
+                                <Sparkles className="w-3 h-3" />
+                                <span>Demo Mode</span>
+                            </Link>
+                        )}
+
                         {/* WebSocket Status Indicator */}
                         <div
                             className={`flex items-center gap-1.5 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] sm:text-xs font-medium ${
@@ -511,26 +477,33 @@ export function Navbar() {
                             </div>
 
                             {/* Active Workspace Header Card */}
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60 p-3 space-y-2">
-                                <div className="flex items-center justify-between">
+                            <div className="rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60 p-2.5 space-y-1.5">
+                                <div className="flex items-center justify-between gap-2">
                                     <span
-                                        className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase border ${currentViewMeta.badgeColor}`}
+                                        className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${currentViewMeta.badgeColor}`}
                                     >
                                         {headerBadge}
                                     </span>
-                                    <div
-                                        className={`flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br ${currentViewMeta.gradientBg} text-white shadow-xs`}
-                                    >
-                                        <CurrentViewIcon className="h-3.5 w-3.5" />
-                                    </div>
+                                    {activeView === 'association' && mainAssoc?.logoUrl ? (
+                                        <div className="relative h-5 max-w-[80px] shrink-0 flex items-center justify-end">
+                                            <img
+                                                src={mainAssoc.logoUrl}
+                                                alt={headerTitle}
+                                                className="h-4.5 max-w-[80px] object-contain"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className={`flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br ${currentViewMeta.gradientBg} text-white shadow-xs shrink-0`}
+                                        >
+                                            <CurrentViewIcon className="h-3 w-3" />
+                                        </div>
+                                    )}
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-xs text-slate-900 dark:text-white leading-tight line-clamp-1">
-                                        {headerTitle}
-                                    </h3>
-                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
-                                        {headerDesc}
-                                    </p>
+                                    <h3 className="font-bold text-xs text-slate-900 dark:text-white leading-snug break-words">
+                                         {headerTitle}
+                                     </h3>
                                 </div>
                             </div>
 
