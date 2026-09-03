@@ -39,6 +39,7 @@ import {
 import { format } from 'date-fns';
 import { LiveTicker } from '@/components/layout/LiveTicker';
 import { generateTournamentInvitationPdf } from '@/lib/pdfInvitation';
+import { JsonLd, generateCompetitionJsonLd } from '@/components/seo/JsonLd';
 
 export default function CompetitionDashboardPage() {
     const params = useParams();
@@ -166,6 +167,9 @@ export default function CompetitionDashboardPage() {
 
     return (
         <div className="space-y-6 md:space-y-8 pb-16">
+            {/* Schema.org SportsEvent Structured Data */}
+            <JsonLd data={generateCompetitionJsonLd(competition)} />
+
             {/* Live Scoring Ticker */}
             <LiveTicker />
 

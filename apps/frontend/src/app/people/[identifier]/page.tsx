@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -25,6 +25,7 @@ import {
     Copy,
     Check,
 } from 'lucide-react';
+import { JsonLd, generatePersonJsonLd } from '@/components/seo/JsonLd';
 
 export default function PersonProfilePage() {
     const params = useParams();
@@ -95,6 +96,9 @@ export default function PersonProfilePage() {
 
     return (
         <div className="max-w-6xl mx-auto py-6 px-4 space-y-6 pb-20">
+            {/* Schema.org Person Structured Data */}
+            <JsonLd data={generatePersonJsonLd(person)} />
+
             {/* Top Navigation / Breadcrumbs */}
             <div className="flex items-center justify-between">
                 <button

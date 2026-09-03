@@ -19,14 +19,50 @@ import { AdminNoticeProvider } from '@/lib/adminNoticeContext';
 import { ToastContainer } from '@/lib/toast';
 import { PopupContainer } from '@/lib/popup';
 import { BreadcrumbsBar } from '@/components/layout/BreadcrumbsBar';
+import { getSiteBaseUrl } from '@/lib/siteUrl';
 
 export const metadata: Metadata = {
+    metadataBase: new URL(getSiteBaseUrl()),
     title: {
         template: 'AREENA – %s',
-        default: 'AREENA',
+        default: 'AREENA – Sports Federation, Tournament & League Management',
     },
     description:
         'Next-generation web platform for national and regional sports federations, leagues, tournaments, and licenses.',
+    keywords: [
+        'sports federation',
+        'badminton',
+        'squash',
+        'tennis',
+        'tournaments',
+        'leagues',
+        'elo rating',
+        'live scoring',
+        'sports management',
+        'switzerland',
+    ],
+    authors: [{ name: 'AREENA Team' }],
+    creator: 'AREENA',
+    publisher: 'AREENA Platform',
+    formatDetection: {
+        email: false,
+        address: false,
+        telephone: false,
+    },
+    openGraph: {
+        title: 'AREENA – Sports Federation & Tournament Platform',
+        description: 'Next-generation web platform for national and regional sports federations, leagues, tournaments, and licenses.',
+        url: getSiteBaseUrl(),
+        siteName: 'AREENA',
+        locale: 'de_CH',
+        alternateLocale: ['fr_CH', 'it_CH', 'en_US'],
+        type: 'website',
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: 'AREENA – Sports Federation & Tournament Platform',
+        description: 'Next-generation sports federation, league, and tournament management platform.',
+    },
     icons: {
         icon: [
             { url: '/icon.svg', type: 'image/svg+xml' },
