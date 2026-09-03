@@ -26,6 +26,7 @@ import userRoutes from './routes/users.routes';
 import supportRoutes from './routes/support.routes';
 import adminRoutes from './routes/admin.routes';
 import locationsRoutes from './routes/locations.routes';
+import searchRoutes from './routes/search.routes';
 import { startDemoScheduler } from './services/demoScheduler.service';
 import { CronSchedulerService } from './services/cronScheduler.service';
 
@@ -81,6 +82,7 @@ app.use('/notices', noticeRoutes);
 app.use('/support', supportRoutes);
 app.use('/admin', adminRoutes);
 app.use('/locations', locationsRoutes);
+app.use('/search', searchRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

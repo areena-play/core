@@ -173,6 +173,10 @@ class ApiClient {
         return this.request(`/auth/users/${encodeURIComponent(identifier)}`);
     }
 
+    globalSearch(query: string) {
+        return this.request<{ results: any[] }>(`/search/global?q=${encodeURIComponent(query)}`);
+    }
+
     // Super Admin User Management
     getAdminUsers(params: Record<string, any> = {}) {
         const searchParams = new URLSearchParams();

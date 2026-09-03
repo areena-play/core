@@ -12,6 +12,7 @@ import { useI18n } from '@/lib/i18nContext';
 import { useMainView } from '@/lib/mainViewContext';
 import { useWebSocket } from '@/lib/useWebSocket';
 import { getCommonNavSections, NavSection, NavItem } from '@/lib/navigation';
+import { GlobalSearchBar } from '@/components/search/GlobalSearchBar';
 import {
     Menu,
     X,
@@ -198,6 +199,11 @@ export function Navbar() {
                                 )}
                             </div>
                         )}
+
+                        {/* Global Cross-site Search Bar */}
+                        <div className="hidden md:flex items-center flex-1 max-w-sm lg:max-w-xl xl:max-w-2xl mx-2 lg:mx-4">
+                            <GlobalSearchBar compact />
+                        </div>
                     </div>
 
                     {/* Right: Live Connection, Language Selector, Theme Toggle & Enhanced User Menu */}
@@ -496,6 +502,14 @@ export function Navbar() {
 
                         {/* Scrollable Navigation Body */}
                         <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-5">
+                            {/* Mobile Global Search Bar */}
+                            <div>
+                                <GlobalSearchBar
+                                    onSelect={() => setMobileMenuOpen(false)}
+                                    placeholder="Search site-wide..."
+                                />
+                            </div>
+
                             {/* Active Workspace Header Card */}
                             <div className="rounded-2xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60 p-3 space-y-2">
                                 <div className="flex items-center justify-between">
