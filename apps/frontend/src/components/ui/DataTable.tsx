@@ -223,9 +223,16 @@ export function DataTable<TData, TValue = any>({
             )}
 
             {/* Table Container */}
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 shadow-sm overflow-hidden backdrop-blur-sm">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 shadow-sm overflow-hidden backdrop-blur-sm relative">
+                {/* Subtle top progress bar when loading with existing data */}
+                {loading && rows.length > 0 && (
+                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-red-500/20 overflow-hidden z-20">
+                        <div className="h-full bg-red-600 animate-pulse w-full" />
+                    </div>
+                )}
+
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
+                    <table className={`w-full text-left border-collapse text-xs transition-opacity duration-150 ${loading && rows.length > 0 ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                         <thead>
                             {table.getHeaderGroups().map((headerGroup) => (
                                 <tr
@@ -247,7 +254,7 @@ export function DataTable<TData, TValue = any>({
                             ))}
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                            {loading ? (
+                            {loading && rows.length === 0 ? (
                                 Array.from({ length: Math.min(activePageSize, 5) }).map((_, idx) => (
                                     <tr key={`skeleton-${idx}`} className="animate-pulse">
                                         {columns.map((col, cIdx) => (
