@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
@@ -18,6 +18,8 @@ import {
     UserCheck,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { ColumnDef } from '@tanstack/react-table';
+import { DataTable, DataTableColumnHeader } from '@/components/ui/DataTable';
 
 export default function LicensesPage() {
     const { user } = useAuth();
@@ -28,13 +30,14 @@ export default function LicensesPage() {
     const [loading, setLoading] = useState(true);
 
     const fetchLicenses = async () => {
+        setLoading(true);
         try {
             const params: Record<string, string> = {};
             if (typeFilter) params.type = typeFilter;
             if (statusFilter) params.status = statusFilter;
 
             const data = await api.getLicenses(params);
-            setLicenses(data);
+            setLicenses(data || []);
         } catch (err) {
             console.error('Failed to load licenses:', err);
         } finally {
@@ -84,6 +87,115 @@ export default function LicensesPage() {
                 );
         }
     };
+
+    const columns = useMemo<ColumnDef<any>[]>(
+        () => [
+            {
+                id: 'holder',
+                accessorFn: (row) => `${row.user?.firstName || ''} ${row.user?.lastName || ''} ${row.user?.email || ''}`,
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('licenses.holder')} />,
+                cell: ({ row }) => (
+                    <div>
+                        <div className="font-semibold text-slate-900 dark:text-white">
+                            {row.original.user?.firstName} {row.original.user?.lastName}
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-normal">{row.original.user?.email}</div>
+                    </div>
+                ),
+            },
+            {
+                id: 'licenseId',
+                accessorFn: (row) => row.user?.licenseId || '',
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('licenses.licenseId')} />,
+                cell: ({ row }) => (
+                    <span className="font-mono font-bold text-red-600 dark:text-red-400">
+                        {row.original.user?.licenseId || <span className="text-slate-400 font-normal">Pending</span>}
+                    </span>
+                ),
+            },
+            {
+                id: 'type',
+                accessorFn: (row) => row.type,
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('licenses.type')} />,
+                cell: ({ row }) => (
+                    <span className="rounded bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                        {row.original.type?.replace('PLAYER_', '')}
+                    </span>
+                ),
+            },
+            {
+                id: 'club',
+                accessorFn: (row) => row.club?.name || '',
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.club')} />,
+                cell: ({ row }) => (
+                    <span className="text-slate-700 dark:text-slate-300">
+                        {row.original.club ? row.original.club.name : <span className="text-slate-400 italic">None (Tournament Card)</span>}
+                    </span>
+                ),
+            },
+            {
+                id: 'association',
+                accessorFn: (row) => row.association?.name || '',
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.association')} />,
+                cell: ({ row }) => (
+                    <span className="text-slate-500 dark:text-slate-400">
+                        {row.original.association?.name}
+                    </span>
+                ),
+            },
+            {
+                id: 'validity',
+                accessorFn: (row) => new Date(row.validUntil || 0).getTime(),
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('licenses.validity')} />,
+                cell: ({ row }) => (
+                    <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+                        {row.original.validFrom ? format(new Date(row.original.validFrom), 'dd.MM.yy') : '—'} -{' '}
+                        {row.original.validUntil ? format(new Date(row.original.validUntil), 'dd.MM.yy') : '—'}
+                    </span>
+                ),
+            },
+            {
+                id: 'status',
+                accessorFn: (row) => row.status,
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.status')} className="justify-end w-full" />,
+                cell: ({ row }) => (
+                    <div className="text-right">
+                        {getStatusBadge(row.original.status)}
+                    </div>
+                ),
+            },
+        ],
+        [t]
+    );
+
+    const filterSlot = (
+        <div className="flex items-center gap-2">
+            <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-red-500 focus:outline-none shadow-xs"
+            >
+                <option value="">{t('licenses.selectType')}</option>
+                <option value="PLAYER_REGULAR">Regular Player (Club-Attached)</option>
+                <option value="PLAYER_TCARD">T-Card (Tournament Only)</option>
+                <option value="PLAYER_WOMEN">Women's League License</option>
+                <option value="COACH">Coach License</option>
+                <option value="REFEREE">Referee License</option>
+            </select>
+
+            <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-red-500 focus:outline-none shadow-xs"
+            >
+                <option value="">{t('common.all')} Statuses</option>
+                <option value="APPROVED">{t('common.approve')}d</option>
+                <option value="PENDING_CLUB">{t('licenses.pendingClub')}</option>
+                <option value="PENDING_ASSOCIATION">{t('licenses.pendingAssociation')}</option>
+                <option value="REJECTED">{t('common.reject')}ed</option>
+            </select>
+        </div>
+    );
 
     return (
         <div className="space-y-6 pb-12">
@@ -139,93 +251,17 @@ export default function LicensesPage() {
                 </div>
             )}
 
-            {/* Filter Bar */}
-            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/80 shadow-sm">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
-                    <Filter className="h-3.5 w-3.5 text-red-500" />
-                    <span>{t('common.filter')}:</span>
-                </div>
-
-                <select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value)}
-                    className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                >
-                    <option value="">{t('licenses.selectType')}</option>
-                    <option value="PLAYER_REGULAR">Regular Player (Club-Attached)</option>
-                    <option value="PLAYER_TCARD">T-Card (Tournament Only)</option>
-                    <option value="PLAYER_WOMEN">Women's League License</option>
-                    <option value="COACH">Coach License</option>
-                    <option value="REFEREE">Referee License</option>
-                </select>
-
-                <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                >
-                    <option value="">{t('common.all')} Statuses</option>
-                    <option value="APPROVED">{t('common.approve')}d</option>
-                    <option value="PENDING_CLUB">{t('licenses.pendingClub')}</option>
-                    <option value="PENDING_ASSOCIATION">{t('licenses.pendingAssociation')}</option>
-                    <option value="REJECTED">{t('common.reject')}ed</option>
-                </select>
-            </div>
-
-            {/* Licenses Table */}
-            <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 overflow-x-auto shadow-sm">
-                <table className="w-full text-left text-xs min-w-[650px]">
-                    <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
-                        <tr>
-                            <th className="px-3 py-2.5 sm:px-4 sm:py-3">{t('licenses.holder')}</th>
-                            <th className="px-3 py-2.5 sm:px-4 sm:py-3">{t('licenses.licenseId')}</th>
-                            <th className="px-3 py-2.5 sm:px-4 sm:py-3">{t('licenses.type')}</th>
-                            <th className="px-3 py-2.5 sm:px-4 sm:py-3">{t('common.club')}</th>
-                            <th className="px-3 py-2.5 sm:px-4 sm:py-3">{t('common.association')}</th>
-                            <th className="px-3 py-2.5 sm:px-4 sm:py-3">{t('licenses.validity')}</th>
-                            <th className="px-3 py-2.5 sm:px-4 sm:py-3 text-right">{t('common.status')}</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60">
-                        {licenses.map((lic) => (
-                            <tr
-                                key={lic.id}
-                                className="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition"
-                            >
-                                <td className="px-3 py-2.5 sm:px-4 sm:py-3 font-semibold text-slate-900 dark:text-white">
-                                    {lic.user?.firstName} {lic.user?.lastName}
-                                    <div className="text-[10px] text-slate-500 font-normal">{lic.user?.email}</div>
-                                </td>
-                                <td className="px-3 py-2.5 sm:px-4 sm:py-3 font-mono font-bold text-red-600 dark:text-red-400">
-                                    {lic.user?.licenseId || (
-                                        <span className="text-slate-400 font-normal">Pending</span>
-                                    )}
-                                </td>
-                                <td className="px-3 py-2.5 sm:px-4 sm:py-3 font-medium text-slate-700 dark:text-slate-300">
-                                    <span className="rounded bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-0.5 text-[11px]">
-                                        {lic.type.replace('PLAYER_', '')}
-                                    </span>
-                                </td>
-                                <td className="px-3 py-2.5 sm:px-4 sm:py-3 text-slate-700 dark:text-slate-300">
-                                    {lic.club ? (
-                                        lic.club.name
-                                    ) : (
-                                        <span className="text-slate-400 italic">None (Tournament Card)</span>
-                                    )}
-                                </td>
-                                <td className="px-3 py-2.5 sm:px-4 sm:py-3 text-slate-500 dark:text-slate-400">
-                                    {lic.association?.name}
-                                </td>
-                                <td className="px-3 py-2.5 sm:px-4 sm:py-3 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
-                                    {format(new Date(lic.validFrom), 'dd.MM.yy')} -{' '}
-                                    {format(new Date(lic.validUntil), 'dd.MM.yy')}
-                                </td>
-                                <td className="px-3 py-2.5 sm:px-4 sm:py-3 text-right">{getStatusBadge(lic.status)}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+            {/* Licenses Interactive DataTable */}
+            <DataTable
+                columns={columns}
+                data={licenses}
+                loading={loading}
+                searchPlaceholder="Search licenses by athlete, email, license ID, club..."
+                searchSlot={filterSlot}
+                emptyMessage="No licenses match your search criteria."
+                defaultPageSize={25}
+                pageSizeOptions={[10, 25, 50, 100]}
+            />
         </div>
     );
 }

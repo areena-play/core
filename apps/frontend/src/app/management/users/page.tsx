@@ -35,6 +35,8 @@ import {
     Plus,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
+import { ColumnDef } from '@tanstack/react-table';
+import { DataTable, DataTableColumnHeader } from '@/components/ui/DataTable';
 
 interface AdminUserItem {
     id: string;
@@ -94,6 +96,7 @@ export default function AdminUsersPage() {
     });
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(15);
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
 
@@ -127,7 +130,7 @@ export default function AdminUsersPage() {
                 q: searchQuery,
                 role: selectedRole,
                 page,
-                limit: 15,
+                limit: pageSize,
             });
             setUsers(res.users || []);
             setTotalPages(res.totalPages || 1);
@@ -146,7 +149,7 @@ export default function AdminUsersPage() {
         if (currentUser?.isSuperAdmin) {
             loadUsers();
         }
-    }, [currentUser, page, selectedRole]);
+    }, [currentUser, page, pageSize, selectedRole]);
 
     // Handle search with debounce
     useEffect(() => {
@@ -409,31 +412,236 @@ export default function AdminUsersPage() {
                 </div>
             </div>
 
-            {/* Filter Bar & Search */}
-            <div className="p-4 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 shadow-sm space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    {/* Search Input */}
-                    <div className="relative flex-1 max-w-md">
-                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                            type="text"
-                            placeholder="Search by name, email, license ID, phone, city..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 text-slate-900 dark:text-white text-xs focus:border-red-500 focus:outline-none"
-                        />
-                        {searchQuery && (
-                            <button
-                                type="button"
-                                onClick={() => setSearchQuery('')}
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                            >
-                                <X className="w-3.5 h-3.5" />
-                            </button>
-                        )}
-                    </div>
+            {/* Users Interactive DataTable */}
+            <DataTable
+                columns={[
+                    {
+                        id: 'name',
+                        accessorFn: (u) => `${u.firstName || ''} ${u.lastName || ''} ${u.email || ''}`,
+                        header: ({ column }) => <DataTableColumnHeader column={column} title="User & Email" />,
+                        cell: ({ row }) => {
+                            const u = row.original;
+                            const initials = `${u.firstName?.[0] || ''}${u.lastName?.[0] || ''}`.toUpperCase();
+                            return (
+                                <div className="flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-red-600 to-rose-700 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-sm">
+                                        {initials}
+                                    </div>
+                                    <div className="space-y-0.5 min-w-0">
+                                        <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                                            <span className="truncate">
+                                                {u.firstName} {u.lastName}
+                                            </span>
+                                            {u.isSuperAdmin && (
+                                                <span className="p-0.5 rounded bg-red-500/20 text-red-500 border border-red-500/30" title="Super Administrator">
+                                                    <Shield className="w-3 h-3" />
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                                            <span className="truncate">{u.email}</span>
+                                            {u.emailVerified ? (
+                                                <span
+                                                    className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded"
+                                                    title="Email Verified"
+                                                >
+                                                    <CheckCircle2 className="w-2.5 h-2.5" />
+                                                    Verified
+                                                </span>
+                                            ) : (
+                                                <span
+                                                    className="inline-flex items-center gap-0.5 text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded"
+                                                    title="Verification Pending"
+                                                >
+                                                    <Clock className="w-2.5 h-2.5" />
+                                                    Pending
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        },
+                    },
+                    {
+                        id: 'roles',
+                        header: () => <span>Platform Roles & Licenses</span>,
+                        cell: ({ row }) => {
+                            const u = row.original;
+                            return (
+                                <div className="flex flex-wrap gap-1">
+                                    {u.isSuperAdmin && (
+                                        <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30">
+                                            Super Admin
+                                        </span>
+                                    )}
 
-                    {/* Role Filter Tabs */}
+                                    {u.associationRoles?.map((ar) => (
+                                        <span
+                                            key={ar.id}
+                                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 flex items-center gap-1"
+                                        >
+                                            <Building2 className="w-2.5 h-2.5" />
+                                            {ar.association?.shortName}: {ar.role}
+                                        </span>
+                                    ))}
+
+                                    {u.clubRoles?.map((cr) => (
+                                        <span
+                                            key={cr.id}
+                                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 flex items-center gap-1"
+                                        >
+                                            <Home className="w-2.5 h-2.5" />
+                                            {cr.club?.name?.split(' ')[0]}: {cr.role}
+                                        </span>
+                                    ))}
+
+                                    {u.licenses?.map((lic) => (
+                                        <span
+                                            key={lic.id}
+                                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1"
+                                        >
+                                            <Award className="w-2.5 h-2.5" />
+                                            {lic.type} ({lic.status})
+                                        </span>
+                                    ))}
+
+                                    {!u.isSuperAdmin &&
+                                        (!u.associationRoles || u.associationRoles.length === 0) &&
+                                        (!u.clubRoles || u.clubRoles.length === 0) &&
+                                        (!u.licenses || u.licenses.length === 0) && (
+                                            <span className="text-[10px] text-slate-400 italic">
+                                                Member Account
+                                            </span>
+                                        )}
+                                </div>
+                            );
+                        },
+                    },
+                    {
+                        id: 'location',
+                        accessorFn: (u) => `${u.city || ''} ${u.phone || ''}`,
+                        header: ({ column }) => <DataTableColumnHeader column={column} title="Location & Contact" />,
+                        cell: ({ row }) => {
+                            const u = row.original;
+                            return (
+                                <div className="space-y-0.5 text-slate-600 dark:text-slate-400">
+                                    <div>{u.city ? `${u.city}, ${u.country || 'CH'}` : 'Switzerland'}</div>
+                                    <div className="font-mono text-[10px] text-slate-500">{u.phone || '—'}</div>
+                                </div>
+                            );
+                        },
+                    },
+                    {
+                        id: 'rating',
+                        accessorFn: (u) => u.eloPoints || 1000,
+                        header: ({ column }) => <DataTableColumnHeader column={column} title="Rating / License ID" />,
+                        cell: ({ row }) => {
+                            const u = row.original;
+                            return (
+                                <div className="space-y-0.5">
+                                    <div className="font-bold text-slate-900 dark:text-white">
+                                        ELO {u.eloPoints || 1000}{' '}
+                                        {u.rank && (
+                                            <span className="text-[10px] text-slate-400 font-normal">
+                                                (#{u.rank})
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="font-mono text-[10px] text-slate-500">
+                                        ID: {u.licenseId || '—'}
+                                    </div>
+                                </div>
+                            );
+                        },
+                    },
+                    {
+                        id: 'actions',
+                        header: () => <div className="text-right">Actions</div>,
+                        cell: ({ row }) => {
+                            const u = row.original;
+                            return (
+                                <div className="flex items-center justify-end gap-1">
+                                    {/* Edit Button */}
+                                    <button
+                                        type="button"
+                                        onClick={() => openEditModal(u)}
+                                        title="Edit User Profile & Email"
+                                        className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:border-blue-500/50 hover:text-blue-500 transition"
+                                    >
+                                        <Edit3 className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    {/* Reset Password Button */}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setResetPasswordUser(u);
+                                            setResetResult(null);
+                                            setCustomPassword('');
+                                            setAutoGeneratePass(true);
+                                        }}
+                                        title="Reset Password"
+                                        className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-500 transition"
+                                    >
+                                        <KeyRound className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    {/* Resend Verification (if unverified) */}
+                                    {!u.emailVerified && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSendVerification(u)}
+                                            title="Send Verification Email"
+                                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:border-indigo-500/50 hover:text-indigo-500 transition"
+                                        >
+                                            <Mail className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
+
+                                    {/* SuperAdmin Toggle */}
+                                    <button
+                                        type="button"
+                                        disabled={u.id === currentUser.id}
+                                        onClick={() => handleToggleSuperAdmin(u)}
+                                        title={
+                                            u.id === currentUser.id
+                                                ? 'Cannot revoke your own administrator privileges'
+                                                : u.isSuperAdmin
+                                                ? 'Revoke Super Administrator'
+                                                : 'Grant Super Administrator'
+                                        }
+                                        className={`p-1.5 rounded-lg border transition ${
+                                            u.id === currentUser.id
+                                                ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed opacity-60'
+                                                : u.isSuperAdmin
+                                                ? 'border-red-500/30 bg-red-500/10 text-red-500 hover:bg-red-500/20'
+                                                : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-400 hover:text-red-500 hover:border-red-500/40'
+                                        }`}
+                                    >
+                                        <Shield className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    {/* Delete Button (cannot delete self) */}
+                                    {u.id !== currentUser.id && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setDeleteUser(u)}
+                                            title="Delete User Account"
+                                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-400 hover:border-red-500/50 hover:text-red-500 transition"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        },
+                    },
+                ]}
+                data={users}
+                loading={loading}
+                searchPlaceholder="Search by name, email, license ID, phone, city..."
+                searchSlot={
                     <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
                         {(
                             [
@@ -454,7 +662,7 @@ export default function AdminUsersPage() {
                                 }}
                                 className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
                                     selectedRole === filter.id
-                                        ? 'bg-red-600 text-white shadow-sm'
+                                        ? 'bg-red-600 text-white shadow-xs'
                                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                                 }`}
                             >
@@ -462,279 +670,19 @@ export default function AdminUsersPage() {
                             </button>
                         ))}
                     </div>
-                </div>
-            </div>
-
-            {/* Users Table */}
-            <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 shadow-sm overflow-hidden text-xs">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-950/50 text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                                <th className="px-4 py-3">User & Email</th>
-                                <th className="px-4 py-3">Platform Roles & Licenses</th>
-                                <th className="px-4 py-3">Location & Contact</th>
-                                <th className="px-4 py-3">Rating / License ID</th>
-                                <th className="px-4 py-3 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {loading ? (
-                                <tr>
-                                    <td colSpan={5} className="py-12 text-center text-slate-500">
-                                        <RefreshCw className="w-6 h-6 animate-spin mx-auto text-red-600 mb-2" />
-                                        <span>Loading user directory...</span>
-                                    </td>
-                                </tr>
-                            ) : users.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="py-12 text-center text-slate-500">
-                                        No registered users match your search criteria.
-                                    </td>
-                                </tr>
-                            ) : (
-                                users.map((u) => {
-                                    const initials = `${u.firstName?.[0] || ''}${u.lastName?.[0] || ''}`.toUpperCase();
-
-                                    return (
-                                        <tr
-                                            key={u.id}
-                                            className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
-                                        >
-                                            {/* User & Email */}
-                                            <td className="px-4 py-3.5">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-red-600 to-rose-700 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-sm">
-                                                        {initials}
-                                                    </div>
-                                                    <div className="space-y-0.5 min-w-0">
-                                                        <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
-                                                            <span className="truncate">
-                                                                {u.firstName} {u.lastName}
-                                                            </span>
-                                                            {u.isSuperAdmin && (
-                                                                <span className="p-0.5 rounded bg-red-500/20 text-red-500 border border-red-500/30" title="Super Administrator">
-                                                                    <Shield className="w-3 h-3" />
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                                                            <span className="truncate">{u.email}</span>
-                                                            {u.emailVerified ? (
-                                                                <span
-                                                                    className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded"
-                                                                    title="Email Verified"
-                                                                >
-                                                                    <CheckCircle2 className="w-2.5 h-2.5" />
-                                                                    Verified
-                                                                </span>
-                                                            ) : (
-                                                                <span
-                                                                    className="inline-flex items-center gap-0.5 text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded"
-                                                                    title="Verification Pending"
-                                                                >
-                                                                    <Clock className="w-2.5 h-2.5" />
-                                                                    Pending
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </td>
-
-                                            {/* Roles & Licenses */}
-                                            <td className="px-4 py-3.5">
-                                                <div className="flex flex-wrap gap-1">
-                                                    {u.isSuperAdmin && (
-                                                        <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30">
-                                                            Super Admin
-                                                        </span>
-                                                    )}
-
-                                                    {u.associationRoles?.map((ar) => (
-                                                        <span
-                                                            key={ar.id}
-                                                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 flex items-center gap-1"
-                                                        >
-                                                            <Building2 className="w-2.5 h-2.5" />
-                                                            {ar.association?.shortName}: {ar.role}
-                                                        </span>
-                                                    ))}
-
-                                                    {u.clubRoles?.map((cr) => (
-                                                        <span
-                                                            key={cr.id}
-                                                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 flex items-center gap-1"
-                                                        >
-                                                            <Home className="w-2.5 h-2.5" />
-                                                            {cr.club?.name?.split(' ')[0]}: {cr.role}
-                                                        </span>
-                                                    ))}
-
-                                                    {u.licenses?.map((lic) => (
-                                                        <span
-                                                            key={lic.id}
-                                                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1"
-                                                        >
-                                                            <Award className="w-2.5 h-2.5" />
-                                                            {lic.type} ({lic.status})
-                                                        </span>
-                                                    ))}
-
-                                                    {!u.isSuperAdmin &&
-                                                        (!u.associationRoles || u.associationRoles.length === 0) &&
-                                                        (!u.clubRoles || u.clubRoles.length === 0) &&
-                                                        (!u.licenses || u.licenses.length === 0) && (
-                                                            <span className="text-[10px] text-slate-400 italic">
-                                                                Member Account
-                                                            </span>
-                                                        )}
-                                                </div>
-                                            </td>
-
-                                            {/* Location & Contact */}
-                                            <td className="px-4 py-3.5 text-slate-600 dark:text-slate-400">
-                                                <div className="space-y-0.5">
-                                                    <div>
-                                                        {u.city ? `${u.city}, ${u.country || 'CH'}` : 'Switzerland'}
-                                                    </div>
-                                                    <div className="font-mono text-[10px] text-slate-500">
-                                                        {u.phone || '—'}
-                                                    </div>
-                                                </div>
-                                            </td>
-
-                                            {/* Rating / License ID */}
-                                            <td className="px-4 py-3.5">
-                                                <div className="space-y-0.5">
-                                                    <div className="font-bold text-slate-900 dark:text-white">
-                                                        ELO {u.eloPoints || 1000}{' '}
-                                                        {u.rank && (
-                                                            <span className="text-[10px] text-slate-400 font-normal">
-                                                                (#{u.rank})
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="font-mono text-[10px] text-slate-500">
-                                                        ID: {u.licenseId || '—'}
-                                                    </div>
-                                                </div>
-                                            </td>
-
-                                            {/* Action Buttons */}
-                                            <td className="px-4 py-3.5 text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    {/* Edit Button */}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => openEditModal(u)}
-                                                        title="Edit User Profile & Email"
-                                                        className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:border-blue-500/50 hover:text-blue-500 transition"
-                                                    >
-                                                        <Edit3 className="w-3.5 h-3.5" />
-                                                    </button>
-
-                                                    {/* Reset Password Button */}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setResetPasswordUser(u);
-                                                            setResetResult(null);
-                                                            setCustomPassword('');
-                                                            setAutoGeneratePass(true);
-                                                        }}
-                                                        title="Reset Password"
-                                                        className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:border-amber-500/50 hover:text-amber-500 transition"
-                                                    >
-                                                        <KeyRound className="w-3.5 h-3.5" />
-                                                    </button>
-
-                                                    {/* Resend Verification (if unverified) */}
-                                                    {!u.emailVerified && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleSendVerification(u)}
-                                                            title="Send Verification Email"
-                                                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:border-indigo-500/50 hover:text-indigo-500 transition"
-                                                        >
-                                                            <Mail className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    )}
-
-                                                    {/* SuperAdmin Toggle */}
-                                                    <button
-                                                        type="button"
-                                                        disabled={u.id === currentUser.id}
-                                                        onClick={() => handleToggleSuperAdmin(u)}
-                                                        title={
-                                                            u.id === currentUser.id
-                                                                ? 'Cannot revoke your own administrator privileges'
-                                                                : u.isSuperAdmin
-                                                                ? 'Revoke Super Administrator'
-                                                                : 'Grant Super Administrator'
-                                                        }
-                                                        className={`p-1.5 rounded-lg border transition ${
-                                                            u.id === currentUser.id
-                                                                ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed opacity-60'
-                                                                : u.isSuperAdmin
-                                                                ? 'border-red-500/30 bg-red-500/10 text-red-500 hover:bg-red-500/20'
-                                                                : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-400 hover:text-red-500 hover:border-red-500/40'
-                                                        }`}
-                                                    >
-                                                        <Shield className="w-3.5 h-3.5" />
-                                                    </button>
-
-                                                    {/* Delete Button (cannot delete self) */}
-                                                    {u.id !== currentUser.id && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setDeleteUser(u)}
-                                                            title="Delete User Account"
-                                                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-400 hover:border-red-500/50 hover:text-red-500 transition"
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Pagination Bar */}
-                <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
-                    <div>
-                        Showing <span className="font-semibold">{users.length}</span> of{' '}
-                        <span className="font-semibold">{total}</span> users
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                        <button
-                            type="button"
-                            disabled={page <= 1 || loading}
-                            onClick={() => setPage((p) => Math.max(1, p - 1))}
-                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                        >
-                            <ChevronLeft className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="px-2">
-                            Page {page} of {totalPages}
-                        </span>
-                        <button
-                            type="button"
-                            disabled={page >= totalPages || loading}
-                            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                        >
-                            <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                    </div>
-                </div>
-            </div>
+                }
+                manualPagination={true}
+                totalCount={total}
+                pageCount={totalPages}
+                pageIndex={page - 1}
+                pageSize={pageSize}
+                pageSizeOptions={[15, 30, 50, 100]}
+                onPaginationChange={(nextPageIndex, nextPageSize) => {
+                    setPage(nextPageIndex + 1);
+                    setPageSize(nextPageSize);
+                }}
+                emptyMessage="No registered users match your search criteria."
+            />
 
             {/* ========================================================================= */}
             {/* Modal: Edit User Profile */}

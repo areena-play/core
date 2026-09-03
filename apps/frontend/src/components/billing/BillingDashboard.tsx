@@ -6,6 +6,8 @@ import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { AccessDenied } from '@/components/auth/AccessDenied';
 import { Modal } from '@/components/ui/Modal';
+import { ColumnDef } from '@tanstack/react-table';
+import { DataTable, DataTableColumnHeader } from '@/components/ui/DataTable';
 import {
     Receipt,
     Plus,
@@ -378,16 +380,216 @@ export function BillingDashboard({ associationId, isSubAssociation = false }: Bi
         return invoices.filter((inv) => {
             if (statusFilter !== 'ALL' && inv.status !== statusFilter) return false;
             if (categoryFilter !== 'ALL' && inv.category !== categoryFilter) return false;
-            if (search.trim()) {
-                const q = search.toLowerCase();
-                const num = inv.invoiceNumber.toLowerCase();
-                const rec = inv.recipientName.toLowerCase();
-                const mail = (inv.recipientEmail || '').toLowerCase();
-                return num.includes(q) || rec.includes(q) || mail.includes(q);
-            }
             return true;
         });
-    }, [invoices, statusFilter, categoryFilter, search]);
+    }, [invoices, statusFilter, categoryFilter]);
+
+    // DataTable Columns
+    const columns = useMemo<ColumnDef<any>[]>(
+        () => [
+            {
+                id: 'invoiceNumber',
+                accessorKey: 'invoiceNumber',
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('billing.billNumber')} />,
+                cell: ({ row }) => (
+                    <span className="font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                        {row.original.invoiceNumber}
+                    </span>
+                ),
+            },
+            {
+                id: 'recipient',
+                accessorFn: (inv) => `${inv.recipientName || ''} ${inv.recipientEmail || ''}`,
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('billing.recipient')} />,
+                cell: ({ row }) => {
+                    const inv = row.original;
+                    return (
+                        <div className="flex items-center gap-2">
+                            <div className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold flex-shrink-0">
+                                {inv.targetType === 'MEMBER_CLUB' ? (
+                                    <Building2 className="h-3.5 w-3.5 text-blue-500" />
+                                ) : (
+                                    <UserIcon className="h-3.5 w-3.5 text-emerald-500" />
+                                )}
+                            </div>
+                            <div>
+                                <div className="font-bold text-slate-900 dark:text-white truncate max-w-[200px]">
+                                    {inv.recipientName}
+                                </div>
+                                <div className="text-[11px] text-slate-400 truncate max-w-[200px]">
+                                    {inv.recipientEmail || 'No email provided'}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'category',
+                accessorKey: 'category',
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('billing.category')} />,
+                cell: ({ row }) => (
+                    <span className="rounded-lg bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        {row.original.category?.replace('_', ' ')}
+                    </span>
+                ),
+            },
+            {
+                id: 'dueDate',
+                accessorKey: 'dueDate',
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('billing.dueDate')} />,
+                cell: ({ row }) => {
+                    const inv = row.original;
+                    const isOverdue =
+                        new Date(inv.dueDate) < new Date() && inv.status !== 'PAID' && inv.status !== 'CANCELLED';
+                    return (
+                        <div className="whitespace-nowrap">
+                            <div
+                                className={`font-semibold ${
+                                    isOverdue
+                                        ? 'text-red-600 dark:text-red-400'
+                                        : 'text-slate-600 dark:text-slate-300'
+                                }`}
+                            >
+                                {format(new Date(inv.dueDate), 'MMM dd, yyyy')}
+                            </div>
+                            {isOverdue && (
+                                <div className="text-[10px] text-red-500 font-bold uppercase tracking-wider">
+                                    Overdue
+                                </div>
+                            )}
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'totalAmount',
+                accessorKey: 'totalAmount',
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('billing.amount')} className="justify-end w-full" />,
+                cell: ({ row }) => (
+                    <div className="text-right font-mono font-black text-slate-900 dark:text-white whitespace-nowrap">
+                        CHF {row.original.totalAmount?.toFixed(2)}
+                    </div>
+                ),
+            },
+            {
+                id: 'bexioStatus',
+                accessorKey: 'bexioSyncStatus',
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('billing.bexioStatus')} className="justify-center w-full" />,
+                cell: ({ row }) => {
+                    const inv = row.original;
+                    return (
+                        <div className="text-center whitespace-nowrap">
+                            {inv.bexioSyncStatus === 'SYNCED' ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 text-[10px] font-bold">
+                                    <Check className="h-3 w-3" />
+                                    <span>Bexio #{inv.bexioId}</span>
+                                </span>
+                            ) : inv.bexioSyncStatus === 'FAILED' ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-red-50 text-red-700 dark:bg-red-950/80 dark:text-red-300 border border-red-200 dark:border-red-800 px-2 py-0.5 text-[10px] font-bold">
+                                    <X className="h-3 w-3" />
+                                    <span>Sync Failed</span>
+                                </span>
+                            ) : (
+                                <span className="rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 text-[10px] font-mono">
+                                    Not Synced
+                                </span>
+                            )}
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'status',
+                accessorKey: 'status',
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('billing.status')} className="justify-center w-full" />,
+                cell: ({ row }) => {
+                    const inv = row.original;
+                    return (
+                        <div className="text-center whitespace-nowrap">
+                            <span
+                                className={`rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider border ${
+                                    inv.status === 'PAID'
+                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                                        : inv.status === 'SENT'
+                                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300 dark:border-blue-800'
+                                        : inv.status === 'OVERDUE'
+                                        ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 border-red-300 dark:border-red-800'
+                                        : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                                }`}
+                            >
+                                {inv.status}
+                            </span>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'actions',
+                header: () => <div className="text-right">{t('billing.actions')}</div>,
+                cell: ({ row }) => {
+                    const inv = row.original;
+                    return (
+                        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                            <button
+                                type="button"
+                                onClick={() => handleViewQr(inv)}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                title={t('billing.viewQr')}
+                            >
+                                <QrCode className="h-4 w-4" />
+                            </button>
+
+                            {inv.status === 'DRAFT' && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleSendInvoice(inv.id)}
+                                    className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 transition"
+                                    title={t('billing.sendBill')}
+                                >
+                                    <Send className="h-4 w-4" />
+                                </button>
+                            )}
+
+                            {inv.status !== 'PAID' && inv.status !== 'CANCELLED' && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleMarkPaid(inv.id)}
+                                    className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950 transition"
+                                    title={t('billing.markPaid')}
+                                >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                </button>
+                            )}
+
+                            {inv.bexioSyncStatus !== 'SYNCED' && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleSyncBexio(inv.id)}
+                                    className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition"
+                                    title={t('billing.syncBexio')}
+                                >
+                                    <RefreshCw className="h-4 w-4" />
+                                </button>
+                            )}
+
+                            {inv.status === 'DRAFT' && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleDeleteInvoice(inv.id)}
+                                    className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition"
+                                    title={t('billing.deleteBill')}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                            )}
+                        </div>
+                    );
+                },
+            },
+        ],
+        [t]
+    );
 
     if (!isAuthorized) {
         return (
@@ -529,264 +731,69 @@ export function BillingDashboard({ associationId, isSubAssociation = false }: Bi
                 </div>
             </div>
 
-            {/* Filter & Search Bar */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 p-3 sm:p-4 shadow-xs">
-                {/* Search */}
-                <div className="relative flex-1">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder={t('billing.searchPlaceholder')}
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-xs text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
-                    />
-                </div>
-
-                {/* Category Dropdown */}
-                <div className="flex items-center gap-2">
-                    <select
-                        value={categoryFilter}
-                        onChange={(e) => setCategoryFilter(e.target.value)}
-                        className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
-                    >
-                        <option value="ALL">{t('billing.catAll')}</option>
-                        <option value="MEMBERSHIP_FEE">{t('billing.catMembership')}</option>
-                        <option value="LICENSE_FEE">{t('billing.catLicense')}</option>
-                        <option value="COMPETITION_ENTRY">{t('billing.catCompetition')}</option>
-                        <option value="COURSE_FEE">{t('billing.catCourse')}</option>
-                        <option value="EQUIPMENT">{t('billing.catEquipment')}</option>
-                        <option value="PENALTY">{t('billing.catPenalty')}</option>
-                        <option value="OTHER">{t('billing.catOther')}</option>
-                    </select>
-
-                    <button
-                        onClick={loadDashboard}
-                        className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
-                        title="Reload Ledger"
-                    >
-                        <RefreshCw className="h-4 w-4" />
-                    </button>
-                </div>
-            </div>
-
-            {/* Status Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-                {[
-                    { key: 'ALL', label: t('billing.statusAll') },
-                    { key: 'DRAFT', label: t('billing.statusDraft') },
-                    { key: 'SENT', label: t('billing.statusSent') },
-                    { key: 'PAID', label: t('billing.statusPaid') },
-                    { key: 'OVERDUE', label: t('billing.statusOverdue') },
-                    { key: 'CANCELLED', label: t('billing.statusCancelled') },
-                ].map((st) => (
-                    <button
-                        key={st.key}
-                        onClick={() => setStatusFilter(st.key)}
-                        className={`rounded-xl px-3.5 py-1.5 font-bold transition flex-shrink-0 ${
-                            statusFilter === st.key
-                                ? 'bg-red-600 text-white shadow-xs'
-                                : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                        }`}
-                    >
-                        {st.label}
-                    </button>
-                ))}
-            </div>
-
-            {/* Invoices Table */}
-            <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 shadow-sm overflow-hidden">
-                {loading ? (
-                    <div className="flex h-64 items-center justify-center">
-                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
-                    </div>
-                ) : filteredInvoices.length === 0 ? (
-                    <div className="p-12 text-center text-slate-500 dark:text-slate-400 space-y-3">
-                        <Receipt className="mx-auto h-10 w-10 text-slate-400" />
-                        <h3 className="text-base font-bold text-slate-900 dark:text-white">No Invoices Found</h3>
-                        <p className="text-xs max-w-sm mx-auto">
-                            No billing records matched your search or filters. Click below to issue a new bill.
-                        </p>
-                        <button
-                            onClick={() => setShowCreateModal(true)}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700"
+            {/* Invoices Interactive DataTable */}
+            <DataTable
+                columns={columns}
+                data={filteredInvoices}
+                loading={loading}
+                searchPlaceholder={t('billing.searchPlaceholder')}
+                searchSlot={
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {/* Category Dropdown */}
+                        <select
+                            value={categoryFilter}
+                            onChange={(e) => setCategoryFilter(e.target.value)}
+                            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
                         >
-                            <Plus className="h-4 w-4" />
-                            <span>{t('billing.createBill')}</span>
+                            <option value="ALL">{t('billing.catAll')}</option>
+                            <option value="MEMBERSHIP_FEE">{t('billing.catMembership')}</option>
+                            <option value="LICENSE_FEE">{t('billing.catLicense')}</option>
+                            <option value="COMPETITION_ENTRY">{t('billing.catCompetition')}</option>
+                            <option value="COURSE_FEE">{t('billing.catCourse')}</option>
+                            <option value="EQUIPMENT">{t('billing.catEquipment')}</option>
+                            <option value="PENALTY">{t('billing.catPenalty')}</option>
+                            <option value="OTHER">{t('billing.catOther')}</option>
+                        </select>
+
+                        {/* Status Pills */}
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                            {[
+                                { key: 'ALL', label: t('billing.statusAll') },
+                                { key: 'DRAFT', label: t('billing.statusDraft') },
+                                { key: 'SENT', label: t('billing.statusSent') },
+                                { key: 'PAID', label: t('billing.statusPaid') },
+                                { key: 'OVERDUE', label: t('billing.statusOverdue') },
+                                { key: 'CANCELLED', label: t('billing.statusCancelled') },
+                            ].map((st) => (
+                                <button
+                                    key={st.key}
+                                    type="button"
+                                    onClick={() => setStatusFilter(st.key)}
+                                    className={`rounded-xl px-3.5 py-1.5 font-bold transition flex-shrink-0 ${
+                                        statusFilter === st.key
+                                            ? 'bg-red-600 text-white shadow-xs'
+                                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                    }`}
+                                >
+                                    {st.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={loadDashboard}
+                            className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+                            title="Reload Ledger"
+                        >
+                            <RefreshCw className="h-4 w-4" />
                         </button>
                     </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs border-collapse">
-                            <thead className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                                <tr>
-                                    <th className="py-3.5 px-4">{t('billing.billNumber')}</th>
-                                    <th className="py-3.5 px-4">{t('billing.recipient')}</th>
-                                    <th className="py-3.5 px-4">{t('billing.category')}</th>
-                                    <th className="py-3.5 px-4">{t('billing.dueDate')}</th>
-                                    <th className="py-3.5 px-4 text-right">{t('billing.amount')}</th>
-                                    <th className="py-3.5 px-4 text-center">{t('billing.bexioStatus')}</th>
-                                    <th className="py-3.5 px-4 text-center">{t('billing.status')}</th>
-                                    <th className="py-3.5 px-4 text-right">{t('billing.actions')}</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                                {filteredInvoices.map((inv) => {
-                                    const isOverdue =
-                                        new Date(inv.dueDate) < new Date() && inv.status !== 'PAID' && inv.status !== 'CANCELLED';
-
-                                    return (
-                                        <tr
-                                            key={inv.id}
-                                            className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition group"
-                                        >
-                                            <td className="py-3.5 px-4 font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                                                {inv.invoiceNumber}
-                                            </td>
-
-                                            <td className="py-3.5 px-4">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold flex-shrink-0">
-                                                        {inv.targetType === 'MEMBER_CLUB' ? (
-                                                            <Building2 className="h-3.5 w-3.5 text-blue-500" />
-                                                        ) : (
-                                                            <UserIcon className="h-3.5 w-3.5 text-emerald-500" />
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-bold text-slate-900 dark:text-white truncate max-w-[200px]">
-                                                            {inv.recipientName}
-                                                        </div>
-                                                        <div className="text-[11px] text-slate-400 truncate max-w-[200px]">
-                                                            {inv.recipientEmail || 'No email provided'}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </td>
-
-                                            <td className="py-3.5 px-4 whitespace-nowrap">
-                                                <span className="rounded-lg bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                                                    {inv.category.replace('_', ' ')}
-                                                </span>
-                                            </td>
-
-                                            <td className="py-3.5 px-4 whitespace-nowrap">
-                                                <div
-                                                    className={`font-semibold ${
-                                                        isOverdue
-                                                            ? 'text-red-600 dark:text-red-400'
-                                                            : 'text-slate-600 dark:text-slate-300'
-                                                    }`}
-                                                >
-                                                    {format(new Date(inv.dueDate), 'MMM dd, yyyy')}
-                                                </div>
-                                                {isOverdue && (
-                                                    <div className="text-[10px] text-red-500 font-bold uppercase tracking-wider">
-                                                        Overdue
-                                                    </div>
-                                                )}
-                                            </td>
-
-                                            <td className="py-3.5 px-4 text-right font-mono font-black text-slate-900 dark:text-white whitespace-nowrap">
-                                                CHF {inv.totalAmount.toFixed(2)}
-                                            </td>
-
-                                            {/* Bexio Sync Status */}
-                                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                                                {inv.bexioSyncStatus === 'SYNCED' ? (
-                                                    <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 text-[10px] font-bold">
-                                                        <Check className="h-3 w-3" />
-                                                        <span>Bexio #{inv.bexioId}</span>
-                                                    </span>
-                                                ) : inv.bexioSyncStatus === 'FAILED' ? (
-                                                    <span className="inline-flex items-center gap-1 rounded-full bg-red-50 text-red-700 dark:bg-red-950/80 dark:text-red-300 border border-red-200 dark:border-red-800 px-2 py-0.5 text-[10px] font-bold">
-                                                        <X className="h-3 w-3" />
-                                                        <span>Sync Failed</span>
-                                                    </span>
-                                                ) : (
-                                                    <span className="rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 text-[10px] font-mono">
-                                                        Not Synced
-                                                    </span>
-                                                )}
-                                            </td>
-
-                                            {/* Invoice Status */}
-                                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                                                <span
-                                                    className={`rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider border ${
-                                                        inv.status === 'PAID'
-                                                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
-                                                            : inv.status === 'SENT'
-                                                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300 dark:border-blue-800'
-                                                            : inv.status === 'OVERDUE'
-                                                            ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 border-red-300 dark:border-red-800'
-                                                            : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                                                    }`}
-                                                >
-                                                    {inv.status}
-                                                </span>
-                                            </td>
-
-                                            {/* Actions */}
-                                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    <button
-                                                        onClick={() => handleViewQr(inv)}
-                                                        className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                                                        title={t('billing.viewQr')}
-                                                    >
-                                                        <QrCode className="h-4 w-4" />
-                                                    </button>
-
-                                                    {inv.status === 'DRAFT' && (
-                                                        <button
-                                                            onClick={() => handleSendInvoice(inv.id)}
-                                                            className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 transition"
-                                                            title={t('billing.sendBill')}
-                                                        >
-                                                            <Send className="h-4 w-4" />
-                                                        </button>
-                                                    )}
-
-                                                    {inv.status !== 'PAID' && inv.status !== 'CANCELLED' && (
-                                                        <button
-                                                            onClick={() => handleMarkPaid(inv.id)}
-                                                            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950 transition"
-                                                            title={t('billing.markPaid')}
-                                                        >
-                                                            <CheckCircle2 className="h-4 w-4" />
-                                                        </button>
-                                                    )}
-
-                                                    {inv.bexioSyncStatus !== 'SYNCED' && (
-                                                        <button
-                                                            onClick={() => handleSyncBexio(inv.id)}
-                                                            className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition"
-                                                            title={t('billing.syncBexio')}
-                                                        >
-                                                            <RefreshCw className="h-4 w-4" />
-                                                        </button>
-                                                    )}
-
-                                                    {inv.status === 'DRAFT' && (
-                                                        <button
-                                                            onClick={() => handleDeleteInvoice(inv.id)}
-                                                            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition"
-                                                            title={t('billing.deleteBill')}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
+                }
+                defaultPageSize={25}
+                pageSizeOptions={[10, 25, 50, 100]}
+                emptyMessage="No billing records match your search or filters."
+            />
 
             {/* CREATE INVOICE MODAL */}
             <Modal

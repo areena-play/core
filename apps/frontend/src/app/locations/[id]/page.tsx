@@ -32,6 +32,8 @@ import {
     Filter,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { ColumnDef } from '@tanstack/react-table';
+import { DataTable, DataTableColumnHeader } from '@/components/ui/DataTable';
 
 export default function LocationDetailPage() {
     const params = useParams();
@@ -476,72 +478,100 @@ export default function LocationDetailPage() {
 
             {/* TAB 2: Schedule & Reservations Table */}
             {activeTab === 'schedule' && (
-                <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-xs">
-                    {allReservations.length === 0 ? (
-                        <div className="p-12 text-center text-xs text-slate-500 space-y-2">
-                            <Clock className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto" />
-                            <p>No active reservations or tournament blocks scheduled.</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs border-collapse">
-                                <thead>
-                                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold text-slate-600 dark:text-slate-400">
-                                        <th className="px-5 py-3.5">{unitWord}</th>
-                                        <th className="px-5 py-3.5">Purpose / Title</th>
-                                        <th className="px-5 py-3.5">Type</th>
-                                        <th className="px-5 py-3.5">Time Window</th>
-                                        <th className="px-5 py-3.5">Booked By</th>
-                                        {isAdmin && <th className="px-5 py-3.5 text-right">Actions</th>}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                    {allReservations.map((res: any) => (
-                                        <tr key={res.id} className="hover:bg-slate-50 dark:hover:bg-slate-950/40 transition">
-                                            <td className="px-5 py-3.5 font-bold text-slate-900 dark:text-white">
-                                                {res.unitName}
-                                            </td>
-                                            <td className="px-5 py-3.5">
-                                                <div className="font-bold text-slate-900 dark:text-white">
-                                                    {res.title}
-                                                </div>
-                                                {res.competition && (
-                                                    <div className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1 font-semibold">
-                                                        <Trophy className="w-3 h-3" />
-                                                        <span>{res.competition.name}</span>
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="px-5 py-3.5">
-                                                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                                                    {res.type.replace('_', ' ')}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-3.5 font-mono text-[11px] text-slate-600 dark:text-slate-400">
-                                                {format(new Date(res.startTime), 'EEE, dd MMM yyyy HH:mm')} - {format(new Date(res.endTime), 'HH:mm')}
-                                            </td>
-                                            <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400">
-                                                {res.reservedByUser ? `${res.reservedByUser.firstName} ${res.reservedByUser.lastName}` : 'System / Club'}
-                                            </td>
-                                            {isAdmin && (
-                                                <td className="px-5 py-3.5 text-right">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleCancelReservation(res.id)}
-                                                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 transition"
-                                                        title="Cancel reservation"
-                                                    >
-                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                    </button>
-                                                </td>
-                                            )}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
+                <DataTable
+                    columns={[
+                        {
+                            id: 'unit',
+                            accessorFn: (row: any) => row.unitName || '',
+                            header: ({ column }) => <DataTableColumnHeader column={column} title={unitWord} />,
+                            cell: ({ row }) => (
+                                <span className="font-bold text-slate-900 dark:text-white">
+                                    {(row.original as any).unitName}
+                                </span>
+                            ),
+                        },
+                        {
+                            id: 'title',
+                            accessorFn: (row: any) => `${row.title || ''} ${row.competition?.name || ''}`,
+                            header: ({ column }) => <DataTableColumnHeader column={column} title="Purpose / Title" />,
+                            cell: ({ row }) => {
+                                const res = row.original as any;
+                                return (
+                                    <div>
+                                        <div className="font-bold text-slate-900 dark:text-white">{res.title}</div>
+                                        {res.competition && (
+                                            <div className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1 font-semibold">
+                                                <Trophy className="w-3 h-3" />
+                                                <span>{res.competition.name}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            },
+                        },
+                        {
+                            id: 'type',
+                            accessorFn: (row: any) => row.type,
+                            header: ({ column }) => <DataTableColumnHeader column={column} title="Type" />,
+                            cell: ({ row }) => (
+                                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                    {String((row.original as any).type).replace('_', ' ')}
+                                </span>
+                            ),
+                        },
+                        {
+                            id: 'timeWindow',
+                            accessorFn: (row: any) => new Date(row.startTime).getTime(),
+                            header: ({ column }) => <DataTableColumnHeader column={column} title="Time Window" />,
+                            cell: ({ row }) => {
+                                const res = row.original as any;
+                                return (
+                                    <span className="font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                                        {format(new Date(res.startTime), 'EEE, dd MMM yyyy HH:mm')} - {format(new Date(res.endTime), 'HH:mm')}
+                                    </span>
+                                );
+                            },
+                        },
+                        {
+                            id: 'bookedBy',
+                            accessorFn: (row: any) => `${row.reservedByUser?.firstName || ''} ${row.reservedByUser?.lastName || ''}`,
+                            header: ({ column }) => <DataTableColumnHeader column={column} title="Booked By" />,
+                            cell: ({ row }) => {
+                                const res = row.original as any;
+                                return (
+                                    <span className="text-slate-600 dark:text-slate-400">
+                                        {res.reservedByUser ? `${res.reservedByUser.firstName} ${res.reservedByUser.lastName}` : 'System / Club'}
+                                    </span>
+                                );
+                            },
+                        },
+                        ...(isAdmin
+                            ? [
+                                  {
+                                      id: 'actions',
+                                      header: () => <div className="text-right">Actions</div>,
+                                      cell: ({ row }: any) => (
+                                          <div className="text-right">
+                                              <button
+                                                  type="button"
+                                                  onClick={() => handleCancelReservation(row.original.id)}
+                                                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 transition"
+                                                  title="Cancel reservation"
+                                              >
+                                                  <Trash2 className="w-3.5 h-3.5" />
+                                              </button>
+                                          </div>
+                                      ),
+                                  },
+                              ]
+                            : []),
+                    ]}
+                    data={allReservations}
+                    searchPlaceholder="Search reservations by title, table, user, competition..."
+                    emptyMessage="No active reservations or tournament blocks scheduled."
+                    defaultPageSize={10}
+                    pageSizeOptions={[5, 10, 25, 50]}
+                />
             )}
 
             {/* Modal: Reserve / Block Units */}

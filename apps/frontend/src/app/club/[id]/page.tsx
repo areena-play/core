@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
@@ -21,8 +21,11 @@ import {
     ExternalLink,
     Clock,
     Search,
+    Flame,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { ColumnDef } from '@tanstack/react-table';
+import { DataTable, DataTableColumnHeader } from '@/components/ui/DataTable';
 
 export default function SingleClubPage() {
     const params = useParams();
@@ -35,7 +38,6 @@ export default function SingleClubPage() {
     const [members, setMembers] = useState<any[]>([]);
     const [competitions, setCompetitions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchMember, setSearchMember] = useState('');
 
     const fetchClubData = async () => {
         try {
@@ -60,7 +62,7 @@ export default function SingleClubPage() {
             const compsData = await api.getCompetitions();
             setCompetitions(compsData || []);
         } catch (err) {
-            console.error('Failed to load club:', err);
+            console.error('Failed to load club details', err);
         } finally {
             setLoading(false);
         }
@@ -70,251 +72,184 @@ export default function SingleClubPage() {
         if (clubId) {
             fetchClubData();
         }
-        return () => {
-            setEntityMeta(null);
-        };
     }, [clubId]);
 
-    const isClubAdmin =
-        user?.isSuperAdmin ||
-        user?.clubRoles?.some(
-            (r: any) => r.clubId === clubId && ['ADMIN', 'PRESIDENT', 'MANAGER'].includes(r.role),
-        );
+    const filteredMembers = members.filter((m) => m.clubId === clubId || m.club?.id === clubId);
 
-    const filteredMembers = members.filter((m) => {
-        const fullName = `${m.user?.firstName || ''} ${m.user?.lastName || ''}`.toLowerCase();
-        return fullName.includes(searchMember.toLowerCase()) || m.licenseNumber?.includes(searchMember);
-    });
+    const memberColumns = useMemo<ColumnDef<any>[]>(
+        () => [
+            {
+                id: 'member',
+                accessorFn: (row) => `${row.user?.firstName || ''} ${row.user?.lastName || ''}`,
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Member / Athlete" />,
+                cell: ({ row }) => (
+                    <span className="font-semibold text-slate-900 dark:text-white">
+                        {row.original.user ? `${row.original.user.firstName} ${row.original.user.lastName}` : 'Club Member'}
+                    </span>
+                ),
+            },
+            {
+                id: 'type',
+                accessorFn: (row) => row.type,
+                header: ({ column }) => <DataTableColumnHeader column={column} title="License Type" />,
+                cell: ({ row }) => (
+                    <span className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-mono text-slate-700 dark:text-slate-300">
+                        {row.original.type}
+                    </span>
+                ),
+            },
+            {
+                id: 'licenseNumber',
+                accessorFn: (row) => row.licenseNumber || row.user?.licenseId || '',
+                header: ({ column }) => <DataTableColumnHeader column={column} title="License #" />,
+                cell: ({ row }) => (
+                    <span className="font-mono font-bold text-red-600 dark:text-red-400">
+                        {row.original.licenseNumber || row.original.user?.licenseId || 'PENDING'}
+                    </span>
+                ),
+            },
+            {
+                id: 'eloPoints',
+                accessorFn: (row) => row.user?.eloPoints || 1200,
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Elo Points" />,
+                cell: ({ row }) => (
+                    <span className="font-mono font-bold text-slate-900 dark:text-white">
+                        {row.original.user?.eloPoints || 1200} pts
+                    </span>
+                ),
+            },
+            {
+                id: 'status',
+                accessorFn: (row) => row.status,
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+                cell: ({ row }) => {
+                    const isApproved = row.original.status === 'APPROVED';
+                    return (
+                        <span
+                            className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                isApproved
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800/50'
+                                    : 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800/50'
+                            }`}
+                        >
+                            {row.original.status}
+                        </span>
+                    );
+                },
+            },
+            {
+                id: 'validity',
+                accessorFn: (row) => (row.validUntil ? new Date(row.validUntil).getTime() : 0),
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Validity" className="justify-end w-full" />,
+                cell: ({ row }) => (
+                    <div className="text-right text-slate-500 dark:text-slate-400">
+                        {row.original.validUntil ? format(new Date(row.original.validUntil), 'MMM yyyy') : 'Current Season'}
+                    </div>
+                ),
+            },
+        ],
+        []
+    );
 
     if (loading) {
         return (
             <div className="flex h-64 items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
-            </div>
-        );
-    }
-
-    if (!club) {
-        return (
-            <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/50 p-8 text-center text-slate-700 dark:text-slate-300">
-                Club not found.
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
             </div>
         );
     }
 
     return (
-        <div className="space-y-6 md:space-y-8 pb-16">
-            {/* Club Workspace Header Banner */}
-            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-gradient-to-r dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-5 sm:p-6 md:p-8 shadow-sm dark:shadow-xl">
-                <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                            <span className="rounded bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 px-2.5 py-0.5 text-xs font-bold uppercase">
-                                Affiliated Sports Club
-                            </span>
-                            <span className="font-mono text-xs text-red-600 dark:text-red-400 font-bold">
-                                [{club.code}]
-                            </span>
+        <div className="space-y-6 pb-12">
+            {/* Club Banner Header */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 shadow-sm relative overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-red-600 to-rose-700 text-white flex items-center justify-center font-bold text-xl shadow-md">
+                            {club?.code || 'CLB'}
                         </div>
-
-                        <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white md:text-3xl">
-                            {club.name}
-                        </h1>
-
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 pt-1">
-                            <span className="flex items-center gap-1.5">
-                                <MapPin className="h-4 w-4 text-red-500" />
-                                {club.city || 'Switzerland'}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                                <Users className="h-4 w-4 text-slate-400" />
-                                {t('clubWorkspace.registeredPlayersCount', { count: members.length })}
-                            </span>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+                                    {club?.name || 'Club Directory'}
+                                </h1>
+                                <span className="rounded-full bg-red-100 dark:bg-red-950 px-2.5 py-0.5 text-xs font-bold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/40">
+                                    Active Club
+                                </span>
+                            </div>
+                            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
+                                <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                                <span>{club?.address || `${club?.city || 'Switzerland'}`}</span>
+                            </p>
                         </div>
                     </div>
 
-                    {/* Quick Club Actions */}
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
                         <Link
                             href="/licenses/apply"
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-red-700 transition shadow"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition"
                         >
                             <Plus className="h-4 w-4" />
-                            <span>{t('licenses.applyNew')}</span>
+                            <span>Request Club License</span>
                         </Link>
-                        {isClubAdmin && (
-                            <Link
-                                href="/licenses/approvals"
-                                className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-3.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
-                            >
-                                <Award className="h-4 w-4 text-amber-500" />
-                                <span>{t('licenses.approvalsQueue')}</span>
-                            </Link>
-                        )}
                     </div>
                 </div>
             </div>
 
-            {/* Club Workspace KPI Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-xs">
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold uppercase">
-                        Club Members
-                    </span>
-                    <div className="mt-1 text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                        {members.length}
-                    </div>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-xs">
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold uppercase">
-                        League Teams
-                    </span>
-                    <div className="mt-1 text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                        {competitions.length}
-                    </div>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-xs">
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold uppercase">
-                        Active Licenses
-                    </span>
-                    <div className="mt-1 text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">
-                        {members.filter((m) => m.status === 'APPROVED').length}
-                    </div>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-xs">
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold uppercase">
-                        Domestic T-Cards
-                    </span>
-                    <div className="mt-1 text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400">
-                        {members.filter((m) => m.type === 'DOMESTIC_T_CARD').length}
-                    </div>
-                </div>
-            </div>
-
-            {/* Members Roster Section */}
-            <div className="space-y-4" id="members">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between">
                     <div>
-                        <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <Users className="h-5 w-5 text-red-500" />
-                            <span>{t('clubWorkspace.members')}</span>
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Manage club athlete passes, Elo ratings, and licensing validation.
-                        </p>
+                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Registered Athletes</div>
+                        <div className="text-2xl font-black text-slate-900 dark:text-white">{filteredMembers.length}</div>
                     </div>
-
-                    <div className="relative min-w-[200px]">
-                        <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Filter members..."
-                            value={searchMember}
-                            onChange={(e) => setSearchMember(e.target.value)}
-                            className="w-full rounded-lg border border-slate-300 bg-slate-50 pl-9 pr-3 py-1.5 text-xs text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                        />
-                    </div>
+                    <Users className="w-8 h-8 text-red-500" />
                 </div>
-
-                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 shadow-xs">
-                    <table className="w-full text-left text-xs min-w-[600px]">
-                        <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 dark:bg-slate-950 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-bold">
-                            <tr>
-                                <th className="py-3 pl-4 pr-2">Member / Athlete</th>
-                                <th className="py-3 px-3">License Type</th>
-                                <th className="py-3 px-3 font-mono">License #</th>
-                                <th className="py-3 px-3 font-mono">Elo Points</th>
-                                <th className="py-3 px-3 text-center">Status</th>
-                                <th className="py-3 pr-4 pl-2 text-right">Validity</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                            {filteredMembers.map((m) => (
-                                <tr
-                                    key={m.id}
-                                    className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition"
-                                >
-                                    <td className="py-3 pl-4 pr-2 font-medium text-slate-900 dark:text-white">
-                                        {m.user ? `${m.user.firstName} ${m.user.lastName}` : 'Club Member'}
-                                    </td>
-                                    <td className="py-3 px-3">
-                                        <span className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-mono text-slate-700 dark:text-slate-300">
-                                            {m.type}
-                                        </span>
-                                    </td>
-                                    <td className="py-3 px-3 font-mono font-bold text-red-600 dark:text-red-400">
-                                        {m.licenseNumber || 'PENDING'}
-                                    </td>
-                                    <td className="py-3 px-3 font-mono font-bold text-slate-900 dark:text-white">
-                                        {m.user?.eloPoints || 1200} pts
-                                    </td>
-                                    <td className="py-3 px-3 text-center">
-                                        <span
-                                            className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
-                                                m.status === 'APPROVED'
-                                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800/50'
-                                                    : 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800/50'
-                                            }`}
-                                        >
-                                            {m.status}
-                                        </span>
-                                    </td>
-                                    <td className="py-3 pr-4 pl-2 text-right text-slate-500 dark:text-slate-400">
-                                        {m.validUntil ? format(new Date(m.validUntil), 'MMM yyyy') : 'Current Season'}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between">
+                    <div>
+                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Average Rating</div>
+                        <div className="text-2xl font-black text-slate-900 dark:text-white">
+                            {filteredMembers.length > 0
+                                ? Math.round(
+                                      filteredMembers.reduce((acc, m) => acc + (m.user?.eloPoints || 1200), 0) /
+                                          filteredMembers.length
+                                  )
+                                : 1200}{' '}
+                            <span className="text-xs font-normal text-slate-400">pts</span>
+                        </div>
+                    </div>
+                    <Trophy className="w-8 h-8 text-amber-500" />
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between">
+                    <div>
+                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Affiliated City</div>
+                        <div className="text-lg font-black text-slate-900 dark:text-white truncate">{club?.city || 'Switzerland'}</div>
+                    </div>
+                    <MapPin className="w-8 h-8 text-blue-500" />
                 </div>
             </div>
 
-            {/* Registered League Teams Section */}
-            <div className="space-y-4" id="teams">
+            {/* Members Interactive DataTable */}
+            <div className="space-y-3" id="members">
                 <div>
                     <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <Trophy className="h-5 w-5 text-red-500" />
-                        <span>{t('clubWorkspace.teams')}</span>
+                        <Users className="h-5 w-5 text-red-500" />
+                        <span>{t('clubWorkspace.members')}</span>
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Active teams representing {club.name} in national and regional championships.
+                        Manage club athlete passes, Elo ratings, and licensing validation.
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {competitions.slice(0, 3).map((comp, idx) => (
-                        <div
-                            key={comp.id || idx}
-                            className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60 shadow-xs space-y-3"
-                        >
-                            <div className="flex items-center justify-between">
-                                <span className="rounded bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400 px-2 py-0.5 text-[10px] font-bold uppercase">
-                                    Team #{idx + 1}
-                                </span>
-                                <span className="text-[10px] font-mono text-slate-400">
-                                    {comp.type}
-                                </span>
-                            </div>
-                            <h4 className="font-bold text-slate-900 dark:text-white text-sm">
-                                {club.name} Team {idx + 1}
-                            </h4>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
-                                {comp.name}
-                            </p>
-                            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                                <Link
-                                    href={`/competition/${comp.id}`}
-                                    className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 dark:text-red-400 hover:underline"
-                                >
-                                    <span>View Tournament</span>
-                                    <ChevronRight className="h-3.5 w-3.5" />
-                                </Link>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                <DataTable
+                    columns={memberColumns}
+                    data={filteredMembers}
+                    searchPlaceholder="Search club athletes, license #, type..."
+                    emptyMessage="No athletes currently registered under this club."
+                    defaultPageSize={10}
+                    pageSizeOptions={[5, 10, 25, 50]}
+                />
             </div>
         </div>
     );
 }
-
