@@ -18,6 +18,7 @@ import { AreenaDevTools } from '@/components/layout/AreenaDevTools';
 import { AdminNoticeProvider } from '@/lib/adminNoticeContext';
 import { ToastContainer } from '@/lib/toast';
 import { PopupContainer } from '@/lib/popup';
+import { BreadcrumbsBar } from '@/components/layout/BreadcrumbsBar';
 
 export const metadata: Metadata = {
     title: {
@@ -84,7 +85,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                                     <div className="flex flex-1 min-h-0 overflow-hidden">
                                         <Suspense fallback={<aside className="w-64 h-full flex-shrink-0 border-r border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-950/70 hidden md:flex" />}><Sidebar /></Suspense>
                                         <main className="flex-1 min-h-0 overflow-y-auto p-4 md:p-8 bg-slate-50 dark:bg-gradient-to-b dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-                                            <div className="mx-auto max-w-7xl">{children}</div>
+                                            <div className="mx-auto max-w-7xl space-y-4">
+                                                <Suspense fallback={null}>
+                                                    <BreadcrumbsBar />
+                                                </Suspense>
+                                                {children}
+                                            </div>
                                         </main>
                                     </div>
                                 </AdminNoticeProvider>
