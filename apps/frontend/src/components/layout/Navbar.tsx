@@ -46,6 +46,7 @@ import {
     Cookie,
     HelpCircle,
     ShieldCheck,
+    ShieldAlert,
     Mic,
     DollarSign,
     BarChart3,
@@ -380,6 +381,20 @@ export function Navbar() {
                                                 >
                                                     <ShieldCheck className="h-4 w-4 text-purple-500" />
                                                     <span>{t('userMenu.myAdminAccess')}</span>
+                                                </Link>
+                                            )}
+
+                                            {/* System Admin Dashboard (Super Admin Only) */}
+                                            {user.isSuperAdmin && (
+                                                <Link
+                                                    href="/admin"
+                                                    onClick={() => setUserMenuOpen(false)}
+                                                    className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition group"
+                                                >
+                                                    <ShieldAlert className="h-4 w-4 text-red-500" />
+                                                    <span className="font-semibold text-red-600 dark:text-red-400">
+                                                        {t('nav.adminDashboard') || 'System Admin Dashboard'}
+                                                    </span>
                                                 </Link>
                                             )}
                                         </div>

@@ -2,10 +2,10 @@
 
 import React, { createContext, useContext, useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Network, Trophy, Shield } from 'lucide-react';
+import { Network, Trophy, Shield, ShieldAlert } from 'lucide-react';
 import { api } from './api';
 
-export type MainViewType = 'association' | 'tournament' | 'club';
+export type MainViewType = 'association' | 'tournament' | 'club' | 'admin';
 
 export interface EntityMeta {
     id: string;
@@ -63,6 +63,17 @@ export const MAIN_VIEW_DEFINITIONS: Record<MainViewType, MainViewMeta> = {
         badgeColor: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/70 dark:text-blue-400 dark:border-blue-800/50',
         gradientBg: 'from-blue-600 to-indigo-600',
     },
+    admin: {
+        id: 'admin',
+        labelKey: 'mainViews.admin',
+        shortLabelKey: 'mainViews.adminShort',
+        descKey: 'mainViews.adminDesc',
+        badgeKey: 'mainViews.adminBadge',
+        icon: ShieldAlert,
+        accentColor: 'text-purple-600 dark:text-purple-400',
+        badgeColor: 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950/70 dark:text-purple-400 dark:border-purple-800/50',
+        gradientBg: 'from-purple-600 via-red-600 to-rose-700',
+    },
 };
 
 interface MainViewContextType {
@@ -112,7 +123,10 @@ export function MainViewProvider({ children }: { children: React.ReactNode }) {
 
     // Determine active view & entity ID strictly from URL
     const { activeView, entityId } = useMemo(() => {
-        if (pathname.startsWith('/competition/') || pathname.startsWith('/competitions/') || pathname.startsWith('/competition/')) {
+        if (pathname.startsWith('/admin')) {
+            return { activeView: 'admin' as MainViewType, entityId: 'system' };
+        }
+        if (pathname.startsWith('/competition/') || pathname.startsWith('/competitions/')) {
             const parts = pathname.split('/');
             const id = parts[2] || null;
             return { activeView: 'tournament' as MainViewType, entityId: id };

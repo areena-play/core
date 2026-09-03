@@ -61,7 +61,7 @@ export interface NavSection {
 }
 
 export interface GetNavSectionsParams {
-    activeView: 'association' | 'club' | 'tournament';
+    activeView: 'association' | 'club' | 'tournament' | 'admin';
     entityId?: string | null;
     pathname: string;
     t: (key: string) => string;
@@ -84,6 +84,52 @@ export function getCommonNavSections({
         user?.associationRoles?.some((r: any) =>
             ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
         );
+
+    // 0. SYSTEM ADMIN WORKSPACE VIEW
+    if (activeView === 'admin') {
+        return [
+            {
+                sectionTitle: 'Platform Root Control',
+                items: [
+                    {
+                        id: 'admin-dashboard',
+                        label: t('nav.adminDashboard') || 'Admin Dashboard',
+                        href: '/admin',
+                        icon: ShieldAlert,
+                    },
+                    {
+                        id: 'system-settings',
+                        label: t('nav.systemSettings') || 'System Settings',
+                        href: '/admin/settings',
+                        icon: Settings,
+                    },
+                ],
+            },
+            {
+                sectionTitle: 'Global Governance',
+                items: [
+                    {
+                        id: 'admin-users',
+                        label: t('nav.users') || 'Global Users & Roles',
+                        href: '/admin/users',
+                        icon: Users,
+                    },
+                    {
+                        id: 'admin-audit-logs',
+                        label: t('nav.auditLogs') || 'Audit & Security Trail',
+                        href: '/admin/audit-logs',
+                        icon: Activity,
+                    },
+                    {
+                        id: 'admin-communications',
+                        label: t('nav.communications') || 'Communications & Notices',
+                        href: '/admin/communications',
+                        icon: Mail,
+                    },
+                ],
+            },
+        ];
+    }
 
     // 1. TOURNAMENT WORKSPACE VIEW
     if (activeView === 'tournament' && entityId) {
@@ -503,27 +549,6 @@ export function getCommonNavSections({
                     label: t('nav.financingHub'),
                     href: `${mgmtPrefix}/finances`,
                     icon: Receipt,
-                },
-            ],
-        });
-    }
-
-    // 4. Super Admin Section: Visible ONLY to Super Admins
-    if (user?.isSuperAdmin) {
-        sectionsList.push({
-            sectionTitle: t('nav.superAdminSection'),
-            items: [
-                {
-                    id: 'admin-dashboard',
-                    label: t('nav.adminDashboard'),
-                    href: '/admin',
-                    icon: ShieldAlert,
-                },
-                {
-                    id: 'system-settings',
-                    label: t('nav.systemSettings'),
-                    href: '/admin/settings',
-                    icon: Settings,
                 },
             ],
         });

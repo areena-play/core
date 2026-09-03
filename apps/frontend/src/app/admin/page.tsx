@@ -287,7 +287,7 @@ export default function AdminDashboardPage() {
                 </Link>
 
                 <Link
-                    href="/management/users"
+                    href="/admin/users"
                     className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-sm hover:shadow-md hover:border-emerald-500/50 transition group"
                 >
                     <div className="flex items-center justify-between mb-3">
@@ -305,7 +305,7 @@ export default function AdminDashboardPage() {
                 </Link>
 
                 <Link
-                    href="/management/audit-logs"
+                    href="/admin/audit-logs"
                     className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-sm hover:shadow-md hover:border-rose-500/50 transition group"
                 >
                     <div className="flex items-center justify-between mb-3">
@@ -331,7 +331,7 @@ export default function AdminDashboardPage() {
                         <span>Latest System & Administrative Events</span>
                     </h3>
                     <Link
-                        href="/management/audit-logs"
+                        href="/admin/audit-logs"
                         className="text-xs font-bold text-red-600 dark:text-red-400 hover:underline flex items-center gap-1"
                     >
                         <span>Audit Log Explorer</span>
