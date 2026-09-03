@@ -12,6 +12,7 @@ interface AccessDeniedProps {
     description?: string;
     requiredRole?: string;
     returnHref?: string;
+    loading?: boolean;
 }
 
 export function AccessDenied({
@@ -19,6 +20,7 @@ export function AccessDenied({
     description,
     requiredRole = 'Association Administrator or Super Administrator',
     returnHref = '/',
+    loading: externalLoading,
 }: AccessDeniedProps) {
     const { user, loading: authLoading, justLoggedOut } = useAuth();
     const { t } = useI18n();
@@ -39,6 +41,17 @@ export function AccessDenied({
 
     if (justLoggedOut) {
         return null;
+    }
+
+    if (authLoading || externalLoading) {
+        return (
+            <div className="min-h-[60vh] flex items-center justify-center p-4">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-500 border-t-transparent" />
+                    <p className="text-xs text-slate-500 font-medium">{t('common.loading')}</p>
+                </div>
+            </div>
+        );
     }
 
     return (

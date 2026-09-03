@@ -534,7 +534,7 @@ export default function AdminUsersPage() {
                     },
                     {
                         id: 'rating',
-                        accessorFn: (u) => u.eloPoints || 1000,
+                        accessorFn: (u) => String(u.eloPoints || 1000),
                         header: ({ column }) => <DataTableColumnHeader column={column} title="Rating / License ID" />,
                         cell: ({ row }) => {
                             const u = row.original;
