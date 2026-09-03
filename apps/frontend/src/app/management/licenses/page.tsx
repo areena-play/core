@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
@@ -14,7 +14,6 @@ import {
     XCircle,
     Shield,
     GraduationCap,
-    ChevronRight,
     UserCheck,
 } from 'lucide-react';
 import { format } from 'date-fns';

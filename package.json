@@ -17,6 +17,8 @@
         "dev:ws": "npm run dev --workspace=@areena/websocket-server",
         "prisma:generate": "npm run prisma:generate --workspace=@areena/backend",
         "prisma:migrate": "npm run prisma:migrate --workspace=@areena/backend",
+        "prisma:push": "npm run prisma:push --workspace=@areena/backend",
+        "db:update": "node scripts/db-update.js",
         "prisma:seed": "npm run prisma:seed --workspace=@areena/backend",
         "demo:seed": "npm run prisma:seed --workspace=@areena/backend",
         "demo:reset": "npm run prisma:seed --workspace=@areena/backend",

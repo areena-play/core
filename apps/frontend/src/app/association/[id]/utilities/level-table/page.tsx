@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
@@ -8,7 +8,6 @@ import {
     Search,
     Shield,
     Sparkles,
-    ChevronRight,
     Award,
     Calculator,
     Info,

@@ -147,17 +147,6 @@ function SidebarContent() {
                             {headerDesc}
                         </p>
                     </div>
-
-                    {/* Return to Main Starting Page Link */}
-                    <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
-                        <Link
-                            href="/"
-                            className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 transition group"
-                        >
-                            <ArrowLeft className="h-3 w-3 group-hover:-translate-x-0.5 transition-transform" />
-                            <span>Return to Main Starting Page</span>
-                        </Link>
-                    </div>
                 </div>
 
                 {/* Dynamic Navigation Sections */}

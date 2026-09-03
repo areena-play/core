@@ -9,7 +9,6 @@ import {
     Shield,
     CheckCircle2,
     AlertCircle,
-    ChevronLeft,
     Key,
     Building2,
     Image as ImageIcon,
@@ -423,16 +422,9 @@ export default function AssociationSettingsPage() {
 
     return (
         <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
-            {/* Breadcrumb & Navigation Header */}
+            {/* Navigation Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
                 <div className="space-y-1">
-                    <Link
-                        href="/associations"
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 mb-2 transition"
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                        <span>{t('nav.associations')}</span>
-                    </Link>
                     <div className="flex items-center gap-2">
                         <div className="p-2 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
                             <Sliders className="h-6 w-6" />

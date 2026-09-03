@@ -8,14 +8,12 @@ import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import {
     Flame,
-    ChevronRight,
     ArrowLeft,
     Save,
     CheckCircle2,
     AlertCircle,
     Calendar,
     MapPin,
-    Trophy,
     Shield,
 } from 'lucide-react';
 
@@ -112,24 +110,6 @@ export default function EncounterScoresheetPage() {
 
     return (
         <div className="space-y-6 md:space-y-8 pb-16">
-            {/* Breadcrumbs */}
-            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <Link href="/competitions" className="hover:underline flex items-center gap-1">
-                    <Trophy className="h-3.5 w-3.5 text-red-500" />
-                    <span>{t('nav.competitions') || 'Competitions'}</span>
-                </Link>
-                <ChevronRight className="h-3 w-3" />
-                <Link href={`/competition/${competitionId}`} className="hover:underline text-slate-700 dark:text-slate-300 font-medium">
-                    {competition?.name || 'Tournament'}
-                </Link>
-                <ChevronRight className="h-3 w-3" />
-                <Link href={`/competition/${competitionId}/results`} className="hover:underline text-slate-700 dark:text-slate-300 font-medium">
-                    Results
-                </Link>
-                <ChevronRight className="h-3 w-3" />
-                <span className="font-semibold text-slate-900 dark:text-white">Scoresheet #{encounter.id.slice(0, 8)}</span>
-            </div>
-
             {/* Header Hero Card */}
             <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-gradient-to-r dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-5 sm:p-6 md:p-8 shadow-sm dark:shadow-xl">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

@@ -173,17 +173,6 @@ export default function CompetitionDashboardPage() {
             {/* Live Scoring Ticker */}
             <LiveTicker />
 
-            {/* Breadcrumb Navigation */}
-            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <Link href="/competitions" className="hover:underline flex items-center gap-1">
-                    <Trophy className="h-3.5 w-3.5 text-red-500" />
-                    <span>{t('nav.competitions') || 'Competitions'}</span>
-                </Link>
-                <ChevronRight className="h-3 w-3" />
-                <span className="font-semibold text-slate-900 dark:text-white">{competition.name}</span>
-                <span className="ml-auto text-[11px] font-mono text-slate-400">ID: {competition.id.slice(0, 8)}</span>
-            </div>
-
             {/* Main Header Hero Card */}
             <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-gradient-to-r dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-5 sm:p-6 md:p-8 shadow-sm dark:shadow-xl">
                 <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">

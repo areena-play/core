@@ -11,7 +11,6 @@ import {
     Sparkles,
     Shield,
     Users,
-    ChevronRight,
     HelpCircle,
     RotateCcw,
     Table,
@@ -54,17 +53,6 @@ export default function EloCalculatorPage() {
             {/* Header */}
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
-                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-1">
-                        <Link href="/" className="hover:underline">
-                            {t('nav.dashboard')}
-                        </Link>
-                        <ChevronRight className="h-3 w-3" />
-                        <span>{t('nav.utilitiesSection')}</span>
-                        <ChevronRight className="h-3 w-3" />
-                        <span className="font-semibold text-slate-900 dark:text-white">
-                            {t('nav.eloCalculator')}
-                        </span>
-                    </div>
                     <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
                         <Calculator className="h-6 w-6 text-red-500" />
                         <span>{t('nav.eloCalculator')}</span>

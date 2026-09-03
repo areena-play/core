@@ -9,6 +9,7 @@
         "prisma:generate": "prisma generate --schema=prisma/schema",
         "prisma:migrate": "prisma migrate dev --schema=prisma/schema",
         "prisma:push": "prisma db push --schema=prisma/schema",
+        "prisma:update": "prisma db push --schema=prisma/schema && prisma generate --schema=prisma/schema",
         "prisma:seed": "ts-node -r dotenv/config prisma/seed.ts"
     },
     "dependencies": {

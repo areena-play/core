@@ -99,7 +99,7 @@ export default function PersonProfilePage() {
             {/* Schema.org Person Structured Data */}
             <JsonLd data={generatePersonJsonLd(person)} />
 
-            {/* Top Navigation / Breadcrumbs */}
+            {/* Top Action Bar */}
             <div className="flex items-center justify-between">
                 <button
                     type="button"
