@@ -299,7 +299,7 @@ export function getCommonNavSections({
     const leaguesHref = `${competitionsHref}?type=league`;
     const tournamentsHref = `${competitionsHref}?type=tournament`;
     const seasonTournamentsHref = `${competitionsHref}?type=season_tournament`;
-    const usersHref = isSubAssoc ? `${subAssocPrefix}/users` : '/users';
+    const peopleHref = isSubAssoc ? `${subAssocPrefix}/people` : '/people';
     const clubsHref = isSubAssoc ? `${subAssocPrefix}/clubs` : '/clubs';
     const coursesHref = isSubAssoc ? `${subAssocPrefix}/courses` : '/courses';
     const locationsHref = isSubAssoc ? `${subAssocPrefix}/locations` : '/locations';
@@ -393,28 +393,28 @@ export function getCommonNavSections({
                 {
                     id: 'people',
                     label: t('nav.people'),
-                    href: usersHref,
+                    href: peopleHref,
                     icon: Users,
                     children: [
                         {
                             id: 'players',
                             label: t('nav.players'),
-                            href: `${usersHref}?role=player`,
+                            href: `${peopleHref}?role=player`,
                         },
                         {
                             id: 'referees',
                             label: t('nav.referees'),
-                            href: `${usersHref}?role=referee`,
+                            href: `${peopleHref}?role=referee`,
                         },
                         {
                             id: 'coaches',
                             label: t('nav.coaches'),
-                            href: `${usersHref}?role=coach`,
+                            href: `${peopleHref}?role=coach`,
                         },
                         {
                             id: 'officials',
                             label: t('nav.officials'),
-                            href: `${usersHref}?role=official`,
+                            href: `${peopleHref}?role=official`,
                         },
                     ],
                 },
