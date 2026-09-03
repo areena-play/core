@@ -1046,49 +1046,69 @@ router.get('/users', authenticateToken, async (req: AuthRequest, res: Response, 
             where.AND = andConditions;
         }
 
-        const users = await prisma.user.findMany({
-            where,
-            select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                phone: true,
-                city: true,
-                country: true,
-                licenseId: true,
-                eloPoints: true,
-                rank: true,
-                avatarUrl: true,
-                associationRoles: {
-                    select: {
-                        id: true,
-                        role: true,
-                        association: { select: { id: true, name: true, shortName: true, code: true } },
-                    },
-                },
-                clubRoles: {
-                    select: {
-                        id: true,
-                        role: true,
-                        club: { select: { id: true, name: true, code: true } },
-                    },
-                },
-                licenses: {
-                    select: {
-                        id: true,
-                        type: true,
-                        status: true,
-                        validUntil: true,
-                        club: { select: { id: true, name: true } },
-                    },
-                },
-            },
-            take: 100,
-            orderBy: { lastName: 'asc' },
-        });
+        const page = req.query.page ? Math.max(1, parseInt(req.query.page as string, 10)) : 1;
+        const limit = req.query.limit ? Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10))) : 25;
+        const hasPagination = req.query.page !== undefined || req.query.limit !== undefined;
+        const skip = (page - 1) * limit;
 
-        res.json(users);
+        const [users, total] = await Promise.all([
+            prisma.user.findMany({
+                where,
+                select: {
+                    id: true,
+                    email: true,
+                    firstName: true,
+                    lastName: true,
+                    phone: true,
+                    city: true,
+                    country: true,
+                    licenseId: true,
+                    eloPoints: true,
+                    rank: true,
+                    avatarUrl: true,
+                    associationRoles: {
+                        select: {
+                            id: true,
+                            role: true,
+                            association: { select: { id: true, name: true, shortName: true, code: true } },
+                        },
+                    },
+                    clubRoles: {
+                        select: {
+                            id: true,
+                            role: true,
+                            club: { select: { id: true, name: true, code: true } },
+                        },
+                    },
+                    licenses: {
+                        select: {
+                            id: true,
+                            type: true,
+                            status: true,
+                            validUntil: true,
+                            club: { select: { id: true, name: true } },
+                        },
+                    },
+                },
+                skip: hasPagination ? skip : 0,
+                take: hasPagination ? limit : 100,
+                orderBy: { lastName: 'asc' },
+            }),
+            prisma.user.count({ where }),
+        ]);
+
+        if (hasPagination) {
+            const totalPages = Math.ceil(total / limit) || 1;
+            res.json({
+                users,
+                total,
+                page,
+                totalPages,
+                limit,
+            });
+        } else {
+            res.json(users);
+        }
     } catch (err) {
         next(err);
     }

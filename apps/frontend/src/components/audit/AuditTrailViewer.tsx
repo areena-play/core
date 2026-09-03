@@ -59,7 +59,7 @@ export function AuditTrailViewer({
     compact = false,
 }: AuditTrailViewerProps) {
     const { t } = useI18n();
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
 
     const [logs, setLogs] = useState<any[]>([]);
     const [stats, setStats] = useState<any | null>(null);
@@ -95,8 +95,8 @@ export function AuditTrailViewer({
         try {
             setStatsLoading(true);
             const params: Record<string, string> = {};
-            if (associationId) params.associationId = associationId;
-            if (clubId) params.clubId = clubId;
+            if (associationId && associationId.trim() !== '') params.associationId = associationId.trim();
+            if (clubId && clubId.trim() !== '') params.clubId = clubId.trim();
             const data = await api.getAuditStats(params);
             setStats(data);
         } catch (err) {
@@ -114,11 +114,11 @@ export function AuditTrailViewer({
                 page,
                 limit: pageSize,
             };
-            if (associationId) params.associationId = associationId;
-            if (clubId) params.clubId = clubId;
+            if (associationId && associationId.trim() !== '') params.associationId = associationId.trim();
+            if (clubId && clubId.trim() !== '') params.clubId = clubId.trim();
             if (selectedCategory && selectedCategory !== 'ALL') params.category = selectedCategory;
             if (selectedStatus && selectedStatus !== 'ALL') params.status = selectedStatus;
-            if (debouncedSearch) params.search = debouncedSearch;
+            if (debouncedSearch && debouncedSearch.trim() !== '') params.search = debouncedSearch.trim();
 
             const res = await api.getAuditLogs(params);
             setLogs(res.data || []);
@@ -161,30 +161,6 @@ export function AuditTrailViewer({
         setCopiedId(true);
         setTimeout(() => setCopiedId(false), 2000);
     };
-
-    const isAuthorized =
-        user?.isSuperAdmin ||
-        user?.associationRoles?.some((r: any) =>
-            ['ADMIN', 'PRESIDENT', 'SECRETARY', 'TREASURER'].includes(r.role)
-        ) ||
-        user?.clubRoles?.some((r: any) => ['ADMIN', 'PRESIDENT'].includes(r.role));
-
-    if (!isAuthorized) {
-        return (
-            <AccessDenied
-                title="Audit Trail Restricted"
-                description="Forensic security and change logs are strictly confidential and restricted to authorized federation and club administrators."
-                requiredRole="Federation / Club Administrator"
-                returnHref={
-                    associationId
-                        ? `/association/${associationId}`
-                        : clubId
-                        ? `/club/${clubId}`
-                        : '/'
-                }
-            />
-        );
-    }
 
     const getCategoryBadge = (category: string) => {
         switch (category) {
@@ -364,6 +340,38 @@ export function AuditTrailViewer({
         ],
         [t]
     );
+
+    if (authLoading) {
+        return (
+            <div className="flex h-64 items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
+            </div>
+        );
+    }
+
+    const isAuthorized =
+        user?.isSuperAdmin ||
+        user?.associationRoles?.some((r: any) =>
+            ['ADMIN', 'PRESIDENT', 'SECRETARY', 'TREASURER'].includes(r.role)
+        ) ||
+        user?.clubRoles?.some((r: any) => ['ADMIN', 'PRESIDENT'].includes(r.role));
+
+    if (!user || !isAuthorized) {
+        return (
+            <AccessDenied
+                title="Audit Trail Restricted"
+                description="Forensic security and change logs are strictly confidential and restricted to authorized federation and club administrators."
+                requiredRole="Federation / Club Administrator"
+                returnHref={
+                    associationId
+                        ? `/association/${associationId}`
+                        : clubId
+                        ? `/club/${clubId}`
+                        : '/'
+                }
+            />
+        );
+    }
 
     return (
         <div className="space-y-6">

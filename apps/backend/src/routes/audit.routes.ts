@@ -21,8 +21,8 @@ function checkAuditAccess(req: AuthRequest, associationId?: string, clubId?: str
         return req.user.clubRoles.some((r) => r.clubId === clubId);
     }
 
-    // Has any association admin role -> can view federation logs
-    if (req.user.associationRoles.length > 0) return true;
+    // Has any association or club admin role -> can view audit logs
+    if (req.user.associationRoles.length > 0 || req.user.clubRoles.length > 0) return true;
 
     return false;
 }

@@ -155,7 +155,7 @@ class ApiClient {
         return this.request('/auth/change-password', { method: 'POST', body: JSON.stringify(body) });
     }
 
-    getUsers(params: string | { q?: string; associationId?: string; role?: string } = '') {
+    getUsers(params: string | { q?: string; associationId?: string; role?: string; page?: number; limit?: number } = '') {
         if (typeof params === 'string') {
             return this.request(`/auth/users?q=${encodeURIComponent(params)}`);
         }
@@ -163,6 +163,8 @@ class ApiClient {
         if (params.q) qs.set('q', params.q);
         if (params.associationId) qs.set('associationId', params.associationId);
         if (params.role) qs.set('role', params.role);
+        if (params.page) qs.set('page', String(params.page));
+        if (params.limit) qs.set('limit', String(params.limit));
         const query = qs.toString();
         return this.request(`/auth/users${query ? `?${query}` : ''}`);
     }
