@@ -198,7 +198,7 @@ export function GlobalSearchBar({
 
             {/* Results Dropdown */}
             {isOpen && query.trim().length >= 2 && (
-                <div className="absolute left-0 top-full mt-2 z-50 w-full min-w-[320px] sm:min-w-[440px] md:min-w-[540px] lg:min-w-[620px] max-w-[90vw] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-2 shadow-2xl animate-in fade-in-50 zoom-in-95 max-h-[28rem] overflow-y-auto">
+                <div className="absolute left-0 top-full mt-2 z-50 w-full min-w-0 max-w-full md:min-w-[480px] lg:min-w-[580px] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-2 shadow-2xl animate-in fade-in-50 zoom-in-95 max-h-[28rem] overflow-y-auto">
                     {results.length > 0 ? (
                         <div className="space-y-1">
                             <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 mb-1 pb-2">
@@ -216,15 +216,15 @@ export function GlobalSearchBar({
                                         type="button"
                                         onClick={() => handleSelectResult(item)}
                                         onMouseEnter={() => setSelectedIndex(idx)}
-                                        className={`w-full flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition ${
+                                        className={`w-full flex items-center justify-between gap-2.5 rounded-xl px-2.5 py-2 text-left transition ${
                                             isSelected
                                                 ? 'bg-red-50 dark:bg-red-950/40 text-slate-900 dark:text-white'
                                                 : 'hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-200'
                                         }`}
                                     >
-                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                             <div
-                                                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
+                                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${
                                                     isSelected
                                                         ? 'bg-white dark:bg-slate-900 border-red-200 dark:border-red-800/80 shadow-xs'
                                                         : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
@@ -232,19 +232,19 @@ export function GlobalSearchBar({
                                             >
                                                 {renderTypeIcon(item)}
                                             </div>
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <span className="font-bold text-xs text-slate-900 dark:text-white">
+                                            <div className="min-w-0 flex-1 overflow-hidden">
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                    <span className="font-bold text-xs text-slate-900 dark:text-white truncate">
                                                         {item.title}
                                                     </span>
                                                     {item.badge && (
-                                                        <span className="shrink-0 rounded-md bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60 uppercase">
+                                                        <span className="shrink-0 rounded-md bg-slate-100 dark:bg-slate-800 px-1.5 py-0.2 text-[9px] font-bold text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60 uppercase">
                                                             {item.badge}
                                                         </span>
                                                     )}
                                                 </div>
                                                 {item.subtitle && (
-                                                    <div className="text-[11px] text-slate-400 dark:text-slate-400 line-clamp-1 mt-0.5">
+                                                    <div className="text-[11px] text-slate-400 dark:text-slate-400 truncate mt-0.5">
                                                         {item.subtitle}
                                                     </div>
                                                 )}
