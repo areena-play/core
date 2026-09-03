@@ -1,9 +1,9 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { ChevronRight, Home, Shield, Trophy, Building2, User, Layers, HelpCircle, Calculator, BookOpen, Activity, Code2, Megaphone } from 'lucide-react';
+import { ChevronRight, Home, Shield, Trophy, Building2, User, Layers, HelpCircle, Calculator, BookOpen, Activity, Code2, Megaphone, SlidersHorizontal, Table as TableIcon } from 'lucide-react';
 import { useMainView } from '@/lib/mainViewContext';
 import { useI18n } from '@/lib/i18nContext';
 
@@ -19,9 +19,9 @@ const SEGMENT_METADATA: Record<string, { labelKey?: string; fallback: string; ic
     locations: { fallback: 'Locations & Venues' },
     associations: { fallback: 'Associations', icon: Building2 },
     association: { fallback: 'Association', icon: Building2 },
-    utilities: { fallback: 'Utilities' },
+    utilities: { fallback: 'Utilities', icon: SlidersHorizontal },
     'elo-calculator': { fallback: 'ELO Calculator', icon: Calculator },
-    'level-table': { fallback: 'Level & Skill Table' },
+    'level-table': { fallback: 'Level & Skill Table', icon: TableIcon },
     developers: { fallback: 'Developer API', icon: Code2 },
     'developer-api': { fallback: 'Developer API', icon: Code2 },
     support: { fallback: 'Support & Help', icon: HelpCircle },
