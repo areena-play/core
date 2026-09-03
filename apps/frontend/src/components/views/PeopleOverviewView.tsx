@@ -146,15 +146,23 @@ function PeopleOverviewViewContent({ scopedAssociationId }: PeopleOverviewViewPr
                 header: ({ column }) => <DataTableColumnHeader column={column} title="Person / Name" />,
                 cell: ({ row }) => {
                     const u = row.original;
+                    const personHref = `/people/${encodeURIComponent(u.licenseId || u.id)}`;
                     return (
                         <div className="flex items-center gap-3 py-1">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-500/15 to-rose-500/15 text-red-600 dark:text-red-400 font-bold text-xs border border-red-500/20 shrink-0">
-                                {u.firstName?.[0] || 'U'}
-                                {u.lastName?.[0] || ''}
-                            </div>
+                            <Link href={personHref} className="group shrink-0">
+                                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-500/15 to-rose-500/15 text-red-600 dark:text-red-400 font-bold text-xs border border-red-500/20 group-hover:scale-105 group-hover:border-red-500/50 transition">
+                                    {u.firstName?.[0] || 'U'}
+                                    {u.lastName?.[0] || ''}
+                                </div>
+                            </Link>
                             <div className="min-w-0">
                                 <div className="font-bold text-slate-900 dark:text-white leading-tight truncate flex items-center gap-1.5">
-                                    <span>{u.firstName} {u.lastName}</span>
+                                    <Link
+                                        href={personHref}
+                                        className="hover:text-red-600 dark:hover:text-red-400 transition hover:underline"
+                                    >
+                                        {u.firstName} {u.lastName}
+                                    </Link>
                                     {u.isSuperAdmin && (
                                         <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                                             Admin

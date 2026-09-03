@@ -169,6 +169,10 @@ class ApiClient {
         return this.request(`/auth/users${query ? `?${query}` : ''}`);
     }
 
+    getPerson(identifier: string) {
+        return this.request(`/auth/users/${encodeURIComponent(identifier)}`);
+    }
+
     // Super Admin User Management
     getAdminUsers(params: Record<string, any> = {}) {
         const searchParams = new URLSearchParams();

@@ -1140,4 +1140,123 @@ router.get('/users', authenticateToken, async (req: AuthRequest, res: Response, 
     }
 });
 
+/**
+ * GET /auth/users/:identifier
+ * Public/authenticated view of a person profile by UUID or license ID.
+ */
+router.get('/users/:identifier', async (req, res, next) => {
+    try {
+        const { identifier } = req.params;
+        if (!identifier) {
+            return res.status(400).json({ error: 'User identifier is required' });
+        }
+
+        // Support matching either UUID or licenseId
+        const user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { id: identifier },
+                    { licenseId: identifier },
+                ],
+            },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                city: true,
+                country: true,
+                licenseId: true,
+                eloPoints: true,
+                rank: true,
+                avatarUrl: true,
+                birthDate: true,
+                gender: true,
+                createdAt: true,
+                associationRoles: {
+                    select: {
+                        id: true,
+                        role: true,
+                        association: {
+                            select: {
+                                id: true,
+                                name: true,
+                                shortName: true,
+                                code: true,
+                                slug: true,
+                            },
+                        },
+                    },
+                },
+                clubRoles: {
+                    select: {
+                        id: true,
+                        role: true,
+                        club: {
+                            select: {
+                                id: true,
+                                name: true,
+                                code: true,
+                                slug: true,
+                            },
+                        },
+                    },
+                },
+                licenses: {
+                    select: {
+                        id: true,
+                        type: true,
+                        status: true,
+                        validUntil: true,
+                        club: {
+                            select: {
+                                id: true,
+                                name: true,
+                                code: true,
+                            },
+                        },
+                        association: {
+                            select: {
+                                id: true,
+                                name: true,
+                                code: true,
+                            },
+                        },
+                        season: {
+                            select: {
+                                id: true,
+                                name: true,
+                            },
+                        },
+                    },
+                },
+                courseAttendances: {
+                    select: {
+                        id: true,
+                        attested: true,
+                        attestedAt: true,
+                        course: {
+                            select: {
+                                id: true,
+                                title: true,
+                                type: true,
+                                location: true,
+                                date: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!user) {
+            return res.status(404).json({ error: 'Person not found' });
+        }
+
+        res.json(user);
+    } catch (err) {
+        next(err);
+    }
+});
+
 export default router;
