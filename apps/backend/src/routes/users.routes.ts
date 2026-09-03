@@ -8,6 +8,8 @@ import {
     adminUpdateUserSchema,
     adminResetPasswordSchema,
     AuditCategory,
+    parseSearchTokens,
+    generateSearchVariants,
 } from '@areena/shared';
 import { AuditService } from '../services/audit.service';
 import { EmailService } from '../services/email.service';
@@ -23,30 +25,50 @@ router.use(authenticateToken, requireSuperAdmin);
  */
 router.get('/admin/list', async (req: AuthRequest, res: Response, next) => {
     try {
-        const q = (req.query.q as string)?.trim() || '';
-        const role = (req.query.role as string) || 'ALL';
-        const associationId = (req.query.associationId as string)?.trim() || '';
-        const page = Math.max(1, parseInt((req.query.page as string) || '1', 10));
-        const limit = Math.min(100, Math.max(1, parseInt((req.query.limit as string) || '20', 10)));
-        const sortBy = (req.query.sortBy as string) || 'createdAt';
-        const sortDir = (req.query.sortDir as string) === 'asc' ? 'asc' : 'desc';
-
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = Math.min(100, parseInt(req.query.limit as string) || 25);
         const skip = (page - 1) * limit;
+
+        const q = (req.query.q as string)?.trim() || '';
+        const role = (req.query.role as string)?.trim() || '';
+        const associationId = (req.query.associationId as string)?.trim() || '';
+        const clubId = (req.query.clubId as string)?.trim() || '';
+        const status = (req.query.status as string)?.trim() || '';
+        const sortBy = (req.query.sortBy as string) || 'lastName';
+        const sortDir = ((req.query.sortDir as string) || 'asc').toLowerCase() === 'desc' ? 'desc' : 'asc';
 
         // Build where filter
         const where: any = {};
         const andConditions: any[] = [];
 
         if (q) {
-            andConditions.push({
-                OR: [
-                    { firstName: { contains: q, mode: 'insensitive' } },
-                    { lastName: { contains: q, mode: 'insensitive' } },
-                    { email: { contains: q, mode: 'insensitive' } },
-                    { licenseId: { contains: q, mode: 'insensitive' } },
-                    { city: { contains: q, mode: 'insensitive' } },
-                    { phone: { contains: q, mode: 'insensitive' } },
-                ],
+            const tokens = parseSearchTokens(q);
+            tokens.forEach((tok) => {
+                if (tok.isExact) {
+                    andConditions.push({
+                        OR: [
+                            { firstName: { contains: tok.text, mode: 'insensitive' } },
+                            { lastName: { contains: tok.text, mode: 'insensitive' } },
+                            { email: { contains: tok.text, mode: 'insensitive' } },
+                            { licenseId: { contains: tok.text, mode: 'insensitive' } },
+                            { city: { contains: tok.text, mode: 'insensitive' } },
+                            { phone: { contains: tok.text, mode: 'insensitive' } },
+                        ],
+                    });
+                } else {
+                    const variants = generateSearchVariants(tok.text);
+
+                    andConditions.push({
+                        OR: variants.flatMap((v) => [
+                            { firstName: { contains: v, mode: 'insensitive' } },
+                            { lastName: { contains: v, mode: 'insensitive' } },
+                            { email: { contains: v, mode: 'insensitive' } },
+                            { licenseId: { contains: v, mode: 'insensitive' } },
+                            { city: { contains: v, mode: 'insensitive' } },
+                            { phone: { contains: v, mode: 'insensitive' } },
+                        ]),
+                    });
+                }
             });
         }
 

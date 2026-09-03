@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import { prisma } from '../config/prisma';
-import { AuditCategory } from '@areena/shared';
+import { AuditCategory, parseSearchTokens, generateSearchVariants } from '@areena/shared';
 import { AuthRequest } from '../middleware/auth';
 
 export interface RecordAuditParams {
@@ -142,18 +142,42 @@ export class AuditService {
 
         if (filters.search) {
             const query = filters.search.trim();
-            where.OR = [
-                { userEmail: { contains: query, mode: 'insensitive' } },
-                { userName: { contains: query, mode: 'insensitive' } },
-                { description: { contains: query, mode: 'insensitive' } },
-                { ipAddress: { contains: query, mode: 'insensitive' } },
-                { action: { contains: query, mode: 'insensitive' } },
-                { entityId: { contains: query, mode: 'insensitive' } },
-            ];
+            const tokens = parseSearchTokens(query);
+            if (tokens.length > 0) {
+                where.AND = where.AND || [];
+                tokens.forEach((tok) => {
+                    if (tok.isExact) {
+                        where.AND.push({
+                            OR: [
+                                { userEmail: { contains: tok.text, mode: 'insensitive' } },
+                                { userName: { contains: tok.text, mode: 'insensitive' } },
+                                { description: { contains: tok.text, mode: 'insensitive' } },
+                                { ipAddress: { contains: tok.text, mode: 'insensitive' } },
+                                { action: { contains: tok.text, mode: 'insensitive' } },
+                                { entityId: { contains: tok.text, mode: 'insensitive' } },
+                            ],
+                        });
+                    } else {
+                        const variants = generateSearchVariants(tok.text);
+
+                        where.AND.push({
+                            OR: variants.flatMap((v) => [
+                                { userEmail: { contains: v, mode: 'insensitive' } },
+                                { userName: { contains: v, mode: 'insensitive' } },
+                                { description: { contains: v, mode: 'insensitive' } },
+                                { ipAddress: { contains: v, mode: 'insensitive' } },
+                                { action: { contains: v, mode: 'insensitive' } },
+                                { entityId: { contains: v, mode: 'insensitive' } },
+                            ]),
+                        });
+                    }
+                });
+            }
         }
 
-        const [total, logs] = await Promise.all([
+        const [total, totalUnfiltered, logs] = await Promise.all([
             prisma.auditLog.count({ where }),
+            prisma.auditLog.count({}),
             prisma.auditLog.findMany({
                 where,
                 include: {
@@ -190,6 +214,7 @@ export class AuditService {
             data: logs,
             pagination: {
                 total,
+                totalUnfiltered,
                 page,
                 limit,
                 totalPages: Math.ceil(total / limit),

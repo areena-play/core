@@ -69,6 +69,7 @@ export function AuditTrailViewer({
     const [pageSize, setPageSize] = useState(compact ? 20 : 50);
     const [totalPages, setTotalPages] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
+    const [totalUnfilteredCount, setTotalUnfilteredCount] = useState<number | undefined>(undefined);
 
     // Filters
     const [selectedCategory, setSelectedCategory] = useState(initialCategory || 'ALL');
@@ -124,6 +125,7 @@ export function AuditTrailViewer({
             setLogs(res.data || []);
             setTotalPages(res.pagination?.totalPages || 1);
             setTotalCount(res.pagination?.total || 0);
+            setTotalUnfilteredCount(res.pagination?.totalUnfiltered);
         } catch (err) {
             console.error('Failed to load audit logs:', err);
         } finally {
@@ -534,6 +536,7 @@ export function AuditTrailViewer({
                 }
                 manualPagination={true}
                 totalCount={totalCount}
+                totalUnfilteredCount={totalUnfilteredCount}
                 pageCount={totalPages}
                 pageIndex={page - 1}
                 pageSize={pageSize}

@@ -17,6 +17,8 @@ import {
     resetPasswordSchema,
     changePasswordSchema,
     AuditCategory,
+    parseSearchTokens,
+    generateSearchVariants,
 } from '@areena/shared';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { AuditService } from '../services/audit.service';
@@ -987,13 +989,35 @@ router.get('/users', authenticateToken, async (req: AuthRequest, res: Response, 
         const andConditions: any[] = [];
 
         if (query) {
-            andConditions.push({
-                OR: [
-                    { firstName: { contains: query, mode: 'insensitive' } },
-                    { lastName: { contains: query, mode: 'insensitive' } },
-                    { email: { contains: query, mode: 'insensitive' } },
-                    { licenseId: { contains: query, mode: 'insensitive' } },
-                ],
+            const tokens = parseSearchTokens(query);
+            tokens.forEach((tok) => {
+                if (tok.isExact) {
+                    // Quoted phrase -> match exact substring/phrase
+                    andConditions.push({
+                        OR: [
+                            { firstName: { contains: tok.text, mode: 'insensitive' } },
+                            { lastName: { contains: tok.text, mode: 'insensitive' } },
+                            { email: { contains: tok.text, mode: 'insensitive' } },
+                            { licenseId: { contains: tok.text, mode: 'insensitive' } },
+                            { city: { contains: tok.text, mode: 'insensitive' } },
+                            { phone: { contains: tok.text, mode: 'insensitive' } },
+                        ],
+                    });
+                } else {
+                    // Unquoted token -> expand variants (e.g. 'muller' -> ['muller', 'müller'], 'rene' -> ['rene', 'rené'])
+                    const variants = generateSearchVariants(tok.text);
+
+                    andConditions.push({
+                        OR: variants.flatMap((v) => [
+                            { firstName: { contains: v, mode: 'insensitive' } },
+                            { lastName: { contains: v, mode: 'insensitive' } },
+                            { email: { contains: v, mode: 'insensitive' } },
+                            { licenseId: { contains: v, mode: 'insensitive' } },
+                            { city: { contains: v, mode: 'insensitive' } },
+                            { phone: { contains: v, mode: 'insensitive' } },
+                        ]),
+                    });
+                }
             });
         }
 
@@ -1051,7 +1075,7 @@ router.get('/users', authenticateToken, async (req: AuthRequest, res: Response, 
         const hasPagination = req.query.page !== undefined || req.query.limit !== undefined;
         const skip = (page - 1) * limit;
 
-        const [users, total] = await Promise.all([
+        const [users, total, totalUnfiltered] = await Promise.all([
             prisma.user.findMany({
                 where,
                 select: {
@@ -1095,6 +1119,7 @@ router.get('/users', authenticateToken, async (req: AuthRequest, res: Response, 
                 orderBy: { lastName: 'asc' },
             }),
             prisma.user.count({ where }),
+            prisma.user.count({}),
         ]);
 
         if (hasPagination) {
@@ -1102,6 +1127,7 @@ router.get('/users', authenticateToken, async (req: AuthRequest, res: Response, 
             res.json({
                 users,
                 total,
+                totalUnfiltered,
                 page,
                 totalPages,
                 limit,

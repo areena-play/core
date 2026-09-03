@@ -28,25 +28,34 @@ import {
     X,
 } from 'lucide-react';
 
+import { parseSearchTokens, matchesSearchQuery } from '@areena/shared';
+
 /**
  * Standard global search filter that inspects primitive values and custom text representations.
+ * Supports:
+ * 1. Multi-token unquoted search with diacritic-insensitivity (e.g. 'rene' matches 'René', 'muller' matches 'Müller').
+ * 2. Quoted exact phrases (e.g. '"René"' or '"John Doe"') which preserve diacritics and phrase boundaries.
  */
 const globalSearchFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
     const itemValue = row.getValue(columnId);
     if (itemValue == null) return false;
 
-    const searchLower = String(value).toLowerCase().trim();
-    if (!searchLower) return true;
+    const queryString = String(value).trim();
+    if (!queryString) return true;
 
-    // Handle boolean strings
+    const tokens = parseSearchTokens(queryString);
+    if (tokens.length === 0) return true;
+
+    let targetText = '';
     if (typeof itemValue === 'boolean') {
-        const boolText = itemValue ? 'yes true active verified' : 'no false inactive unverified pending';
-        return boolText.includes(searchLower);
+        targetText = itemValue ? 'yes true active verified' : 'no false inactive unverified pending';
+    } else if (typeof itemValue === 'object') {
+        targetText = JSON.stringify(itemValue);
+    } else {
+        targetText = String(itemValue);
     }
 
-    // Handle string, number, object stringification
-    const str = typeof itemValue === 'object' ? JSON.stringify(itemValue) : String(itemValue);
-    return str.toLowerCase().includes(searchLower);
+    return matchesSearchQuery(targetText, tokens);
 };
 
 export interface DataTableProps<TData, TValue = any> {
@@ -67,6 +76,7 @@ export interface DataTableProps<TData, TValue = any> {
     manualPagination?: boolean;
     pageCount?: number;
     totalCount?: number;
+    totalUnfilteredCount?: number;
     pageIndex?: number;
     pageSize?: number;
     onPaginationChange?: (pageIndex: number, pageSize: number) => void;
@@ -130,13 +140,14 @@ export function DataTable<TData, TValue = any>({
     manualPagination = false,
     pageCount: controlledPageCount,
     totalCount: controlledTotalCount,
+    totalUnfilteredCount,
     pageIndex: controlledPageIndex,
     pageSize: controlledPageSize,
     onPaginationChange,
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = useState<SortingState>(initialSorting);
     const [globalFilter, setGlobalFilter] = useState<string>('');
-    const [uncontrolledPagination, setUncontrolledPagination] = useState({
+    const [uncontrolledPagination, setUncontrolledPagination] = useState<PaginationState>({
         pageIndex: 0,
         pageSize: defaultPageSize,
     });
@@ -185,6 +196,13 @@ export function DataTable<TData, TValue = any>({
     const totalFiltered = manualPagination
         ? (controlledTotalCount ?? data.length)
         : table.getFilteredRowModel().rows.length;
+    const totalRaw = manualPagination
+        ? (totalUnfilteredCount ?? controlledTotalCount ?? data.length)
+        : data.length;
+    const isFiltered = totalUnfilteredCount !== undefined
+        ? totalFiltered < totalUnfilteredCount
+        : Boolean(globalFilter) || (!manualPagination && totalFiltered < data.length);
+
     const pageCount = manualPagination ? (controlledPageCount ?? 1) : table.getPageCount();
     const currentPage = activePageIndex + 1;
     const currentSize = activePageSize;
@@ -300,11 +318,16 @@ export function DataTable<TData, TValue = any>({
                 {/* Bottom Pagination & Page Size Toolbar */}
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 text-xs text-slate-600 dark:text-slate-400">
                     {/* Item Count Information */}
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 flex-wrap">
                         <span>
                             Showing <strong className="text-slate-900 dark:text-white">{startRow}</strong> to{' '}
                             <strong className="text-slate-900 dark:text-white">{endRow}</strong> of{' '}
-                            <strong className="text-slate-900 dark:text-white">{totalFiltered}</strong> records
+                            <strong className="text-slate-900 dark:text-white">{totalFiltered}</strong> entries
+                            {isFiltered && totalRaw > totalFiltered && (
+                                <span className="text-slate-400 ml-1">
+                                    (filtered from <strong className="text-slate-600 dark:text-slate-300 font-semibold">{totalRaw}</strong> total)
+                                </span>
+                            )}
                         </span>
 
                         {/* Page Size Selector */}

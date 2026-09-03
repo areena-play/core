@@ -24,6 +24,7 @@ import {
     Calendar,
     CheckCircle2,
     Phone,
+    X,
 } from 'lucide-react';
 
 interface PeopleOverviewViewProps {
@@ -39,6 +40,7 @@ function PeopleOverviewViewContent({ scopedAssociationId }: PeopleOverviewViewPr
 
     const [users, setUsers] = useState<any[]>([]);
     const [total, setTotal] = useState(0);
+    const [totalUnfiltered, setTotalUnfiltered] = useState<number | undefined>(undefined);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
     const [totalPages, setTotalPages] = useState(1);
@@ -101,14 +103,17 @@ function PeopleOverviewViewContent({ scopedAssociationId }: PeopleOverviewViewPr
             if (res && Array.isArray(res.users)) {
                 setUsers(res.users);
                 setTotal(res.total ?? res.users.length);
+                setTotalUnfiltered(res.totalUnfiltered);
                 setTotalPages(res.totalPages ?? 1);
             } else if (Array.isArray(res)) {
                 setUsers(res);
                 setTotal(res.length);
+                setTotalUnfiltered(res.length);
                 setTotalPages(1);
             } else {
                 setUsers([]);
                 setTotal(0);
+                setTotalUnfiltered(0);
                 setTotalPages(1);
             }
         } catch (err) {
@@ -344,84 +349,95 @@ function PeopleOverviewViewContent({ scopedAssociationId }: PeopleOverviewViewPr
                 </div>
             </div>
 
-            {/* Filter Bar & Controls */}
-            <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
-                {/* Search Bar */}
-                <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Search by name, license number, email, or city..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 pl-10 pr-4 py-2.5 text-xs text-slate-900 dark:text-white shadow-xs focus:border-red-500 focus:outline-none"
-                    />
-                </div>
-
-                {/* Role Filter Tabs & Association Dropdown */}
-                <div className="flex flex-wrap items-center gap-2.5">
-                    <div className="flex items-center gap-1 overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-1">
-                        {[
-                            { id: 'all', label: 'All People' },
-                            { id: 'player', label: 'Players' },
-                            { id: 'referee', label: 'Referees' },
-                            { id: 'coach', label: 'Coaches' },
-                            { id: 'official', label: 'Officials' },
-                        ].map((tab) => (
-                            <button
-                                key={tab.id}
-                                type="button"
-                                onClick={() => {
-                                    setRoleFilter(tab.id);
-                                    setPage(1);
-                                }}
-                                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition whitespace-nowrap ${
-                                    roleFilter === tab.id
-                                        ? 'bg-red-600 text-white shadow-xs'
-                                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                                }`}
-                            >
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    {scopedAssociationId ? (
-                        <div className="flex items-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-900/40 px-3.5 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
-                            <Lock className="h-3.5 w-3.5 text-red-500" />
-                            <span className="truncate max-w-[200px]">
-                                {scopedAssoc ? scopedAssoc.name : 'Current Sub-Association'}
-                            </span>
-                        </div>
-                    ) : (
-                        <select
-                            value={selectedAssoc}
-                            onChange={(e) => {
-                                setSelectedAssoc(e.target.value);
-                                setPage(1);
-                            }}
-                            className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white focus:border-red-500 focus:outline-none shrink-0"
-                        >
-                            <option value="">All Associations</option>
-                            {associations.map((a: any) => (
-                                <option key={a.id} value={a.id}>
-                                    {a.name} [{a.code}]
-                                </option>
-                            ))}
-                        </select>
-                    )}
-                </div>
-            </div>
-
-            {/* Paginated DataTable */}
+            {/* Paginated DataTable with Integrated Search & Filter Slot */}
             <DataTable
                 columns={columns}
                 data={users}
                 loading={loading}
                 emptyMessage="No members or licensed people found matching your criteria."
+                showSearch={false}
+                searchSlot={
+                    <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between w-full">
+                        {/* Unified Search Input */}
+                        <div className="relative flex-1 max-w-md">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Search by name, license, email, city (e.g. 'marc zurich')..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 pl-9 pr-8 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-red-500 focus:outline-none transition shadow-xs"
+                            />
+                            {search && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearch('')}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Role Filter Tabs & Association Dropdown */}
+                        <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-1 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-1">
+                                {[
+                                    { id: 'all', label: 'All' },
+                                    { id: 'player', label: 'Players' },
+                                    { id: 'referee', label: 'Referees' },
+                                    { id: 'coach', label: 'Coaches' },
+                                    { id: 'official', label: 'Officials' },
+                                ].map((tab) => (
+                                    <button
+                                        key={tab.id}
+                                        type="button"
+                                        onClick={() => {
+                                            setRoleFilter(tab.id);
+                                            setPage(1);
+                                        }}
+                                        className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition whitespace-nowrap ${
+                                            roleFilter === tab.id
+                                                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
+                                                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                                        }`}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {scopedAssociationId ? (
+                                <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/60 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                                    <Lock className="h-3 w-3 text-red-500" />
+                                    <span className="truncate max-w-[180px]">
+                                        {scopedAssoc ? scopedAssoc.name : 'Current Sub-Association'}
+                                    </span>
+                                </div>
+                            ) : (
+                                <select
+                                    value={selectedAssoc}
+                                    onChange={(e) => {
+                                        setSelectedAssoc(e.target.value);
+                                        setPage(1);
+                                    }}
+                                    className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 focus:border-red-500 focus:outline-none shrink-0"
+                                >
+                                    <option value="">All Associations</option>
+                                    {associations.map((a: any) => (
+                                        <option key={a.id} value={a.id}>
+                                            {a.name} [{a.code}]
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
+                    </div>
+                }
                 manualPagination={true}
                 pageCount={totalPages}
                 totalCount={total}
+                totalUnfilteredCount={totalUnfiltered}
                 pageIndex={page - 1}
                 pageSize={pageSize}
                 pageSizeOptions={[15, 25, 50, 100]}
