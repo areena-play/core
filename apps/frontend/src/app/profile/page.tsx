@@ -9,6 +9,7 @@ import { useTheme } from '@/lib/themeContext';
 import { useI18n } from '@/lib/i18nContext';
 import { normalizePhoneNumber } from '@areena/shared';
 import { PhoneInput } from '@/components/ui/PhoneInput';
+import { useMainView } from '@/lib/mainViewContext';
 import {
     User,
     Award,
@@ -46,6 +47,7 @@ import {
     Loader2,
     Eye,
     EyeOff,
+    ArrowLeft,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { AccessDenied } from '@/components/auth/AccessDenied';
@@ -57,6 +59,7 @@ function ProfilePageContent() {
     const { user, refreshUser } = useAuth();
     const { theme, setTheme } = useTheme();
     const { locale, setLocale, t, locales, supportedLocales } = useI18n();
+    const searchParams = useSearchParams();
 
     const [activeTab, setActiveTab] = useState<ProfileTab>('personal');
     const [overviewData, setOverviewData] = useState<any | null>(null);
@@ -97,8 +100,6 @@ function ProfilePageContent() {
     const [passwordLoading, setPasswordLoading] = useState(false);
     const [passwordSuccessMsg, setPasswordSuccessMsg] = useState('');
     const [passwordErrorMsg, setPasswordErrorMsg] = useState('');
-
-    const searchParams = useSearchParams();
 
     // Reset window scroll on mount to prevent mobile browser offset behind navbar
     useEffect(() => {

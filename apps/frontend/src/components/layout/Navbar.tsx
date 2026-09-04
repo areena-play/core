@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { AreenaLogo } from '@/components/ui/AreenaLogo';
@@ -127,6 +127,28 @@ export function Navbar() {
         mainAssoc,
         associations,
     });
+
+    const supportHref = useMemo(() => {
+        const params = new URLSearchParams();
+        if (activeView === 'club' && entityId) {
+            params.set('context', 'CLUB');
+            params.set('id', entityId);
+        } else if (activeView === 'tournament' && entityId) {
+            params.set('context', 'TOURNAMENT');
+            params.set('id', entityId);
+        } else if (activeView === 'association') {
+            params.set('context', 'ASSOCIATION');
+            const targetId = entityId && entityId !== 'main' ? entityId : (mainAssoc?.id || '');
+            if (targetId) params.set('id', targetId);
+        } else if (activeView === 'admin') {
+            params.set('context', 'SYSTEM');
+        }
+        if (pathname && !pathname.startsWith('/profile') && !pathname.startsWith('/auth') && !pathname.startsWith('/support')) {
+            params.set('returnUrl', pathname);
+        }
+        const qs = params.toString();
+        return `/support${qs ? `?${qs}` : ''}`;
+    }, [activeView, entityId, mainAssoc, pathname]);
 
     const headerTitle =
         entityMeta?.title ||
@@ -315,7 +337,7 @@ export function Navbar() {
 
                                             {/* My Competitions */}
                                             <Link
-                                                href="/profile?tab=competitions"
+                                                href={`/profile?tab=competitions${pathname && !pathname.startsWith('/profile') && !pathname.startsWith('/auth') ? `&returnUrl=${encodeURIComponent(pathname)}` : ''}`}
                                                 onClick={() => setUserMenuOpen(false)}
                                                 className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                             >
@@ -325,7 +347,7 @@ export function Navbar() {
 
                                             {/* My Licenses */}
                                             <Link
-                                                href="/profile?tab=licenses"
+                                                href={`/profile?tab=licenses${pathname && !pathname.startsWith('/profile') && !pathname.startsWith('/auth') ? `&returnUrl=${encodeURIComponent(pathname)}` : ''}`}
                                                 onClick={() => setUserMenuOpen(false)}
                                                 className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                             >
@@ -335,7 +357,7 @@ export function Navbar() {
 
                                             {/* My Courses */}
                                             <Link
-                                                href="/profile?tab=courses"
+                                                href={`/profile?tab=courses${pathname && !pathname.startsWith('/profile') && !pathname.startsWith('/auth') ? `&returnUrl=${encodeURIComponent(pathname)}` : ''}`}
                                                 onClick={() => setUserMenuOpen(false)}
                                                 className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                             >
@@ -346,7 +368,7 @@ export function Navbar() {
                                             {/* (Only if any) My Admin Access */}
                                             {(user.isSuperAdmin || (user.associationRoles && user.associationRoles.length > 0) || (user.clubRoles && user.clubRoles.length > 0)) && (
                                                 <Link
-                                                    href="/profile?tab=admin-access"
+                                                    href={`/profile?tab=admin-access${pathname && !pathname.startsWith('/profile') && !pathname.startsWith('/auth') ? `&returnUrl=${encodeURIComponent(pathname)}` : ''}`}
                                                     onClick={() => setUserMenuOpen(false)}
                                                     className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                                 >
@@ -378,7 +400,7 @@ export function Navbar() {
 
                                             {/* My Profile & Settings */}
                                             <Link
-                                                href="/profile?tab=personal"
+                                                href={`/profile?tab=personal${pathname && !pathname.startsWith('/profile') && !pathname.startsWith('/auth') ? `&returnUrl=${encodeURIComponent(pathname)}` : ''}`}
                                                 onClick={() => setUserMenuOpen(false)}
                                                 className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                             >
@@ -388,7 +410,7 @@ export function Navbar() {
 
                                             {/* Support & FAQs */}
                                             <Link
-                                                href="/support"
+                                                href={supportHref}
                                                 onClick={() => setUserMenuOpen(false)}
                                                 className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                             >
@@ -639,7 +661,7 @@ export function Navbar() {
                                         {t('nav.impressum')}
                                     </Link>
                                     <Link
-                                        href="/support"
+                                        href={supportHref}
                                         onClick={() => setMobileMenuOpen(false)}
                                         className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
                                     >

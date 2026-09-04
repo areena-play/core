@@ -120,6 +120,28 @@ function SidebarContent() {
         return false;
     };
 
+    const supportHref = React.useMemo(() => {
+        const params = new URLSearchParams();
+        if (activeView === 'club' && entityId) {
+            params.set('context', 'CLUB');
+            params.set('id', entityId);
+        } else if (activeView === 'tournament' && entityId) {
+            params.set('context', 'TOURNAMENT');
+            params.set('id', entityId);
+        } else if (activeView === 'association') {
+            params.set('context', 'ASSOCIATION');
+            const targetId = entityId && entityId !== 'main' ? entityId : (mainAssoc?.id || '');
+            if (targetId) params.set('id', targetId);
+        } else if (activeView === 'admin') {
+            params.set('context', 'SYSTEM');
+        }
+        if (pathname && !pathname.startsWith('/profile') && !pathname.startsWith('/auth') && !pathname.startsWith('/support')) {
+            params.set('returnUrl', pathname);
+        }
+        const qs = params.toString();
+        return `/support${qs ? `?${qs}` : ''}`;
+    }, [activeView, entityId, mainAssoc, pathname]);
+
     return (
         <aside className="w-64 h-full flex-shrink-0 border-r border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-950/70 hidden md:flex md:flex-col justify-between transition-colors duration-200">
             {/* Scrollable Navigation Area */}
@@ -277,7 +299,7 @@ function SidebarContent() {
                             {t('nav.impressum')}
                         </Link>
                         <Link
-                            href="/support"
+                            href={supportHref}
                             className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
                         >
                             Support

@@ -90,14 +90,49 @@ interface MainViewContextType {
 
 const MainViewContext = createContext<MainViewContextType | undefined>(undefined);
 
+function parseContextFromUrl(path: string): { activeView: MainViewType; entityId: string | null } {
+    if (!path) return { activeView: 'association', entityId: 'main' };
+    if (path.startsWith('/admin')) {
+        return { activeView: 'admin', entityId: 'system' };
+    }
+    if (path.startsWith('/competition/') || path.startsWith('/competitions/')) {
+        const parts = path.split('/');
+        return { activeView: 'tournament', entityId: parts[2] || null };
+    }
+    if (path.startsWith('/club/')) {
+        const parts = path.split('/');
+        return { activeView: 'club', entityId: parts[2] || null };
+    }
+    if (path.startsWith('/association/')) {
+        const parts = path.split('/');
+        return { activeView: 'association', entityId: parts[2] || null };
+    }
+    return { activeView: 'association', entityId: 'main' };
+}
+
 export function MainViewProvider({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
-    const [entityMeta, setEntityMeta] = useState<EntityMeta | null>(null);
+    const [entityMeta, setEntityMetaState] = useState<EntityMeta | null>(null);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [associations, setAssociations] = useState<any[]>([]);
     const [mainAssoc, setMainAssoc] = useState<any | null>(null);
     const prevContextRef = useRef<string>('');
+    const lastContextRef = useRef<{
+        activeView: MainViewType;
+        entityId: string | null;
+        entityMeta: EntityMeta | null;
+        returnPath: string | null;
+    }>({
+        activeView: 'association',
+        entityId: 'main',
+        entityMeta: null,
+        returnPath: null,
+    });
+
+    const isContextAgnosticRoute = useMemo(() => {
+        return pathname.startsWith('/profile') || pathname.startsWith('/auth/') || pathname.startsWith('/support');
+    }, [pathname]);
 
     const fetchAssociations = useCallback(async () => {
         try {
@@ -121,28 +156,95 @@ export function MainViewProvider({ children }: { children: React.ReactNode }) {
         fetchAssociations();
     }, [fetchAssociations]);
 
-    // Determine active view & entity ID strictly from URL
+    // Read stored session context on initial mount if available
+    useEffect(() => {
+        try {
+            const stored = sessionStorage.getItem('areena_last_view_context');
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed.activeView) {
+                    lastContextRef.current = {
+                        activeView: parsed.activeView,
+                        entityId: parsed.entityId || null,
+                        entityMeta: parsed.entityMeta || null,
+                        returnPath: parsed.returnPath || null,
+                    };
+                }
+            }
+        } catch {}
+    }, []);
+
+    // Determine active view & entity ID
     const { activeView, entityId } = useMemo(() => {
-        if (pathname.startsWith('/admin')) {
-            return { activeView: 'admin' as MainViewType, entityId: 'system' };
+        if (isContextAgnosticRoute) {
+            // Check if returnUrl is provided in current window location if available
+            if (typeof window !== 'undefined') {
+                const params = new URLSearchParams(window.location.search);
+                const returnUrl = params.get('returnUrl') || params.get('redirect');
+                if (returnUrl && !returnUrl.startsWith('/profile') && !returnUrl.startsWith('/auth/') && !returnUrl.startsWith('/support')) {
+                    const parsedFromUrl = parseContextFromUrl(returnUrl);
+                    if (parsedFromUrl.activeView !== 'association' || parsedFromUrl.entityId !== 'main') {
+                        return parsedFromUrl;
+                    }
+                }
+            }
+
+            // Retain last known context
+            if (lastContextRef.current.activeView) {
+                return {
+                    activeView: lastContextRef.current.activeView,
+                    entityId: lastContextRef.current.entityId,
+                };
+            }
         }
-        if (pathname.startsWith('/competition/') || pathname.startsWith('/competitions/')) {
-            const parts = pathname.split('/');
-            const id = parts[2] || null;
-            return { activeView: 'tournament' as MainViewType, entityId: id };
+
+        const parsed = parseContextFromUrl(pathname);
+        return parsed;
+    }, [pathname, isContextAgnosticRoute]);
+
+    // Store active context when navigating entity pages
+    useEffect(() => {
+        if (!isContextAgnosticRoute) {
+            lastContextRef.current = {
+                activeView,
+                entityId,
+                entityMeta,
+                returnPath: pathname,
+            };
+            try {
+                sessionStorage.setItem(
+                    'areena_last_view_context',
+                    JSON.stringify({
+                        activeView,
+                        entityId,
+                        entityMeta,
+                        returnPath: pathname,
+                    })
+                );
+            } catch {}
         }
-        if (pathname.startsWith('/club/')) {
-            const parts = pathname.split('/');
-            const id = parts[2] || null;
-            return { activeView: 'club' as MainViewType, entityId: id };
-        }
-        if (pathname.startsWith('/association/')) {
-            const parts = pathname.split('/');
-            const id = parts[2] || null;
-            return { activeView: 'association' as MainViewType, entityId: id };
-        }
-        return { activeView: 'association' as MainViewType, entityId: 'main' };
-    }, [pathname]);
+    }, [isContextAgnosticRoute, activeView, entityId, entityMeta, pathname]);
+
+    const setEntityMeta = useCallback(
+        (meta: EntityMeta | null) => {
+            setEntityMetaState(meta);
+            if (meta) {
+                lastContextRef.current.entityMeta = meta;
+                try {
+                    const stored = sessionStorage.getItem('areena_last_view_context');
+                    const parsed = stored ? JSON.parse(stored) : {};
+                    sessionStorage.setItem(
+                        'areena_last_view_context',
+                        JSON.stringify({
+                            ...parsed,
+                            entityMeta: meta,
+                        })
+                    );
+                } catch {}
+            }
+        },
+        []
+    );
 
     useEffect(() => {
         const currentContextKey = `${activeView}:${entityId || 'main'}`;
@@ -159,12 +261,15 @@ export function MainViewProvider({ children }: { children: React.ReactNode }) {
 
     const currentViewMeta = MAIN_VIEW_DEFINITIONS[activeView] || MAIN_VIEW_DEFINITIONS.association;
 
+    // Effective entityMeta preserves last known entityMeta during profile/auth views
+    const effectiveEntityMeta = entityMeta || (isContextAgnosticRoute ? lastContextRef.current.entityMeta : null);
+
     return (
         <MainViewContext.Provider
             value={{
                 activeView,
                 entityId,
-                entityMeta,
+                entityMeta: effectiveEntityMeta,
                 setEntityMeta,
                 currentViewMeta,
                 isTransitioning,
@@ -185,3 +290,4 @@ export function useMainView() {
     }
     return context;
 }
+

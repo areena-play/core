@@ -25,9 +25,9 @@ function RegisterForm() {
     // Redirect to profile if already authenticated
     useEffect(() => {
         if (!authLoading && user) {
-            router.replace('/profile');
+            router.replace(redirectUrl && redirectUrl !== '/auth/register' ? redirectUrl : '/profile');
         }
-    }, [user, authLoading, router]);
+    }, [user, authLoading, router, redirectUrl]);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');

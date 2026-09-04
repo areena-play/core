@@ -22,19 +22,40 @@ import {
     X,
 } from 'lucide-react';
 import { AdminFaqManagerModal } from '@/components/support/AdminFaqManagerModal';
+import { useMainView } from '@/lib/mainViewContext';
 
 function SupportPageContent() {
     const searchParams = useSearchParams();
     const { user } = useAuth();
     const { t, locale } = useI18n();
+    const { activeView, entityId: mainViewEntityId, mainAssoc } = useMainView();
 
-    // Context & selection
-    const initialContext = (searchParams.get('context')?.toUpperCase() as any) || 'SYSTEM';
-    const initialId = searchParams.get('id') || '';
+    // Context & selection: derive initial context from URL or active workspace context
+    const initialContext = useMemo<'SYSTEM' | 'ASSOCIATION' | 'CLUB' | 'TOURNAMENT'>(() => {
+        const paramContext = searchParams.get('context')?.toUpperCase();
+        if (paramContext && ['SYSTEM', 'ASSOCIATION', 'CLUB', 'TOURNAMENT'].includes(paramContext)) {
+            return paramContext as 'SYSTEM' | 'ASSOCIATION' | 'CLUB' | 'TOURNAMENT';
+        }
+        if (activeView === 'club') return 'CLUB';
+        if (activeView === 'tournament') return 'TOURNAMENT';
+        if (activeView === 'association') return 'ASSOCIATION';
+        if (activeView === 'admin') return 'SYSTEM';
+        return 'SYSTEM';
+    }, [searchParams, activeView]);
 
-    const [contextType, setContextType] = useState<'SYSTEM' | 'ASSOCIATION' | 'CLUB' | 'TOURNAMENT'>(
-        ['SYSTEM', 'ASSOCIATION', 'CLUB', 'TOURNAMENT'].includes(initialContext) ? initialContext : 'SYSTEM'
-    );
+    const initialId = useMemo<string>(() => {
+        const paramId = searchParams.get('id');
+        if (paramId) return paramId;
+        if (activeView === 'club' && mainViewEntityId) return mainViewEntityId;
+        if (activeView === 'tournament' && mainViewEntityId) return mainViewEntityId;
+        if (activeView === 'association') {
+            if (mainViewEntityId && mainViewEntityId !== 'main') return mainViewEntityId;
+            if (mainAssoc?.id) return mainAssoc.id;
+        }
+        return '';
+    }, [searchParams, activeView, mainViewEntityId, mainAssoc]);
+
+    const [contextType, setContextType] = useState<'SYSTEM' | 'ASSOCIATION' | 'CLUB' | 'TOURNAMENT'>(initialContext);
     const [contextId, setContextId] = useState<string>(initialId);
 
     // Entity lists for selectors
@@ -75,6 +96,14 @@ function SupportPageContent() {
         }
     }, [user]);
 
+    // Synchronize context when initial context from workspace/params resolves
+    useEffect(() => {
+        setContextType(initialContext);
+        if (initialId) {
+            setContextId(initialId);
+        }
+    }, [initialContext, initialId]);
+
     // Load available entities for context switching
     useEffect(() => {
         async function loadEntities() {
@@ -84,45 +113,82 @@ function SupportPageContent() {
                     api.getClubs().catch(() => []),
                     api.getCompetitions().catch(() => []),
                 ]);
-                const aList = Array.isArray(assocData) ? assocData : assocData?.associations || [];
-                const cList = Array.isArray(clubData) ? clubData : clubData?.clubs || [];
-                const compList = Array.isArray(compData) ? compData : compData?.competitions || [];
+                let aList: any[] = Array.isArray(assocData) ? assocData : assocData?.associations || [];
+                let cList: any[] = Array.isArray(clubData) ? clubData : clubData?.clubs || [];
+                let compList: any[] = Array.isArray(compData) ? compData : compData?.competitions || [];
+
+                const targetId = contextId || initialId;
+
+                // Ensure specific active entity is included in the list if not already present
+                if (contextType === 'TOURNAMENT' && targetId && !compList.some((c: any) => c.id === targetId)) {
+                    try {
+                        const singleComp = await api.getCompetition(targetId);
+                        const compObj = singleComp?.competition || singleComp;
+                        if (compObj && compObj.id) {
+                            compList = [compObj, ...compList];
+                        }
+                    } catch {}
+                } else if (contextType === 'CLUB' && targetId && !cList.some((c: any) => c.id === targetId)) {
+                    try {
+                        const singleClub = await api.getClub(targetId);
+                        const clubObj = singleClub?.club || singleClub;
+                        if (clubObj && clubObj.id) {
+                            cList = [clubObj, ...cList];
+                        }
+                    } catch {}
+                } else if (contextType === 'ASSOCIATION' && targetId && targetId !== 'main' && !aList.some((a: any) => a.id === targetId)) {
+                    try {
+                        const singleAssoc = await api.getAssociation(targetId);
+                        const assocObj = singleAssoc?.association || singleAssoc;
+                        if (assocObj && assocObj.id) {
+                            aList = [assocObj, ...aList];
+                        }
+                    } catch {}
+                }
 
                 setAssociations(aList);
                 setClubs(cList);
                 setCompetitions(compList);
 
-                // If contextId not set yet, pick first available
-                if (!contextId) {
-                    if (contextType === 'ASSOCIATION' && aList[0]) setContextId(aList[0].id);
-                    if (contextType === 'CLUB' && cList[0]) setContextId(cList[0].id);
-                    if (contextType === 'TOURNAMENT' && compList[0]) setContextId(compList[0].id);
+                // Select target entity ID
+                if (contextType === 'ASSOCIATION') {
+                    const matched = aList.find((a: any) => a.id === targetId) || (targetId === 'main' ? aList.find((a: any) => a.isTopLevel) : null) || aList.find((a: any) => a.isTopLevel) || aList[0];
+                    if (matched) setContextId(matched.id);
+                } else if (contextType === 'CLUB') {
+                    const matched = cList.find((c: any) => c.id === targetId) || cList[0];
+                    if (matched) setContextId(matched.id);
+                } else if (contextType === 'TOURNAMENT') {
+                    const matched = compList.find((c: any) => c.id === targetId) || compList[0];
+                    if (matched) setContextId(matched.id);
                 }
             } catch (err) {
                 console.error('Failed to load support context entities', err);
             }
         }
         loadEntities();
-    }, []);
+    }, [contextType, initialId]);
 
     // When contextType changes, ensure a valid contextId is selected
     useEffect(() => {
         if (contextType === 'SYSTEM') {
             setContextId('');
         } else if (contextType === 'ASSOCIATION') {
-            if (associations.length > 0 && !associations.some((a) => a.id === contextId)) {
-                setContextId(associations[0].id);
+            if (associations.length > 0 && !associations.some((a: any) => a.id === contextId)) {
+                const defaultAssoc = (initialId && associations.find((a: any) => a.id === initialId)) || associations.find((a: any) => a.isTopLevel) || associations[0];
+                setContextId(defaultAssoc ? defaultAssoc.id : '');
             }
         } else if (contextType === 'CLUB') {
-            if (clubs.length > 0 && !clubs.some((c) => c.id === contextId)) {
-                setContextId(clubs[0].id);
+            if (clubs.length > 0 && !clubs.some((c: any) => c.id === contextId)) {
+                const defaultClub = (initialId && clubs.find((c: any) => c.id === initialId)) || clubs[0];
+                setContextId(defaultClub ? defaultClub.id : '');
             }
         } else if (contextType === 'TOURNAMENT') {
-            if (competitions.length > 0 && !competitions.some((c) => c.id === contextId)) {
-                setContextId(competitions[0].id);
+            if (competitions.length > 0 && !competitions.some((c: any) => c.id === contextId)) {
+                const defaultComp = (initialId && competitions.find((c: any) => c.id === initialId)) || competitions[0];
+                setContextId(defaultComp ? defaultComp.id : '');
             }
         }
-    }, [contextType, associations, clubs, competitions, contextId]);
+    }, [contextType, associations, clubs, competitions, contextId, initialId]);
 
     // Fetch FAQs & Subjects whenever context changes
     const fetchSupportData = async () => {
@@ -284,7 +350,8 @@ function SupportPageContent() {
                     <button
                         onClick={() => {
                             setContextType('ASSOCIATION');
-                            if (associations[0]) setContextId(associations[0].id);
+                            const target = (initialContext === 'ASSOCIATION' && initialId && associations.find(a => a.id === initialId)) || associations.find(a => a.isTopLevel) || associations[0];
+                            if (target) setContextId(target.id);
                         }}
                         className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition shadow-xs whitespace-nowrap ${
                             contextType === 'ASSOCIATION'
@@ -299,7 +366,8 @@ function SupportPageContent() {
                     <button
                         onClick={() => {
                             setContextType('CLUB');
-                            if (clubs[0]) setContextId(clubs[0].id);
+                            const target = (initialContext === 'CLUB' && initialId && clubs.find(c => c.id === initialId)) || clubs[0];
+                            if (target) setContextId(target.id);
                         }}
                         className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition shadow-xs whitespace-nowrap ${
                             contextType === 'CLUB'
@@ -314,7 +382,8 @@ function SupportPageContent() {
                     <button
                         onClick={() => {
                             setContextType('TOURNAMENT');
-                            if (competitions[0]) setContextId(competitions[0].id);
+                            const target = (initialContext === 'TOURNAMENT' && initialId && competitions.find(t => t.id === initialId)) || competitions[0];
+                            if (target) setContextId(target.id);
                         }}
                         className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition shadow-xs whitespace-nowrap ${
                             contextType === 'TOURNAMENT'

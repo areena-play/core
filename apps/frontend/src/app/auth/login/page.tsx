@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useTheme } from '@/lib/themeContext';
 import { useI18n } from '@/lib/i18nContext';
+import { useMainView } from '@/lib/mainViewContext';
 import {
     LogIn,
     AlertCircle,
@@ -24,6 +25,7 @@ import {
     Flame,
     Mail,
     CheckCircle2,
+    ArrowLeft,
 } from 'lucide-react';
 
 interface DemoAccount {
@@ -138,12 +140,12 @@ function LoginForm() {
     const { resolvedTheme } = useTheme();
     const { t } = useI18n();
 
-    // Redirect to profile if already authenticated
+    // Redirect if already authenticated
     useEffect(() => {
         if (!authLoading && user) {
-            router.replace('/profile');
+            router.replace(redirectUrl && redirectUrl !== '/auth/login' ? redirectUrl : '/profile');
         }
-    }, [user, authLoading, router]);
+    }, [user, authLoading, router, redirectUrl]);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
