@@ -1,6 +1,6 @@
 import './globals.css';
 import { Suspense } from 'react';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { AuthProvider } from '@/lib/authContext';
 import { ThemeProvider } from '@/lib/themeContext';
 import { I18nProvider } from '@/lib/i18nContext';
@@ -20,6 +20,13 @@ import { ToastContainer } from '@/lib/toast';
 import { PopupContainer } from '@/lib/popup';
 import { BreadcrumbsBar } from '@/components/layout/BreadcrumbsBar';
 import { getSiteBaseUrl } from '@/lib/siteUrl';
+
+export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 5,
+    viewportFit: 'cover',
+};
 
 export const metadata: Metadata = {
     metadataBase: new URL(getSiteBaseUrl()),
@@ -101,7 +108,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     }}
                 />
             </head>
-            <body className="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 h-dvh h-screen w-screen overflow-hidden flex flex-col antialiased selection:bg-red-600 selection:text-white transition-colors duration-200">
+            <body className="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 fixed inset-0 h-[100dvh] w-full overflow-hidden flex flex-col antialiased selection:bg-red-600 selection:text-white transition-colors duration-200">
                 <ThemeProvider>
                     <I18nProvider>
                         <AuthProvider>

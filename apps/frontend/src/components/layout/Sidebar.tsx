@@ -279,7 +279,7 @@ function SidebarContent() {
             </div>
 
             {/* Sticky Fixed Bottom AREENA Tag & Legal Links */}
-            <div className="flex-shrink-0 p-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+            <div className="flex-shrink-0 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
                 <div className="block rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60 p-2.5 transition-colors duration-150">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 font-black text-xs text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors duration-150">
