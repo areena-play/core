@@ -43,6 +43,76 @@ html.dark ::-webkit-scrollbar-thumb {
     background: #e23828;
 }
 
+/* Utility Scrollbars */
+.scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-thin {
+    scrollbar-width: thin;
+}
+.scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 2px;
+}
+html.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #334155;
+}
+
+/* Hover-Only Overlay Scrollbar */
+.scrollbar-hover {
+    overflow-y: overlay !important; /* Webkit overlay scrollbar without layout shift */
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.3s ease;
+}
+.scrollbar-hover:hover,
+.scrollbar-hover:focus-within,
+.scrollbar-hover.is-scrolling {
+    scrollbar-color: #cbd5e1 transparent;
+}
+html.dark .scrollbar-hover:hover,
+html.dark .scrollbar-hover:focus-within,
+html.dark .scrollbar-hover.is-scrolling {
+    scrollbar-color: #334155 transparent;
+}
+.scrollbar-hover::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+.scrollbar-hover::-webkit-scrollbar-track {
+    background: transparent;
+}
+.scrollbar-hover::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 9999px;
+    transition: background-color 0.3s ease;
+}
+.scrollbar-hover:hover::-webkit-scrollbar-thumb,
+.scrollbar-hover:focus-within::-webkit-scrollbar-thumb,
+.scrollbar-hover.is-scrolling::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+}
+html.dark .scrollbar-hover:hover::-webkit-scrollbar-thumb,
+html.dark .scrollbar-hover:focus-within::-webkit-scrollbar-thumb,
+html.dark .scrollbar-hover.is-scrolling::-webkit-scrollbar-thumb {
+    background: #334155;
+}
+.scrollbar-hover::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+html.dark .scrollbar-hover::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}
+
 .glass-panel {
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(12px);
