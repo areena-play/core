@@ -19,6 +19,7 @@ import {
     AuditCategory,
     parseSearchTokens,
     generateSearchVariants,
+    formatPhoneNumber,
 } from '@areena/shared';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { AuditService } from '../services/audit.service';
@@ -58,7 +59,7 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
                 passwordHash,
                 firstName,
                 lastName,
-                phone,
+                phone: phone ? formatPhoneNumber(phone) : phone,
                 street,
                 postalCode,
                 city,
@@ -975,7 +976,7 @@ router.put(
                 data: {
                     ...(firstName ? { firstName } : {}),
                     ...(lastName ? { lastName } : {}),
-                    ...(phone ? { phone } : {}),
+                    ...(phone ? { phone: formatPhoneNumber(phone) } : {}),
                     ...(street ? { street } : {}),
                     ...(postalCode ? { postalCode } : {}),
                     ...(city ? { city } : {}),

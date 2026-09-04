@@ -28,6 +28,7 @@ import {
     X,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
+import { formatPhoneNumber } from '@areena/shared';
 
 interface LocationsOverviewViewProps {
     scopedAssociationId?: string;
@@ -120,7 +121,7 @@ export function LocationsOverviewView({ scopedAssociationId }: LocationsOverview
                 postalCode: formPostalCode,
                 country: formCountry,
                 description: formDescription,
-                phone: formPhone,
+                phone: formPhone ? formatPhoneNumber(formPhone) : undefined,
                 email: formEmail,
                 website: formWebsite,
                 googleMapsUrl: formGoogleMaps,

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
@@ -21,9 +21,12 @@ import {
     Edit3,
     X,
     Save,
+    Phone,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AccessDenied } from '@/components/auth/AccessDenied';
+import { getAllCountryPhoneOptions, DEFAULT_PRIORITIZED_COUNTRIES, CountryPhoneOption } from '@areena/shared';
+import { FlagIcon } from '@/components/ui/FlagIcon';
 
 interface AgeSeriesItem {
     id: string;
@@ -83,6 +86,9 @@ export default function AssociationSettingsPage() {
     const [requireRefereeCourseForSenior, setRequireRefereeCourseForSenior] = useState(false);
     const [refresherCourseValidityMonths, setRefresherCourseValidityMonths] = useState(24);
     const [eloKFactor, setEloKFactor] = useState(32);
+    const [prioritizedCountryCodes, setPrioritizedCountryCodes] = useState<string[]>(DEFAULT_PRIORITIZED_COUNTRIES);
+    const [selectedAddCountry, setSelectedAddCountry] = useState<string>('');
+    const allCountryOptions = useMemo(() => getAllCountryPhoneOptions(), []);
 
     // 3. Age Series Configuration
     const [ageSeries, setAgeSeries] = useState<AgeSeriesItem[]>(DEFAULT_AGE_SERIES);
@@ -159,6 +165,12 @@ export default function AssociationSettingsPage() {
                     if (cg.allowedCreatorsByType?.TOURNAMENT) setCompTournCreator(cg.allowedCreatorsByType.TOURNAMENT);
                     if (cg.allowedCreatorsByType?.INOFFICIAL) setCompInofficialCreator(cg.allowedCreatorsByType.INOFFICIAL);
                     if (cg.requireApprovalByType?.TOURNAMENT !== undefined) setCompTournApproval(cg.requireApprovalByType.TOURNAMENT);
+                }
+
+                if (Array.isArray(rules.prioritizedCountryCodes) && rules.prioritizedCountryCodes.length > 0) {
+                    setPrioritizedCountryCodes(rules.prioritizedCountryCodes);
+                } else {
+                    setPrioritizedCountryCodes(DEFAULT_PRIORITIZED_COUNTRIES);
                 }
 
                 if (Array.isArray(rules.ageSeries) && rules.ageSeries.length > 0) {
@@ -245,6 +257,7 @@ export default function AssociationSettingsPage() {
                 eloKFactor: Number(eloKFactor),
                 ageSeries,
                 ageCutoffDate,
+                prioritizedCountryCodes,
             };
 
             await api.updateAssociationSettings(topAssoc.id, {
@@ -832,6 +845,102 @@ export default function AssociationSettingsPage() {
                                     <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-amber-600"></div>
                                 </label>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Phone Calling Code Priorities Card */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="space-y-1">
+                                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    <Phone className="h-5 w-5 text-amber-500" />
+                                    <span>Prioritized Phone Calling Codes</span>
+                                </h2>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    Define the preferred countries that appear at the top of phone number inputs across the platform. The rest of the world (~240 countries) is sorted alphabetically.
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setPrioritizedCountryCodes(DEFAULT_PRIORITIZED_COUNTRIES)}
+                                className="text-xs text-amber-600 dark:text-amber-400 hover:underline font-semibold"
+                            >
+                                Reset to Defaults
+                            </button>
+                        </div>
+
+                        {/* List of currently prioritized countries */}
+                        <div className="space-y-3">
+                            <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                Priority Countries ({prioritizedCountryCodes.length})
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                {prioritizedCountryCodes.map((code, idx) => {
+                                    const opt = allCountryOptions.find((c) => c.code === code);
+                                    return (
+                                        <div
+                                            key={code}
+                                            className="inline-flex items-center gap-2 pl-2.5 pr-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs text-slate-900 dark:text-white shadow-2xs font-medium"
+                                        >
+                                            <span className="text-[10px] font-mono text-slate-400 font-bold">
+                                                #{idx + 1}
+                                            </span>
+                                            <FlagIcon code={code} className="w-4.5 h-3 rounded-[2px]" />
+                                            <span>{opt?.name || code}</span>
+                                            <span className="font-mono text-[11px] text-slate-400">
+                                                ({opt?.callingCode})
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setPrioritizedCountryCodes((prev) =>
+                                                        prev.filter((c) => c !== code)
+                                                    )
+                                                }
+                                                className="p-1 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+                                                title="Remove from priority"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Add Country to Priority List */}
+                        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <div className="flex-1 min-w-[200px] max-w-sm">
+                                <select
+                                    value={selectedAddCountry}
+                                    onChange={(e) => setSelectedAddCountry(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none font-medium"
+                                >
+                                    <option value="">Select a country to add to priority...</option>
+                                    {allCountryOptions
+                                        .filter((c) => !prioritizedCountryCodes.includes(c.code))
+                                        .map((c) => (
+                                            <option key={c.code} value={c.code}>
+                                                {c.name} ({c.callingCode})
+                                            </option>
+                                        ))}
+                                </select>
+                            </div>
+                            <button
+                                type="button"
+                                disabled={!selectedAddCountry}
+                                onClick={() => {
+                                    if (selectedAddCountry && !prioritizedCountryCodes.includes(selectedAddCountry)) {
+                                        setPrioritizedCountryCodes((prev) => [...prev, selectedAddCountry]);
+                                        setSelectedAddCountry('');
+                                    }
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white px-4 py-2 text-xs font-bold transition shadow-xs"
+                            >
+                                <Plus className="h-3.5 w-3.5" />
+                                <span>Add to Priority</span>
+                            </button>
                         </div>
                     </div>
                 </div>

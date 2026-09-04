@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { prisma } from '../config/prisma';
 import { authenticateToken, optionalAuth, AuthRequest } from '../middleware/auth';
 import { AuditService } from '../services/audit.service';
-import { AuditCategory } from '@areena/shared';
+import { AuditCategory, formatPhoneNumber } from '@areena/shared';
 
 const router = Router();
 
@@ -241,7 +241,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response, next
                 country,
                 description,
                 imageUrl,
-                phone,
+                phone: phone ? formatPhoneNumber(phone) : phone,
                 email,
                 website,
                 googleMapsUrl,
@@ -350,7 +350,7 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response, ne
                 ...(country !== undefined ? { country } : {}),
                 ...(description !== undefined ? { description } : {}),
                 ...(imageUrl !== undefined ? { imageUrl } : {}),
-                ...(phone !== undefined ? { phone } : {}),
+                ...(phone !== undefined ? { phone: phone ? formatPhoneNumber(phone) : phone } : {}),
                 ...(email !== undefined ? { email } : {}),
                 ...(website !== undefined ? { website } : {}),
                 ...(googleMapsUrl !== undefined ? { googleMapsUrl } : {}),

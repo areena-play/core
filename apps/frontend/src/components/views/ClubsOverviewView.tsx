@@ -20,6 +20,7 @@ import {
     Lock,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
+import { formatPhoneNumber } from '@areena/shared';
 
 interface ClubsOverviewViewProps {
     scopedAssociationId?: string;
@@ -92,7 +93,7 @@ export function ClubsOverviewView({ scopedAssociationId }: ClubsOverviewViewProp
                 postalCode: formPostalCode,
                 city: formCity,
                 email: formEmail,
-                phone: formPhone,
+                phone: formPhone ? formatPhoneNumber(formPhone) : formPhone,
                 associationIds: scopedAssociationId ? [scopedAssociationId] : formAssocIds,
             });
             setShowModal(false);

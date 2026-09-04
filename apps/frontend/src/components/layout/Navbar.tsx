@@ -13,6 +13,7 @@ import { useMainView } from '@/lib/mainViewContext';
 import { useWebSocket } from '@/lib/useWebSocket';
 import { getCommonNavSections, NavSection, NavItem } from '@/lib/navigation';
 import { GlobalSearchBar } from '@/components/search/GlobalSearchBar';
+import { FlagIcon } from '@/components/ui/FlagIcon';
 import {
     Menu,
     X,
@@ -197,17 +198,15 @@ export function Navbar() {
                         <div className="relative" ref={langDropdownRef}>
                             <button
                                 onClick={() => setLangDropdownOpen(!langDropdownOpen)}
-                                className="flex items-center gap-1 sm:gap-1.5 rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900 px-1.5 py-1 sm:px-2.5 sm:py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900 px-2 py-1 sm:px-2.5 sm:py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                title={locales[locale].label}
                             >
-                                <span className="text-xs sm:text-sm leading-none">{locales[locale].flag}</span>
-                                <span className="font-semibold uppercase tracking-wider text-[10px] sm:text-[11px]">
-                                    {locales[locale].code}
-                                </span>
-                                <ChevronDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-slate-400" />
+                                <FlagIcon code={locale} className="w-5 h-3.5 rounded-[2px]" />
+                                <ChevronDown className={`h-2.5 w-2.5 sm:h-3 sm:w-3 text-slate-400 transition-transform ${langDropdownOpen ? 'rotate-180' : ''}`} />
                             </button>
 
                             {langDropdownOpen && (
-                                <div className="absolute right-0 mt-2 w-36 sm:w-40 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-1.5 shadow-xl z-50 animate-in fade-in-50 zoom-in-95">
+                                <div className="absolute right-0 mt-2 w-40 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-1.5 shadow-xl z-50 animate-in fade-in-50 zoom-in-95">
                                     <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                                         {t('nav.language')}
                                     </div>
@@ -218,19 +217,19 @@ export function Navbar() {
                                                 setLocale(loc);
                                                 setLangDropdownOpen(false);
                                             }}
-                                            className={`w-full flex items-center justify-between rounded-lg px-2 sm:px-2.5 py-1.5 text-xs text-left transition ${
+                                            className={`w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs text-left transition ${
                                                 locale === loc
                                                     ? 'bg-red-50 text-red-600 font-bold dark:bg-red-950/50 dark:text-red-400'
                                                     : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                                             }`}
                                         >
-                                            <span className="flex items-center gap-1.5 sm:gap-2">
-                                                <span className="text-xs sm:text-sm leading-none">{locales[loc].flag}</span>
-                                                <span className="text-[11px] sm:text-xs">{locales[loc].nativeLabel}</span>
+                                            <span className="flex items-center gap-2">
+                                                <FlagIcon code={loc} className="w-4.5 h-3 rounded-[2px]" />
+                                                <span className="text-xs font-medium">{locales[loc].nativeLabel}</span>
                                             </span>
-                                            <span className="font-mono text-[9px] sm:text-[10px] uppercase text-slate-400">
-                                                {loc}
-                                            </span>
+                                            {locale === loc && (
+                                                <span className="h-1.5 w-1.5 rounded-full bg-red-600 dark:bg-red-400" />
+                                            )}
                                         </button>
                                     ))}
                                 </div>

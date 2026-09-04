@@ -10,6 +10,7 @@ import {
     AuditCategory,
     parseSearchTokens,
     generateSearchVariants,
+    formatPhoneNumber,
 } from '@areena/shared';
 import { AuditService } from '../services/audit.service';
 import { EmailService } from '../services/email.service';
@@ -272,7 +273,7 @@ router.put('/admin/:id', validate(adminUpdateUserSchema), async (req: AuthReques
                 ...(firstName !== undefined ? { firstName } : {}),
                 ...(lastName !== undefined ? { lastName } : {}),
                 ...(email !== undefined ? { email: email.toLowerCase() } : {}),
-                ...(phone !== undefined ? { phone } : {}),
+                ...(phone !== undefined ? { phone: formatPhoneNumber(phone) } : {}),
                 ...(street !== undefined ? { street } : {}),
                 ...(postalCode !== undefined ? { postalCode } : {}),
                 ...(city !== undefined ? { city } : {}),

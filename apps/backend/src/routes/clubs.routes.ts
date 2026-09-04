@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../config/prisma';
 import { validate } from '../middleware/validate';
-import { createClubSchema } from '@areena/shared';
+import { createClubSchema, formatPhoneNumber } from '@areena/shared';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { slugify } from '../utils/slugify';
 
@@ -82,7 +82,7 @@ router.post('/', authenticateToken, validate(createClubSchema), async (req: Auth
                 postalCode,
                 country: country || 'Switzerland',
                 email,
-                phone,
+                phone: phone ? formatPhoneNumber(phone) : phone,
                 website,
             },
         });
@@ -157,7 +157,7 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response, ne
                 ...(postalCode ? { postalCode } : {}),
                 ...(country ? { country } : {}),
                 ...(email ? { email } : {}),
-                ...(phone ? { phone } : {}),
+                ...(phone ? { phone: formatPhoneNumber(phone) } : {}),
                 ...(website !== undefined ? { website } : {}),
                 ...(logoUrl !== undefined ? { logoUrl } : {}),
             },

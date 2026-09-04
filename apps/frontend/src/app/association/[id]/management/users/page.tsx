@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { AccessDenied } from '@/components/auth/AccessDenied';
-import { normalizePhoneNumber } from '@areena/shared';
+import { normalizePhoneNumber, formatPhoneNumber } from '@areena/shared';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import {
     Users,
@@ -527,7 +527,7 @@ export default function AdminUsersPage() {
                             return (
                                 <div className="space-y-0.5 text-slate-600 dark:text-slate-400">
                                     <div>{u.city ? `${u.city}, ${u.country || 'CH'}` : 'Switzerland'}</div>
-                                    <div className="font-mono text-[10px] text-slate-500">{u.phone || '—'}</div>
+                                    <div className="font-mono text-[10px] text-slate-500">{u.phone ? formatPhoneNumber(u.phone) : '—'}</div>
                                 </div>
                             );
                         },

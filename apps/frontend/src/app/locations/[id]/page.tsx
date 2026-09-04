@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ColumnDef } from '@tanstack/react-table';
+import { formatPhoneNumber } from '@areena/shared';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/DataTable';
 
 export default function LocationDetailPage() {
@@ -252,7 +253,7 @@ export default function LocationDetailPage() {
                             {location.phone && (
                                 <div className="flex items-center gap-1.5 font-mono">
                                     <Phone className="w-3.5 h-3.5 text-slate-400" />
-                                    <span>{location.phone}</span>
+                                    <span>{formatPhoneNumber(location.phone)}</span>
                                 </div>
                             )}
                             {location.email && (

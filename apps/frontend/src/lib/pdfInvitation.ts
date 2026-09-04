@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { formatPhoneNumber } from '@areena/shared';
 
 export interface TournamentInvitationData {
     competition: any;
@@ -24,7 +25,9 @@ export function generateTournamentInvitationPdf(data: TournamentInvitationData) 
         ? `${organizerRole.user.firstName || ''} ${organizerRole.user.lastName || ''}`.trim()
         : 'Turnierleitung';
     const organizerEmail = organizerRole?.user?.email || 'kontakt@areena.ch';
-    const organizerPhone = organizerRole?.user?.phone || '079 / 753 36 41';
+    const organizerPhone = organizerRole?.user?.phone
+        ? formatPhoneNumber(organizerRole.user.phone)
+        : '+41 79 753 36 41';
 
     // 2. Dates & Location
     const startDate = competition.startDate ? new Date(competition.startDate) : new Date();
