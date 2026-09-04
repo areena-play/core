@@ -837,3 +837,5 @@ class ApiClient {
 export const api = new ApiClient();
 
 
+export * from './api/index';
+export { api as default } from './api/index';
