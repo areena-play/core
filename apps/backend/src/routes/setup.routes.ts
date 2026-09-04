@@ -135,6 +135,7 @@ router.post('/initialize', async (req: Request, res: Response) => {
                 userId: result.user.id,
                 email: result.user.email,
                 isSuperAdmin: true,
+                tokenVersion: (result.user as any).tokenVersion ?? 0,
             },
             config.jwtSecret,
             { expiresIn: '7d' },

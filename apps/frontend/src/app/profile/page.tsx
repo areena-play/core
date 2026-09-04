@@ -191,6 +191,9 @@ function ProfilePageContent() {
         setPasswordLoading(true);
         try {
             const res = await api.changePassword({ currentPassword, newPassword });
+            if (res?.token) {
+                localStorage.setItem('areena_token', res.token);
+            }
             setPasswordSuccessMsg(res.message || 'Password changed successfully!');
             setCurrentPassword('');
             setNewPassword('');

@@ -27,7 +27,7 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
     }
 
     try {
-        const payload = jwt.verify(token, config.jwtSecret) as { userId: string };
+        const payload = jwt.verify(token, config.jwtSecret) as { userId: string; tokenVersion?: number };
         const user = await prisma.user.findUnique({
             where: { id: payload.userId },
             include: {
@@ -38,6 +38,15 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
 
         if (!user) {
             return res.status(401).json({ error: 'User not found or token invalid' });
+        }
+
+        // Enforce tokenVersion check: if password was changed/reset, older sessions are rejected
+        const currentVersion = (user as any).tokenVersion ?? 0;
+        if (payload.tokenVersion !== undefined && payload.tokenVersion !== currentVersion) {
+            return res.status(401).json({
+                error: 'SESSION_INVALIDATED',
+                message: 'Your session was invalidated because your password was changed. Please log in with your new password.',
+            });
         }
 
         req.user = {
@@ -57,7 +66,7 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
     }
 }
 
-export function optionalAuth(req: AuthRequest, res: Response, next: NextFunction) {
+export async function optionalAuth(req: AuthRequest, res: Response, next: NextFunction) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
@@ -66,31 +75,29 @@ export function optionalAuth(req: AuthRequest, res: Response, next: NextFunction
     }
 
     try {
-        const payload = jwt.verify(token, config.jwtSecret) as { userId: string };
-        prisma.user
-            .findUnique({
-                where: { id: payload.userId },
-                include: { associationRoles: true, clubRoles: true },
-            })
-            .then((user) => {
-                if (user) {
-                    req.user = {
-                        id: user.id,
-                        email: user.email,
-                        firstName: user.firstName,
-                        lastName: user.lastName,
-                        isSuperAdmin: user.isSuperAdmin,
-                        licenseId: user.licenseId,
-                        associationRoles: user.associationRoles.map((r) => ({
-                            associationId: r.associationId,
-                            role: r.role,
-                        })),
-                        clubRoles: user.clubRoles.map((r) => ({ clubId: r.clubId, role: r.role })),
-                    };
-                }
-                next();
-            })
-            .catch(() => next());
+        const payload = jwt.verify(token, config.jwtSecret) as { userId: string; tokenVersion?: number };
+        const user = await prisma.user.findUnique({
+            where: { id: payload.userId },
+            include: { associationRoles: true, clubRoles: true },
+        });
+
+        const currentVersion = user ? ((user as any).tokenVersion ?? 0) : 0;
+        if (user && (payload.tokenVersion === undefined || payload.tokenVersion === currentVersion)) {
+            req.user = {
+                id: user.id,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                isSuperAdmin: user.isSuperAdmin,
+                licenseId: user.licenseId,
+                associationRoles: user.associationRoles.map((r) => ({
+                    associationId: r.associationId,
+                    role: r.role,
+                })),
+                clubRoles: user.clubRoles.map((r) => ({ clubId: r.clubId, role: r.role })),
+            };
+        }
+        next();
     } catch {
         next();
     }

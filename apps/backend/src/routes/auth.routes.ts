@@ -78,7 +78,7 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
             await EmailService.sendVerificationEmail(user.email, user.firstName, verificationToken, clientOrigin);
         }
 
-        const token = jwt.sign({ userId: user.id }, config.jwtSecret, { expiresIn: '7d' });
+        const token = jwt.sign({ userId: user.id, tokenVersion: (user as any).tokenVersion ?? 0 }, config.jwtSecret, { expiresIn: '7d' });
 
         await AuditService.record({
             req,
@@ -194,7 +194,7 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
             });
         }
 
-        const token = jwt.sign({ userId: user.id }, config.jwtSecret, { expiresIn: '7d' });
+        const token = jwt.sign({ userId: user.id, tokenVersion: (user as any).tokenVersion ?? 0 }, config.jwtSecret, { expiresIn: '7d' });
 
         await AuditService.record({
             req,
@@ -293,7 +293,7 @@ router.post('/verify-email', async (req, res, next) => {
             status: 'SUCCESS',
         });
 
-        const authToken = jwt.sign({ userId: user.id }, config.jwtSecret, { expiresIn: '7d' });
+        const authToken = jwt.sign({ userId: user.id, tokenVersion: (updatedUser as any).tokenVersion ?? 0 }, config.jwtSecret, { expiresIn: '7d' });
 
         res.json({
             message: 'Email address verified successfully! You are now logged in.',
@@ -595,6 +595,7 @@ router.post(
                     passwordHash,
                     passwordResetToken: null,
                     passwordResetExpires: null,
+                    tokenVersion: { increment: 1 },
                 },
             });
 
@@ -607,7 +608,7 @@ router.post(
                 category: AuditCategory.AUTH,
                 entityType: 'User',
                 entityId: user.id,
-                description: `Password reset successfully completed for ${user.email}`,
+                description: `Password reset successfully completed for ${user.email}. All sessions invalidated.`,
                 status: 'SUCCESS',
             });
 
@@ -650,14 +651,26 @@ router.post(
 
             const passwordHash = await bcrypt.hash(newPassword, 10);
 
-            await prisma.user.update({
+            const updatedUser = await prisma.user.update({
                 where: { id: userId },
                 data: {
                     passwordHash,
                     passwordResetToken: null,
                     passwordResetExpires: null,
+                    tokenVersion: { increment: 1 },
+                },
+                include: {
+                    associationRoles: true,
+                    clubRoles: true,
                 },
             });
+
+            // Issue fresh JWT for the current device so it stays logged in
+            const token = jwt.sign(
+                { userId: updatedUser.id, tokenVersion: (updatedUser as any).tokenVersion },
+                config.jwtSecret,
+                { expiresIn: '7d' },
+            );
 
             await AuditService.record({
                 req,
@@ -668,13 +681,21 @@ router.post(
                 category: AuditCategory.AUTH,
                 entityType: 'User',
                 entityId: user.id,
-                description: `User ${user.email} changed their account password`,
+                description: `User ${user.email} changed their account password. All other active sessions have been invalidated.`,
                 status: 'SUCCESS',
             });
 
             res.json({
                 success: true,
-                message: 'Password changed successfully.',
+                message: 'Password changed successfully. All other active sessions have been signed out.',
+                token,
+                user: {
+                    id: updatedUser.id,
+                    email: updatedUser.email,
+                    firstName: updatedUser.firstName,
+                    lastName: updatedUser.lastName,
+                    isSuperAdmin: updatedUser.isSuperAdmin,
+                },
             });
         } catch (err) {
             next(err);
