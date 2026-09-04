@@ -1,7 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import { config } from '../config/env';
-import { prisma } from '../config/prisma';
 
 export interface AuthenticatedUser {
     id: string;
@@ -16,191 +13,44 @@ export interface AuthenticatedUser {
 
 export interface AuthRequest extends Request {
     user?: AuthenticatedUser;
+    isOAuth?: boolean;
+    isFrontend?: boolean;
+    oauth?: {
+        clientId: string;
+        userId?: string | null;
+        scopes: string[];
+    };
 }
 
 export async function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) {
-    // 1. If request was already authenticated via OAuth at the Ingress Guard
-    if ((req as any).isOAuth && (req as any).oauth) {
-        if ((req as any).oauth.userId && !req.user) {
-            try {
-                const user = await prisma.user.findUnique({
-                    where: { id: (req as any).oauth.userId },
-                    include: { associationRoles: true, clubRoles: true },
+    // 1. OAuth Request: Enforce mutating scope boundaries
+    if (req.isOAuth && req.oauth) {
+        const method = req.method.toUpperCase();
+        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+            const hasAdminScope = req.oauth.scopes.includes('*') || req.oauth.scopes.includes('admin:*');
+            const hasWriteScope = hasAdminScope || req.oauth.scopes.some((s: string) => s.startsWith('write:') || s.endsWith(':*'));
+            if (!hasWriteScope) {
+                return res.status(403).json({
+                    error: 'Forbidden',
+                    message: `Insufficient OAuth scope. Token only has read scopes (${req.oauth.scopes.join(', ')}) and cannot perform mutating ${method} requests.`,
+                    grantedScopes: req.oauth.scopes,
                 });
-                if (user) {
-                    req.user = {
-                        id: user.id,
-                        email: user.email,
-                        firstName: user.firstName,
-                        lastName: user.lastName,
-                        isSuperAdmin: user.isSuperAdmin,
-                        licenseId: user.licenseId,
-                        associationRoles: user.associationRoles.map((r) => ({ associationId: r.associationId, role: r.role })),
-                        clubRoles: user.clubRoles.map((r) => ({ clubId: r.clubId, role: r.role })),
-                    };
-                }
-            } catch {}
+            }
         }
         return next();
     }
 
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-        return res.status(401).json({ error: 'Authentication token required' });
+    // 2. Authenticated User Session (verified by Ingress Guard)
+    if (req.user) {
+        return next();
     }
 
-    // 2. Check if token is a valid OAuth 2.0 Bearer token in DB
-    try {
-        const oauthToken = await prisma.oAuthToken.findUnique({
-            where: { token },
-            include: { client: true, user: { include: { associationRoles: true, clubRoles: true } } },
-        });
-
-        if (oauthToken) {
-            if (new Date() > oauthToken.expiresAt) {
-                return res.status(401).json({ error: 'OAuth token has expired. Please refresh your token via POST /oauth/token.' });
-            }
-            if (oauthToken.client.status !== 'APPROVED') {
-                return res.status(403).json({ error: 'OAuth client is suspended or pending approval.' });
-            }
-
-            (req as any).isOAuth = true;
-            (req as any).oauth = {
-                clientId: oauthToken.clientId,
-                userId: oauthToken.userId,
-                scopes: oauthToken.scopes,
-            };
-
-            if (oauthToken.user) {
-                req.user = {
-                    id: oauthToken.user.id,
-                    email: oauthToken.user.email,
-                    firstName: oauthToken.user.firstName,
-                    lastName: oauthToken.user.lastName,
-                    isSuperAdmin: oauthToken.user.isSuperAdmin,
-                    licenseId: oauthToken.user.licenseId,
-                    associationRoles: oauthToken.user.associationRoles.map((r) => ({ associationId: r.associationId, role: r.role })),
-                    clubRoles: oauthToken.user.clubRoles.map((r) => ({ clubId: r.clubId, role: r.role })),
-                };
-            }
-
-            return next();
-        }
-    } catch (err: any) {
-        console.error('[auth.ts] Error verifying OAuth token:', err);
-    }
-
-    // 3. Otherwise verify as a standard User Session JWT
-    try {
-        const payload = jwt.verify(token, config.jwtSecret) as { userId: string; tokenVersion?: number };
-        const user = await prisma.user.findUnique({
-            where: { id: payload.userId },
-            include: {
-                associationRoles: true,
-                clubRoles: true,
-            },
-        });
-
-        if (!user) {
-            return res.status(401).json({ error: 'User not found or token invalid' });
-        }
-
-        // Enforce tokenVersion check: if password was changed/reset, older sessions are rejected
-        const currentVersion = (user as any).tokenVersion ?? 0;
-        if (payload.tokenVersion !== undefined && payload.tokenVersion !== currentVersion) {
-            return res.status(401).json({
-                error: 'SESSION_INVALIDATED',
-                message: 'Your session was invalidated because your password was changed. Please log in with your new password.',
-            });
-        }
-
-        req.user = {
-            id: user.id,
-            email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            isSuperAdmin: user.isSuperAdmin,
-            licenseId: user.licenseId,
-            associationRoles: user.associationRoles.map((r) => ({ associationId: r.associationId, role: r.role })),
-            clubRoles: user.clubRoles.map((r) => ({ clubId: r.clubId, role: r.role })),
-        };
-
-        next();
-    } catch (err) {
-        return res.status(401).json({ error: 'Invalid or expired authentication token' });
-    }
+    return res.status(401).json({ error: 'Authentication required' });
 }
 
 export async function optionalAuth(req: AuthRequest, res: Response, next: NextFunction) {
-    if ((req as any).isOAuth && (req as any).oauth) {
-        return next();
-    }
-
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-        return next();
-    }
-
-    try {
-        const oauthToken = await prisma.oAuthToken.findUnique({
-            where: { token },
-            include: { client: true, user: { include: { associationRoles: true, clubRoles: true } } },
-        });
-
-        if (oauthToken && new Date() <= oauthToken.expiresAt && oauthToken.client.status === 'APPROVED') {
-            (req as any).isOAuth = true;
-            (req as any).oauth = {
-                clientId: oauthToken.clientId,
-                userId: oauthToken.userId,
-                scopes: oauthToken.scopes,
-            };
-            if (oauthToken.user) {
-                req.user = {
-                    id: oauthToken.user.id,
-                    email: oauthToken.user.email,
-                    firstName: oauthToken.user.firstName,
-                    lastName: oauthToken.user.lastName,
-                    isSuperAdmin: oauthToken.user.isSuperAdmin,
-                    licenseId: oauthToken.user.licenseId,
-                    associationRoles: oauthToken.user.associationRoles.map((r) => ({ associationId: r.associationId, role: r.role })),
-                    clubRoles: oauthToken.user.clubRoles.map((r) => ({ clubId: r.clubId, role: r.role })),
-                };
-            }
-            return next();
-        }
-    } catch {}
-
-    try {
-        const payload = jwt.verify(token, config.jwtSecret) as { userId: string; tokenVersion?: number };
-        const user = await prisma.user.findUnique({
-            where: { id: payload.userId },
-            include: { associationRoles: true, clubRoles: true },
-        });
-
-        const currentVersion = user ? ((user as any).tokenVersion ?? 0) : 0;
-        if (user && (payload.tokenVersion === undefined || payload.tokenVersion === currentVersion)) {
-            req.user = {
-                id: user.id,
-                email: user.email,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                isSuperAdmin: user.isSuperAdmin,
-                licenseId: user.licenseId,
-                associationRoles: user.associationRoles.map((r) => ({
-                    associationId: r.associationId,
-                    role: r.role,
-                })),
-                clubRoles: user.clubRoles.map((r) => ({ clubId: r.clubId, role: r.role })),
-            };
-        }
-        next();
-    } catch {
-        next();
-    }
+    // req.user and req.oauth are already populated by Ingress Guard if authenticated
+    next();
 }
 
 export function requireSuperAdmin(req: AuthRequest, res: Response, next: NextFunction) {

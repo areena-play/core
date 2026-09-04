@@ -5,7 +5,6 @@ import { prisma } from '../config/prisma';
 import { validate } from '../middleware/validate';
 import { createOAuthClientSchema } from '@areena/shared';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
-import { authenticateOAuthToken, requireOAuthScope, OAuthRequest } from '../middleware/oauth';
 import { AuditService } from '../services/audit.service';
 
 const router = Router();

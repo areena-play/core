@@ -3,11 +3,12 @@ import jwt from 'jsonwebtoken';
 import { config } from '../config/env';
 import { prisma } from '../config/prisma';
 import { SystemService } from '../services/system.service';
+import { AuthenticatedUser } from './auth';
 
 export interface IngressRequest extends Request {
     isOAuth?: boolean;
     isFrontend?: boolean;
-    user?: any;
+    user?: AuthenticatedUser;
     oauth?: {
         clientId: string;
         userId?: string | null;
@@ -104,7 +105,7 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
         try {
             const oauthToken = await prisma.oAuthToken.findUnique({
                 where: { token },
-                include: { client: true, user: true },
+                include: { client: true, user: { include: { associationRoles: true, clubRoles: true } } },
             });
 
             if (oauthToken) {
@@ -122,12 +123,28 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
                     });
                 }
 
+                const hasAdminScope = oauthToken.scopes.includes('*') || oauthToken.scopes.includes('admin:*');
+
                 req.isOAuth = true;
                 req.oauth = {
                     clientId: oauthToken.clientId,
                     userId: oauthToken.userId,
                     scopes: oauthToken.scopes,
                 };
+
+                if (oauthToken.user) {
+                    req.user = {
+                        id: oauthToken.user.id,
+                        email: oauthToken.user.email,
+                        firstName: oauthToken.user.firstName,
+                        lastName: oauthToken.user.lastName,
+                        licenseId: oauthToken.user.licenseId,
+                        // Roles are bound strictly to token scopes, NOT user's personal admin status
+                        isSuperAdmin: hasAdminScope,
+                        associationRoles: hasAdminScope ? oauthToken.user.associationRoles.map((r) => ({ associationId: r.associationId, role: r.role })) : [],
+                        clubRoles: hasAdminScope ? oauthToken.user.clubRoles.map((r) => ({ clubId: r.clubId, role: r.role })) : [],
+                    };
+                }
 
                 const clientObj = oauthToken.client as any;
                 if (clientObj?.customRateLimitEnabled) {
@@ -160,9 +177,35 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
 
         // Check if it is a valid User Session JWT
         try {
-            const payload = jwt.verify(token, config.jwtSecret) as any;
+            const payload = jwt.verify(token, config.jwtSecret) as { userId: string; tokenVersion?: number };
             if (payload && payload.userId) {
-                req.user = payload;
+                const user = await prisma.user.findUnique({
+                    where: { id: payload.userId },
+                    include: { associationRoles: true, clubRoles: true },
+                });
+
+                if (!user) {
+                    return res.status(401).json({ error: 'User not found or token invalid' });
+                }
+
+                const currentVersion = (user as any).tokenVersion ?? 0;
+                if (payload.tokenVersion !== undefined && payload.tokenVersion !== currentVersion) {
+                    return res.status(401).json({
+                        error: 'SESSION_INVALIDATED',
+                        message: 'Your session was invalidated because your password was changed. Please log in with your new password.',
+                    });
+                }
+
+                req.user = {
+                    id: user.id,
+                    email: user.email,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    isSuperAdmin: user.isSuperAdmin,
+                    licenseId: user.licenseId,
+                    associationRoles: user.associationRoles.map((r) => ({ associationId: r.associationId, role: r.role })),
+                    clubRoles: user.clubRoles.map((r) => ({ clubId: r.clubId, role: r.role })),
+                };
 
                 if (!rlConfig.enabled) {
                     res.setHeader('X-RateLimit-Limit', 'disabled');
@@ -185,7 +228,12 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
 
                 return next();
             }
-        } catch {}
+        } catch (jwtErr: any) {
+            return res.status(401).json({
+                error: 'Unauthorized',
+                message: 'Invalid or expired authentication token.',
+            });
+        }
     }
 
     // -------------------------------------------------------------------------

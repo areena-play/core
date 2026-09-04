@@ -57,13 +57,17 @@ export function requireOAuthScope(requiredScope: string) {
             return res.status(401).json({ error: 'OAuth authentication required' });
         }
 
+        const category = requiredScope.split(':')[0]; // 'read' or 'write'
         const hasScope =
             req.oauth.scopes.includes(requiredScope) ||
             req.oauth.scopes.includes('*') ||
-            req.oauth.scopes.includes('admin:*');
+            req.oauth.scopes.includes('admin:*') ||
+            req.oauth.scopes.includes(`${category}:*`);
+
         if (!hasScope) {
             return res.status(403).json({
-                error: `Insufficient OAuth scope. Required scope: ${requiredScope}`,
+                error: 'Forbidden',
+                message: `Insufficient OAuth scope. Required scope: '${requiredScope}'.`,
                 grantedScopes: req.oauth.scopes,
             });
         }
