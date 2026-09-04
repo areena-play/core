@@ -153,11 +153,10 @@ function SidebarContent() {
         }, 1000);
     };
 
-    useEffect(() => {
-        return () => {
-            if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-        };
-    }, []);
+    // Hide sidebar on system admin view if user lacks superadmin rights
+    if (activeView === 'admin' && !user?.isSuperAdmin) {
+        return null;
+    }
 
     return (
         <aside className="w-64 h-full flex-shrink-0 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 hidden md:flex md:flex-col justify-between transition-colors duration-200">

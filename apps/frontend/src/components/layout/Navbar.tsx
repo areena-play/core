@@ -183,15 +183,17 @@ export function Navbar() {
                     {/* Left: Mobile Menu Toggle & Brand Logo matching Sidebar width (w-64) */}
                     <div className="flex items-center justify-between md:justify-start gap-2 sm:gap-4 w-full md:w-64 md:shrink-0 h-full px-3 sm:px-6">
                         <div className="flex items-center gap-2 sm:gap-4">
-                            {/* Mobile Hamburger Toggle */}
-                            <button
-                                type="button"
-                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                                aria-label="Toggle Navigation Menu"
-                                className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 md:hidden transition"
-                            >
-                                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                            </button>
+                            {/* Mobile Hamburger Toggle (hidden if unauthorized on admin view) */}
+                            {!(activeView === 'admin' && !user?.isSuperAdmin) && (
+                                <button
+                                    type="button"
+                                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                                    aria-label="Toggle Navigation Menu"
+                                    className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 md:hidden transition"
+                                >
+                                    {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                                </button>
+                            )}
 
                             <Link href="/" className="flex items-center gap-3">
                                 <div className="relative h-8 w-24 sm:h-10 sm:w-32">
@@ -883,7 +885,7 @@ export function Navbar() {
                         </div>
 
                         {/* Sticky Fixed Bottom AREENA Tag & Legal Links */}
-                        <div className="flex-shrink-0 p-3 border-t border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xs">
+                        <div className="flex-shrink-0 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] border-t border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xs">
                             <div className="block rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60 p-2.5 transition">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-1.5 font-black text-xs text-slate-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition">
