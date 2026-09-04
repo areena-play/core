@@ -214,6 +214,10 @@ class ApiClient {
     }
 
     // Associations & Hierarchy
+    getTopAssociation() {
+        return this.request('/associations?top=true');
+    }
+
     getAssociations() {
         return this.request('/associations');
     }

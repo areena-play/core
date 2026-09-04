@@ -10,7 +10,7 @@ export function PageTitleManager() {
     const pathname = usePathname();
     const { entityMeta } = useMainView();
     const { t } = useI18n();
-    const [mainAssocShort, setMainAssocShort] = useState<string>('AREENA');
+    const [mainAssocShort, setMainAssocShort] = useState<string>('');
 
     // Fetch main association short name / abbreviation
     useEffect(() => {
@@ -21,7 +21,7 @@ export function PageTitleManager() {
                 const top =
                     data.associations?.find((a: any) => a.isTopLevel) || data.associations?.[0];
                 if (top && isMounted) {
-                    setMainAssocShort(top.shortName || top.code || top.name || 'AREENA');
+                    setMainAssocShort(top.shortName || top.code || top.name || '');
                 }
             } catch {}
         }
@@ -97,7 +97,7 @@ export function PageTitleManager() {
             }
         }
 
-        const divider = '–';
+        const divider = '-';
         document.title = `AREENA ${divider} ${mainAssocShort} ${divider} ${pageName}`;
     }, [pathname, entityMeta, mainAssocShort, t]);
 

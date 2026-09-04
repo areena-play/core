@@ -46,6 +46,18 @@ function extractS3KeyFromUrl(url: string | null | undefined): string | null {
 // GET /associations - Full hierarchy & tree
 router.get('/', async (req, res, next) => {
     try {
+        if (req.query.top === 'true') {
+            let topAssociation = await prisma.association.findFirst({
+                where: { isTopLevel: true },
+            });
+
+            if (!topAssociation) {
+                return res.status(404).json({ error: 'No association found' });
+            }
+
+            return res.json(topAssociation);
+        }
+
         const hierarchy = await HierarchyService.getFullHierarchy();
         res.json(hierarchy);
     } catch (err) {
