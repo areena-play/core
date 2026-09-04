@@ -335,7 +335,7 @@ export default function DevelopersPortalPage() {
                             onClick={handleGetToken}
                             className="w-full rounded-lg bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white py-1.5 font-semibold transition border border-slate-300 dark:border-slate-700"
                         >
-                            Request Access Token (POST /oauth/token)
+                            Request Access Token (POST /api/oauth/token)
                         </button>
 
                         {activeToken && (

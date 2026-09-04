@@ -40,23 +40,28 @@ app.use(prismaCacheContext);
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-// Health & Public Config endpoints (allowed unauthenticated)
-app.get('/health', (req, res) => {
+
+// Public Health & Config Handlers
+const healthHandler = (req: express.Request, res: express.Response) => {
     res.json({
         status: 'ok',
         service: 'areena-backend',
         version: config.version,
         timestamp: new Date().toISOString(),
     });
-});
+};
 
-app.get('/config/public', (req, res) => {
+const publicConfigHandler = (req: express.Request, res: express.Response) => {
     res.json({
         isDemo: config.isDemo,
         version: config.version,
         timestamp: new Date().toISOString(),
     });
-});
+};
+
+// Root Health & Config
+app.get('/health', healthHandler);
+app.get('/config/public', publicConfigHandler);
 
 // API Ingress Guard (OAuth unrestricted / Frontend rate-limited / Direct blocked)
 app.use(apiIngressGuard);
@@ -64,25 +69,32 @@ app.use(apiIngressGuard);
 // Automatic Transaction Rollback Guard for all mutating requests (POST, PUT, PATCH, DELETE)
 app.use(autoTransaction);
 
-// Mount Routes
-app.use('/auth', authRoutes);
-app.use('/users', userRoutes);
-app.use('/associations', associationRoutes);
-app.use('/clubs', clubRoutes);
-app.use('/licenses', licenseRoutes);
-app.use('/competitions', competitionRoutes);
-app.use('/calendar', calendarRoutes);
-app.use('/messages', messageRoutes);
-app.use('/oauth', oauthRoutes);
-app.use('/upload', uploadRoutes);
-app.use('/invoices', invoiceRoutes);
-app.use('/audit-logs', auditRoutes);
-app.use('/setup', setupRoutes);
-app.use('/notices', noticeRoutes);
-app.use('/support', supportRoutes);
-app.use('/admin', adminRoutes);
-app.use('/locations', locationsRoutes);
-app.use('/search', searchRoutes);
+// Assemble v1 Router
+const v1Router = express.Router();
+v1Router.get('/health', healthHandler);
+v1Router.get('/config/public', publicConfigHandler);
+v1Router.use('/auth', authRoutes);
+v1Router.use('/users', userRoutes);
+v1Router.use('/associations', associationRoutes);
+v1Router.use('/clubs', clubRoutes);
+v1Router.use('/licenses', licenseRoutes);
+v1Router.use('/competitions', competitionRoutes);
+v1Router.use('/calendar', calendarRoutes);
+v1Router.use('/messages', messageRoutes);
+v1Router.use('/oauth', oauthRoutes);
+v1Router.use('/upload', uploadRoutes);
+v1Router.use('/invoices', invoiceRoutes);
+v1Router.use('/audit-logs', auditRoutes);
+v1Router.use('/setup', setupRoutes);
+v1Router.use('/notices', noticeRoutes);
+v1Router.use('/support', supportRoutes);
+v1Router.use('/admin', adminRoutes);
+v1Router.use('/locations', locationsRoutes);
+v1Router.use('/search', searchRoutes);
+
+// Mount v1 router at /v1 (versioned standard) and / (latest version for convenience)
+app.use('/v1', v1Router);
+app.use('/', v1Router);
 
 // Global Error Handler
 app.use(errorHandler);

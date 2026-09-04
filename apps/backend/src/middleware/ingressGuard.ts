@@ -79,11 +79,14 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
     // -------------------------------------------------------------------------
     // 1. Whitelist Public Bootstrap & Static Media Endpoints
     // -------------------------------------------------------------------------
+    const cleanPath = path.replace(/^\/v[0-9]+/, '');
+
     if (
-        path === '/health' ||
-        path.startsWith('/setup') ||
-        (path.startsWith('/upload/file') && method === 'GET') ||
-        (path === '/oauth/token' && method === 'POST')
+        cleanPath === '/health' ||
+        cleanPath === '/config/public' ||
+        cleanPath.startsWith('/setup') ||
+        (cleanPath.startsWith('/upload/file') && method === 'GET') ||
+        (cleanPath === '/oauth/token' && method === 'POST')
     ) {
         return next();
     }

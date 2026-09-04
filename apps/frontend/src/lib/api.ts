@@ -1,5 +1,5 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
-const DIRECT_BACKEND_URL = process.env.NEXT_PUBLIC_DIRECT_API_URL || 'http://localhost:4000';
+export const API_VERSION = process.env.NEXT_PUBLIC_API_VERSION || 'v1';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || `/api/${API_VERSION}`;
 
 let activeRequests = 0;
 const loadingListeners = new Set<(activeCount: number) => void>();
@@ -562,9 +562,25 @@ class ApiClient {
 
     // Protected OAuth API Tester (Direct external OAuth verification against backend)
     fetchOAuthApi(endpoint: string, token: string) {
-        return fetch(`${DIRECT_BACKEND_URL}/oauth${endpoint}`, {
+        let url: string;
+        if (endpoint.startsWith('/api/')) {
+            url = endpoint;
+        } else if (endpoint.startsWith('/')) {
+            if (/^\/v[0-9]+/.test(endpoint)) {
+                url = `/api${endpoint}`;
+            } else {
+                url = `${API_BASE}${endpoint}`;
+            }
+        } else {
+            url = `${API_BASE}/${endpoint}`;
+        }
+
+        return fetch(url, {
             headers: { Authorization: `Bearer ${token}` },
-        }).then((res) => res.json());
+        }).then(async (res) => {
+            const data = await res.json().catch(() => ({ status: res.status, statusText: res.statusText }));
+            return data;
+        });
     }
 
     // Billing & Invoicing
