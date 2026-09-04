@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
@@ -53,7 +53,7 @@ import { PasswordRequirements, checkPasswordRequirements } from '@/components/au
 
 type ProfileTab = 'personal' | 'preferences' | 'licenses' | 'competitions' | 'courses' | 'admin-access';
 
-export default function ProfilePage() {
+function ProfilePageContent() {
     const { user, refreshUser } = useAuth();
     const { theme, setTheme } = useTheme();
     const { locale, setLocale, t, locales, supportedLocales } = useI18n();
@@ -1652,5 +1652,13 @@ export default function ProfilePage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function ProfilePage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Loading profile...</div>}>
+            <ProfilePageContent />
+        </Suspense>
     );
 }
