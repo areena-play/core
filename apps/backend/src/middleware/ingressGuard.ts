@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/env';
 import { prisma } from '../config/prisma';
+import { SystemService } from '../services/system.service';
 
 export interface IngressRequest extends Request {
     isOAuth?: boolean;
@@ -14,26 +15,28 @@ export interface IngressRequest extends Request {
     };
 }
 
-// In-memory sliding-window token bucket rate limiter for frontend web users
+// In-memory sliding-window token bucket rate limiter
 interface RateLimitBucket {
     tokens: number;
     lastRefill: number;
 }
 
 const rateLimitMap = new Map<string, RateLimitBucket>();
-const RATE_LIMIT_CAPACITY = 120; // 120 requests capacity
-const REFILL_RATE_PER_SEC = 2; // +2 requests per second refill (120 req/min sustained)
 
-function checkFrontendRateLimit(rateLimitKey: string): { allowed: boolean; remaining: number; retryAfter: number } {
+function checkRateLimit(
+    rateLimitKey: string,
+    capacity: number = 120,
+    refillRatePerSec: number = 2
+): { allowed: boolean; remaining: number; retryAfter: number } {
     const now = Date.now();
     let bucket = rateLimitMap.get(rateLimitKey);
 
     if (!bucket) {
-        bucket = { tokens: RATE_LIMIT_CAPACITY, lastRefill: now };
+        bucket = { tokens: capacity, lastRefill: now };
         rateLimitMap.set(rateLimitKey, bucket);
     } else {
         const timePassed = (now - bucket.lastRefill) / 1000;
-        bucket.tokens = Math.min(RATE_LIMIT_CAPACITY, bucket.tokens + timePassed * REFILL_RATE_PER_SEC);
+        bucket.tokens = Math.min(capacity, bucket.tokens + timePassed * refillRatePerSec);
         bucket.lastRefill = now;
     }
 
@@ -50,7 +53,7 @@ function checkFrontendRateLimit(rateLimitKey: string): { allowed: boolean; remai
         return { allowed: true, remaining: Math.floor(bucket.tokens), retryAfter: 0 };
     }
 
-    const retryAfter = Math.ceil((1 - bucket.tokens) / REFILL_RATE_PER_SEC);
+    const retryAfter = Math.ceil((1 - bucket.tokens) / Math.max(0.1, refillRatePerSec));
     return { allowed: false, remaining: 0, retryAfter };
 }
 
@@ -59,10 +62,9 @@ function checkFrontendRateLimit(rateLimitKey: string): { allowed: boolean; remai
  * 
  * Rules:
  * 1. Public Whitelist (/health, /oauth/token, /upload/file/*) -> Allowed
- * 2. OAuth 2.0 / API Keys -> Unrestricted / No Rate Limit
- * 3. Local Development (npm run dev on localhost/127.0.0.1) -> Allowed with Rate Limiting
- * 4. Requests from Frontend Web Pages (Same-Origin, SSR, User JWT) -> Allowed with Rate Limiting
- * 5. Direct Unauthenticated API calls (scrapers/bots) -> Blocked (401 Unauthorized)
+ * 2. OAuth 2.0 / API Keys -> Allowed with elevated / dedicated access
+ * 3. User Session / Web Frontend Requests -> Dynamically rate limited by User / IP
+ * 4. Direct Unauthenticated API calls (scrapers/bots) -> Blocked (401) or rate limited if configured
  */
 export async function apiIngressGuard(req: IngressRequest, res: Response, next: NextFunction) {
     const path = req.path;
@@ -86,8 +88,10 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
         return next();
     }
 
+    const rlConfig = await SystemService.getRateLimitConfig();
+
     // -------------------------------------------------------------------------
-    // 2. Check for OAuth 2.0 / API Key (Unrestricted Access - No Rate Limit)
+    // 2. Check for OAuth 2.0 / API Key (Elevated Access)
     // -------------------------------------------------------------------------
     const authHeader = req.headers['authorization'];
     if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -122,7 +126,28 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
                     scopes: oauthToken.scopes,
                 };
 
-                // Unrestricted - Bypass rate limit
+                const clientObj = oauthToken.client as any;
+                if (clientObj?.customRateLimitEnabled) {
+                    const clientCapacity = clientObj.rateLimitCapacity || rlConfig.capacity;
+                    const clientRefill = clientObj.rateLimitRefillRate || rlConfig.refillRatePerSec;
+
+                    const rl = checkRateLimit(`oauth:client:${oauthToken.clientId}`, clientCapacity, clientRefill);
+                    res.setHeader('X-RateLimit-Limit', String(clientCapacity));
+                    res.setHeader('X-RateLimit-Remaining', String(rl.remaining));
+
+                    if (!rl.allowed) {
+                        res.setHeader('Retry-After', String(rl.retryAfter));
+                        return res.status(429).json({
+                            error: 'Too Many Requests',
+                            message: `Custom rate limit exceeded for OAuth client application '${clientObj.name}'. Please reduce request frequency.`,
+                            retryAfterSeconds: rl.retryAfter,
+                        });
+                    }
+
+                    return next();
+                }
+
+                // Verified OAuth client credentials (Unrestricted)
                 res.setHeader('X-RateLimit-Limit', 'unlimited');
                 return next();
             }
@@ -135,16 +160,26 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
             const payload = jwt.verify(token, config.jwtSecret) as any;
             if (payload && payload.userId) {
                 req.user = payload;
+
+                if (!rlConfig.enabled) {
+                    res.setHeader('X-RateLimit-Limit', 'disabled');
+                    return next();
+                }
+
                 // Key by User ID so multiple users sharing a single WiFi/NAT IP don't exhaust each other's quota
-                const rl = checkFrontendRateLimit(`user:${payload.userId}`);
+                const rl = checkRateLimit(`user:${payload.userId}`, rlConfig.capacity, rlConfig.refillRatePerSec);
+                res.setHeader('X-RateLimit-Limit', String(rlConfig.capacity));
+                res.setHeader('X-RateLimit-Remaining', String(rl.remaining));
+
                 if (!rl.allowed) {
+                    res.setHeader('Retry-After', String(rl.retryAfter));
                     return res.status(429).json({
                         error: 'Too Many Requests',
                         message: 'Rate limit exceeded. Please slow down your requests.',
                         retryAfterSeconds: rl.retryAfter,
                     });
                 }
-                res.setHeader('X-RateLimit-Remaining', String(rl.remaining));
+
                 return next();
             }
         } catch {}
@@ -163,8 +198,25 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
 
     if (isDev && isLocalhost) {
         req.isFrontend = true;
-        const rl = checkFrontendRateLimit(`ip:${clientIp}`);
+
+        if (!rlConfig.enabled) {
+            res.setHeader('X-RateLimit-Limit', 'disabled');
+            return next();
+        }
+
+        const rl = checkRateLimit(`ip:${clientIp}`, rlConfig.capacity, rlConfig.refillRatePerSec);
+        res.setHeader('X-RateLimit-Limit', String(rlConfig.capacity));
         res.setHeader('X-RateLimit-Remaining', String(rl.remaining));
+
+        if (!rl.allowed) {
+            res.setHeader('Retry-After', String(rl.retryAfter));
+            return res.status(429).json({
+                error: 'Too Many Requests',
+                message: 'Rate limit exceeded. Please slow down your requests.',
+                retryAfterSeconds: rl.retryAfter,
+            });
+        }
+
         return next();
     }
 
@@ -183,8 +235,17 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
     if (isSameOriginFetch || isMatchingOrigin) {
         req.isFrontend = true;
 
-        const rl = checkFrontendRateLimit(`ip:${clientIp}`);
+        if (!rlConfig.enabled) {
+            res.setHeader('X-RateLimit-Limit', 'disabled');
+            return next();
+        }
+
+        const rl = checkRateLimit(`ip:${clientIp}`, rlConfig.capacity, rlConfig.refillRatePerSec);
+        res.setHeader('X-RateLimit-Limit', String(rlConfig.capacity));
+        res.setHeader('X-RateLimit-Remaining', String(rl.remaining));
+
         if (!rl.allowed) {
+            res.setHeader('Retry-After', String(rl.retryAfter));
             return res.status(429).json({
                 error: 'Too Many Requests',
                 message: 'Rate limit exceeded. Please slow down your requests.',
@@ -192,17 +253,39 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
             });
         }
 
-        res.setHeader('X-RateLimit-Remaining', String(rl.remaining));
         return next();
     }
 
     // -------------------------------------------------------------------------
     // 5. Block Direct Unauthenticated API Access (Scrapers, Bots, Raw Curl)
     // -------------------------------------------------------------------------
-    return res.status(401).json({
-        error: 'Unauthorized',
-        message:
-            'Direct access to the AREENA API is restricted. Please authenticate with an OAuth 2.0 Bearer token (POST /oauth/token) or access via the web application.',
-        docs: '/developers',
-    });
+    if (rlConfig.blockAnonymousBots) {
+        return res.status(401).json({
+            error: 'Unauthorized',
+            message:
+                'Direct access to the AREENA API is restricted. Please authenticate with an OAuth 2.0 Bearer token (POST /oauth/token) or access via the web application.',
+            docs: '/developers',
+        });
+    }
+
+    // If bot blocking is relaxed, apply IP rate limiting
+    if (!rlConfig.enabled) {
+        res.setHeader('X-RateLimit-Limit', 'disabled');
+        return next();
+    }
+
+    const rl = checkRateLimit(`ip:${clientIp}`, rlConfig.capacity, rlConfig.refillRatePerSec);
+    res.setHeader('X-RateLimit-Limit', String(rlConfig.capacity));
+    res.setHeader('X-RateLimit-Remaining', String(rl.remaining));
+
+    if (!rl.allowed) {
+        res.setHeader('Retry-After', String(rl.retryAfter));
+        return res.status(429).json({
+            error: 'Too Many Requests',
+            message: 'Rate limit exceeded. Please slow down your requests.',
+            retryAfterSeconds: rl.retryAfter,
+        });
+    }
+
+    return next();
 }

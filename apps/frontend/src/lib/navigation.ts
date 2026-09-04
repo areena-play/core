@@ -115,6 +115,12 @@ export function getCommonNavSections({
                         icon: Users,
                     },
                     {
+                        id: 'admin-api-keys',
+                        label: t('nav.apiKeys') || 'API Keys & OAuth',
+                        href: '/admin/api-keys',
+                        icon: Key,
+                    },
+                    {
                         id: 'admin-audit-logs',
                         label: t('nav.auditLogs') || 'Audit & Security Trail',
                         href: '/admin/audit-logs',

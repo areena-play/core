@@ -25,6 +25,7 @@ import {
     ShieldAlert,
     RefreshCw,
     Lock,
+    Gauge,
 } from 'lucide-react';
 import { AccessDenied } from '@/components/auth/AccessDenied';
 import { Modal } from '@/components/ui/Modal';
@@ -67,6 +68,16 @@ export default function AdminSettingsPage() {
     const [smtpSaving, setSmtpSaving] = useState(false);
     const [smtpSuccess, setSmtpSuccess] = useState('');
     const [smtpError, setSmtpError] = useState('');
+
+    // Rate Limiting State
+    const [rlEnabled, setRlEnabled] = useState(true);
+    const [rlCapacity, setRlCapacity] = useState(120);
+    const [rlRefillRate, setRlRefillRate] = useState(2);
+    const [rlBlockAnonymous, setRlBlockAnonymous] = useState(true);
+    const [rlSaving, setRlSaving] = useState(false);
+    const [rlSuccess, setRlSuccess] = useState('');
+    const [rlError, setRlError] = useState('');
+    const [oauthClients, setOauthClients] = useState<any[]>([]);
 
     // Test Modal State
     const [testMode, setTestMode] = useState<'mailgun' | 'smtp' | null>(null);
@@ -129,7 +140,11 @@ export default function AdminSettingsPage() {
 
     const loadSettings = async () => {
         try {
-            const data = await api.getAdminSettings();
+            const [data, clientsData] = await Promise.all([
+                api.getAdminSettings(),
+                api.getOAuthClients({ all: true }).catch(() => []),
+            ]);
+            setOauthClients(clientsData || []);
             if (data?.mailgun) {
                 setMgDomain(data.mailgun.domain || '');
                 setMgUrl(data.mailgun.url || 'https://api.mailgun.net');
@@ -150,6 +165,12 @@ export default function AdminSettingsPage() {
                 setSmtpFrom(data.smtp.from || 'noreply@areena.ch');
                 setSmtpIsConfigured(data.smtp.isConfigured);
             }
+            if (data?.rateLimit) {
+                setRlEnabled(data.rateLimit.enabled ?? true);
+                setRlCapacity(data.rateLimit.capacity ?? 120);
+                setRlRefillRate(data.rateLimit.refillRatePerSec ?? 2);
+                setRlBlockAnonymous(data.rateLimit.blockAnonymousBots ?? true);
+            }
             if (user?.email && !testRecipient) {
                 setTestRecipient(user.email);
             }
@@ -165,6 +186,32 @@ export default function AdminSettingsPage() {
             loadSettings();
         }
     }, [user]);
+
+    const handleSaveRateLimit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setRlSaving(true);
+        setRlError('');
+        setRlSuccess('');
+        try {
+            const res = await api.updateRateLimitSettings({
+                enabled: rlEnabled,
+                capacity: Number(rlCapacity),
+                refillRatePerSec: Number(rlRefillRate),
+                blockAnonymousBots: rlBlockAnonymous,
+            });
+            setRlSuccess(res.message || 'Rate limit settings saved successfully.');
+            if (res.rateLimit) {
+                setRlEnabled(res.rateLimit.enabled);
+                setRlCapacity(res.rateLimit.capacity);
+                setRlRefillRate(res.rateLimit.refillRatePerSec);
+                setRlBlockAnonymous(res.rateLimit.blockAnonymousBots);
+            }
+        } catch (err: any) {
+            setRlError(err.message || 'Failed to save rate limit settings');
+        } finally {
+            setRlSaving(false);
+        }
+    };
 
     const handleSaveMailgun = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -594,6 +641,198 @@ export default function AdminSettingsPage() {
                         >
                             {smtpSaving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : null}
                             <span>{smtpSaving ? 'Saving...' : 'Save SMTP Settings'}</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {/* 3. API RATE LIMITING & TRAFFIC THROTTLING */}
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            <Gauge className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h2 className="font-bold text-base text-slate-900 dark:text-white">
+                                API Rate Limiting & Traffic Throttling
+                            </h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Sliding-window token-bucket ingress defense protecting AREENA against traffic surges and malicious scraping.
+                            </p>
+                        </div>
+                    </div>
+                    <div>
+                        {rlEnabled ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                <CheckCircle2 className="h-3.5 w-3.5" /> Rate Limiter Active
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 px-3 py-1 text-xs font-bold text-red-600 dark:text-red-400">
+                                <AlertCircle className="h-3.5 w-3.5" /> Throttling Disabled
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                {rlError && (
+                    <div className="flex items-start gap-2 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/50 p-3 text-xs text-red-700 dark:text-red-300">
+                        <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                        <div>{rlError}</div>
+                    </div>
+                )}
+                {rlSuccess && (
+                    <div className="flex items-start gap-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/50 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <div>{rlSuccess}</div>
+                    </div>
+                )}
+
+                <form onSubmit={handleSaveRateLimit} className="space-y-5 text-xs">
+                    {/* Master Switch */}
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <span className="font-bold text-slate-900 dark:text-white block text-sm">
+                                Rate Limiting Master Switch
+                            </span>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                When enabled, all user sessions and web clients are throttled according to the burst capacity and refill rate.
+                            </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                            <input
+                                type="checkbox"
+                                checked={rlEnabled}
+                                onChange={(e) => setRlEnabled(e.target.checked)}
+                                className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                        </label>
+                    </div>
+
+                    {/* Parameters Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300">
+                                Max Burst Capacity per User/IP (Tokens)
+                            </label>
+                            <input
+                                type="number"
+                                min={5}
+                                max={5000}
+                                required
+                                value={rlCapacity}
+                                onChange={(e) => setRlCapacity(Number(e.target.value))}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 font-mono text-xs text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
+                            />
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                                Maximum concurrent requests allowed in a short burst (Default: 120 tokens).
+                            </p>
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300">
+                                Sustained Refill Rate (Tokens / Second)
+                            </label>
+                            <input
+                                type="number"
+                                step="0.1"
+                                min={0.1}
+                                max={500}
+                                required
+                                value={rlRefillRate}
+                                onChange={(e) => setRlRefillRate(Number(e.target.value))}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 font-mono text-xs text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
+                            />
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                                Rate at which tokens are replenished back to bucket (e.g. 2.0 = 120 req/minute sustained).
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Bot & Scraper Blocking */}
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <span className="font-bold text-slate-900 dark:text-white block text-sm">
+                                Block Direct Unauthenticated API Traffic (Bots & Scrapers)
+                            </span>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Enforce 401 Unauthorized on direct curl / scraper calls that lack valid OAuth 2.0 or same-origin web headers.
+                            </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                            <input
+                                type="checkbox"
+                                checked={rlBlockAnonymous}
+                                onChange={(e) => setRlBlockAnonymous(e.target.checked)}
+                                className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-amber-600"></div>
+                        </label>
+                    </div>
+
+                    {/* Per-Client OAuth Application Rate Limits Callout & Quick Overview */}
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 p-4 space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="space-y-0.5">
+                                <span className="font-bold text-slate-900 dark:text-white block text-sm">
+                                    Per-Client OAuth 2.0 API Quotas & Limits
+                                </span>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    Configure individual burst capacity and refill rates for partner and developer client applications.
+                                </p>
+                            </div>
+                            <Link
+                                href="/admin/api-keys"
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 px-3.5 py-1.5 text-xs font-bold transition shrink-0"
+                            >
+                                <span>Manage Client Keys & Quotas</span>
+                                <ChevronLeft className="h-3.5 w-3.5 rotate-180" />
+                            </Link>
+                        </div>
+
+                        {oauthClients.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-2">
+                                {oauthClients.map((c) => (
+                                    <div
+                                        key={c.id}
+                                        className="flex items-center justify-between gap-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-2.5 text-xs"
+                                    >
+                                        <div className="min-w-0">
+                                            <div className="font-bold text-slate-900 dark:text-white truncate">
+                                                {c.name}
+                                            </div>
+                                            <div className="text-[10px] text-slate-400 font-mono truncate">
+                                                {c.clientId}
+                                            </div>
+                                        </div>
+                                        {c.customRateLimitEnabled ? (
+                                            <span className="shrink-0 rounded-full bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800/80 px-2 py-0.5 text-[9px] font-bold">
+                                                {c.rateLimitCapacity || 120} cap • {c.rateLimitRefillRate || 2}/s
+                                            </span>
+                                        ) : (
+                                            <span className="shrink-0 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 text-[9px] font-medium">
+                                                Unlimited
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-xs text-slate-400 italic pt-1">
+                                No registered OAuth client applications found.
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                            type="submit"
+                            disabled={rlSaving}
+                            className="rounded-xl bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 text-xs font-bold shadow transition disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {rlSaving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : null}
+                            <span>{rlSaving ? 'Saving...' : 'Save Rate Limiting Configuration'}</span>
                         </button>
                     </div>
                 </form>

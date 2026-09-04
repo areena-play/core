@@ -17,6 +17,7 @@ export default function DevelopersPortalPage() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [appName, setAppName] = useState('');
     const [appDesc, setAppDesc] = useState('');
+    const [appReason, setAppReason] = useState('');
     const [selectedScopes, setSelectedScopes] = useState<string[]>([
         'read:public',
         'read:calendar',
@@ -26,8 +27,8 @@ export default function DevelopersPortalPage() {
     const [createdClient, setCreatedClient] = useState<any | null>(null);
 
     // Interactive API Runner
-    const [testClientId, setTestClientId] = useState('areena_demo_partner_client');
-    const [testSecret, setTestSecret] = useState('sec_demo_partner_secret_123');
+    const [testClientId, setTestClientId] = useState('');
+    const [testSecret, setTestSecret] = useState('');
     const [activeToken, setActiveToken] = useState('');
     const [tokenResponse, setTokenResponse] = useState<any | null>(null);
     const [selectedEndpoint, setSelectedEndpoint] = useState('/api/v1/competitions');
@@ -38,7 +39,13 @@ export default function DevelopersPortalPage() {
     const fetchClients = async () => {
         try {
             const data = await api.getOAuthClients();
-            setClients(data);
+            const userClients = (data || []).filter(
+                (c: any) => c.ownerUserId === user?.id || c.owner?.id === user?.id
+            );
+            setClients(userClients);
+            if (userClients.length > 0 && testClientId === 'areena_demo_partner_client') {
+                setTestClientId(userClients[0].clientId);
+            }
         } catch (err) {
             console.error('Failed to load OAuth clients:', err);
         } finally {
@@ -57,6 +64,7 @@ export default function DevelopersPortalPage() {
             const res = await api.createOAuthClient({
                 name: appName,
                 description: appDesc,
+                requestReason: appReason,
                 requestedScopes: selectedScopes,
             });
 
@@ -133,90 +141,161 @@ export default function DevelopersPortalPage() {
                 )}
             </div>
 
-            {/* Grid: App Registry & Interactive Live API Runner */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
-                {/* Left Column: Registered OAuth Clients */}
-                <div className="space-y-4">
-                    <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <Key className="h-4 w-4 text-red-500" />
-                        <span>{t('developers.registeredClients')}</span>
-                    </h2>
-
-                    <div className="space-y-3">
-                        {clients.map((c) => (
-                            <div
-                                key={c.id}
-                                className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 p-4 sm:p-5 hover:border-slate-300 dark:hover:border-slate-700 transition shadow-sm space-y-3 text-xs"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <span className="font-bold text-sm text-slate-900 dark:text-white">{c.name}</span>
-                                    <span
-                                        className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
-                                            c.status === 'APPROVED'
-                                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/40'
-                                                : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800/40'
-                                        }`}
-                                    >
-                                        {c.status}
-                                    </span>
-                                </div>
-
-                                {c.description && (
-                                    <p className="text-slate-600 dark:text-slate-400">{c.description}</p>
-                                )}
-
-                                <div className="space-y-1.5 font-mono text-[11px] rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2.5">
-                                    <div className="flex items-center justify-between text-slate-700 dark:text-slate-300">
-                                        <span>
-                                            Client ID: <strong className="text-red-600 dark:text-red-400">{c.clientId}</strong>
-                                        </span>
-                                        <button
-                                            onClick={() => {
-                                                copyToClipboard(c.clientId, c.id);
-                                                setTestClientId(c.clientId);
-                                            }}
-                                            className="text-slate-400 hover:text-slate-700 dark:hover:text-white"
-                                        >
-                                            {copiedKey === c.id ? (
-                                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                                            ) : (
-                                                <Copy className="h-3.5 w-3.5" />
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <span className="text-[10px] font-semibold uppercase text-slate-500">
-                                        Allowed Scopes:
-                                    </span>
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                        {c.allowedScopes?.map((s: string) => (
-                                            <span
-                                                key={s}
-                                                className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:text-slate-300"
-                                            >
-                                                {s}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+            {/* Main Content Area */}
+            {loading ? (
+                <div className="flex h-64 items-center justify-center">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-500 border-t-transparent" />
                 </div>
-
-                {/* Right Column: Live Interactive API Tester */}
-                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 p-5 sm:p-6 shadow-xl space-y-6 text-xs">
-                    <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                        <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <Terminal className="h-4 w-4 text-red-500" />
-                            <span>{t('developers.apiTester')}</span>
-                        </h2>
-                        <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-800/40">
-                            Client Credentials Flow
-                        </span>
+            ) : clients.length === 0 ? (
+                <div className="rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 p-8 sm:p-12 text-center max-w-2xl mx-auto space-y-5 shadow-sm">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 mx-auto">
+                        <Code2 className="h-8 w-8" />
                     </div>
+                    <div className="space-y-2">
+                        <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                            No OAuth Client Applications Registered
+                        </h2>
+                        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+                            To access the REST API and unlock the interactive API sandbox, register a client application with a brief description and access justification.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left pt-2">
+                        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-3.5 space-y-1">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-600 font-bold text-white text-[10px]">
+                                1
+                            </span>
+                            <div className="font-bold text-xs text-slate-900 dark:text-white pt-1">Register App</div>
+                            <p className="text-[11px] text-slate-500">Provide name, use-case reason & requested scopes.</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-3.5 space-y-1">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-600 font-bold text-white text-[10px]">
+                                2
+                            </span>
+                            <div className="font-bold text-xs text-slate-900 dark:text-white pt-1">Admin Review</div>
+                            <p className="text-[11px] text-slate-500">Super Admins review justification and grant scopes.</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-3.5 space-y-1">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-[10px]">
+                                3
+                            </span>
+                            <div className="font-bold text-xs text-slate-900 dark:text-white pt-1">Test & Integrate</div>
+                            <p className="text-[11px] text-slate-500">Use the interactive API tester with your live credentials.</p>
+                        </div>
+                    </div>
+
+                    {user ? (
+                        <div className="pt-3">
+                            <button
+                                onClick={() => {
+                                    setCreatedClient(null);
+                                    setCreatedSecret(null);
+                                    setShowCreateModal(true);
+                                }}
+                                className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-6 py-3 text-xs font-bold text-white shadow-lg shadow-red-500/20 transition"
+                            >
+                                <Plus className="h-4 w-4" />
+                                <span>Register Your First Client Application</span>
+                            </button>
+                        </div>
+                    ) : (
+                        <p className="text-xs text-red-500 font-medium">Please sign in to register OAuth applications.</p>
+                    )}
+                </div>
+            ) : (
+                /* Grid: App Registry & Interactive Live API Runner */
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+                    {/* Left Column: Registered OAuth Clients */}
+                    <div className="space-y-4">
+                        <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <Key className="h-4 w-4 text-red-500" />
+                            <span>{t('developers.registeredClients')}</span>
+                        </h2>
+
+                        <div className="space-y-3">
+                            {clients.map((c) => (
+                                <div
+                                    key={c.id}
+                                    className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 p-4 sm:p-5 hover:border-slate-300 dark:hover:border-slate-700 transition shadow-sm space-y-3 text-xs"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-bold text-sm text-slate-900 dark:text-white">{c.name}</span>
+                                        <span
+                                            className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                                c.status === 'APPROVED'
+                                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/40'
+                                                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800/40'
+                                            }`}
+                                        >
+                                            {c.status}
+                                        </span>
+                                    </div>
+
+                                    {c.description && (
+                                        <p className="text-slate-600 dark:text-slate-400">{c.description}</p>
+                                    )}
+
+                                    {c.requestReason && (
+                                        <div className="rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 p-2.5 space-y-1">
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400">
+                                                Access Justification:
+                                            </span>
+                                            <p className="text-[11px] text-slate-700 dark:text-slate-300 italic">"{c.requestReason}"</p>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-1.5 font-mono text-[11px] rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2.5">
+                                        <div className="flex items-center justify-between text-slate-700 dark:text-slate-300">
+                                            <span>
+                                                Client ID: <strong className="text-red-600 dark:text-red-400">{c.clientId}</strong>
+                                            </span>
+                                            <button
+                                                onClick={() => {
+                                                    copyToClipboard(c.clientId, c.id);
+                                                    setTestClientId(c.clientId);
+                                                }}
+                                                className="text-slate-400 hover:text-slate-700 dark:hover:text-white"
+                                            >
+                                                {copiedKey === c.id ? (
+                                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                                                ) : (
+                                                    <Copy className="h-3.5 w-3.5" />
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <span className="text-[10px] font-semibold uppercase text-slate-500">
+                                            Allowed Scopes:
+                                        </span>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {c.allowedScopes?.map((s: string) => (
+                                                <span
+                                                    key={s}
+                                                    className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:text-slate-300"
+                                                >
+                                                    {s}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Right Column: Live Interactive API Tester */}
+                    <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 p-5 sm:p-6 shadow-xl space-y-6 text-xs">
+                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <Terminal className="h-4 w-4 text-red-500" />
+                                <span>{t('developers.apiTester')}</span>
+                            </h2>
+                            <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-800/40">
+                                Client Credentials Flow
+                            </span>
+                        </div>
 
                     {/* Step 1: Token Acquisition */}
                     <div className="space-y-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-4">
@@ -313,8 +392,9 @@ export default function DevelopersPortalPage() {
                     </div>
                 </div>
             </div>
+        )}
 
-            {/* Register App Modal */}
+        {/* Register App Modal */}
             <Modal
                 isOpen={showCreateModal}
                 onClose={() => setShowCreateModal(false)}
@@ -394,6 +474,25 @@ export default function DevelopersPortalPage() {
                         </div>
 
                         <div>
+                            <label className="font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                                <span>Reason & Justification for API Access *</span>
+                                <span className="text-[10px] text-red-500 font-normal">Required for review</span>
+                            </label>
+                            <textarea
+                                rows={3}
+                                required
+                                minLength={5}
+                                placeholder="Please explain why access is required, the intended audience, and data usage..."
+                                value={appReason}
+                                onChange={(e) => setAppReason(e.target.value)}
+                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                            />
+                            <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                                System administrators and federation officials review this reason before approving elevated scopes.
+                            </p>
+                        </div>
+
+                        <div>
                             <label className="font-semibold text-slate-700 dark:text-slate-300">
                                 Requested API Scopes
                             </label>
@@ -402,27 +501,27 @@ export default function DevelopersPortalPage() {
                                     {
                                         scope: 'read:public',
                                         label: 'read:public',
-                                        desc: 'Basic federation metadata (Auto-approved)',
+                                        desc: 'Basic federation metadata and public associations hierarchy',
                                     },
                                     {
                                         scope: 'read:calendar',
                                         label: 'read:calendar',
-                                        desc: 'Read unified master events schedule (Auto-approved)',
+                                        desc: 'Read unified master events schedule and calendar feeds',
                                     },
                                     {
                                         scope: 'read:competitions',
                                         label: 'read:competitions',
-                                        desc: 'Read leagues, categories and standings (Auto-approved)',
+                                        desc: 'Read leagues, categories, rankings, and match results',
                                     },
                                     {
                                         scope: 'read:members_full',
                                         label: 'read:members_full',
-                                        desc: 'Enhanced access to member directory (Requires Main Admin Approval)',
+                                        desc: 'Enhanced access to member directory and licensing data (Elevated Partner Scope)',
                                     },
                                     {
                                         scope: 'write:scores',
                                         label: 'write:scores',
-                                        desc: 'Submit live match scores from partner systems (Requires Main Admin Approval)',
+                                        desc: 'Submit live match scores and outcomes from partner systems (Elevated Partner Scope)',
                                     },
                                 ].map((s) => (
                                     <label

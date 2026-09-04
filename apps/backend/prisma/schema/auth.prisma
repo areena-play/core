@@ -73,10 +73,14 @@ model OAuthClient {
   clientSecretHash String
   name             String
   description      String?
+  requestReason    String?
   ownerUserId      String
   allowedScopes    String[]          @default(["read:public"])
   status           OAuthClientStatus @default(PENDING_APPROVAL)
   approvedByUserId String?
+  customRateLimitEnabled Boolean   @default(false)
+  rateLimitCapacity      Int?      @default(120)
+  rateLimitRefillRate    Float?    @default(2.0)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 

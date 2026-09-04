@@ -23,6 +23,13 @@ export interface SmtpConfig {
     hasPassword?: boolean;
 }
 
+export interface RateLimitConfig {
+    enabled: boolean;
+    capacity: number;
+    refillRatePerSec: number;
+    blockAnonymousBots: boolean;
+}
+
 export function formatEmailSender(
     fromEmail?: string,
     fromName?: string,
@@ -52,6 +59,62 @@ export class SystemService {
     private static mailgunConfigCache: MailgunConfig | null = null;
     private static smtpTransporterCache: Transporter | null = null;
     private static smtpConfigCache: SmtpConfig | null = null;
+    private static rateLimitConfigCache: RateLimitConfig | null = null;
+
+    public static async getRateLimitConfig(): Promise<RateLimitConfig> {
+        if (this.rateLimitConfigCache) {
+            return this.rateLimitConfigCache;
+        }
+
+        const [enabledStr, capacityStr, refillRateStr, blockAnonymousStr] = await Promise.all([
+            this.getSetting('RATE_LIMIT_ENABLED', 'true'),
+            this.getSetting('RATE_LIMIT_CAPACITY', '120'),
+            this.getSetting('RATE_LIMIT_REFILL_PER_SEC', '2'),
+            this.getSetting('RATE_LIMIT_BLOCK_ANONYMOUS', 'true'),
+        ]);
+
+        const capacity = Math.max(10, parseInt(capacityStr || '120', 10) || 120);
+        const refillRatePerSec = Math.max(0.1, parseFloat(refillRateStr || '2') || 2);
+        const enabled = enabledStr !== 'false';
+        const blockAnonymousBots = blockAnonymousStr !== 'false';
+
+        this.rateLimitConfigCache = {
+            enabled,
+            capacity,
+            refillRatePerSec,
+            blockAnonymousBots,
+        };
+
+        return this.rateLimitConfigCache;
+    }
+
+    public static async updateRateLimitConfig(
+        data: {
+            enabled?: boolean;
+            capacity?: number;
+            refillRatePerSec?: number;
+            blockAnonymousBots?: boolean;
+        },
+        updatedBy?: string
+    ): Promise<RateLimitConfig> {
+        if (data.enabled !== undefined) {
+            await this.setSetting('RATE_LIMIT_ENABLED', String(data.enabled), 'Global API Rate Limiter Master Toggle', false, updatedBy);
+        }
+        if (data.capacity !== undefined) {
+            await this.setSetting('RATE_LIMIT_CAPACITY', String(Math.max(5, Math.floor(data.capacity))), 'API Rate Limit Max Burst Bucket Capacity (tokens)', false, updatedBy);
+        }
+        if (data.refillRatePerSec !== undefined) {
+            await this.setSetting('RATE_LIMIT_REFILL_PER_SEC', String(Math.max(0.1, data.refillRatePerSec)), 'API Rate Limit Sustained Refill Rate (tokens/sec)', false, updatedBy);
+        }
+        if (data.blockAnonymousBots !== undefined) {
+            await this.setSetting('RATE_LIMIT_BLOCK_ANONYMOUS', String(data.blockAnonymousBots), 'Block Direct Unauthenticated Bot & Scraper Traffic', false, updatedBy);
+        }
+
+        // Invalidate in-memory cache
+        this.rateLimitConfigCache = null;
+
+        return this.getRateLimitConfig();
+    }
 
     public static async getSetting(key: string, defaultValue: string = ''): Promise<string> {
         try {

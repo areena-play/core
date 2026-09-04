@@ -527,8 +527,9 @@ class ApiClient {
     }
 
     // OAuth / Developer Portal
-    getOAuthClients() {
-        return this.request('/oauth/clients');
+    getOAuthClients(params: { all?: boolean } = {}) {
+        const qs = params.all ? '?all=true' : '';
+        return this.request(`/oauth/clients${qs}`);
     }
 
     createOAuthClient(body: any) {
@@ -537,6 +538,18 @@ class ApiClient {
 
     approveOAuthClient(clientId: string, body: any) {
         return this.request(`/oauth/clients/${clientId}/approve`, { method: 'POST', body: JSON.stringify(body) });
+    }
+
+    updateOAuthClientRateLimit(clientId: string, body: { customRateLimitEnabled: boolean; rateLimitCapacity?: number; rateLimitRefillRate?: number }) {
+        return this.request(`/oauth/clients/${clientId}/ratelimit`, { method: 'PUT', body: JSON.stringify(body) });
+    }
+
+    revokeOAuthClient(clientId: string) {
+        return this.request(`/oauth/clients/${clientId}/revoke`, { method: 'POST' });
+    }
+
+    deleteOAuthClient(clientId: string) {
+        return this.request(`/oauth/clients/${clientId}`, { method: 'DELETE' });
     }
 
     requestOAuthToken(body: any) {
@@ -779,6 +792,13 @@ class ApiClient {
         return this.request('/admin/settings/smtp/test', {
             method: 'POST',
             body: JSON.stringify({ toEmail }),
+        });
+    }
+
+    updateRateLimitSettings(body: { enabled?: boolean; capacity?: number; refillRatePerSec?: number; blockAnonymousBots?: boolean }) {
+        return this.request('/admin/settings/ratelimit', {
+            method: 'PUT',
+            body: JSON.stringify(body),
         });
     }
 

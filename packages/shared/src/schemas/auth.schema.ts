@@ -79,9 +79,10 @@ export const updateProfileSchema = z.object({
 });
 
 export const createOAuthClientSchema = z.object({
-    name: z.string().min(2),
+    name: z.string().min(2, 'Name must be at least 2 characters'),
     description: z.string().optional(),
-    requestedScopes: z.array(z.string()).min(1),
+    requestReason: z.string().min(5, 'Please provide a clear justification of at least 5 characters for API access'),
+    requestedScopes: z.array(z.string()).min(1, 'Please select at least one scope'),
 });
 
 export const adminUpdateUserSchema = z.object({

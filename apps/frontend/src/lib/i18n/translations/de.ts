@@ -61,6 +61,7 @@ export const de: TranslationDictionary = {
         superAdminSection: 'Super-Admin',
         adminDashboard: 'Admin-Übersicht',
         systemSettings: 'Systemeinstellungen',
+        apiKeys: 'API-Schlüssel & OAuth',
         locations: 'Standorte',
     },
 

@@ -30,9 +30,10 @@ router.get('/dashboard', async (req: AuthRequest, res: Response) => {
  */
 router.get('/settings', async (req: AuthRequest, res: Response) => {
     try {
-        const [mailgunConfig, smtpConfig] = await Promise.all([
+        const [mailgunConfig, smtpConfig, rateLimitConfig] = await Promise.all([
             SystemService.getMailgunConfig(),
             SystemService.getSmtpConfig(),
+            SystemService.getRateLimitConfig(),
         ]);
 
         const maskedApiKey = mailgunConfig.apiKey
@@ -60,6 +61,7 @@ router.get('/settings', async (req: AuthRequest, res: Response) => {
                 from: smtpConfig.from,
                 isConfigured: smtpConfig.isConfigured,
             },
+            rateLimit: rateLimitConfig,
             environment: {
                 nodeEnv: process.env.NODE_ENV || 'development',
                 databaseProvider: 'PostgreSQL',
@@ -70,6 +72,43 @@ router.get('/settings', async (req: AuthRequest, res: Response) => {
     } catch (err: any) {
         console.error('Get Admin Settings Error:', err);
         res.status(500).json({ error: 'Failed to retrieve system settings' });
+    }
+});
+
+/**
+ * PUT /api/admin/settings/ratelimit
+ * Update API Rate Limiting and Traffic Throttling settings
+ */
+router.put('/settings/ratelimit', async (req: AuthRequest, res: Response) => {
+    try {
+        const { enabled, capacity, refillRatePerSec, blockAnonymousBots } = req.body;
+
+        const updated = await SystemService.updateRateLimitConfig(
+            {
+                enabled: enabled !== undefined ? Boolean(enabled) : undefined,
+                capacity: capacity !== undefined ? Number(capacity) : undefined,
+                refillRatePerSec: refillRatePerSec !== undefined ? Number(refillRatePerSec) : undefined,
+                blockAnonymousBots: blockAnonymousBots !== undefined ? Boolean(blockAnonymousBots) : undefined,
+            },
+            req.user?.id
+        );
+
+        await AuditService.record({
+            req,
+            action: 'UPDATE_SYSTEM_SETTING',
+            entityType: 'SystemSetting',
+            entityId: 'RATE_LIMIT_CONFIG',
+            description: `Updated Rate Limiter settings: enabled=${updated.enabled}, capacity=${updated.capacity}, refillRate=${updated.refillRatePerSec}/s`,
+            metadata: updated,
+        });
+
+        res.json({
+            message: 'Rate limiting settings updated successfully',
+            rateLimit: updated,
+        });
+    } catch (err: any) {
+        console.error('Update Rate Limit Settings Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to update rate limit settings' });
     }
 });
 

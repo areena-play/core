@@ -58,9 +58,10 @@ export const fr: TranslationDictionary = {
         competitionHub: 'Hub des tournois',
         clubOverview: 'Vereinsübersicht',
         managementDashboard: 'Management-Übersicht',
-        superAdminSection: 'Super-Admin',
-        adminDashboard: 'Admin-Übersicht',
-        systemSettings: 'Systemeinstellungen',
+        superAdminSection: 'Super Admin',
+        adminDashboard: 'Tableau de bord Admin',
+        systemSettings: 'Paramètres système',
+        apiKeys: 'Clés API & OAuth',
         locations: 'Sites sportifs',
     },
 
