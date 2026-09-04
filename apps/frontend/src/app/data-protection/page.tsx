@@ -32,7 +32,7 @@ export default function DataProtectionPage() {
     const logoSrc = resolvedTheme === 'dark' ? '/areena-logo-dark.png' : '/areena-logo.png';
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8 pb-16">
+        <div className="w-full space-y-8 pb-16">
             {/* Top Navigation */}
             <div className="flex items-center justify-between">
                 <Link

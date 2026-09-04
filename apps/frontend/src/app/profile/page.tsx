@@ -271,7 +271,7 @@ function ProfilePageContent() {
     const adminTotalCount = adminAssocsCount + adminClubsCount + (user.isSuperAdmin ? 1 : 0);
 
     return (
-        <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 pb-20">
+        <div className="w-full space-y-6 md:space-y-8 pb-20">
             {/* Header Profile Hero Card */}
             <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-6 sm:p-8 shadow-sm relative overflow-hidden">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">

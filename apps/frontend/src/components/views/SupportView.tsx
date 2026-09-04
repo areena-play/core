@@ -10,7 +10,7 @@ interface SupportViewProps {
 
 export function SupportView({ scopedAssociationId }: SupportViewProps) {
     return (
-        <div className="max-w-3xl mx-auto space-y-6 pb-16">
+        <div className="w-full space-y-6 pb-16">
             <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-sm space-y-2">
                 <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3 py-1 text-[11px] font-bold uppercase">
                     <HelpCircle className="h-3.5 w-3.5" />

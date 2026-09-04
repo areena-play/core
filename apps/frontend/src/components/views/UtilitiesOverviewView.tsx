@@ -86,7 +86,7 @@ export function UtilitiesOverviewView({ scopedAssociationId }: UtilitiesOverview
     ];
 
     return (
-        <div className="space-y-8 pb-16 max-w-7l mx-auto">
+        <div className="space-y-8 pb-16">
             {/* Hero Header */}
             <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-gradient-to-r dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 p-6 sm:p-8 shadow-sm">
                 <div className="flex flex-col md-flex-row md:items-center justify-between gap-6 relative z-10">

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
@@ -92,7 +92,7 @@ export default function CompetitionRefereesPage() {
                 accessorFn: (row) => (row.createdAt ? new Date(row.createdAt).getTime() : 0),
                 header: ({ column }) => <DataTableColumnHeader column={column} title="Assigned On" />,
                 cell: ({ row }) => (
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-slate-400" suppressHydrationWarning>
                         {row.original.createdAt ? new Date(row.original.createdAt).toLocaleDateString() : '–'}
                     </span>
                 ),
@@ -102,7 +102,7 @@ export default function CompetitionRefereesPage() {
     );
 
     return (
-        <div className="space-y-6 max-w-6xl pb-12">
+        <div className="space-y-6 pb-12">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>

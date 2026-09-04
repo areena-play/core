@@ -95,7 +95,7 @@ export default function PersonProfilePage() {
     const activeLicenses = person.licenses?.filter((l: any) => l.status === 'ACTIVE') || [];
 
     return (
-        <div className="max-w-6xl mx-auto py-6 px-4 space-y-6 pb-20">
+        <div className="w-full space-y-6 pb-20">
             {/* Schema.org Person Structured Data */}
             <JsonLd data={generatePersonJsonLd(person)} />
 

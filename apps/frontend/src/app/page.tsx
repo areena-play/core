@@ -23,7 +23,7 @@ import { LiveTicker } from '@/components/layout/LiveTicker';
 
 export default function DashboardPage() {
     const { user } = useAuth();
-    const { t } = useI18n();
+    const { t, formatDate } = useI18n();
     const { associations } = useMainView();
     const [clubs, setClubs] = useState<any[]>([]);
     const [competitions, setCompetitions] = useState<any[]>([]);
@@ -273,8 +273,8 @@ export default function DashboardPage() {
                                         <span className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
                                             {evt.eventType?.replace('_', ' ')}
                                         </span>
-                                        <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                                            {evt.startDate && new Date(evt.startDate).toLocaleDateString(undefined, {
+                                        <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400" suppressHydrationWarning>
+                                            {evt.startDate && formatDate(evt.startDate, {
                                                 month: 'short',
                                                 day: 'numeric',
                                             })}

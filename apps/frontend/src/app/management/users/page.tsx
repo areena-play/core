@@ -308,7 +308,7 @@ export default function AdminUsersPage() {
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6">
+        <div className="space-y-6 pb-16">
             {/* Page Header */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div className="space-y-1">

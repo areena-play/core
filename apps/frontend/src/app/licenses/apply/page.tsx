@@ -126,7 +126,7 @@ export default function ApplyLicensePage() {
     }
 
     return (
-        <div className="max-w-2xl mx-auto space-y-6 pb-16">
+        <div className="w-full space-y-6 pb-16">
             <Link
                 href="/licenses"
                 className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"

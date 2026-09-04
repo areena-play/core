@@ -310,7 +310,7 @@ function SupportPageContent() {
     };
 
     return (
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+        <div className="w-full space-y-8 pb-16">
             {/* Header / Hero */}
             <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-red-950 p-8 sm:p-10 text-white shadow-xl border border-slate-700/50">
                 <div className="relative z-10 max-w-3xl space-y-3">

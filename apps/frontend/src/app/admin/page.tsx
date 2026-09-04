@@ -72,7 +72,7 @@ export default function AdminDashboardPage() {
     }
 
     return (
-        <div className="space-y-8 pb-16 max-w-7xl mx-auto">
+        <div className="space-y-8 pb-16">
             {/* Header Banner */}
             <div className="rounded-3xl border border-red-500/30 bg-gradient-to-br from-slate-950 via-slate-900 to-red-950/40 text-white p-6 sm:p-8 shadow-2xl relative overflow-hidden">
                 <div className="relative z-10 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
@@ -360,7 +360,7 @@ export default function AdminDashboardPage() {
                                         {log.user?.email || 'System Operation'}
                                     </span>
                                 </div>
-                                <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                                <span className="text-[10px] font-mono text-slate-400 shrink-0" suppressHydrationWarning>
                                     {new Date(log.createdAt).toLocaleTimeString()}
                                 </span>
                             </div>

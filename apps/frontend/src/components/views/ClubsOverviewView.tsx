@@ -131,7 +131,7 @@ export function ClubsOverviewView({ scopedAssociationId }: ClubsOverviewViewProp
     });
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto pb-16">
+        <div className="space-y-6 pb-16">
             <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-sm relative overflow-hidden">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 relative z-10">
                     <div className="space-y-1.5">

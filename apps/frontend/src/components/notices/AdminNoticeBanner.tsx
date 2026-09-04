@@ -64,7 +64,7 @@ export function AdminNoticeBanner() {
                         key={notice.id}
                         className={`transition-all duration-200 px-4 py-2.5 ${bannerBg}`}
                     >
-                        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 text-xs">
+                        <div className="max-w-[1440px] mx-auto flex items-center justify-between gap-3 text-xs">
                             <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                 {icon}
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 ${badgeBg}`}>
@@ -124,7 +124,7 @@ export function AdminNoticeBanner() {
 
                         {/* Expandable details area */}
                         {isExpanded && noticeContent && (
-                            <div className="max-w-7xl mx-auto mt-2 pt-2 border-t border-white/10 text-xs text-slate-300 leading-relaxed">
+                            <div className="max-w-[1440px] mx-auto mt-2 pt-2 border-t border-white/10 text-xs text-slate-300 leading-relaxed">
                                 <p className="whitespace-pre-wrap">{noticeContent}</p>
                             </div>
                         )}

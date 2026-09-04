@@ -49,7 +49,7 @@ export default function EloCalculatorPage() {
     };
 
     return (
-        <div className="space-y-6 pb-12 max-w-5xl mx-auto">
+        <div className="space-y-6 pb-12">
             {/* Header */}
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div>

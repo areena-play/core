@@ -159,7 +159,7 @@ export default function ManagementDashboardPage() {
     ];
 
     return (
-        <div className="space-y-8 pb-16 max-w-7xl mx-auto">
+        <div className="space-y-8 pb-16">
             {/* Header Banner */}
             <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 text-white p-6 sm:p-8 shadow-xl relative overflow-hidden">
                 <div className="relative z-10 space-y-2 max-w-3xl">
@@ -326,7 +326,7 @@ export default function ManagementDashboardPage() {
                                         {log.details || log.user?.email || 'System Operation'}
                                     </span>
                                 </div>
-                                <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                                <span className="text-[10px] font-mono text-slate-400 shrink-0" suppressHydrationWarning>
                                     {new Date(log.createdAt || log.timestamp || Date.now()).toLocaleTimeString()}
                                 </span>
                             </div>

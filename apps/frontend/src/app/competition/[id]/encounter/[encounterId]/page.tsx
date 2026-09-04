@@ -127,7 +127,7 @@ export default function EncounterScoresheetPage() {
                         </h1>
                         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex items-center gap-3">
                             <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-rose-500" /> {encounter.location || 'Main Arena'}</span>
-                            <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5 text-blue-500" /> {encounter.scheduledAt ? new Date(encounter.scheduledAt).toLocaleString() : 'Scheduled'}</span>
+                            <span className="flex items-center gap-1" suppressHydrationWarning><Calendar className="h-3.5 w-3.5 text-blue-500" /> {encounter.scheduledAt ? new Date(encounter.scheduledAt).toLocaleString() : 'Scheduled'}</span>
                         </p>
                     </div>
 

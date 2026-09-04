@@ -171,51 +171,57 @@ export function MainViewProvider({ children }: { children: React.ReactNode }) {
         fetchAssociations();
     }, [fetchAssociations]);
 
-    // Read stored session context on initial mount if available
-    useEffect(() => {
-        try {
-            const stored = sessionStorage.getItem('areena_last_view_context');
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                if (parsed.activeView) {
-                    lastContextRef.current = {
-                        activeView: parsed.activeView,
-                        entityId: parsed.entityId || null,
-                        entityMeta: parsed.entityMeta || null,
-                        returnPath: parsed.returnPath || null,
-                    };
-                }
-            }
-        } catch {}
-    }, []);
+    const [clientContext, setClientContext] = useState<{
+        activeView: MainViewType;
+        entityId: string | null;
+    } | null>(null);
 
-    // Determine active view & entity ID
-    const { activeView, entityId } = useMemo(() => {
+    // Read stored session context on client mount if on an agnostic route
+    useEffect(() => {
         if (isContextAgnosticRoute) {
-            // Check if returnUrl is provided in current window location if available
-            if (typeof window !== 'undefined') {
+            try {
                 const params = new URLSearchParams(window.location.search);
                 const returnUrl = params.get('returnUrl') || params.get('redirect');
                 if (returnUrl && !returnUrl.startsWith('/profile') && !returnUrl.startsWith('/auth/') && !returnUrl.startsWith('/support')) {
                     const parsedFromUrl = parseContextFromUrl(returnUrl);
                     if (parsedFromUrl.activeView !== 'association' || parsedFromUrl.entityId !== 'main') {
-                        return parsedFromUrl;
+                        setClientContext(parsedFromUrl);
+                        return;
                     }
                 }
-            }
 
-            // Retain last known context
-            if (lastContextRef.current.activeView) {
-                return {
-                    activeView: lastContextRef.current.activeView,
-                    entityId: lastContextRef.current.entityId,
-                };
-            }
+                const stored = sessionStorage.getItem('areena_last_view_context');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if (parsed.activeView) {
+                        lastContextRef.current = {
+                            activeView: parsed.activeView,
+                            entityId: parsed.entityId || null,
+                            entityMeta: parsed.entityMeta || null,
+                            returnPath: parsed.returnPath || null,
+                        };
+                        setClientContext({
+                            activeView: parsed.activeView,
+                            entityId: parsed.entityId || null,
+                        });
+                        if (parsed.entityMeta) {
+                            setEntityMetaState(parsed.entityMeta);
+                        }
+                    }
+                }
+            } catch {}
+        } else {
+            setClientContext(null);
         }
+    }, [isContextAgnosticRoute]);
 
-        const parsed = parseContextFromUrl(pathname);
-        return parsed;
-    }, [pathname, isContextAgnosticRoute]);
+    // Determine active view & entity ID deterministically for SSR/Hydration
+    const { activeView, entityId } = useMemo(() => {
+        if (isContextAgnosticRoute && clientContext) {
+            return clientContext;
+        }
+        return parseContextFromUrl(pathname);
+    }, [pathname, isContextAgnosticRoute, clientContext]);
 
     // Store active context when navigating entity pages
     useEffect(() => {

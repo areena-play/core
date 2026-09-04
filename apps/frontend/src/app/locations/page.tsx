@@ -147,7 +147,7 @@ export default function LocationsPage() {
     const uniqueCities = Array.from(new Set(locations.map((l) => l.city).filter(Boolean))).sort();
 
     return (
-        <div className="space-y-8 pb-16 max-w-7xl mx-auto">
+        <div className="space-y-8 pb-16">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
                 <div className="space-y-1">

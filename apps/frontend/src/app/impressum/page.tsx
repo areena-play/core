@@ -108,7 +108,7 @@ export default function ImpressumPage() {
     ];
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8 pb-16">
+        <div className="w-full space-y-8 pb-16">
             {/* Top Navigation */}
             <div className="flex items-center justify-between">
                 <Link
