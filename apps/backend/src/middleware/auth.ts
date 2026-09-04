@@ -19,6 +19,31 @@ export interface AuthRequest extends Request {
 }
 
 export async function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) {
+    // 1. If request was already authenticated via OAuth at the Ingress Guard
+    if ((req as any).isOAuth && (req as any).oauth) {
+        if ((req as any).oauth.userId && !req.user) {
+            try {
+                const user = await prisma.user.findUnique({
+                    where: { id: (req as any).oauth.userId },
+                    include: { associationRoles: true, clubRoles: true },
+                });
+                if (user) {
+                    req.user = {
+                        id: user.id,
+                        email: user.email,
+                        firstName: user.firstName,
+                        lastName: user.lastName,
+                        isSuperAdmin: user.isSuperAdmin,
+                        licenseId: user.licenseId,
+                        associationRoles: user.associationRoles.map((r) => ({ associationId: r.associationId, role: r.role })),
+                        clubRoles: user.clubRoles.map((r) => ({ clubId: r.clubId, role: r.role })),
+                    };
+                }
+            } catch {}
+        }
+        return next();
+    }
+
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
@@ -26,6 +51,48 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
         return res.status(401).json({ error: 'Authentication token required' });
     }
 
+    // 2. Check if token is a valid OAuth 2.0 Bearer token in DB
+    try {
+        const oauthToken = await prisma.oAuthToken.findUnique({
+            where: { token },
+            include: { client: true, user: { include: { associationRoles: true, clubRoles: true } } },
+        });
+
+        if (oauthToken) {
+            if (new Date() > oauthToken.expiresAt) {
+                return res.status(401).json({ error: 'OAuth token has expired. Please refresh your token via POST /oauth/token.' });
+            }
+            if (oauthToken.client.status !== 'APPROVED') {
+                return res.status(403).json({ error: 'OAuth client is suspended or pending approval.' });
+            }
+
+            (req as any).isOAuth = true;
+            (req as any).oauth = {
+                clientId: oauthToken.clientId,
+                userId: oauthToken.userId,
+                scopes: oauthToken.scopes,
+            };
+
+            if (oauthToken.user) {
+                req.user = {
+                    id: oauthToken.user.id,
+                    email: oauthToken.user.email,
+                    firstName: oauthToken.user.firstName,
+                    lastName: oauthToken.user.lastName,
+                    isSuperAdmin: oauthToken.user.isSuperAdmin,
+                    licenseId: oauthToken.user.licenseId,
+                    associationRoles: oauthToken.user.associationRoles.map((r) => ({ associationId: r.associationId, role: r.role })),
+                    clubRoles: oauthToken.user.clubRoles.map((r) => ({ clubId: r.clubId, role: r.role })),
+                };
+            }
+
+            return next();
+        }
+    } catch (err: any) {
+        console.error('[auth.ts] Error verifying OAuth token:', err);
+    }
+
+    // 3. Otherwise verify as a standard User Session JWT
     try {
         const payload = jwt.verify(token, config.jwtSecret) as { userId: string; tokenVersion?: number };
         const user = await prisma.user.findUnique({
@@ -62,17 +129,50 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
 
         next();
     } catch (err) {
-        return res.status(403).json({ error: 'Invalid or expired token' });
+        return res.status(401).json({ error: 'Invalid or expired authentication token' });
     }
 }
 
 export async function optionalAuth(req: AuthRequest, res: Response, next: NextFunction) {
+    if ((req as any).isOAuth && (req as any).oauth) {
+        return next();
+    }
+
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
         return next();
     }
+
+    try {
+        const oauthToken = await prisma.oAuthToken.findUnique({
+            where: { token },
+            include: { client: true, user: { include: { associationRoles: true, clubRoles: true } } },
+        });
+
+        if (oauthToken && new Date() <= oauthToken.expiresAt && oauthToken.client.status === 'APPROVED') {
+            (req as any).isOAuth = true;
+            (req as any).oauth = {
+                clientId: oauthToken.clientId,
+                userId: oauthToken.userId,
+                scopes: oauthToken.scopes,
+            };
+            if (oauthToken.user) {
+                req.user = {
+                    id: oauthToken.user.id,
+                    email: oauthToken.user.email,
+                    firstName: oauthToken.user.firstName,
+                    lastName: oauthToken.user.lastName,
+                    isSuperAdmin: oauthToken.user.isSuperAdmin,
+                    licenseId: oauthToken.user.licenseId,
+                    associationRoles: oauthToken.user.associationRoles.map((r) => ({ associationId: r.associationId, role: r.role })),
+                    clubRoles: oauthToken.user.clubRoles.map((r) => ({ clubId: r.clubId, role: r.role })),
+                };
+            }
+            return next();
+        }
+    } catch {}
 
     try {
         const payload = jwt.verify(token, config.jwtSecret) as { userId: string; tokenVersion?: number };

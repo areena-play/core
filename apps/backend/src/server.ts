@@ -92,9 +92,29 @@ v1Router.use('/admin', adminRoutes);
 v1Router.use('/locations', locationsRoutes);
 v1Router.use('/search', searchRoutes);
 
+// 404 Catch-All Handler for unmatched v1 routes
+v1Router.use((req, res) => {
+    res.status(404).json({
+        error: 'Not Found',
+        message: `API endpoint '${req.method} ${req.originalUrl}' does not exist on this server.`,
+        docs: '/developers',
+        timestamp: new Date().toISOString(),
+    });
+});
+
 // Mount v1 router at /v1 (versioned standard) and / (latest version for convenience)
 app.use('/v1', v1Router);
 app.use('/', v1Router);
+
+// Global Root 404 Catch-All
+app.use((req, res) => {
+    res.status(404).json({
+        error: 'Not Found',
+        message: `Resource '${req.method} ${req.originalUrl}' does not exist on this server.`,
+        docs: '/developers',
+        timestamp: new Date().toISOString(),
+    });
+});
 
 // Global Error Handler
 app.use(errorHandler);
