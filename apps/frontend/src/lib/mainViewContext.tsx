@@ -27,6 +27,9 @@ export interface MainViewMeta {
     accentColor: string;
     badgeColor: string;
     gradientBg: string;
+    navbarGlow: string;
+    navbarBorder: string;
+    ambientLight: string;
 }
 
 export const MAIN_VIEW_DEFINITIONS: Record<MainViewType, MainViewMeta> = {
@@ -40,6 +43,9 @@ export const MAIN_VIEW_DEFINITIONS: Record<MainViewType, MainViewMeta> = {
         accentColor: 'text-red-600 dark:text-red-500',
         badgeColor: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-950/70 dark:text-red-400 dark:border-red-800/50',
         gradientBg: 'from-red-600 to-rose-600',
+        navbarGlow: 'from-red-500/20 via-rose-500/8 to-transparent dark:from-red-500/30 dark:via-rose-500/12 dark:to-transparent',
+        navbarBorder: 'border-red-200/70 dark:border-red-900/40',
+        ambientLight: 'bg-red-500/20 dark:bg-red-500/30',
     },
     tournament: {
         id: 'tournament',
@@ -51,6 +57,9 @@ export const MAIN_VIEW_DEFINITIONS: Record<MainViewType, MainViewMeta> = {
         accentColor: 'text-amber-600 dark:text-amber-400',
         badgeColor: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/70 dark:text-amber-400 dark:border-amber-800/50',
         gradientBg: 'from-amber-500 to-orange-600',
+        navbarGlow: 'from-amber-500/20 via-orange-500/8 to-transparent dark:from-amber-500/30 dark:via-orange-500/12 dark:to-transparent',
+        navbarBorder: 'border-amber-200/70 dark:border-amber-900/40',
+        ambientLight: 'bg-amber-500/20 dark:bg-amber-500/30',
     },
     club: {
         id: 'club',
@@ -62,6 +71,9 @@ export const MAIN_VIEW_DEFINITIONS: Record<MainViewType, MainViewMeta> = {
         accentColor: 'text-blue-600 dark:text-blue-400',
         badgeColor: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/70 dark:text-blue-400 dark:border-blue-800/50',
         gradientBg: 'from-blue-600 to-indigo-600',
+        navbarGlow: 'from-blue-500/20 via-indigo-500/8 to-transparent dark:from-blue-500/30 dark:via-indigo-500/12 dark:to-transparent',
+        navbarBorder: 'border-blue-200/70 dark:border-blue-900/40',
+        ambientLight: 'bg-blue-500/20 dark:bg-blue-500/30',
     },
     admin: {
         id: 'admin',
@@ -73,6 +85,9 @@ export const MAIN_VIEW_DEFINITIONS: Record<MainViewType, MainViewMeta> = {
         accentColor: 'text-purple-600 dark:text-purple-400',
         badgeColor: 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950/70 dark:text-purple-400 dark:border-purple-800/50',
         gradientBg: 'from-purple-600 via-red-600 to-rose-700',
+        navbarGlow: 'from-purple-500/20 via-pink-500/8 to-transparent dark:from-purple-500/30 dark:via-pink-500/12 dark:to-transparent',
+        navbarBorder: 'border-purple-200/70 dark:border-purple-900/40',
+        ambientLight: 'bg-purple-500/20 dark:bg-purple-500/30',
     },
 };
 

@@ -157,8 +157,24 @@ export function Navbar() {
 
     return (
         <>
-            <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-950/80 backdrop-blur-md transition-colors duration-200">
-                <div className="flex h-16 items-center justify-between px-3 sm:px-6">
+            <header
+                className={`sticky top-0 z-40 w-full border-b backdrop-blur-md transition-all duration-300 relative bg-white/85 dark:bg-slate-950/80 ${currentViewMeta.navbarBorder || 'border-slate-200 dark:border-slate-800'}`}
+            >
+                {/* Isolated background container for ambient spotlight so popups are never clipped */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div
+                        className={`absolute inset-0 bg-[radial-gradient(ellipse_75%_100%_at_50%_0%,var(--tw-gradient-stops))] ${currentViewMeta.navbarGlow} transition-all duration-500`}
+                    />
+                    <div
+                        className={`absolute -top-16 left-1/2 -translate-x-1/2 h-28 w-[500px] sm:w-[750px] rounded-full blur-3xl opacity-60 dark:opacity-85 transition-all duration-500 ${currentViewMeta.ambientLight}`}
+                    />
+                    {/* Subtle top center glowing beam */}
+                    <div
+                        className={`absolute top-0 left-1/2 -translate-x-1/2 h-[1.5px] w-64 sm:w-96 bg-gradient-to-r from-transparent via-current to-transparent ${currentViewMeta.accentColor} opacity-60 transition-all duration-500`}
+                    />
+                </div>
+
+                <div className="relative z-10 flex h-16 items-center justify-between px-3 sm:px-6">
                     {/* Left: Mobile Menu Toggle & Brand Logo */}
                     <div className="flex items-center gap-2 sm:gap-4 md:w-[232px] shrink-0">
                         {/* Mobile Hamburger Toggle */}
