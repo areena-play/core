@@ -96,8 +96,6 @@ services:
       - NODE_ENV=production
       - BACKEND_INTERNAL_URL=http://backend:4000
       - DOMAIN_NAME=${DOMAIN_NAME}
-      - NEXT_PUBLIC_IS_DEMO=${IS_DEMO:-false}
-      - NEXT_PUBLIC_APP_BASE_URL=${APP_BASE_URL}
       - FRONTEND_PORT=${FRONTEND_PORT:-3000}
     depends_on:
       - backend

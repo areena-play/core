@@ -19,7 +19,7 @@ echo "[AREENA Backend Entrypoint] Database schema synchronized successfully!"
 
 # Check if seed should run
 echo "[AREENA Backend Entrypoint] Seeding initial federation data..."
-npx ts-node -r dotenv/config apps/backend/prisma/seed.ts || echo "[AREENA Backend Entrypoint] Seed already applied or completed."
+node apps/backend/dist/seed.js || echo "[AREENA Backend Entrypoint] Seed already applied or completed."
 
 echo "[AREENA Backend Entrypoint] Starting AREENA Backend Service..."
 exec node apps/backend/dist/server.js

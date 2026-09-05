@@ -73,10 +73,10 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.target.name }}
 
   # -------------------------------------------------------------
-  # 2. ZERO-DOWNTIME DEPLOYMENT ON LIVE / DEMO VPS
+  # 2. ZERO-DOWNTIME MULTI-INSTANCE DEPLOYMENT VIA SSH
   # -------------------------------------------------------------
   deploy-live:
-    name: Deploy to Live Server (${{ matrix.server.name }})
+    name: Deploy (${{ matrix.server.name }})
     needs: build-and-push
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -84,30 +84,39 @@ jobs:
       fail-fast: false
       matrix:
         server:
-          # -------------------------------------------------------------
-          # 1. Current Live / Demo Instance
-          # -------------------------------------------------------------
-          - name: "Demo Server"
-            project_name: "areena-demo"
+          # =============================================================
+          # 1. PRIMARY PRODUCTION INSTANCE
+          # (Uses PROD_* variables/secrets by default)
+          # =============================================================
+          - name: "Production Primary"
+            project_name: "areena-prod"
+            prefix: "PROD"
             host_key: "PROD_SSH_HOST"
             user_key: "PROD_SSH_USER"
             key_secret: "PROD_SSH_KEY"
-            domain_key: "PROD_DOMAIN"      # Optional (e.g. demo.areena.ch)
-            port_key: "PROD_SSH_PORT"      # Optional (defaults to 22)
-            path_key: "PROD_DEPLOY_PATH"   # Optional (defaults to ~/areena)
+            port_key: "PROD_SSH_PORT"
+            path_key: "PROD_DEPLOY_PATH"
 
-          # -------------------------------------------------------------
-          # 2. How to Add Future Productive Live Instances:
-          # Simply uncomment and fill in the corresponding GitHub Variable/Secret names:
-          # -------------------------------------------------------------
-          # - name: "Live Production Server 1"
-          #   project_name: "areena-prod-1"
-          #   host_key: "PROD1_SSH_HOST"
-          #   user_key: "PROD1_SSH_USER"
-          #   key_secret: "PROD1_SSH_KEY"
-          #   domain_key: "PROD1_DOMAIN"     # Optional
-          #   port_key: "PROD1_SSH_PORT"     # Optional
-          #   path_key: "PROD1_DEPLOY_PATH"  # Optional (defaults to ~/areena)
+          # =============================================================
+          # 2. HOW TO ADD ADDITIONAL INSTANCES:
+          #
+          # SCENARIO A: Multiple instances of the SAME APP (same domain / cluster nodes)
+          # - name: "Production Secondary Node"
+          #   project_name: "areena-prod-node2"
+          #   prefix: "PROD"
+          #   host_key: "PROD_NODE2_SSH_HOST"
+          #   user_key: "PROD_SSH_USER"
+          #   key_secret: "PROD_SSH_KEY"
+          #
+          # SCENARIO B: Completely SEPARATE INSTANCES (different domain & database)
+          # (Define STTF_DOMAIN, STTF_DATABASE_URL, STTF_SSH_HOST, etc. in GitHub Secrets/Vars)
+          # - name: "Swiss Table Tennis Federation"
+          #   project_name: "areena-sttf"
+          #   prefix: "STTF"
+          #   host_key: "STTF_SSH_HOST"
+          #   user_key: "STTF_SSH_USER"
+          #   key_secret: "STTF_SSH_KEY"
+          # =============================================================
 
     steps:
       - name: Set lower case owner name
@@ -123,36 +132,47 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}
           REGISTRY_IMAGE_PREFIX: ${{ env.REGISTRY_IMAGE_PREFIX }}
           IMAGE_TAG: "latest"
-          # Core Domain & SSL
-          DOMAIN_NAME: ${{ (matrix.server.domain_key && vars[matrix.server.domain_key]) || vars.PROD_DOMAIN || vars.DOMAIN_NAME || 'localhost' }}
-          LETSENCRYPT_EMAIL: ${{ vars.LETSENCRYPT_EMAIL }}
-          SERVER_NAME: ${{ matrix.server.name || vars.PROD_SERVER_NAME || 'areena-production' }}
-          AREENA_SUPPORT_EMAIL: ${{ vars.PROD_AREENA_SUPPORT_EMAIL || vars.AREENA_SUPPORT_EMAIL || 'support@areena.ch' }}
-          IS_DEMO: ${{ vars.PROD_IS_DEMO || vars.IS_DEMO || 'false' }}
+
+          # Core Domain, Ports & SSL
+          FRONTEND_PORT: ${{ vars[format('{0}_FRONTEND_PORT', matrix.server.prefix)] || vars.PROD_FRONTEND_PORT }}
+          BACKEND_PORT: ${{ vars[format('{0}_BACKEND_PORT', matrix.server.prefix)] || vars.PROD_BACKEND_PORT }}
+          WS_PORT: ${{ vars[format('{0}_WS_PORT', matrix.server.prefix)] || vars.PROD_WS_PORT }}
+          APP_BASE_URL: ${{ vars[format('{0}_APP_BASE_URL', matrix.server.prefix)] || vars.PROD_APP_BASE_URL }}
+          DOMAIN_NAME: ${{ vars[format('{0}_DOMAIN', matrix.server.prefix)] || vars[format('{0}_DOMAIN_NAME', matrix.server.prefix)] || vars.PROD_DOMAIN || vars.PROD_DOMAIN_NAME }}
+          LETSENCRYPT_EMAIL: ${{ vars[format('{0}_LETSENCRYPT_EMAIL', matrix.server.prefix)] || vars.LETSENCRYPT_EMAIL }}
+          SERVER_NAME: ${{ matrix.server.name || vars[format('{0}_SERVER_NAME', matrix.server.prefix)] || vars.PROD_SERVER_NAME || 'areena-production' }}
+          AREENA_SUPPORT_EMAIL: ${{ vars[format('{0}_AREENA_SUPPORT_EMAIL', matrix.server.prefix)] || vars.PROD_AREENA_SUPPORT_EMAIL || vars.AREENA_SUPPORT_EMAIL }}
+          BACKEND_INTERNAL_URL: ${{ vars[format('{0}_BACKEND_INTERNAL_URL', matrix.server.prefix)] || vars.PROD_BACKEND_INTERNAL_URL }}
+          IS_DEMO: ${{ vars[format('{0}_IS_DEMO', matrix.server.prefix)] || vars.PROD_IS_DEMO || 'false' }}
+
           # Database & Security
-          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL || secrets.DATABASE_URL }}
-          JWT_SECRET: ${{ secrets.PROD_JWT_SECRET || secrets.JWT_SECRET }}
-          REDIS_URL: ${{ vars.PROD_REDIS_URL || vars.REDIS_URL || secrets.PROD_REDIS_URL || secrets.REDIS_URL || '' }}
-          # Storage (S3)
-          S3_ENDPOINT: ${{ vars.PROD_S3_ENDPOINT || vars.S3_ENDPOINT || '' }}
-          AWS_REGION: ${{ vars.PROD_AWS_REGION || vars.AWS_REGION || 'eu-central-2' }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.PROD_AWS_ACCESS_KEY_ID || secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_AWS_SECRET_ACCESS_KEY || secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_BUCKET_NAME: ${{ vars.PROD_AWS_BUCKET_NAME || vars.AWS_BUCKET_NAME || secrets.PROD_AWS_BUCKET_NAME || secrets.AWS_BUCKET_NAME || '' }}
+          DATABASE_URL: ${{ secrets[format('{0}_DATABASE_URL', matrix.server.prefix)] || secrets.PROD_DATABASE_URL }}
+          JWT_SECRET: ${{ secrets[format('{0}_JWT_SECRET', matrix.server.prefix)] || secrets.PROD_JWT_SECRET }}
+          REDIS_URL: ${{ vars[format('{0}_REDIS_URL', matrix.server.prefix)] || vars.PROD_REDIS_URL || '' }}
+
+          # Storage (S3 / MinIO)
+          AWS_ENDPOINT: ${{ vars[format('{0}_AWS_ENDPOINT', matrix.server.prefix)] || vars[format('{0}_S3_ENDPOINT', matrix.server.prefix)] || vars.PROD_AWS_ENDPOINT || vars.PROD_S3_ENDPOINT || '' }}
+          AWS_REGION: ${{ vars[format('{0}_AWS_REGION', matrix.server.prefix)] || vars.PROD_AWS_REGION || vars.AWS_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets[format('{0}_AWS_ACCESS_KEY_ID', matrix.server.prefix)] || secrets.PROD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets[format('{0}_AWS_SECRET_ACCESS_KEY', matrix.server.prefix)] || secrets.PROD_AWS_SECRET_ACCESS_KEY }}
+          AWS_BUCKET_NAME: ${{ vars[format('{0}_AWS_BUCKET_NAME', matrix.server.prefix)] || vars.PROD_AWS_BUCKET_NAME }}
+
           # Web Push (VAPID)
-          VAPID_PUBLIC_KEY: ${{ vars.PROD_VAPID_PUBLIC_KEY || vars.VAPID_PUBLIC_KEY || secrets.PROD_VAPID_PUBLIC_KEY || secrets.VAPID_PUBLIC_KEY || '' }}
-          VAPID_PRIVATE_KEY: ${{ secrets.PROD_VAPID_PRIVATE_KEY || secrets.VAPID_PRIVATE_KEY || '' }}
-          VAPID_SUBJECT: ${{ vars.PROD_VAPID_SUBJECT || vars.VAPID_SUBJECT || 'mailto:admin@areena.ch' }}
+          VAPID_PUBLIC_KEY: ${{ vars[format('{0}_VAPID_PUBLIC_KEY', matrix.server.prefix)] || vars.PROD_VAPID_PUBLIC_KEY || '' }}
+          VAPID_PRIVATE_KEY: ${{ secrets[format('{0}_VAPID_PRIVATE_KEY', matrix.server.prefix)] || secrets.PROD_VAPID_PRIVATE_KEY || '' }}
+          VAPID_SUBJECT: ${{ vars[format('{0}_VAPID_SUBJECT', matrix.server.prefix)] || vars.PROD_VAPID_SUBJECT || vars.VAPID_SUBJECT }}
+
           # Central Monitoring (Vector / Loki)
-          LOGGING_URL: ${{ vars.LOGGING_URL || vars.LOKI_URL || '' }}
-          LOGGING_USER: ${{ vars.LOGGING_USER || 'shipper' }}
-          LOGGING_PASSWORD: ${{ secrets.LOGGING_PASSWORD || '' }}
+          LOGGING_URL: ${{ vars[format('{0}_LOGGING_URL', matrix.server.prefix)] || vars.LOGGING_URL }}
+          LOGGING_USER: ${{ vars[format('{0}_LOGGING_USER', matrix.server.prefix)] || vars.LOGGING_USER }}
+          LOGGING_PASSWORD: ${{ secrets[format('{0}_LOGGING_PASSWORD', matrix.server.prefix)] || secrets.LOGGING_PASSWORD }}
+
         with:
           host: ${{ vars[matrix.server.host_key] || secrets[matrix.server.host_key] }}
           username: ${{ vars[matrix.server.user_key] || secrets[matrix.server.user_key] }}
           key: ${{ secrets[matrix.server.key_secret] }}
-          port: ${{ vars[matrix.server.port_key] || secrets[matrix.server.port_key] || 22 }}
-          envs: USE_PREBUILT_IMAGES,GHCR_USER,GHCR_TOKEN,REGISTRY_IMAGE_PREFIX,IMAGE_TAG,DOMAIN_NAME,LETSENCRYPT_EMAIL,SERVER_NAME,AREENA_SUPPORT_EMAIL,IS_DEMO,DATABASE_URL,JWT_SECRET,REDIS_URL,S3_ENDPOINT,AWS_REGION,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_BUCKET_NAME,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,LOGGING_URL,LOGGING_USER,LOGGING_PASSWORD
+          port: ${{ (matrix.server.port_key && (vars[matrix.server.port_key] || secrets[matrix.server.port_key])) || 22 }}
+          envs: USE_PREBUILT_IMAGES,GHCR_USER,GHCR_TOKEN,REGISTRY_IMAGE_PREFIX,IMAGE_TAG,FRONTEND_PORT,BACKEND_PORT,WS_PORT,APP_BASE_URL,DOMAIN_NAME,LETSENCRYPT_EMAIL,SERVER_NAME,AREENA_SUPPORT_EMAIL,BACKEND_INTERNAL_URL,IS_DEMO,DATABASE_URL,JWT_SECRET,REDIS_URL,AWS_ENDPOINT,AWS_REGION,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_BUCKET_NAME,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,LOGGING_URL,LOGGING_USER,LOGGING_PASSWORD
           script_stop: true
           script: |
             # Resolve deploy path, default to ~/areena

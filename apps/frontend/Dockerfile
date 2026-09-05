@@ -12,6 +12,13 @@ RUN --mount=type=cache,target=/root/.npm npm install
 COPY packages/shared/ ./packages/shared/
 COPY apps/frontend/ ./apps/frontend/
 
+ARG NEXT_PUBLIC_WS_PORT
+ARG NEXT_PUBLIC_IS_DEMO=false
+ARG NEXT_PUBLIC_APP_BASE_URL
+
+ENV NEXT_PUBLIC_WS_PORT=$NEXT_PUBLIC_WS_PORT
+ENV NEXT_PUBLIC_IS_DEMO=$NEXT_PUBLIC_IS_DEMO
+ENV NEXT_PUBLIC_APP_BASE_URL=$NEXT_PUBLIC_APP_BASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build --workspace=@areena/shared

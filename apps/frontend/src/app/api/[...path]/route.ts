@@ -5,7 +5,6 @@ async function handleProxy(request: NextRequest, { params }: { params: { path: s
     const search = request.nextUrl.search || '';
     const backendBase = process.env.BACKEND_INTERNAL_URL;
     const targetUrl = `${backendBase}/${path}${search}`;
-    console.log(process.env.BACKEND_INTERNAL_URL);
 
     const forwardHeaders: Record<string, string> = {};
 

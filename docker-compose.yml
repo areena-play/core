@@ -116,9 +116,6 @@ services:
       - BACKEND_INTERNAL_URL=http://backend:${BACKEND_PORT:-4000}
       - DOMAIN_NAME=${DOMAIN_NAME}
       - FRONTEND_PORT=${FRONTEND_PORT:-3000}
-      - NEXT_PUBLIC_WS_PORT=${WS_PORT}
-      - NEXT_PUBLIC_IS_DEMO=${IS_DEMO:-false}
-      - NEXT_PUBLIC_APP_BASE_URL=${APP_BASE_URL}
     depends_on:
       - backend
       - websocket

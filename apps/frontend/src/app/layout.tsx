@@ -43,6 +43,9 @@ export const metadata: Metadata = {
         statusBarStyle: 'default',
         title: 'AREENA',
     },
+    other: {
+        'mobile-web-app-capable': 'yes',
+    },
     title: {
         template: 'AREENA – %s',
         default: 'AREENA – Sports Federation, Tournament & League Management',
