@@ -37,7 +37,7 @@ jobs:
           - name: "frontend"
             image: "areena-frontend"
             dockerfile: "apps/frontend/Dockerfile"
-            build_args: "NEXT_PUBLIC_API_URL=/api"
+            build_args: ""
 
     steps:
       - name: Checkout Repository
@@ -95,7 +95,6 @@ jobs:
             domain_key: "PROD_DOMAIN"      # Optional (e.g. demo.areena.ch)
             port_key: "PROD_SSH_PORT"      # Optional (defaults to 22)
             path_key: "PROD_DEPLOY_PATH"   # Optional (defaults to ~/areena)
-            env_secret: "PROD_ENV"
 
           # -------------------------------------------------------------
           # 2. How to Add Future Productive Live Instances:
@@ -109,7 +108,6 @@ jobs:
           #   domain_key: "PROD1_DOMAIN"     # Optional
           #   port_key: "PROD1_SSH_PORT"     # Optional
           #   path_key: "PROD1_DEPLOY_PATH"  # Optional (defaults to ~/areena)
-          #   env_secret: "PROD1_ENV"
 
     steps:
       - name: Set lower case owner name
@@ -120,33 +118,41 @@ jobs:
       - name: Trigger Fast Image Pull & Restart via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
-          APP_ENV_CONTENT: ${{ secrets[matrix.server.env_secret] || secrets.PROD_ENV }}
           USE_PREBUILT_IMAGES: "true"
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}
           REGISTRY_IMAGE_PREFIX: ${{ env.REGISTRY_IMAGE_PREFIX }}
-          DOMAIN_NAME: ${{ (matrix.server.domain_key && vars[matrix.server.domain_key]) || 'localhost' }}
+          IMAGE_TAG: "latest"
+          # Core Domain & SSL
+          DOMAIN_NAME: ${{ (matrix.server.domain_key && vars[matrix.server.domain_key]) || vars.PROD_DOMAIN || vars.DOMAIN_NAME || 'localhost' }}
           LETSENCRYPT_EMAIL: ${{ vars.LETSENCRYPT_EMAIL }}
+          SERVER_NAME: ${{ matrix.server.name || vars.PROD_SERVER_NAME || 'areena-production' }}
+          AREENA_SUPPORT_EMAIL: ${{ vars.PROD_AREENA_SUPPORT_EMAIL || vars.AREENA_SUPPORT_EMAIL || 'support@areena.ch' }}
+          IS_DEMO: ${{ vars.PROD_IS_DEMO || vars.IS_DEMO || 'false' }}
+          # Database & Security
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL || secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.PROD_JWT_SECRET || secrets.JWT_SECRET }}
+          REDIS_URL: ${{ vars.PROD_REDIS_URL || vars.REDIS_URL || secrets.PROD_REDIS_URL || secrets.REDIS_URL || '' }}
+          # Storage (S3)
+          S3_ENDPOINT: ${{ vars.PROD_S3_ENDPOINT || vars.S3_ENDPOINT || '' }}
+          AWS_REGION: ${{ vars.PROD_AWS_REGION || vars.AWS_REGION || 'eu-central-2' }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.PROD_AWS_ACCESS_KEY_ID || secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_AWS_SECRET_ACCESS_KEY || secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_BUCKET_NAME: ${{ vars.PROD_AWS_BUCKET_NAME || vars.AWS_BUCKET_NAME || secrets.PROD_AWS_BUCKET_NAME || secrets.AWS_BUCKET_NAME || '' }}
+          # Web Push (VAPID)
+          VAPID_PUBLIC_KEY: ${{ vars.PROD_VAPID_PUBLIC_KEY || vars.VAPID_PUBLIC_KEY || secrets.PROD_VAPID_PUBLIC_KEY || secrets.VAPID_PUBLIC_KEY || '' }}
+          VAPID_PRIVATE_KEY: ${{ secrets.PROD_VAPID_PRIVATE_KEY || secrets.VAPID_PRIVATE_KEY || '' }}
+          VAPID_SUBJECT: ${{ vars.PROD_VAPID_SUBJECT || vars.VAPID_SUBJECT || 'mailto:admin@areena.ch' }}
+          # Central Monitoring (Vector / Loki)
           LOGGING_URL: ${{ vars.LOGGING_URL || vars.LOKI_URL || '' }}
           LOGGING_USER: ${{ vars.LOGGING_USER || 'shipper' }}
           LOGGING_PASSWORD: ${{ secrets.LOGGING_PASSWORD || '' }}
-          SERVER_NAME: ${{ matrix.server.name || 'areena-production' }}
-          MAILGUN_API_KEY: ${{ secrets.MAILGUN_API_KEY || '' }}
-          MAILGUN_DOMAIN: ${{ vars.MAILGUN_DOMAIN || '' }}
-          MAILGUN_EU: ${{ vars.MAILGUN_EU || 'false' }}
-          MAILGUN_HOST: ${{ vars.MAILGUN_HOST || '' }}
-          SMTP_HOST: ${{ vars.SMTP_HOST || '' }}
-          SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
-          SMTP_USER: ${{ vars.SMTP_USER || secrets.SMTP_USER || '' }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS || secrets.SMTP_PASSWORD || '' }}
-          SMTP_SECURE: ${{ vars.SMTP_SECURE || 'false' }}
-          AREENA_SUPPORT_EMAIL: ${{ vars.AREENA_SUPPORT_EMAIL || 'support@areena.ch' }}
         with:
           host: ${{ vars[matrix.server.host_key] || secrets[matrix.server.host_key] }}
           username: ${{ vars[matrix.server.user_key] || secrets[matrix.server.user_key] }}
           key: ${{ secrets[matrix.server.key_secret] }}
           port: ${{ vars[matrix.server.port_key] || secrets[matrix.server.port_key] || 22 }}
-          envs: APP_ENV_CONTENT,USE_PREBUILT_IMAGES,GHCR_USER,GHCR_TOKEN,REGISTRY_IMAGE_PREFIX,DOMAIN_NAME,LETSENCRYPT_EMAIL,LOGGING_URL,LOGGING_USER,LOGGING_PASSWORD,SERVER_NAME,AREENA_SUPPORT_EMAIL
+          envs: USE_PREBUILT_IMAGES,GHCR_USER,GHCR_TOKEN,REGISTRY_IMAGE_PREFIX,IMAGE_TAG,DOMAIN_NAME,LETSENCRYPT_EMAIL,SERVER_NAME,AREENA_SUPPORT_EMAIL,IS_DEMO,DATABASE_URL,JWT_SECRET,REDIS_URL,S3_ENDPOINT,AWS_REGION,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_BUCKET_NAME,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,LOGGING_URL,LOGGING_USER,LOGGING_PASSWORD
           script_stop: true
           script: |
             # Resolve deploy path, default to ~/areena
@@ -162,11 +168,5 @@ jobs:
             fi
             
             cd "$TARGET_PATH"
-            
-            # Export registry image prefix to .env if not present
-            if ! grep -q "REGISTRY_IMAGE_PREFIX" .env 2>/dev/null; then
-              echo "REGISTRY_IMAGE_PREFIX=$REGISTRY_IMAGE_PREFIX" >> .env
-            fi
-            
             chmod +x scripts/deploy.sh
             ./scripts/deploy.sh main "${{ matrix.server.project_name }}"

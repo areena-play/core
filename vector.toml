@@ -24,8 +24,8 @@ type = "loki"
 inputs = ["add_labels"]
 endpoint = "${LOGGING_URL}"
 auth.strategy = "basic"
-auth.user = "${LOGGING_USER:-shipper}"
-auth.password = "${LOGGING_PASSWORD:-}"
+auth.user = "${LOGGING_USER}"
+auth.password = "${LOGGING_PASSWORD}"
 compression = "gzip"
 
 [sinks.loki.encoding]

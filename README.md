@@ -100,19 +100,32 @@ The AREENA API is protected by a multi-tier ingress guard:
    - Triggered on push to `dev/main`.
    - Runs directly on the **Dev VPS Self-Hosted Runner** (`runs-on: self-hosted`), building on the host machine with **0 billed GitHub minutes**.
 
-### Required GitHub Secrets & Variables
+### Environment Configuration
 
-Under **Settings > Secrets and variables > Actions**:
+- **Local Development**: Copy `.env.example` to `.env` and fill in values. `.env` is never committed to Git.
+- **Production & Dev Deployment**: No `.env` file is committed or supplied via GitHub. All configuration is injected via standard **GitHub Actions Variables & Secrets**.
 
-#### Variables (`vars.*`):
-- `PROD_SSH_HOST`, `PROD_SSH_USER`
-- `PROD_DOMAIN` (e.g. `demo.areena.ch`)
-- `DEV_DOMAIN` (e.g. `dev.areena.ch`)
-- `LETSENCRYPT_EMAIL` (e.g. `admin@areena.ch`)
-
-#### Secrets (`secrets.*`):
+#### GitHub Secrets (`secrets.*`):
 - `PROD_SSH_KEY` (Ed25519 Private Key for Production SSH)
-- `PROD_ENV` / `DEV_ENV` (Full `.env` contents with DB credentials, S3 keys, JWT secret)
+- `DATABASE_URL` (or `PROD_DATABASE_URL` / `DEV_DATABASE_URL`)
+- `JWT_SECRET` (or `PROD_JWT_SECRET` / `DEV_JWT_SECRET`)
+- `AWS_ACCESS_KEY_ID` (or `PROD_AWS_ACCESS_KEY_ID` / `DEV_AWS_ACCESS_KEY_ID`)
+- `AWS_SECRET_ACCESS_KEY` (or `PROD_AWS_SECRET_ACCESS_KEY` / `DEV_AWS_SECRET_ACCESS_KEY`)
+- `VAPID_PRIVATE_KEY` (or `PROD_VAPID_PRIVATE_KEY` / `DEV_VAPID_PRIVATE_KEY`)
+- `LOGGING_PASSWORD` (Optional, for Vector log shipper)
+
+#### GitHub Variables (`vars.*`):
+- `PROD_SSH_HOST`, `PROD_SSH_USER` (SSH connection details)
+- `PROD_DOMAIN` / `DEV_DOMAIN` (e.g. `demo.areena.ch`)
+- `LETSENCRYPT_EMAIL` (e.g. `admin@areena.ch`)
+- `REDIS_URL` (Optional, defaults to `redis://redis:6379`)
+- `S3_ENDPOINT` (Optional, for MinIO or custom S3 provider)
+- `AWS_REGION` (Defaults to `eu-central-2`)
+- `AWS_BUCKET_NAME` (e.g. `areena-assets`)
+- `AREENA_SUPPORT_EMAIL` (e.g. `support@areena.ch`)
+- `IS_DEMO` (`true` or `false`)
+- `VAPID_PUBLIC_KEY` & `VAPID_SUBJECT`
+- `LOGGING_URL` & `LOGGING_USER` (Optional, for Central Logging)
 
 ---
 

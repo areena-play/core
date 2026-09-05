@@ -1,18 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-function getBackendUrl(): string {
-    return (
-        process.env.BACKEND_INTERNAL_URL ||
-        process.env.BACKEND_URL ||
-        (process.env.BACKEND_PORT ? `http://127.0.0.1:${process.env.BACKEND_PORT}` : 'http://127.0.0.1:4000')
-    );
-}
-
 async function handleProxy(request: NextRequest, { params }: { params: { path: string[] } }) {
     const path = params.path ? params.path.join('/') : '';
     const search = request.nextUrl.search || '';
-    const backendBase = getBackendUrl();
+    const backendBase = process.env.BACKEND_INTERNAL_URL;
     const targetUrl = `${backendBase}/${path}${search}`;
+    console.log(process.env.BACKEND_INTERNAL_URL);
 
     const forwardHeaders: Record<string, string> = {};
 

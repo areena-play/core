@@ -26,11 +26,7 @@ export class S3Service {
         await s3Client.send(command);
 
         // Generate reliable API streaming URL for browser access (avoids MinIO private bucket/CORS/port mismatch)
-        const apiBase =
-            process.env.API_PUBLIC_URL ||
-            process.env.NEXT_PUBLIC_API_URL ||
-            '';
-        const fileUrl = apiBase ? `${apiBase}/upload/file/${key}` : `/upload/file/${key}`;
+        const fileUrl = `/api/upload/file/${key}`;
 
         return {
             key,

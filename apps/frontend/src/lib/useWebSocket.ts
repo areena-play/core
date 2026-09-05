@@ -9,26 +9,9 @@ export interface WebSocketEventPayload {
 }
 
 function getWebSocketUrl(): string {
-    const envUrl = process.env.NEXT_PUBLIC_WS_URL;
-
-    // Server-side rendering fallback
-    if (typeof window === 'undefined') {
-        return envUrl || 'ws://localhost:5000';
-    }
-
-    // If an explicit remote WebSocket URL is set and doesn't point to localhost
-    if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
-        return envUrl;
-    }
-
-    // If running in local development
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        return 'ws://localhost:5000';
-    }
-
-    // In production / remote environments behind SSL reverse proxy (Caddy / Nginx)
+    const WS_PORT = process.env.NEXT_PUBLIC_WS_PORT;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${window.location.host}/ws`;
+    return `${protocol}//${window.location.hostname}${WS_PORT ? `:${WS_PORT}` : '/ws'}`;
 }
 
 export function useWebSocket(onEvent?: (event: WebSocketEventPayload) => void) {

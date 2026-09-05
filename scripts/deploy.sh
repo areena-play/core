@@ -9,7 +9,7 @@ echo "  Starting AREENA Deployment"
 echo "  Branch:       $BRANCH"
 echo "  Project Name: $PROJECT_NAME"
 echo "  Prebuilt:     ${USE_PREBUILT_IMAGES:-false}"
-echo "  Domain:       ${DOMAIN_NAME:-localhost}"
+echo "  Domain:       ${DOMAIN_NAME}"
 echo "  Timestamp:    $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 echo "========================================="
 
@@ -18,42 +18,63 @@ echo "📥 Fetching and syncing git branch (origin/$BRANCH)..."
 git fetch origin "$BRANCH"
 git reset --hard "origin/$BRANCH"
 
-# 2. Write environment variables if passed from GitHub Secrets
-if [ -n "$APP_ENV_CONTENT" ]; then
-    echo "🔐 Writing .env configuration from GitHub Secrets..."
-    echo "$APP_ENV_CONTENT" > .env
-fi
-
-# Ensure .env file exists
+# 2. Ensure .env exists with restricted permissions
 touch .env
+chmod 600 .env
 
-# Helper to sync GitHub variables and secrets into .env
+# Helper to safely set / update key-value pairs without regex escaping bugs
 sync_var() {
     local var_name="$1"
     local var_value="$2"
     if [ -n "$var_value" ]; then
-        if grep -q "^${var_name}=" .env 2>/dev/null; then
-            sed -i "s|^${var_name}=.*|${var_name}=${var_value}|" .env
-        else
-            echo "${var_name}=${var_value}" >> .env
+        if [ -f .env ]; then
+            grep -v "^${var_name}=" .env > .env.tmp || true
+            mv .env.tmp .env
         fi
+        printf "%s=%s\n" "$var_name" "$var_value" >> .env
     fi
 }
 
-# Sync domain, SSL and server identification
-sync_var "DOMAIN_NAME" "$DOMAIN_NAME"
-sync_var "LETSENCRYPT_EMAIL" "$LETSENCRYPT_EMAIL"
-sync_var "SERVER_NAME" "$SERVER_NAME"
+echo "🔐 Synchronizing environment variables from GitHub Secrets & Variables..."
 
-# Sync Central Logging configuration
+# Application & Domain
+sync_var "FRONTEND_PORT" "$FRONTEND_PORT"
+sync_var "BACKEND_PORT" "$BACKEND_PORT"
+sync_var "WS_PORT" "$WS_PORT"
+sync_var "DOMAIN_NAME" "$DOMAIN_NAME"
+sync_var "AREENA_SUPPORT_EMAIL" "$AREENA_SUPPORT_EMAIL"
+sync_var "APP_BASE_URL" "$APP_BASE_URL"
+sync_var "IS_DEMO" "$IS_DEMO"
+sync_var "SERVER_NAME" "$SERVER_NAME"
+sync_var "BACKEND_INTERNAL_URL" "$BACKEND_INTERNAL_URL"
+sync_var "LETSENCRYPT_EMAIL" "$LETSENCRYPT_EMAIL"
+
+# Database & Cache
+sync_var "DATABASE_URL" "$DATABASE_URL"
+sync_var "REDIS_URL" "$REDIS_URL"
+
+# Security & Tokens
+sync_var "JWT_SECRET" "$JWT_SECRET"
+
+# Object Storage (S3 / MinIO)
+sync_var "AWS_ENDPOINT" "$AWS_ENDPOINT"
+sync_var "AWS_REGION" "$AWS_REGION"
+sync_var "AWS_ACCESS_KEY_ID" "$AWS_ACCESS_KEY_ID"
+sync_var "AWS_SECRET_ACCESS_KEY" "$AWS_SECRET_ACCESS_KEY"
+sync_var "AWS_BUCKET_NAME" "$AWS_BUCKET_NAME"
+
+# Web Push (VAPID)
+sync_var "VAPID_PUBLIC_KEY" "$VAPID_PUBLIC_KEY"
+sync_var "VAPID_PRIVATE_KEY" "$VAPID_PRIVATE_KEY"
+sync_var "VAPID_SUBJECT" "$VAPID_SUBJECT"
+
+# Central Logging (Vector / Loki)
 sync_var "LOGGING_URL" "$LOGGING_URL"
 sync_var "LOGGING_USER" "$LOGGING_USER"
 sync_var "LOGGING_PASSWORD" "$LOGGING_PASSWORD"
 
-# Sync Support & Governance
-sync_var "AREENA_SUPPORT_EMAIL" "$AREENA_SUPPORT_EMAIL"
 
-# Sync Container Registry & Image Tags
+# Container Registry & Image Tags
 sync_var "IMAGE_TAG" "$IMAGE_TAG"
 sync_var "REGISTRY_IMAGE_PREFIX" "$REGISTRY_IMAGE_PREFIX"
 
@@ -65,7 +86,7 @@ if [ "$USE_PREBUILT_IMAGES" = "true" ]; then
     fi
 
     echo "📦 Pulling verified pre-built images in parallel from GitHub Container Registry..."
-    docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" pull --parallel
+    docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" pull
     
     echo "🚀 Starting updated production containers (Caddy SSL, Frontend, Backend, WS)..."
     docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" up -d --remove-orphans
@@ -74,8 +95,8 @@ else
     docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" up -d --build --remove-orphans
 fi
 
-# 4. Synchronize Prisma database schema to external PostgreSQL
-echo "🗄️ Synchronizing Prisma database schema to external PostgreSQL..."
+# 4. Synchronize Prisma database schema to PostgreSQL
+echo "🗄️ Synchronizing Prisma database schema to PostgreSQL..."
 docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" exec -T backend npx prisma db push --schema=apps/backend/prisma/schema --accept-data-loss || docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" exec -T backend npx prisma db push --schema=prisma/schema --accept-data-loss || true
 
 # 5. Clean up old dangling images while preserving layer cache

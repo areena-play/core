@@ -1,5 +1,5 @@
-export const API_VERSION = process.env.NEXT_PUBLIC_API_VERSION || 'v1';
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || `/api/${API_VERSION}`;
+export const API_VERSION = 'v1';
+export const API_BASE = `/api/${API_VERSION}`;
 
 let activeRequests = 0;
 const loadingListeners = new Set<(activeCount: number) => void>();

@@ -28,11 +28,7 @@ export async function getDynamicManifestData(): Promise<ManifestData> {
     let associationFullName = '';
 
     try {
-        const backendBase =
-            process.env.BACKEND_INTERNAL_URL ||
-            process.env.BACKEND_URL ||
-            (process.env.BACKEND_PORT ? `http://127.0.0.1:${process.env.BACKEND_PORT}` : 'http://127.0.0.1:4000');
-
+        const backendBase = process.env.BACKEND_INTERNAL_URL;
         const res = await fetch(`${backendBase}/associations?top=true`, {
             headers: { Accept: 'application/json' },
             cache: 'no-store',

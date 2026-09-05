@@ -37,7 +37,7 @@ jobs:
           - name: "frontend"
             image: "areena-frontend"
             dockerfile: "apps/frontend/Dockerfile"
-            build_args: "NEXT_PUBLIC_API_URL=/api"
+            build_args: ""
 
     steps:
       - name: Checkout Repository
@@ -91,28 +91,40 @@ jobs:
 
       - name: Run Fast Deploy Script
         env:
-          APP_ENV_CONTENT: ${{ secrets.DEV_ENV }}
           USE_PREBUILT_IMAGES: "true"
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}
           REGISTRY_IMAGE_PREFIX: ${{ env.REGISTRY_IMAGE_PREFIX }}
           IMAGE_TAG: "dev-latest"
-          DOMAIN_NAME: ${{ vars.DEV_DOMAIN || 'localhost' }}
+          # Core Domain & SSL
+          FRONTEND_PORT: ${{ vars.DEV_FRONTEND_PORT }}
+          BACKEND_PORT: ${{ vars.DEV_BACKEND_PORT }}
+          WS_PORT: ${{ vars.DEV_WS_PORT }}
+          APP_BASE_URL: ${{ vars.DEV_APP_BASE_URL }}
+          DOMAIN_NAME: ${{ vars.DEV_DOMAIN }}
           LETSENCRYPT_EMAIL: ${{ vars.LETSENCRYPT_EMAIL }}
-          LOGGING_URL: ${{ vars.LOGGING_URL || vars.LOKI_URL || '' }}
-          LOGGING_USER: ${{ vars.LOGGING_USER || 'shipper' }}
-          LOGGING_PASSWORD: ${{ secrets.LOGGING_PASSWORD || '' }}
-          SERVER_NAME: "areena-dev"
-          MAILGUN_API_KEY: ${{ secrets.MAILGUN_API_KEY || '' }}
-          MAILGUN_DOMAIN: ${{ vars.MAILGUN_DOMAIN || '' }}
-          MAILGUN_EU: ${{ vars.MAILGUN_EU || 'false' }}
-          MAILGUN_HOST: ${{ vars.MAILGUN_HOST || '' }}
-          SMTP_HOST: ${{ vars.SMTP_HOST || '' }}
-          SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
-          SMTP_USER: ${{ vars.SMTP_USER || secrets.SMTP_USER || '' }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS || secrets.SMTP_PASSWORD || '' }}
-          SMTP_SECURE: ${{ vars.SMTP_SECURE || 'false' }}
-          AREENA_SUPPORT_EMAIL: ${{ vars.AREENA_SUPPORT_EMAIL || 'support@areena.ch' }}
+          SERVER_NAME: ${{ vars.DEV_SERVER_NAME || 'areena-dev' }}
+          AREENA_SUPPORT_EMAIL: ${{ vars.DEV_AREENA_SUPPORT_EMAIL || vars.AREENA_SUPPORT_EMAIL }}
+          BACKEND_INTERNAL_URL: ${{ vars.DEV_BACKEND_INTERNAL_URL }}
+          IS_DEMO: ${{ vars.DEV_IS_DEMO || 'false' }}
+          # Database & Security
+          DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.DEV_JWT_SECRET }}
+          REDIS_URL: ${{ vars.DEV_REDIS_URL || '' }}
+          # Storage (S3)
+          AWS_ENDPOINT: ${{ vars.DEV_AWS_ENDPOINT }}
+          AWS_REGION: ${{ vars.DEV_AWS_REGION || vars.AWS_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.DEV_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
+          AWS_BUCKET_NAME: ${{ vars.DEV_AWS_BUCKET_NAME }}
+          # Web Push (VAPID)
+          VAPID_PUBLIC_KEY: ${{ vars.DEV_VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.DEV_VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ vars.DEV_VAPID_SUBJECT || vars.VAPID_SUBJECT }}
+          # Central Monitoring (Vector / Loki)
+          LOGGING_URL: ${{ vars.LOGGING_URL }}
+          LOGGING_USER: ${{ vars.LOGGING_USER }}
+          LOGGING_PASSWORD: ${{ secrets.LOGGING_PASSWORD }}
         run: |
           chmod +x scripts/deploy.sh
           ./scripts/deploy.sh dev/main "areena-dev"

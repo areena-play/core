@@ -1,4 +1,5 @@
 import { SystemService } from './system.service';
+import { config } from '../config/env';
 
 export interface BulkRecipient {
     email: string;
@@ -25,17 +26,11 @@ export interface BulkEmailOptions {
 export class EmailService {
 
     public static getAppBaseUrl(originOverride?: string): string {
-        if (originOverride && !originOverride.includes('localhost') && originOverride.startsWith('http')) {
-            return originOverride.replace(/\/$/, '');
-        }
-        if (process.env.DOMAIN_NAME) {
-            const domain = process.env.DOMAIN_NAME.replace(/\/$/, '');
-            return domain.startsWith('http') ? domain : `https://${domain}`;
-        }
         if (originOverride && originOverride.startsWith('http')) {
             return originOverride.replace(/\/$/, '');
         }
-        return 'http://localhost:3000';
+
+        return config.appBaseUrl;
     }
 
     /**

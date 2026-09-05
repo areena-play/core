@@ -18,21 +18,24 @@ for (const envPath of candidatePaths) {
 }
 dotenv.config();
 
+const frontendPort = parseInt(process.env.FRONTEND_PORT || '', 10);
+
 export const config = {
-    port: parseInt(process.env.BACKEND_PORT || '4000', 10),
+    appBaseUrl: process.env.APP_BASE_URL || `https://${process.env.DOMAIN_NAME}`,
+    domain: process.env.DOMAIN_NAME || '',
+    port: parseInt(process.env.BACKEND_PORT || '', 10),
     jwtSecret: process.env.JWT_SECRET || '',
-    databaseUrl:
-        process.env.DATABASE_URL || '',
+    databaseUrl: process.env.DATABASE_URL || '',
     redisUrl: process.env.REDIS_URL || '',
     s3: {
-        endpoint: process.env.S3_ENDPOINT || undefined,
-        region: process.env.AWS_REGION || process.env.MINIO_REGION || '',
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || process.env.MINIO_USER || '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || process.env.MINIO_PASS || '',
-        bucketName: process.env.AWS_BUCKET_NAME || process.env.MINIO_BUCKET_NAME || '',
+        endpoint: process.env.AWS_ENDPOINT || process.env.S3_ENDPOINT || undefined,
+        region: process.env.MINIO_REGION || process.env.AWS_REGION || process.env.S3_REGION || '',
+        accessKeyId: process.env.MINIO_USER || process.env.AWS_ACCESS_KEY_ID || process.env.S3_ACCESS_KEY_ID || '',
+        secretAccessKey: process.env.MINIO_PASS || process.env.AWS_SECRET_ACCESS_KEY || process.env.S3_SECRET_ACCESS_KEY || '',
+        bucketName: process.env.MINIO_BUCKET_NAME || process.env.AWS_BUCKET_NAME || process.env.S3_BUCKET_NAME || '',
     },
     isDemo: process.env.IS_DEMO === 'true',
-    supportEmail: process.env.AREENA_SUPPORT_EMAIL || 'support@areena.ch',
+    supportEmail: process.env.AREENA_SUPPORT_EMAIL || '',
     version: JSON.parse(
         fs.readFileSync(path.resolve(__dirname, '../../../../package.json'), 'utf8')
     ).version,
