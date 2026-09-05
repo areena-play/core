@@ -159,7 +159,7 @@ function LoginForm() {
     const [forgotSuccess, setForgotSuccess] = useState('');
     const [forgotError, setForgotError] = useState('');
     const [resendLoading, setResendLoading] = useState(false);
-    const [isDemo, setIsDemo] = useState(process.env.NEXT_PUBLIC_IS_DEMO === 'true');
+    const [isDemo, setIsDemo] = useState(false);
     const [activeDemoCategory, setActiveDemoCategory] = useState<'ALL' | 'ADMINS' | 'CLUBS' | 'PLAYERS'>('ALL');
 
     const logoSrc = resolvedTheme === 'dark' ? '/areena-logo-dark.png' : '/areena-logo.png';
@@ -173,7 +173,7 @@ function LoginForm() {
                 }
             })
             .catch(() => {
-                // Fallback to NEXT_PUBLIC_IS_DEMO
+                // defaults to false
             });
     }, []);
 

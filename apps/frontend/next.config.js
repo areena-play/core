@@ -16,10 +16,9 @@ const nextConfig = {
     reactStrictMode: true,
     transpilePackages: ['@areena/shared'],
     env: {
-        NEXT_PUBLIC_IS_DEMO: process.env.NEXT_PUBLIC_IS_DEMO || 'false',
         NEXT_PUBLIC_APP_VERSION: require('../../package.json').version,
-        NEXT_PUBLIC_APP_BASE_URL: process.env.NEXT_PUBLIC_APP_BASE_URL || '',
-        NEXT_PUBLIC_WS_PORT: process.env.NEXT_PUBLIC_WS_PORT || '',
+        NEXT_PUBLIC_APP_BASE_URL: process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.APP_BASE_URL || '',
+        NEXT_PUBLIC_WS_PORT: process.env.NEXT_PUBLIC_WS_PORT || process.env.WS_PORT || '',
     },
     images: {
         remotePatterns: [

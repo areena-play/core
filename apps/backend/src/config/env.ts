@@ -18,8 +18,6 @@ for (const envPath of candidatePaths) {
 }
 dotenv.config();
 
-const frontendPort = parseInt(process.env.FRONTEND_PORT || '', 10);
-
 export const config = {
     appBaseUrl: process.env.APP_BASE_URL || `https://${process.env.DOMAIN_NAME}`,
     domain: process.env.DOMAIN_NAME || '',
