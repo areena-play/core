@@ -15,6 +15,7 @@ import { AuditApi } from './modules/audit.api';
 import { NoticesApi } from './modules/notices.api';
 import { SupportApi } from './modules/support.api';
 import { AdminApi } from './modules/admin.api';
+import { PushApi } from './modules/push.api';
 
 export * from './client';
 export * from './modules/system.api';
@@ -33,6 +34,7 @@ export * from './modules/audit.api';
 export * from './modules/notices.api';
 export * from './modules/support.api';
 export * from './modules/admin.api';
+export * from './modules/push.api';
 
 export class ApiClient extends HttpClient {
     public readonly system: SystemApi;
@@ -51,6 +53,7 @@ export class ApiClient extends HttpClient {
     public readonly notices: NoticesApi;
     public readonly support: SupportApi;
     public readonly admin: AdminApi;
+    public readonly push: PushApi;
 
     constructor() {
         super();
@@ -70,6 +73,7 @@ export class ApiClient extends HttpClient {
         this.notices = new NoticesApi(this);
         this.support = new SupportApi(this);
         this.admin = new AdminApi(this);
+        this.push = new PushApi(this);
     }
 
     // Direct proxy convenience methods for unified access & 100% backward compatibility

@@ -66,6 +66,7 @@ model User {
   homeMatchesP2 Match[] @relation("HomePlayer2")
   awayMatchesP1 Match[] @relation("AwayPlayer1")
   awayMatchesP2 Match[] @relation("AwayPlayer2")
+  pushSubscriptions PushSubscription[]
 }
 
 model OAuthClient {

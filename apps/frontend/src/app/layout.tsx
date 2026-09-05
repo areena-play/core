@@ -19,6 +19,9 @@ import { AdminNoticeProvider } from '@/lib/adminNoticeContext';
 import { ToastContainer } from '@/lib/toast';
 import { PopupContainer } from '@/lib/popup';
 import { BreadcrumbsBar } from '@/components/layout/BreadcrumbsBar';
+import { MobileBottomNav } from '@/components/mobile/MobileBottomNav';
+import { GlobalMobileScorecardController } from '@/components/mobile/GlobalMobileScorecardController';
+import { PwaManager } from '@/components/pwa/PwaManager';
 import { getSiteBaseUrl } from '@/lib/siteUrl';
 
 export const viewport: Viewport = {
@@ -26,10 +29,20 @@ export const viewport: Viewport = {
     initialScale: 1,
     maximumScale: 5,
     viewportFit: 'cover',
+    themeColor: [
+        { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+        { media: '(prefers-color-scheme: dark)', color: '#090d16' },
+    ],
 };
 
 export const metadata: Metadata = {
     metadataBase: new URL(getSiteBaseUrl()),
+    manifest: '/manifest.json',
+    appleWebApp: {
+        capable: true,
+        statusBarStyle: 'default',
+        title: 'AREENA',
+    },
     title: {
         template: 'AREENA – %s',
         default: 'AREENA – Sports Federation, Tournament & League Management',
@@ -125,9 +138,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                                     <Navbar />
                                     <AdminNoticeBanner />
                                     <CookieConsentBanner />
-                                    <div className="flex flex-1 min-h-0 overflow-hidden">
+                                    <PwaManager />
+                                    <GlobalMobileScorecardController />
+                                    <div className="flex flex-1 min-h-0 overflow-hidden relative">
                                         <Suspense fallback={<aside className="w-64 h-full flex-shrink-0 border-r border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-950/70 hidden md:flex" />}><Sidebar /></Suspense>
-                                        <main className="flex-1 min-h-0 overflow-y-auto p-4 md:p-8 [scrollbar-gutter:stable] bg-slate-50 dark:bg-gradient-to-b dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+                                        <main className="flex-1 min-h-0 overflow-y-auto p-4 md:p-8 pb-20 md:pb-8 [scrollbar-gutter:stable] bg-slate-50 dark:bg-gradient-to-b dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
                                             <div className="mx-auto max-w-[1440px] space-y-4">
                                                 <Suspense fallback={null}>
                                                     <BreadcrumbsBar />
@@ -136,6 +151,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                                             </div>
                                         </main>
                                     </div>
+                                    <MobileBottomNav />
                                 </AdminNoticeProvider>
                             </MainViewProvider>
                         </AuthProvider>
