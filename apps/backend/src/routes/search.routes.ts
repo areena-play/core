@@ -129,7 +129,7 @@ router.get('/global', async (req: Request, res: Response, next) => {
                 type: 'person',
                 id: u.id,
                 title: `${u.firstName} ${u.lastName}`,
-                subtitle: u.licenseId ? `License: ${u.licenseId} • ${u.email}` : u.email,
+                subtitle: u.licenseId ? (u.email ? `License: ${u.licenseId} • ${u.email}` : `License: ${u.licenseId}`) : (u.email || undefined),
                 href: `/people/${encodeURIComponent(u.licenseId || u.id)}`,
                 badge: u.licenseId || 'Member',
                 avatarUrl: u.avatarUrl || undefined,

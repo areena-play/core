@@ -958,7 +958,7 @@ export async function seedDemoDatabase() {
         data: [
             {
                 userId: userSuperAdmin.id,
-                userEmail: userSuperAdmin.email,
+                userEmail: userSuperAdmin.email || '',
                 userName: 'Super Administrator',
                 action: 'SYSTEM_BOOTSTRAP_INITIALIZE',
                 category: AuditCategory.GOVERNANCE,
@@ -967,7 +967,7 @@ export async function seedDemoDatabase() {
             },
             {
                 userId: userSttfPresident.id,
-                userEmail: userSttfPresident.email,
+                userEmail: userSttfPresident.email || '',
                 userName: 'Beat Hirschi',
                 action: 'LICENSE_BATCH_APPROVE',
                 category: AuditCategory.LICENSING,

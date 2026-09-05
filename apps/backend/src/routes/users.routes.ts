@@ -243,7 +243,7 @@ router.put('/admin/:id', validate(adminUpdateUserSchema), async (req: AuthReques
         }
 
         // If email is changing, verify it is not already taken
-        if (email && email.toLowerCase() !== existingUser.email.toLowerCase()) {
+        if (email && email.toLowerCase() !== (existingUser.email?.toLowerCase() || '')) {
             const emailTaken = await prisma.user.findUnique({ where: { email } });
             if (emailTaken) {
                 return res.status(400).json({ error: `The email address ${email} is already in use by another user.` });
@@ -369,7 +369,9 @@ router.post(
             });
 
             // Dispatch notification email
-            await EmailService.sendPasswordResetEmail(targetUser.email, targetUser.firstName, finalPassword);
+            if (targetUser.email) {
+                await EmailService.sendPasswordResetEmail(targetUser.email, targetUser.firstName, finalPassword);
+            }
 
             await AuditService.record({
                 req,
@@ -483,7 +485,7 @@ router.post('/admin/:id/send-verification', async (req: AuthRequest, res: Respon
             },
         });
 
-        await EmailService.sendVerificationEmail(targetUser.email, targetUser.firstName, verificationToken);
+        await EmailService.sendVerificationEmail(targetUser.email!, targetUser.firstName, verificationToken);
 
         await AuditService.record({
             req,

@@ -75,7 +75,7 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
         // Dispatch verification email
         if (verificationToken) {
             const clientOrigin = (req.headers.origin || req.headers.referer) as string | undefined;
-            await EmailService.sendVerificationEmail(user.email, user.firstName, verificationToken, clientOrigin);
+            await EmailService.sendVerificationEmail(user.email!, user.firstName, verificationToken, clientOrigin);
         }
 
         const token = jwt.sign({ userId: user.id, tokenVersion: (user as any).tokenVersion ?? 0 }, config.jwtSecret, { expiresIn: '7d' });
@@ -83,7 +83,7 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
         await AuditService.record({
             req,
             userId: user.id,
-            userEmail: user.email,
+            userEmail: user.email ?? undefined,
             userName: `${user.firstName} ${user.lastName}`,
             action: 'AUTH_REGISTER',
             category: AuditCategory.AUTH,
@@ -164,7 +164,7 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
             await AuditService.record({
                 req,
                 userId: user.id,
-                userEmail: user.email,
+                userEmail: user.email ?? undefined,
                 userName: `${user.firstName} ${user.lastName}`,
                 action: 'AUTH_LOGIN_FAILED',
                 category: AuditCategory.SECURITY,
@@ -182,7 +182,7 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
             await AuditService.record({
                 req,
                 userId: user.id,
-                userEmail: user.email,
+                userEmail: user.email ?? undefined,
                 userName: `${user.firstName} ${user.lastName}`,
                 action: 'AUTH_LOGIN_BLOCKED_UNVERIFIED',
                 category: AuditCategory.SECURITY,
@@ -205,7 +205,7 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
         await AuditService.record({
             req,
             userId: user.id,
-            userEmail: user.email,
+            userEmail: user.email ?? undefined,
             userName: `${user.firstName} ${user.lastName}`,
             action: 'AUTH_LOGIN',
             category: AuditCategory.AUTH,
@@ -289,7 +289,7 @@ router.post('/verify-email', async (req, res, next) => {
         await AuditService.record({
             req,
             userId: user.id,
-            userEmail: user.email,
+            userEmail: user.email ?? undefined,
             userName: `${user.firstName} ${user.lastName}`,
             action: 'AUTH_EMAIL_VERIFIED',
             category: AuditCategory.AUTH,
@@ -359,12 +359,12 @@ router.post('/resend-verification', validate(resendVerificationSchema), async (r
         });
 
         const clientOrigin = (req.headers.origin || req.headers.referer) as string | undefined;
-        await EmailService.sendVerificationEmail(user.email, user.firstName, verificationToken, clientOrigin);
+        await EmailService.sendVerificationEmail(user.email!, user.firstName, verificationToken, clientOrigin);
 
         await AuditService.record({
             req,
             userId: user.id,
-            userEmail: user.email,
+            userEmail: user.email ?? undefined,
             userName: `${user.firstName} ${user.lastName}`,
             action: 'AUTH_VERIFICATION_RESENT',
             category: AuditCategory.AUTH,
@@ -398,7 +398,7 @@ router.post(
                 return res.status(404).json({ error: 'User not found' });
             }
 
-            if (user.email.toLowerCase() === normalizedNewEmail) {
+            if ((user.email?.toLowerCase() || '') === normalizedNewEmail) {
                 return res.status(400).json({ error: 'This is already your current email address.' });
             }
 
@@ -427,7 +427,7 @@ router.post(
             await AuditService.record({
                 req,
                 userId: user.id,
-                userEmail: user.email,
+                userEmail: user.email ?? undefined,
                 userName: `${user.firstName} ${user.lastName}`,
                 action: 'AUTH_EMAIL_CHANGE_REQUESTED',
                 category: AuditCategory.AUTH,
@@ -546,12 +546,12 @@ router.post(
                     },
                 });
 
-                await EmailService.sendPasswordResetLinkEmail(user.email, user.firstName, passwordResetToken);
+                await EmailService.sendPasswordResetLinkEmail(user.email!, user.firstName, passwordResetToken);
 
                 await AuditService.record({
                     req,
                     userId: user.id,
-                    userEmail: user.email,
+                    userEmail: user.email ?? undefined,
                     userName: `${user.firstName} ${user.lastName}`,
                     action: 'AUTH_PASSWORD_RESET_REQUESTED',
                     category: AuditCategory.AUTH,
@@ -608,7 +608,7 @@ router.post(
             await AuditService.record({
                 req,
                 userId: user.id,
-                userEmail: user.email,
+                userEmail: user.email ?? undefined,
                 userName: `${user.firstName} ${user.lastName}`,
                 action: 'AUTH_PASSWORD_RESET_COMPLETED',
                 category: AuditCategory.AUTH,
@@ -643,6 +643,10 @@ router.post(
 
             if (!user) {
                 return res.status(404).json({ error: 'User not found' });
+            }
+
+            if (!user.passwordHash) {
+                return res.status(400).json({ error: 'Account does not have a password configured.' });
             }
 
             const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
@@ -681,7 +685,7 @@ router.post(
             await AuditService.record({
                 req,
                 userId: user.id,
-                userEmail: user.email,
+                userEmail: user.email ?? undefined,
                 userName: `${user.firstName} ${user.lastName}`,
                 action: 'AUTH_PASSWORD_CHANGED',
                 category: AuditCategory.AUTH,

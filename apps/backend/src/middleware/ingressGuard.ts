@@ -135,7 +135,7 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
                 if (oauthToken.user) {
                     req.user = {
                         id: oauthToken.user.id,
-                        email: oauthToken.user.email,
+                        email: oauthToken.user.email || '',
                         firstName: oauthToken.user.firstName,
                         lastName: oauthToken.user.lastName,
                         licenseId: oauthToken.user.licenseId,
@@ -198,7 +198,7 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
 
                 req.user = {
                     id: user.id,
-                    email: user.email,
+                    email: user.email || '',
                     firstName: user.firstName,
                     lastName: user.lastName,
                     isSuperAdmin: user.isSuperAdmin,

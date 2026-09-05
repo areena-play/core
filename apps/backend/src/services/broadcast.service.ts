@@ -18,7 +18,7 @@ export class BroadcastService {
         const channel = data.channel || MessageChannel.EMAIL;
 
         // Find recipient users matching target criteria
-        let recipientUsers: Array<{ id: string; email: string; phone: string }> = [];
+        let recipientUsers: Array<{ id: string; email: string | null; phone: string | null }> = [];
 
         if (data.clubId) {
             // Find all users in club
