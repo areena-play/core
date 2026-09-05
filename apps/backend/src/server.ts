@@ -28,6 +28,7 @@ import adminRoutes from './routes/admin.routes';
 import locationsRoutes from './routes/locations.routes';
 import searchRoutes from './routes/search.routes';
 import pushRoutes from './routes/push.routes';
+import relationshipRoutes from './routes/relationships.routes';
 import { startDemoScheduler } from './services/demoScheduler.service';
 import { CronSchedulerService } from './services/cronScheduler.service';
 
@@ -93,6 +94,7 @@ v1Router.use('/admin', adminRoutes);
 v1Router.use('/locations', locationsRoutes);
 v1Router.use('/search', searchRoutes);
 v1Router.use('/push', pushRoutes);
+v1Router.use('/relationships', relationshipRoutes);
 
 // 404 Catch-All Handler for unmatched v1 routes
 v1Router.use((req, res) => {

@@ -4,21 +4,31 @@ enum OAuthClientStatus {
   REVOKED
 }
 
+enum UserAccountStatus {
+  MANAGED
+  INVITED
+  ACTIVE
+}
+
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  passwordHash String
+  id           String            @id @default(uuid())
+  accountStatus UserAccountStatus @default(ACTIVE)
+  canLogin     Boolean           @default(true)
+  email        String?           @unique
+  passwordHash String?
+  claimToken   String?           @unique
+  claimTokenExpires DateTime?
   firstName    String
   lastName     String
-  phone        String
-  street       String
-  postalCode   String
-  city         String
-  country      String    @default("Switzerland")
+  phone        String            @default("")
+  street       String            @default("")
+  postalCode   String            @default("")
+  city         String            @default("")
+  country      String            @default("Switzerland")
   birthDate    DateTime?
   gender       Gender?
-  licenseId    String?   @unique
-  eloPoints    Int       @default(1000)
+  licenseId    String?           @unique
+  eloPoints    Int               @default(1000)
   rank         Int?
   avatarUrl    String?
   isSuperAdmin Boolean   @default(false)
@@ -67,6 +77,9 @@ model User {
   awayMatchesP1 Match[] @relation("AwayPlayer1")
   awayMatchesP2 Match[] @relation("AwayPlayer2")
   pushSubscriptions PushSubscription[]
+  managedBy     UserRelationship[] @relation("ManagedUser")
+  managingUsers UserRelationship[] @relation("ManagerUser")
+  supervisedRegistrations TeamCategoryRegistration[] @relation("SupervisedRegistrations")
 }
 
 model OAuthClient {

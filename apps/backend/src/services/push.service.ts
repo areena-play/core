@@ -130,25 +130,57 @@ export class PushService {
     }
 
     static async sendMatchCall(
-        userId: string,
+        playerId: string,
         matchInfo: {
             matchId: string;
             opponentName: string;
             table: string;
             category: string;
             stage?: string;
+            playerName?: string;
         }
     ) {
-        return this.sendToUser(userId, {
-            title: `🏓 Table ${matchInfo.table} Call!`,
-            body: `Your match vs. ${matchInfo.opponentName} (${matchInfo.category}) has been called to ${matchInfo.table}. Proceed now!`,
-            url: `/competitions?matchId=${matchInfo.matchId}&table=${encodeURIComponent(matchInfo.table)}`,
-            tag: `match-call-${matchInfo.matchId}`,
-            data: {
-                matchId: matchInfo.matchId,
-                table: matchInfo.table,
-            },
+        // Find player details to personalize alerts
+        const player = await prisma.user.findUnique({
+            where: { id: playerId },
+            select: { id: true, firstName: true, lastName: true },
         });
+        const name = matchInfo.playerName || (player ? `${player.firstName} ${player.lastName}` : 'Player');
+
+        // Dynamically import RelationshipsService to avoid circular dependency
+        const { RelationshipsService } = await import('./relationships.service');
+        const recipientUserIds = await RelationshipsService.getAlertRecipientsForPlayer(playerId);
+
+        if (recipientUserIds.length === 0) {
+            // Fallback to direct player
+            recipientUserIds.push(playerId);
+        }
+
+        let sentTotal = 0;
+        await Promise.all(
+            recipientUserIds.map(async (recipientId) => {
+                const isSelf = recipientId === playerId;
+                const title = `🏓 Table ${matchInfo.table} Call!`;
+                const body = isSelf
+                    ? `Your match vs. ${matchInfo.opponentName} (${matchInfo.category}) has been called to ${matchInfo.table}. Proceed now!`
+                    : `Match Call for ${name}! Match vs. ${matchInfo.opponentName} (${matchInfo.category}) called to ${matchInfo.table}.`;
+
+                const res = await this.sendToUser(recipientId, {
+                    title,
+                    body,
+                    url: `/competitions?matchId=${matchInfo.matchId}&table=${encodeURIComponent(matchInfo.table)}`,
+                    tag: `match-call-${matchInfo.matchId}`,
+                    data: {
+                        matchId: matchInfo.matchId,
+                        table: matchInfo.table,
+                        playerId,
+                    },
+                });
+                sentTotal += res.sent;
+            })
+        );
+
+        return { sent: sentTotal, recipients: recipientUserIds.length };
     }
 
     static async broadcastToAll(payload: PushPayload) {

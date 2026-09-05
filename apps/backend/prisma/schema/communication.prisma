@@ -187,4 +187,36 @@ model PushSubscription {
   @@index([userId])
 }
 
+enum RelationshipType {
+  PARENT_GUARDIAN
+  CLUB_COACH
+  TEAM_CAPTAIN
+  DELEGATED_COMPANION
+}
+
+enum RelationshipPermission {
+  FULL_MANAGEMENT
+  TOURNAMENT_ONLY
+  VIEW_AND_ALERTS_ONLY
+}
+
+model UserRelationship {
+  id                 String                 @id @default(uuid())
+  managerUserId      String
+  managedUserId      String
+  type               RelationshipType       @default(PARENT_GUARDIAN)
+  permission         RelationshipPermission @default(FULL_MANAGEMENT)
+  isEmergencyContact Boolean                @default(false)
+  emergencyPhone     String?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  manager            User                   @relation("ManagerUser", fields: [managerUserId], references: [id], onDelete: Cascade)
+  managed            User                   @relation("ManagedUser", fields: [managedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([managerUserId, managedUserId])
+  @@index([managerUserId])
+  @@index([managedUserId])
+}
+
 

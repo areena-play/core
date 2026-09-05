@@ -147,19 +147,23 @@ model TeamMember {
 }
 
 model TeamCategoryRegistration {
-  id            String   @id @default(uuid())
-  teamId        String
-  categoryId    String
-  paymentStatus String   @default("UNPAID")
-  paidAmount    Float?   @default(0)
-  paymentMethod String?
-  isCheckedIn   Boolean  @default(false)
-  registeredAt  DateTime @default(now())
+  id                      String   @id @default(uuid())
+  teamId                  String
+  categoryId              String
+  onSiteResponsibleUserId String?
+  emergencyPhone          String?
+  paymentStatus           String   @default("UNPAID")
+  paidAmount              Float?   @default(0)
+  paymentMethod           String?
+  isCheckedIn             Boolean  @default(false)
+  registeredAt            DateTime @default(now())
 
-  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  team              Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  category          Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  onSiteResponsible User?    @relation("SupervisedRegistrations", fields: [onSiteResponsibleUserId], references: [id], onDelete: SetNull)
 
   @@unique([teamId, categoryId])
+  @@index([onSiteResponsibleUserId])
 }
 
 model CompetitionGroup {

@@ -4,6 +4,7 @@ import { validate } from '../middleware/validate';
 import { createClubSchema, formatPhoneNumber } from '@areena/shared';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { slugify } from '../utils/slugify';
+import { RelationshipsService } from '../services/relationships.service';
 
 const router = Router();
 
@@ -164,6 +165,45 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response, ne
         });
 
         res.json(updated);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// POST /clubs/:id/members/quick-add - Junior Coach / Technical Director quick-add youth squad member
+router.post('/:id/members/quick-add', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const clubId = req.params.id;
+        const actorUserId = req.user!.id;
+
+        // Check if actor has trainer, coach, admin, or technical director role in this club or is superadmin
+        if (!req.user!.isSuperAdmin) {
+            const role = await (prisma as any).userClubRole.findFirst({
+                where: {
+                    userId: actorUserId,
+                    clubId,
+                    role: { in: ['ADMIN', 'PRESIDENT', 'TECHNICAL_DIRECTOR', 'JUNIOR_COACH', 'COACH'] },
+                },
+            });
+
+            if (!role) {
+                return res.status(403).json({ error: 'You do not have coaching or admin permissions in this club' });
+            }
+        }
+
+        const { firstName, lastName, birthDate, gender, emergencyPhone } = req.body;
+        if (!firstName || !lastName) {
+            return res.status(400).json({ error: 'First name and last name are required' });
+        }
+
+        const result = await RelationshipsService.createManagedDependent(
+            actorUserId,
+            { firstName, lastName, birthDate, gender, clubId, emergencyPhone },
+            'CLUB_COACH',
+            'FULL_MANAGEMENT'
+        );
+
+        res.status(201).json({ success: true, ...result });
     } catch (err) {
         next(err);
     }

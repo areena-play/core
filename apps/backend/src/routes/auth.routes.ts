@@ -153,6 +153,12 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
+        if ((user as any).canLogin === false || !user.passwordHash || (user as any).accountStatus === 'MANAGED') {
+            return res.status(403).json({
+                error: 'This profile is managed by a guardian and does not have independent login credentials.',
+            });
+        }
+
         const match = await bcrypt.compare(password, user.passwordHash);
         if (!match) {
             await AuditService.record({

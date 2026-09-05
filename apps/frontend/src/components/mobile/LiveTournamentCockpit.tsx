@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { triggerHaptic } from '@/lib/pwa/useHaptics';
 import { PushNotificationCard } from '@/components/pwa/PushNotificationCard';
+import { SupervisedSquadCockpit } from '@/components/mobile/SupervisedSquadCockpit';
 
 export interface LiveMatchItem {
     id: string;
@@ -44,7 +45,7 @@ export function LiveTournamentCockpit({
     onOpenScorepadForMatch,
     embedded = false,
 }: LiveTournamentCockpitProps) {
-    const [selectedTab, setSelectedTab] = useState<'my' | 'live' | 'schedule'>('my');
+    const [selectedTab, setSelectedTab] = useState<'my' | 'squad' | 'live' | 'schedule'>('my');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
@@ -193,7 +194,20 @@ export function LiveTournamentCockpit({
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                 >
-                    My Assignment {myMatch && <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-black animate-pulse">1</span>}
+                    My Match {myMatch && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-black animate-pulse">1</span>}
+                </button>
+                <button
+                    onClick={() => {
+                        triggerHaptic('light');
+                        setSelectedTab('squad');
+                    }}
+                    className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all ${
+                        selectedTab === 'squad'
+                            ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm font-bold'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                >
+                    Supervised Squad
                 </button>
                 <button
                     onClick={() => {
@@ -206,7 +220,7 @@ export function LiveTournamentCockpit({
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                 >
-                    Active Tables ({matches.filter((m) => m.status === 'IN_PROGRESS').length})
+                    Active ({matches.filter((m) => m.status === 'IN_PROGRESS').length})
                 </button>
                 <button
                     onClick={() => {
@@ -219,9 +233,12 @@ export function LiveTournamentCockpit({
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                 >
-                    Upcoming Calls
+                    Upcoming
                 </button>
             </div>
+
+            {/* TAB: SUPERVISED SQUAD */}
+            {selectedTab === 'squad' && <SupervisedSquadCockpit />}
 
             {/* TAB 1: MY ASSIGNMENT / ACTIVE USER MATCH */}
             {selectedTab === 'my' && (
