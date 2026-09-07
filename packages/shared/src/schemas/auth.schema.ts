@@ -132,3 +132,30 @@ export const resetPasswordSchema = z.object({
     password: strongPasswordSchema,
 });
 
+export const claimProfileByLicenseSchema = z.object({
+    licenseId: z.string().min(1, 'License number is required'),
+    birthDate: z.string().min(1, 'Date of birth is required'),
+    lastName: z.string().min(1, 'Last name is required'),
+    email: z.string().email('Please enter a valid email address'),
+    password: strongPasswordSchema,
+    phone: optionalPhoneSchema,
+    street: z.string().optional(),
+    postalCode: z.string().optional(),
+    city: z.string().optional(),
+    country: z.string().default('Switzerland'),
+});
+
+export const claimProfileByTokenSchema = z.object({
+    claimToken: z.string().min(6, 'Valid claim token is required'),
+    email: z.string().email('Please enter a valid email address'),
+    password: strongPasswordSchema,
+    phone: optionalPhoneSchema,
+    street: z.string().optional(),
+    postalCode: z.string().optional(),
+    city: z.string().optional(),
+    country: z.string().default('Switzerland'),
+});
+
+export type ClaimProfileByLicenseInput = z.infer<typeof claimProfileByLicenseSchema>;
+export type ClaimProfileByTokenInput = z.infer<typeof claimProfileByTokenSchema>;
+

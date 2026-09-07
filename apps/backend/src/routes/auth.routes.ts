@@ -16,6 +16,8 @@ import {
     forgotPasswordSchema,
     resetPasswordSchema,
     changePasswordSchema,
+    claimProfileByLicenseSchema,
+    claimProfileByTokenSchema,
     AuditCategory,
     parseSearchTokens,
     generateSearchVariants,
@@ -1315,4 +1317,265 @@ router.get('/users/:identifier', async (req, res, next) => {
     }
 });
 
+// POST /auth/claim-profile (3-Factor Self-Service Claim: License + Birthdate + Last Name)
+router.post('/claim-profile', validate(claimProfileByLicenseSchema), async (req, res, next) => {
+    try {
+        const { licenseId, birthDate, lastName, email, password, phone, street, postalCode, city, country } = req.body;
+
+        const trimmedLicense = licenseId.trim();
+        const trimmedLastName = lastName.trim().toLowerCase();
+
+        // Find candidate user by license number
+        const candidate = await prisma.user.findFirst({
+            where: {
+                licenseId: { equals: trimmedLicense, mode: 'insensitive' },
+            },
+        });
+
+        if (!candidate) {
+            return res.status(404).json({
+                error: 'No profile found with this license number. Please check the license number or contact your club administrator.',
+            });
+        }
+
+        // Anti-hijacking: check if account is already claimed with an active login
+        if (candidate.canLogin && candidate.email && candidate.accountStatus === 'ACTIVE') {
+            return res.status(400).json({
+                error: 'This profile has already been claimed and activated. Please log in using your email address, or use "Forgot Password" if you lost access.',
+            });
+        }
+
+        // Verification Factor 1: Last Name Match
+        if (candidate.lastName.trim().toLowerCase() !== trimmedLastName) {
+            return res.status(400).json({
+                error: 'Verification failed: The provided last name does not match the records for this license number.',
+            });
+        }
+
+        // Verification Factor 2: Birth Date Match (if recorded in legacy profile)
+        if (candidate.birthDate) {
+            const d1 = new Date(candidate.birthDate);
+            const d2 = new Date(birthDate);
+
+            const sameUtcDate =
+                d1.getUTCFullYear() === d2.getUTCFullYear() &&
+                d1.getUTCMonth() === d2.getUTCMonth() &&
+                d1.getUTCDate() === d2.getUTCDate();
+
+            const sameLocalDate =
+                d1.getFullYear() === d2.getFullYear() &&
+                d1.getMonth() === d2.getMonth() &&
+                d1.getDate() === d2.getDate();
+
+            if (!sameUtcDate && !sameLocalDate) {
+                return res.status(400).json({
+                    error: 'Verification failed: The provided date of birth does not match the records for this license number.',
+                });
+            }
+        }
+
+        // Check if destination email is taken by another account
+        const normalizedEmail = email.trim().toLowerCase();
+        const emailConflict = await prisma.user.findFirst({
+            where: {
+                email: normalizedEmail,
+                id: { not: candidate.id },
+            },
+        });
+
+        if (emailConflict) {
+            return res.status(400).json({
+                error: 'This email address is already registered to another user account. Please use a different email or log into that account.',
+            });
+        }
+
+        const passwordHash = await bcrypt.hash(password, 10);
+        const requiresVerification = isEmailVerificationRequired();
+        const verificationToken = requiresVerification ? crypto.randomBytes(32).toString('hex') : null;
+        const verificationExpires = requiresVerification ? new Date(Date.now() + 24 * 3600 * 1000) : null;
+
+        const updatedUser = await prisma.user.update({
+            where: { id: candidate.id },
+            data: {
+                email: normalizedEmail,
+                passwordHash,
+                canLogin: !requiresVerification,
+                accountStatus: requiresVerification ? 'INVITED' : 'ACTIVE',
+                emailVerified: !requiresVerification,
+                emailVerificationToken: verificationToken,
+                emailVerificationExpires: verificationExpires,
+                claimToken: null,
+                claimTokenExpires: null,
+                phone: phone ? formatPhoneNumber(phone) : candidate.phone || '',
+                street: street || candidate.street || '',
+                postalCode: postalCode || candidate.postalCode || '',
+                city: city || candidate.city || '',
+                country: country || candidate.country || 'Switzerland',
+            },
+        });
+
+        // Send email verification if required
+        if (verificationToken) {
+            const clientOrigin = (req.headers.origin || req.headers.referer) as string | undefined;
+            await EmailService.sendVerificationEmail(updatedUser.email!, updatedUser.firstName, verificationToken, clientOrigin);
+        }
+
+        await AuditService.record({
+            req,
+            userId: updatedUser.id,
+            userEmail: updatedUser.email ?? undefined,
+            userName: `${updatedUser.firstName} ${updatedUser.lastName}`,
+            action: 'AUTH_CLAIM_PROFILE',
+            category: AuditCategory.AUTH,
+            entityType: 'User',
+            entityId: updatedUser.id,
+            description: `Legacy profile claimed for ${updatedUser.firstName} ${updatedUser.lastName} (License: ${updatedUser.licenseId}) with email ${updatedUser.email}`,
+            status: 'SUCCESS',
+            metadata: {
+                licenseId: updatedUser.licenseId,
+                email: updatedUser.email,
+                emailVerified: updatedUser.emailVerified,
+            },
+        });
+
+        let token: string | undefined;
+        if (!requiresVerification) {
+            token = jwt.sign(
+                { userId: updatedUser.id, tokenVersion: (updatedUser as any).tokenVersion ?? 0 },
+                config.jwtSecret,
+                { expiresIn: '7d' }
+            );
+        }
+
+        res.json({
+            success: true,
+            requiresVerification,
+            token,
+            user: {
+                id: updatedUser.id,
+                email: updatedUser.email,
+                firstName: updatedUser.firstName,
+                lastName: updatedUser.lastName,
+                licenseId: updatedUser.licenseId,
+                eloPoints: updatedUser.eloPoints,
+            },
+            message: requiresVerification
+                ? 'Profile claimed successfully! Please check your email inbox to verify your address and complete activation.'
+                : 'Profile claimed successfully! You are now logged in.',
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// POST /auth/claim-token (Token / QR Code Claim)
+router.post('/claim-token', validate(claimProfileByTokenSchema), async (req, res, next) => {
+    try {
+        const { claimToken, email, password, phone, street, postalCode, city, country } = req.body;
+
+        const candidate = await (prisma.user.findFirst as any)({
+            where: {
+                claimToken,
+                claimTokenExpires: { gt: new Date() },
+            },
+        });
+
+        if (!candidate) {
+            return res.status(400).json({
+                error: 'The claim invite token is invalid, already used, or has expired.',
+            });
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+        const existingEmail = await prisma.user.findFirst({
+            where: {
+                email: normalizedEmail,
+                id: { not: candidate.id },
+            },
+        });
+
+        if (existingEmail) {
+            return res.status(400).json({
+                error: 'This email address is already in use by another account.',
+            });
+        }
+
+        const passwordHash = await bcrypt.hash(password, 10);
+        const requiresVerification = isEmailVerificationRequired();
+        const verificationToken = requiresVerification ? crypto.randomBytes(32).toString('hex') : null;
+        const verificationExpires = requiresVerification ? new Date(Date.now() + 24 * 3600 * 1000) : null;
+
+        const updatedUser = await (prisma.user.update as any)({
+            where: { id: candidate.id },
+            data: {
+                email: normalizedEmail,
+                passwordHash,
+                canLogin: !requiresVerification,
+                accountStatus: requiresVerification ? 'INVITED' : 'ACTIVE',
+                claimToken: null,
+                claimTokenExpires: null,
+                emailVerified: !requiresVerification,
+                emailVerificationToken: verificationToken,
+                emailVerificationExpires: verificationExpires,
+                phone: phone ? formatPhoneNumber(phone) : candidate.phone || '',
+                street: street || candidate.street || '',
+                postalCode: postalCode || candidate.postalCode || '',
+                city: city || candidate.city || '',
+                country: country || candidate.country || 'Switzerland',
+            },
+        });
+
+        if (verificationToken) {
+            const clientOrigin = (req.headers.origin || req.headers.referer) as string | undefined;
+            await EmailService.sendVerificationEmail(updatedUser.email!, updatedUser.firstName, verificationToken, clientOrigin);
+        }
+
+        await AuditService.record({
+            req,
+            userId: updatedUser.id,
+            userEmail: updatedUser.email ?? undefined,
+            userName: `${updatedUser.firstName} ${updatedUser.lastName}`,
+            action: 'AUTH_CLAIM_TOKEN',
+            category: AuditCategory.AUTH,
+            entityType: 'User',
+            entityId: updatedUser.id,
+            description: `Profile claimed via invite token for ${updatedUser.firstName} ${updatedUser.lastName} with email ${updatedUser.email}`,
+            status: 'SUCCESS',
+            metadata: {
+                email: updatedUser.email,
+                emailVerified: updatedUser.emailVerified,
+            },
+        });
+
+        let token: string | undefined;
+        if (!requiresVerification) {
+            token = jwt.sign(
+                { userId: updatedUser.id, tokenVersion: (updatedUser as any).tokenVersion ?? 0 },
+                config.jwtSecret,
+                { expiresIn: '7d' }
+            );
+        }
+
+        res.json({
+            success: true,
+            requiresVerification,
+            token,
+            user: {
+                id: updatedUser.id,
+                email: updatedUser.email,
+                firstName: updatedUser.firstName,
+                lastName: updatedUser.lastName,
+                licenseId: updatedUser.licenseId,
+                eloPoints: updatedUser.eloPoints,
+            },
+            message: requiresVerification
+                ? 'Profile claimed successfully! Please check your email to activate your account.'
+                : 'Profile claimed successfully! You are now logged in.',
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
 export default router;
+

@@ -454,14 +454,25 @@ function LoginForm() {
                             </form>
                         )}
 
-                        <div className="text-center text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800/80">
-                            {t('auth.noAccount')}{' '}
-                            <Link
-                                href="/auth/register"
-                                className="text-red-600 dark:text-red-400 font-semibold hover:underline"
-                            >
-                                {t('auth.registerButton')}
-                            </Link>
+                        <div className="text-center text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-1.5">
+                            <div>
+                                {t('auth.noAccount')}{' '}
+                                <Link
+                                    href="/auth/register"
+                                    className="text-red-600 dark:text-red-400 font-semibold hover:underline"
+                                >
+                                    {t('auth.registerButton')}
+                                </Link>
+                            </div>
+                            <div className="text-[11px]">
+                                {t('auth.haveSttLicensePrompt') || 'Already have an STT license?'}{' '}
+                                <Link
+                                    href="/auth/claim"
+                                    className="text-amber-600 dark:text-amber-400 font-semibold hover:underline"
+                                >
+                                    {t('auth.claimProfileLink') || 'Claim your profile'} →
+                                </Link>
+                            </div>
                         </div>
                     </div>
 

@@ -11,6 +11,14 @@ export class AuthApi {
         return this.http.request('/auth/register', { method: 'POST', body: JSON.stringify(body) });
     }
 
+    claimProfile(body: any) {
+        return this.http.request('/auth/claim-profile', { method: 'POST', body: JSON.stringify(body) });
+    }
+
+    claimWithToken(body: any) {
+        return this.http.request('/auth/claim-token', { method: 'POST', body: JSON.stringify(body) });
+    }
+
     verifyEmail(token: string) {
         return this.http.request('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) });
     }

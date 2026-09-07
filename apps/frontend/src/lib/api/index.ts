@@ -87,6 +87,8 @@ export class ApiClient extends HttpClient {
 
     login = (body: any) => this.auth.login(body);
     register = (body: any) => this.auth.register(body);
+    claimProfile = (body: any) => this.auth.claimProfile(body);
+    claimWithToken = (body: any) => this.auth.claimWithToken(body);
     verifyEmail = (token: string) => this.auth.verifyEmail(token);
     resendVerification = (email: string) => this.auth.resendVerification(email);
     getMe = () => this.auth.getMe();

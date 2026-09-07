@@ -139,6 +139,23 @@ function RegisterForm() {
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 p-6 md:p-8 shadow-sm dark:shadow-xl space-y-5 text-xs">
+                    <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200">
+                        <div className="space-y-0.5">
+                            <div className="font-semibold text-xs flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
+                                <span>{t('auth.haveSttLicensePrompt') || 'Already have an STT license?'}</span>
+                            </div>
+                            <p className="text-[11px] text-amber-700/90 dark:text-amber-300/80">
+                                {t('auth.haveSttLicenseDesc') || 'If you are an existing Swiss Table Tennis player, claim your profile to keep your ELO & match history.'}
+                            </p>
+                        </div>
+                        <Link
+                            href="/auth/claim"
+                            className="shrink-0 px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold text-[11px] transition shadow-sm"
+                        >
+                            {t('auth.claimProfileBtn') || 'Claim Profile'} →
+                        </Link>
+                    </div>
+
                     {errorMsg && (
                         <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/80 p-3 text-red-800 dark:text-red-300">
                             <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
