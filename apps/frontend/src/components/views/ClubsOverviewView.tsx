@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
@@ -26,7 +27,10 @@ interface ClubsOverviewViewProps {
     scopedAssociationId?: string;
 }
 
-export function ClubsOverviewView({ scopedAssociationId }: ClubsOverviewViewProps) {
+function ClubsOverviewContent({ scopedAssociationId }: ClubsOverviewViewProps) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
     const { user } = useAuth();
     const { t } = useI18n();
 
@@ -37,7 +41,24 @@ export function ClubsOverviewView({ scopedAssociationId }: ClubsOverviewViewProp
     const [selectedAssoc, setSelectedAssoc] = useState<string>(scopedAssociationId || '');
     const [loading, setLoading] = useState(true);
 
-    const [showModal, setShowModal] = useState(false);
+    // URL-driven modal state: determined by ?modal=create-club or ?action=new
+    const isCreateModalOpen = searchParams?.get('modal') === 'create-club' || searchParams?.get('action') === 'new';
+
+    const openCreateModal = () => {
+        if (scopedAssociationId) setFormAssocIds([scopedAssociationId]);
+        const params = new URLSearchParams(searchParams?.toString() || '');
+        params.set('modal', 'create-club');
+        router.push(`${pathname}?${params.toString()}`);
+    };
+
+    const closeCreateModal = () => {
+        const params = new URLSearchParams(searchParams?.toString() || '');
+        params.delete('modal');
+        params.delete('action');
+        const qs = params.toString();
+        router.push(qs ? `${pathname}?${qs}` : pathname);
+    };
+
     const [formName, setFormName] = useState('');
     const [formCode, setFormCode] = useState('');
     const [formSlug, setFormSlug] = useState('');
@@ -96,7 +117,7 @@ export function ClubsOverviewView({ scopedAssociationId }: ClubsOverviewViewProp
                 phone: formPhone ? formatPhoneNumber(formPhone) : formPhone,
                 associationIds: scopedAssociationId ? [scopedAssociationId] : formAssocIds,
             });
-            setShowModal(false);
+            closeCreateModal();
             setFormName('');
             setFormCode('');
             setFormSlug('');
@@ -171,10 +192,7 @@ export function ClubsOverviewView({ scopedAssociationId }: ClubsOverviewViewProp
                         {isAssocAdmin && (
                             <button
                                 type="button"
-                                onClick={() => {
-                                    if (scopedAssociationId) setFormAssocIds([scopedAssociationId]);
-                                    setShowModal(true);
-                                }}
+                                onClick={openCreateModal}
                                 className="inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition"
                             >
                                 <Plus className="h-4 w-4" />
@@ -298,8 +316,8 @@ export function ClubsOverviewView({ scopedAssociationId }: ClubsOverviewViewProp
 
             {/* Register Club Modal */}
             <Modal
-                isOpen={showModal}
-                onClose={() => setShowModal(false)}
+                isOpen={isCreateModalOpen}
+                onClose={closeCreateModal}
                 title="Register New Sports Club"
                 subtitle="Create an affiliated club profile, primary address, and assign parent federations"
                 icon={<Shield className="h-5 w-5 text-blue-500" />}
@@ -454,7 +472,7 @@ export function ClubsOverviewView({ scopedAssociationId }: ClubsOverviewViewProp
                     <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                         <button
                             type="button"
-                            onClick={() => setShowModal(false)}
+                            onClick={closeCreateModal}
                             className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
                         >
                             Cancel
@@ -470,5 +488,13 @@ export function ClubsOverviewView({ scopedAssociationId }: ClubsOverviewViewProp
                 </form>
             </Modal>
         </div>
+    );
+}
+
+export function ClubsOverviewView(props: ClubsOverviewViewProps) {
+    return (
+        <Suspense fallback={null}>
+            <ClubsOverviewContent {...props} />
+        </Suspense>
     );
 }
