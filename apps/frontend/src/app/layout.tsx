@@ -23,6 +23,9 @@ import { MobileBottomNav } from '@/components/mobile/MobileBottomNav';
 import { GlobalMobileScorecardController } from '@/components/mobile/GlobalMobileScorecardController';
 import { PwaManager } from '@/components/pwa/PwaManager';
 import { getSiteBaseUrl } from '@/lib/siteUrl';
+import { TourProvider } from '@/lib/tourContext';
+import { SpotlightTourOverlay } from '@/components/tour/SpotlightTourOverlay';
+import { WelcomeOnboardingModal } from '@/components/tour/WelcomeOnboardingModal';
 
 export const viewport: Viewport = {
     width: 'device-width',
@@ -129,33 +132,37 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <I18nProvider>
                         <AuthProvider>
                             <MainViewProvider>
-                                <AdminNoticeProvider>
-                                    <TopLoadingBar />
-                                    <AreenaDevTools />
-                                    <ToastContainer />
-                                    <PopupContainer />
-                                    <DialogContainer />
-                                    <PageTitleManager />
-                                    <FullscreenViewLoader />
-                                    <AdminNoticeModal />
-                                    <Navbar />
-                                    <AdminNoticeBanner />
-                                    <CookieConsentBanner />
-                                    <PwaManager />
-                                    <GlobalMobileScorecardController />
-                                    <div className="flex flex-1 min-h-0 overflow-hidden relative">
-                                        <Suspense fallback={<aside className="w-64 h-full flex-shrink-0 border-r border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-950/70 hidden md:flex" />}><Sidebar /></Suspense>
-                                        <main className="flex-1 min-h-0 overflow-y-auto p-4 md:p-8 pb-20 md:pb-8 [scrollbar-gutter:stable] bg-slate-50 dark:bg-gradient-to-b dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-                                            <div className="mx-auto max-w-[1440px] space-y-4">
-                                                <Suspense fallback={null}>
-                                                    <BreadcrumbsBar />
-                                                </Suspense>
-                                                {children}
-                                            </div>
-                                        </main>
-                                    </div>
-                                    <MobileBottomNav />
-                                </AdminNoticeProvider>
+                                <TourProvider>
+                                    <AdminNoticeProvider>
+                                        <TopLoadingBar />
+                                        <AreenaDevTools />
+                                        <ToastContainer />
+                                        <PopupContainer />
+                                        <DialogContainer />
+                                        <SpotlightTourOverlay />
+                                        <WelcomeOnboardingModal />
+                                        <PageTitleManager />
+                                        <FullscreenViewLoader />
+                                        <AdminNoticeModal />
+                                        <Navbar />
+                                        <AdminNoticeBanner />
+                                        <CookieConsentBanner />
+                                        <PwaManager />
+                                        <GlobalMobileScorecardController />
+                                        <div className="flex flex-1 min-h-0 overflow-hidden relative">
+                                            <Suspense fallback={<aside className="w-64 h-full flex-shrink-0 border-r border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-950/70 hidden md:flex" />}><Sidebar /></Suspense>
+                                            <main className="flex-1 min-h-0 overflow-y-auto p-4 md:p-8 pb-20 md:pb-8 [scrollbar-gutter:stable] bg-slate-50 dark:bg-gradient-to-b dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+                                                <div className="mx-auto max-w-[1440px] space-y-4">
+                                                    <Suspense fallback={null}>
+                                                        <BreadcrumbsBar />
+                                                    </Suspense>
+                                                    {children}
+                                                </div>
+                                            </main>
+                                        </div>
+                                        <MobileBottomNav />
+                                    </AdminNoticeProvider>
+                                </TourProvider>
                             </MainViewProvider>
                         </AuthProvider>
                     </I18nProvider>

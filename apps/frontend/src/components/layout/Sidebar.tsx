@@ -166,7 +166,10 @@ function SidebarContent() {
                 className={`flex-1 min-h-0 overflow-y-auto p-4 space-y-5 overscroll-contain scrollbar-hover ${isScrolling ? 'is-scrolling' : ''}`}
             >
                 {/* Active Workspace Header Card */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60 p-2.5 space-y-1.5 transition-colors duration-150">
+                <div
+                    data-tour="workspace-switcher"
+                    className="rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60 p-2.5 space-y-1.5 transition-colors duration-150"
+                >
                     <div className="flex items-center justify-between gap-2">
                         <span
                             className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${currentViewMeta.badgeColor}`}
@@ -211,12 +214,20 @@ function SidebarContent() {
                                 const isItemActive = isNavActive(item.href);
 
                                 const Icon = item.icon;
+                                const tourAttr = item.id === 'competitions'
+                                    ? 'nav-competitions'
+                                    : item.id === 'licenses'
+                                      ? 'nav-licenses'
+                                      : item.id === 'clubs'
+                                        ? 'nav-clubs'
+                                        : undefined;
 
                                 return (
                                     <div key={`${item.href}-${itemIdx}`} className="space-y-1">
                                         <div className="flex items-center justify-between">
                                             <Link
                                                 href={item.href}
+                                                data-tour={tourAttr}
                                                 className={`flex-1 flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition-colors duration-150 ${
                                                     isItemActive && !hasChildren
                                                         ? 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-600/10 dark:text-red-500 dark:border-red-500/20 font-bold'

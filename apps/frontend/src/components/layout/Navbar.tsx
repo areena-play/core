@@ -11,6 +11,7 @@ import { useTheme } from '@/lib/themeContext';
 import { useI18n } from '@/lib/i18nContext';
 import { useMainView } from '@/lib/mainViewContext';
 import { useWebSocket } from '@/lib/useWebSocket';
+import { useTour } from '@/lib/tourContext';
 import { getCommonNavSections, NavSection, NavItem } from '@/lib/navigation';
 import { GlobalSearchBar } from '@/components/search/GlobalSearchBar';
 import { FlagIcon } from '@/components/ui/FlagIcon';
@@ -58,6 +59,7 @@ export function Navbar() {
     const router = useRouter();
     const { user, logout } = useAuth();
     const { isConnected } = useWebSocket();
+    const { openWelcomeModal } = useTour();
     const { theme, resolvedTheme, setTheme } = useTheme();
     const { locale, setLocale, t, locales, supportedLocales } = useI18n();
     const { activeView, entityId, entityMeta, currentViewMeta, mainAssoc, associations } = useMainView();
@@ -195,7 +197,7 @@ export function Navbar() {
                                 </button>
                             )}
 
-                            <Link href="/" className="flex items-center gap-3">
+                            <Link href="/" data-tour="brand-logo" className="flex items-center gap-3">
                                 <div className="relative h-8 w-24 sm:h-10 sm:w-32">
                                     <AreenaLogo />
                                 </div>
@@ -410,6 +412,18 @@ export function Navbar() {
                                                     <HelpCircle className="h-4 w-4 text-amber-500" />
                                                     <span>{t('nav.support')}</span>
                                                 </Link>
+
+                                                {/* Interactive Tutorial / Tour */}
+                                                <button
+                                                    onClick={() => {
+                                                        setUserMenuOpen(false);
+                                                        openWelcomeModal();
+                                                    }}
+                                                    className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition text-left"
+                                                >
+                                                    <Sparkles className="h-4 w-4 text-amber-500 shrink-0" />
+                                                    <span>{t('tour.startTour') || 'Interactive Tutorial'}</span>
+                                                </button>
                                             </div>
 
                                             {/* Integrated Sign Out Button */}
@@ -443,7 +457,7 @@ export function Navbar() {
                     <div className="hidden md:flex flex-1 items-center px-4 md:pl-8 md:pr-[40px] h-full min-w-0">
                         <div className="mx-auto max-w-[1440px] w-full flex items-center justify-between gap-3 sm:gap-6">
                             {/* Global Cross-site Search Bar (starts overhead main page content, gracefully shortens as space reduces) */}
-                            <div className="flex items-center flex-1 min-w-[130px] max-w-xs md:max-w-sm lg:max-w-md xl:max-w-xl">
+                            <div data-tour="global-search" className="flex items-center flex-1 min-w-[130px] max-w-xs md:max-w-sm lg:max-w-md xl:max-w-xl">
                                 <GlobalSearchBar compact className="w-full" />
                             </div>
 
