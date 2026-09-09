@@ -550,10 +550,23 @@ export function Navbar() {
                                     )}
                                 </button>
 
+                                {/* Quick Interactive Tour Launcher Button */}
+                                {user ? '' : (<button
+                                    onClick={openWelcomeModal}
+                                    title={t('tour.startTour') || 'Interactive Tutorial'}
+                                    className="rounded-lg p-1.5 sm:p-2 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/40 dark:text-amber-400 transition shrink-0 flex items-center gap-1 text-xs font-semibold"
+                                >
+                                    <Sparkles className="h-4 w-4 text-amber-500 animate-pulse" />
+                                    <span className="hidden xl:inline text-slate-700 dark:text-slate-300 font-medium">
+                                        {t('tour.startTour') || 'Tutorial'}
+                                    </span>
+                                </button>)}
+
                                 {/* Integrated User Profile & Role-Aware Menu Dropdown */}
                                 {user ? (
                                     <div className="relative shrink-0" ref={userMenuRef}>
                                         <button
+                                            data-tour="user-menu"
                                             onClick={() => setUserMenuOpen(!userMenuOpen)}
                                             className="flex items-center gap-2 rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-900 dark:border-slate-800 p-1 sm:px-2 sm:py-1.5 text-xs hover:border-slate-300 dark:hover:border-slate-700 transition"
                                         >
@@ -569,10 +582,10 @@ export function Navbar() {
                                                     {user.isSuperAdmin
                                                         ? t('userMenu.roleSuperAdmin')
                                                         : (user.associationRoles?.length ?? 0) > 0
-                                                          ? t('userMenu.roleAssocAdmin')
-                                                          : (user.clubRoles?.length ?? 0) > 0
-                                                            ? t('userMenu.roleClubAdmin')
-                                                            : user.email}
+                                                           ? t('userMenu.roleAssocAdmin')
+                                                           : (user.clubRoles?.length ?? 0) > 0
+                                                             ? t('userMenu.roleClubAdmin')
+                                                             : user.email}
                                                 </div>
                                             </div>
                                             <ChevronDown className="h-3 w-3 text-slate-400 hidden 2xl:inline shrink-0" />
@@ -599,12 +612,12 @@ export function Navbar() {
                                             </div>
 
                                             {user.licenseId && (
-                                                <div className="mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
-                                                    <span className="text-slate-500 font-mono">License:</span>
-                                                    <span className="font-mono font-bold text-red-600 dark:text-red-400">
-                                                        #{user.licenseId}
-                                                    </span>
-                                                </div>
+                                                 <div className="mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+                                                     <span className="text-slate-500 font-mono">License:</span>
+                                                     <span className="font-mono font-bold text-red-600 dark:text-red-400">
+                                                         #{user.licenseId}
+                                                     </span>
+                                                 </div>
                                             )}
                                         </div>
 
@@ -696,6 +709,18 @@ export function Navbar() {
                                                 <HelpCircle className="h-4 w-4 text-amber-500" />
                                                 <span>{t('nav.support')}</span>
                                             </Link>
+
+                                            {/* Interactive Tutorial / Tour */}
+                                            <button
+                                                onClick={() => {
+                                                    setUserMenuOpen(false);
+                                                    openWelcomeModal();
+                                                }}
+                                                className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition text-left"
+                                            >
+                                                <Sparkles className="h-4 w-4 text-amber-500 shrink-0" />
+                                                <span>{t('tour.startTour') || 'Interactive Tutorial'}</span>
+                                            </button>
                                         </div>
 
                                         {/* Integrated Sign Out Button */}

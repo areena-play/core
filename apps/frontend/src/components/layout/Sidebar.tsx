@@ -45,6 +45,7 @@ import {
 import { useI18n } from '@/lib/i18nContext';
 import { useMainView } from '@/lib/mainViewContext';
 import { useAuth } from '@/lib/authContext';
+import { useTour } from '@/lib/tourContext';
 import { getCommonNavSections, NavSection, NavItem, SubNavItem } from '@/lib/navigation';
 
 function SidebarContent() {
@@ -52,6 +53,7 @@ function SidebarContent() {
     const searchParams = useSearchParams();
     const { t } = useI18n();
     const { user } = useAuth();
+    const { openWelcomeModal } = useTour();
     const { activeView, entityId, entityMeta, currentViewMeta, mainAssoc, associations } = useMainView();
 
     // Track expanded status of collapsible groups (e.g. Competitions, People, Associations)
@@ -334,6 +336,14 @@ function SidebarContent() {
                         >
                             Support
                         </Link>
+                        <button
+                            type="button"
+                            onClick={openWelcomeModal}
+                            className="flex items-center gap-0.5 text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300 font-semibold transition"
+                        >
+                            <Sparkles className="h-2.5 w-2.5" />
+                            <span>{t('tour.startTour') || 'Tour'}</span>
+                        </button>
                     </div>
                 </div>
             </div>
