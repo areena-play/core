@@ -9,6 +9,7 @@ import { useTheme } from '@/lib/themeContext';
 import { useI18n } from '@/lib/i18nContext';
 import { normalizePhoneNumber } from '@areena/shared';
 import { PhoneInput } from '@/components/ui/PhoneInput';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { useMainView } from '@/lib/mainViewContext';
 import {
     User,
@@ -1499,13 +1500,12 @@ function ProfilePageContent() {
                                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                                         {t('auth.currentPasswordLabel') || 'Current Password'} *
                                     </label>
-                                    <input
-                                        type="password"
+                                    <PasswordInput
                                         required
                                         placeholder="••••••••"
                                         value={currentPassword}
                                         onChange={(e) => setCurrentPassword(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                        className="rounded-xl px-3 py-2.5 text-xs focus:border-amber-500"
                                     />
                                 </div>
 
@@ -1513,13 +1513,12 @@ function ProfilePageContent() {
                                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                                         {t('auth.newPasswordLabel') || 'New Password'} *
                                     </label>
-                                    <input
-                                        type="password"
+                                    <PasswordInput
                                         required
                                         placeholder="••••••••"
                                         value={newPassword}
                                         onChange={(e) => setNewPassword(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                        className="rounded-xl px-3 py-2.5 text-xs focus:border-amber-500"
                                     />
                                     {newPassword && <PasswordRequirements password={newPassword} className="mt-2.5" />}
                                 </div>
@@ -1528,13 +1527,12 @@ function ProfilePageContent() {
                                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                                         {t('auth.confirmNewPasswordLabel') || 'Confirm New Password'} *
                                     </label>
-                                    <input
-                                        type="password"
+                                    <PasswordInput
                                         required
                                         placeholder="••••••••"
                                         value={confirmNewPassword}
                                         onChange={(e) => setConfirmNewPassword(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                        className="rounded-xl px-3 py-2.5 text-xs focus:border-amber-500"
                                     />
                                 </div>
 

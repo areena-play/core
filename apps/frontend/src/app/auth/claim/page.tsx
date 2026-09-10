@@ -12,6 +12,7 @@ import { ShieldCheck, KeyRound, AlertCircle, CheckCircle2, ArrowRight, UserCheck
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
 import { normalizePhoneNumber } from '@areena/shared';
 import { PhoneInput } from '@/components/ui/PhoneInput';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 
 function ClaimProfileForm() {
     const router = useRouter();
@@ -309,13 +310,12 @@ function ClaimProfileForm() {
                                 <label className="font-semibold text-slate-700 dark:text-slate-300">
                                     {t('auth.newPassword') || 'New Password'} *
                                 </label>
-                                <input
-                                    type="password"
+                                <PasswordInput
                                     required
                                     placeholder="••••••••"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    containerClassName="mt-1"
                                 />
                                 <div className="mt-2">
                                     <PasswordRequirements password={password} />
@@ -326,13 +326,12 @@ function ClaimProfileForm() {
                                 <label className="font-semibold text-slate-700 dark:text-slate-300">
                                     {t('auth.confirmPassword') || 'Confirm Password'} *
                                 </label>
-                                <input
-                                    type="password"
+                                <PasswordInput
                                     required
                                     placeholder="••••••••"
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                    containerClassName="mt-1"
                                 />
                             </div>
 

@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/authContext';
 import { useTheme } from '@/lib/themeContext';
 import { useI18n } from '@/lib/i18nContext';
 import { useMainView } from '@/lib/mainViewContext';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import {
     LogIn,
     AlertCircle,
@@ -433,13 +434,12 @@ function LoginForm() {
                                             {t('auth.forgotPasswordLink')}
                                         </button>
                                     </div>
-                                    <input
-                                        type="password"
+                                    <PasswordInput
                                         required
                                         placeholder="••••••••"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                        containerClassName="mt-1"
                                     />
                                 </div>
 

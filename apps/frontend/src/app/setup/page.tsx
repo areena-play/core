@@ -22,6 +22,7 @@ import {
     AlertCircle,
     Loader2,
 } from 'lucide-react';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 
 export default function SetupPage() {
     const router = useRouter();
@@ -298,33 +299,27 @@ export default function SetupPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-medium text-slate-300 mb-1.5">Password</label>
-                                    <div className="relative">
-                                        <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                                        <input
-                                            type="password"
-                                            required
-                                            minLength={8}
-                                            value={admin.password}
-                                            onChange={(e) => setAdmin({ ...admin, password: e.target.value })}
-                                            placeholder="Min. 8 characters"
-                                            className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3.5 py-2.5 pl-10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors"
-                                        />
-                                    </div>
+                                    <PasswordInput
+                                        required
+                                        minLength={8}
+                                        value={admin.password}
+                                        onChange={(e) => setAdmin({ ...admin, password: e.target.value })}
+                                        placeholder="Min. 8 characters"
+                                        leftIcon={<Lock className="w-4 h-4" />}
+                                        className="bg-slate-950/60 border-slate-800 text-sm text-white placeholder-slate-500 rounded-xl py-2.5"
+                                    />
                                 </div>
 
                                 <div>
                                     <label className="block text-xs font-medium text-slate-300 mb-1.5">Confirm Password</label>
-                                    <div className="relative">
-                                        <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                                        <input
-                                            type="password"
-                                            required
-                                            value={admin.confirmPassword}
-                                            onChange={(e) => setAdmin({ ...admin, confirmPassword: e.target.value })}
-                                            placeholder="Repeat password"
-                                            className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3.5 py-2.5 pl-10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors"
-                                        />
-                                    </div>
+                                    <PasswordInput
+                                        required
+                                        value={admin.confirmPassword}
+                                        onChange={(e) => setAdmin({ ...admin, confirmPassword: e.target.value })}
+                                        placeholder="Repeat password"
+                                        leftIcon={<Lock className="w-4 h-4" />}
+                                        className="bg-slate-950/60 border-slate-800 text-sm text-white placeholder-slate-500 rounded-xl py-2.5"
+                                    />
                                 </div>
                             </div>
 

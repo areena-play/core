@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { useI18n } from '@/lib/i18nContext';
 import { Lock, CheckCircle2, AlertCircle, Loader2, ArrowLeft, LogIn } from 'lucide-react';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 
 function ResetPasswordForm() {
     const searchParams = useSearchParams();
@@ -112,13 +113,12 @@ function ResetPasswordForm() {
                         <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                             {t('auth.newPasswordLabel')} *
                         </label>
-                        <input
-                            type="password"
+                        <PasswordInput
                             required
                             placeholder="••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
+                            className="rounded-xl px-3 py-2.5 text-xs"
                         />
                         {password && <PasswordRequirements password={password} className="mt-2" />}
                     </div>
@@ -127,13 +127,12 @@ function ResetPasswordForm() {
                         <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                             {t('auth.confirmNewPasswordLabel')} *
                         </label>
-                        <input
-                            type="password"
+                        <PasswordInput
                             required
                             placeholder="••••••••"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
+                            className="rounded-xl px-3 py-2.5 text-xs"
                         />
                     </div>
 

@@ -13,6 +13,7 @@ import { UserPlus, AlertCircle } from 'lucide-react';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
 import { normalizePhoneNumber } from '@areena/shared';
 import { PhoneInput } from '@/components/ui/PhoneInput';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 
 function RegisterForm() {
     const router = useRouter();
@@ -211,14 +212,13 @@ function RegisterForm() {
                             <label className="font-semibold text-slate-700 dark:text-slate-300">
                                 {t('auth.password')} *
                             </label>
-                            <input
-                                type="password"
+                            <PasswordInput
                                 required
                                 minLength={8}
                                 placeholder="••••••••"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                containerClassName="mt-1"
                             />
                             {password && <PasswordRequirements password={password} className="mt-2" />}
                         </div>
@@ -227,18 +227,18 @@ function RegisterForm() {
                             <label className="font-semibold text-slate-700 dark:text-slate-300">
                                 {t('auth.confirmPasswordLabel')} *
                             </label>
-                            <input
-                                type="password"
+                            <PasswordInput
                                 required
                                 minLength={8}
                                 placeholder="••••••••"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                className={`mt-1 w-full rounded-lg border bg-slate-50 px-3 py-2 text-slate-900 dark:bg-slate-950 dark:text-white focus:outline-none ${
+                                containerClassName="mt-1"
+                                className={
                                     confirmPassword && password !== confirmPassword
                                         ? 'border-red-500 focus:border-red-500'
-                                        : 'border-slate-300 dark:border-slate-800 focus:border-red-500'
-                                }`}
+                                        : ''
+                                }
                             />
                             {confirmPassword && password !== confirmPassword && (
                                 <p className="mt-1 text-[11px] text-red-500 font-medium">

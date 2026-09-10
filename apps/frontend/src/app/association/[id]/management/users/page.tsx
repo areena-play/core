@@ -8,6 +8,7 @@ import { useI18n } from '@/lib/i18nContext';
 import { AccessDenied } from '@/components/auth/AccessDenied';
 import { normalizePhoneNumber, formatPhoneNumber } from '@areena/shared';
 import { PhoneInput } from '@/components/ui/PhoneInput';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import {
     Users,
     Shield,
@@ -934,13 +935,13 @@ export default function AdminUsersPage() {
                                 <label className="font-semibold text-slate-700 dark:text-slate-300">
                                     Set Custom Password
                                 </label>
-                                <input
-                                    type="password"
+                                <PasswordInput
                                     required
                                     placeholder="Enter new password (min. 8 chars)"
                                     value={customPassword}
                                     onChange={(e) => setCustomPassword(e.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
+                                    containerClassName="mt-1"
+                                    className="font-mono"
                                 />
                             </div>
                         )}

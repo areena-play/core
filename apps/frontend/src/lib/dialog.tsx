@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Modal } from '@/components/ui/Modal';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { AlertTriangle, AlertCircle, Info, HelpCircle, Upload, X, FileText } from 'lucide-react';
 
 /* -------------------------------------------------------------------------- */
@@ -424,8 +425,20 @@ export function DialogContainer() {
                                             </div>
                                         )}
                                     </div>
+                                ) : fieldType === 'password' ? (
+                                    /* PASSWORD INPUT WITH SHOW/HIDE TOGGLE */
+                                    <PasswordInput
+                                        autoFocus={isAutoFocussed}
+                                        required={field.required}
+                                        placeholder={field.placeholder}
+                                        value={formValues[field.name] ?? ''}
+                                        onChange={(e) =>
+                                            setFormValues((prev) => ({ ...prev, [field.name]: e.target.value }))
+                                        }
+                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
+                                    />
                                 ) : (
-                                    /* STANDARD INPUTS (text, password, number, date, time, datetime-local) */
+                                    /* STANDARD INPUTS (text, number, date, time, datetime-local) */
                                     <input
                                         type={fieldType}
                                         autoFocus={isAutoFocussed}

@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { Code2, Key, ShieldCheck, Play, Copy, CheckCircle2, Plus, Lock, ExternalLink, Terminal } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 
 export default function DevelopersPortalPage() {
     const { user } = useAuth();
@@ -322,11 +323,11 @@ export default function DevelopersPortalPage() {
                                 <label className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
                                     Client Secret
                                 </label>
-                                <input
-                                    type="password"
+                                <PasswordInput
                                     value={testSecret}
                                     onChange={(e) => setTestSecret(e.target.value)}
-                                    className="mt-1 w-full rounded border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 py-1.5 font-mono text-[11px] text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
+                                    containerClassName="mt-1"
+                                    className="rounded border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 py-1.5 font-mono text-[11px]"
                                 />
                             </div>
                         </div>

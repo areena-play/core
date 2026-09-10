@@ -8,6 +8,7 @@ import { AccessDenied } from '@/components/auth/AccessDenied';
 import { Modal } from '@/components/ui/Modal';
 import { ColumnDef } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/DataTable';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import {
     Receipt,
     Plus,
@@ -1128,12 +1129,12 @@ export function BillingDashboard({ associationId, isSubAssociation = false }: Bi
                                     {t('bexio.apiToken')}
                                 </label>
                                 <div className="mt-1 flex gap-2">
-                                    <input
-                                        type="password"
+                                    <PasswordInput
                                         placeholder={t('bexio.apiTokenPlaceholder')}
                                         value={bexioToken}
                                         onChange={(e) => setBexioToken(e.target.value)}
-                                        className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white font-mono focus:border-emerald-500 focus:outline-none"
+                                        containerClassName="flex-1"
+                                        className="rounded-xl border-slate-200 dark:border-slate-800 font-mono focus:border-emerald-500"
                                     />
                                     <button
                                         type="button"
