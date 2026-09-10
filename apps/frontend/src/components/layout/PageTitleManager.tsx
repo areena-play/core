@@ -62,6 +62,10 @@ export function PageTitleManager() {
                 pageName = t('nav.licensingHub', undefined, 'Licensing Hub');
             } else if (pathname.includes('/management/licenses/refresher-courses')) {
                 pageName = 'Refresher Courses';
+            } else if (pathname.includes('/management/users/') && !pathname.endsWith('/management/users')) {
+                pageName = 'User Details & Management';
+            } else if (pathname === '/management/users' || pathname.endsWith('/management/users')) {
+                pageName = t('nav.users', undefined, 'User Management');
             } else if (pathname === '/search') {
                 pageName = 'Search';
             } else if (pathname === '/calendar') {

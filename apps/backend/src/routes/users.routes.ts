@@ -198,8 +198,23 @@ router.get('/admin/:id', async (req: AuthRequest, res: Response, next) => {
             include: {
                 associationRoles: { include: { association: true } },
                 clubRoles: { include: { club: true } },
-                licenses: { include: { club: true, association: true, season: true } },
-                courseAttendances: { include: { course: true } },
+                licenses: {
+                    include: {
+                        club: true,
+                        association: true,
+                        season: true,
+                        appliedBy: { select: { id: true, firstName: true, lastName: true, email: true } },
+                        approvedBy: { select: { id: true, firstName: true, lastName: true, email: true } },
+                    },
+                    orderBy: { createdAt: 'desc' },
+                },
+                courseAttendances: {
+                    include: {
+                        course: true,
+                        attestedBy: { select: { id: true, firstName: true, lastName: true, email: true } },
+                    },
+                    orderBy: { createdAt: 'desc' },
+                },
             },
         });
 

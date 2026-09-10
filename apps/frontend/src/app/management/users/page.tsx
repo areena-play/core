@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useEffect, useState, useTransition } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { AccessDenied } from '@/components/auth/AccessDenied';
-import { normalizePhoneNumber, formatPhoneNumber } from '@areena/shared';
-import { PhoneInput } from '@/components/ui/PhoneInput';
+import { formatPhoneNumber } from '@areena/shared';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import {
     Users,
@@ -33,10 +33,9 @@ import {
     ChevronLeft,
     ChevronRight,
     AlertTriangle,
-    Plus,
+    ExternalLink,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
-import { ColumnDef } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/DataTable';
 
 interface AdminUserItem {
@@ -85,6 +84,10 @@ interface UserStats {
 }
 
 export default function AdminUsersPage() {
+    const params = useParams();
+    const assocId = params?.id as string | undefined;
+    const userPrefix = assocId ? `/association/${assocId}/management/users` : '/management/users';
+
     const { user: currentUser } = useAuth();
     const { t } = useI18n();
 
@@ -106,11 +109,6 @@ export default function AdminUsersPage() {
     const [selectedRole, setSelectedRole] = useState<'ALL' | 'SUPER_ADMIN' | 'FEDERATION' | 'CLUB' | 'ATHLETE' | 'UNVERIFIED'>('ALL');
 
     // Modals
-    const [editingUser, setEditingUser] = useState<AdminUserItem | null>(null);
-    const [editFormData, setEditFormData] = useState<any>({});
-    const [editLoading, setEditLoading] = useState(false);
-    const [editError, setEditError] = useState('');
-
     const [resetPasswordUser, setResetPasswordUser] = useState<AdminUserItem | null>(null);
     const [customPassword, setCustomPassword] = useState('');
     const [autoGeneratePass, setAutoGeneratePass] = useState(true);
@@ -123,6 +121,12 @@ export default function AdminUsersPage() {
 
     const [actionBanner, setActionBanner] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+    const isAuthorized =
+        currentUser?.isSuperAdmin ||
+        currentUser?.associationRoles?.some((r: any) =>
+            ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
+        );
+
     // Load users
     const loadUsers = async () => {
         setLoading(true);
@@ -130,6 +134,7 @@ export default function AdminUsersPage() {
             const res = await api.getAdminUsers({
                 q: searchQuery,
                 role: selectedRole,
+                associationId: assocId,
                 page,
                 limit: pageSize,
             });
@@ -147,15 +152,15 @@ export default function AdminUsersPage() {
     };
 
     useEffect(() => {
-        if (currentUser?.isSuperAdmin) {
+        if (isAuthorized) {
             loadUsers();
         }
-    }, [currentUser, page, pageSize, selectedRole]);
+    }, [currentUser, isAuthorized, page, pageSize, selectedRole, assocId]);
 
     // Handle search with debounce
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (currentUser?.isSuperAdmin) {
+            if (isAuthorized) {
                 setPage(1);
                 loadUsers();
             }
@@ -163,67 +168,16 @@ export default function AdminUsersPage() {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    // Check superadmin permissions
-    if (!currentUser || !currentUser.isSuperAdmin) {
+    // Check permissions
+    if (!currentUser || !isAuthorized) {
         return (
             <AccessDenied
-                title="Super Administrator Access Required"
-                description="The global User Management portal is restricted to platform Super Administrators. Please sign in with a Super Admin account to inspect, edit, or manage platform users."
-                requiredRole="Super Administrator"
+                title="Administrator Access Required"
+                description="The User Management portal is restricted to platform Super Administrators and Federation/Association Administrators. Please sign in with an authorized account."
+                requiredRole="Administrator"
             />
         );
     }
-
-    // Modal Handlers
-    const openEditModal = (target: AdminUserItem) => {
-        setEditingUser(target);
-        setEditFormData({
-            firstName: target.firstName,
-            lastName: target.lastName,
-            email: target.email,
-            phone: target.phone,
-            street: target.street,
-            postalCode: target.postalCode,
-            city: target.city,
-            country: target.country,
-            birthDate: target.birthDate ? target.birthDate.split('T')[0] : '',
-            gender: target.gender || '',
-            isSuperAdmin: target.isSuperAdmin,
-            emailVerified: target.emailVerified,
-            eloPoints: target.eloPoints,
-            licenseId: target.licenseId || '',
-        });
-        setEditError('');
-    };
-
-    const handleSaveEdit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!editingUser) return;
-        setEditLoading(true);
-        setEditError('');
-
-        try {
-            const normalizedPhone = editFormData.phone ? normalizePhoneNumber(editFormData.phone) : editFormData.phone;
-            const payload = {
-                ...editFormData,
-                phone: normalizedPhone || editFormData.phone,
-                birthDate: editFormData.birthDate ? editFormData.birthDate : null,
-                gender: editFormData.gender ? editFormData.gender : null,
-                licenseId: editFormData.licenseId ? editFormData.licenseId : null,
-            };
-            await api.updateAdminUser(editingUser.id, payload);
-            setActionBanner({
-                type: 'success',
-                text: `User ${editFormData.firstName} ${editFormData.lastName} updated successfully.`,
-            });
-            setEditingUser(null);
-            loadUsers();
-        } catch (err: any) {
-            setEditError(err.message || 'Failed to update user profile.');
-        } finally {
-            setEditLoading(false);
-        }
-    };
 
     const handleResetPassword = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -320,9 +274,11 @@ export default function AdminUsersPage() {
                         <div>
                             <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                 Registered User Management
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 font-semibold">
-                                    Super Admin
-                                </span>
+                                {currentUser.isSuperAdmin && (
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 font-semibold">
+                                        Super Admin
+                                    </span>
+                                )}
                             </h1>
                             <p className="text-xs text-slate-500 dark:text-slate-400">
                                 Global directory of all registered athletes, club managers, referees, coaches, and administrators.
@@ -336,7 +292,7 @@ export default function AdminUsersPage() {
                         type="button"
                         onClick={loadUsers}
                         disabled={loading}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm transition"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-xs transition"
                     >
                         <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                         <span>Refresh</span>
@@ -424,12 +380,15 @@ export default function AdminUsersPage() {
                             const u = row.original;
                             const initials = `${u.firstName?.[0] || ''}${u.lastName?.[0] || ''}`.toUpperCase();
                             return (
-                                <div className="flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-red-600 to-rose-700 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-sm">
+                                <Link
+                                    href={`${userPrefix}/${u.id}`}
+                                    className="flex items-center gap-3 group"
+                                >
+                                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-red-600 to-rose-700 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-sm group-hover:scale-105 transition-transform">
                                         {initials}
                                     </div>
                                     <div className="space-y-0.5 min-w-0">
-                                        <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                                        <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate group-hover:text-red-600 dark:group-hover:text-red-400 transition">
                                             <span className="truncate">
                                                 {u.firstName} {u.lastName}
                                             </span>
@@ -460,19 +419,22 @@ export default function AdminUsersPage() {
                                             )}
                                         </div>
                                     </div>
-                                </div>
+                                </Link>
                             );
                         },
                     },
                     {
                         id: 'roles',
-                        header: () => <span>Platform Roles & Licenses</span>,
+                        accessorFn: (u) =>
+                            `${u.associationRoles?.map((r) => r.role).join(' ')} ${u.clubRoles?.map((r) => r.role).join(' ')}`,
+                        header: ({ column }) => <DataTableColumnHeader column={column} title="Roles & Licenses" />,
                         cell: ({ row }) => {
                             const u = row.original;
                             return (
-                                <div className="flex flex-wrap gap-1">
+                                <div className="flex flex-wrap gap-1 max-w-xs">
                                     {u.isSuperAdmin && (
-                                        <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30">
+                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/30 flex items-center gap-1">
+                                            <Shield className="w-2.5 h-2.5" />
                                             Super Admin
                                         </span>
                                     )}
@@ -480,10 +442,10 @@ export default function AdminUsersPage() {
                                     {u.associationRoles?.map((ar) => (
                                         <span
                                             key={ar.id}
-                                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 flex items-center gap-1"
+                                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 flex items-center gap-1"
                                         >
                                             <Building2 className="w-2.5 h-2.5" />
-                                            {ar.association?.shortName}: {ar.role}
+                                            {ar.association?.code || 'AS'}: {ar.role}
                                         </span>
                                     ))}
 
@@ -526,7 +488,7 @@ export default function AdminUsersPage() {
                         cell: ({ row }) => {
                             const u = row.original;
                             return (
-                                <div className="space-y-0.5 text-slate-600 dark:text-slate-400">
+                                <div className="space-y-0.5 text-slate-600 dark:text-slate-400 text-xs">
                                     <div>{u.city ? `${u.city}, ${u.country || 'CH'}` : 'Switzerland'}</div>
                                     <div className="font-mono text-[10px] text-slate-500">{u.phone ? formatPhoneNumber(u.phone) : '—'}</div>
                                 </div>
@@ -540,7 +502,7 @@ export default function AdminUsersPage() {
                         cell: ({ row }) => {
                             const u = row.original;
                             return (
-                                <div className="space-y-0.5">
+                                <div className="space-y-0.5 text-xs">
                                     <div className="font-bold text-slate-900 dark:text-white">
                                         ELO {u.eloPoints || 1000}{' '}
                                         {u.rank && (
@@ -563,15 +525,14 @@ export default function AdminUsersPage() {
                             const u = row.original;
                             return (
                                 <div className="flex items-center justify-end gap-1">
-                                    {/* Edit Button */}
-                                    <button
-                                        type="button"
-                                        onClick={() => openEditModal(u)}
-                                        title="Edit User Profile & Email"
-                                        className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:border-blue-500/50 hover:text-blue-500 transition"
+                                    {/* View / Edit User Details Page Link */}
+                                    <Link
+                                        href={`${userPrefix}/${u.id}`}
+                                        title="View & Edit User Profile, Settings, and Licenses"
+                                        className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:border-red-500/50 hover:text-red-500 transition"
                                     >
                                         <Edit3 className="w-3.5 h-3.5" />
-                                    </button>
+                                    </Link>
 
                                     {/* Reset Password Button */}
                                     <button
@@ -601,27 +562,29 @@ export default function AdminUsersPage() {
                                     )}
 
                                     {/* SuperAdmin Toggle */}
-                                    <button
-                                        type="button"
-                                        disabled={u.id === currentUser.id}
-                                        onClick={() => handleToggleSuperAdmin(u)}
-                                        title={
-                                            u.id === currentUser.id
-                                                ? 'Cannot revoke your own administrator privileges'
-                                                : u.isSuperAdmin
-                                                ? 'Revoke Super Administrator'
-                                                : 'Grant Super Administrator'
-                                        }
-                                        className={`p-1.5 rounded-lg border transition ${
-                                            u.id === currentUser.id
-                                                ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed opacity-60'
-                                                : u.isSuperAdmin
-                                                ? 'border-red-500/30 bg-red-500/10 text-red-500 hover:bg-red-500/20'
-                                                : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-400 hover:text-red-500 hover:border-red-500/40'
-                                        }`}
-                                    >
-                                        <Shield className="w-3.5 h-3.5" />
-                                    </button>
+                                    {currentUser.isSuperAdmin && (
+                                        <button
+                                            type="button"
+                                            disabled={u.id === currentUser.id}
+                                            onClick={() => handleToggleSuperAdmin(u)}
+                                            title={
+                                                u.id === currentUser.id
+                                                    ? 'Cannot revoke your own administrator privileges'
+                                                    : u.isSuperAdmin
+                                                    ? 'Revoke Super Administrator'
+                                                    : 'Grant Super Administrator'
+                                            }
+                                            className={`p-1.5 rounded-lg border transition ${
+                                                u.id === currentUser.id
+                                                    ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-400 cursor-not-allowed opacity-60'
+                                                    : u.isSuperAdmin
+                                                    ? 'border-red-500/30 bg-red-500/10 text-red-500 hover:bg-red-500/20'
+                                                    : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-400 hover:text-red-500 hover:border-red-500/40'
+                                            }`}
+                                        >
+                                            <Shield className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
 
                                     {/* Delete Button (cannot delete self) */}
                                     {u.id !== currentUser.id && (
@@ -684,186 +647,6 @@ export default function AdminUsersPage() {
                 }}
                 emptyMessage="No registered users match your search criteria."
             />
-
-            {/* ========================================================================= */}
-            {/* Modal: Edit User Profile */}
-            {/* ========================================================================= */}
-            <Modal
-                isOpen={Boolean(editingUser)}
-                onClose={() => setEditingUser(null)}
-                title={editingUser ? `Edit User Profile: ${editingUser.firstName} ${editingUser.lastName}` : ''}
-                subtitle="Modify personal account details, address, and contact information"
-                icon={<Edit3 className="w-5 h-5 text-blue-500" />}
-                size="lg"
-            >
-                {editError && (
-                    <div className="p-3 mb-4 rounded-lg border border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300 text-xs">
-                        {editError}
-                    </div>
-                )}
-
-                <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">First Name</label>
-                            <input
-                                type="text"
-                                required
-                                value={editFormData.firstName || ''}
-                                onChange={(e) => setEditFormData({ ...editFormData, firstName: e.target.value })}
-                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">Last Name</label>
-                            <input
-                                type="text"
-                                required
-                                value={editFormData.lastName || ''}
-                                onChange={(e) => setEditFormData({ ...editFormData, lastName: e.target.value })}
-                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                            />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="font-semibold text-slate-700 dark:text-slate-300">Email Address</label>
-                        <input
-                            type="email"
-                            required
-                            value={editFormData.email || ''}
-                            onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                            className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Phone</label>
-                            <PhoneInput
-                                value={editFormData.phone || ''}
-                                onChange={(val) => setEditFormData({ ...editFormData, phone: val })}
-                            />
-                        </div>
-                        <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">License ID</label>
-                            <input
-                                type="text"
-                                value={editFormData.licenseId || ''}
-                                onChange={(e) => setEditFormData({ ...editFormData, licenseId: e.target.value })}
-                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">Birth Date</label>
-                            <input
-                                type="date"
-                                value={editFormData.birthDate || ''}
-                                onChange={(e) => setEditFormData({ ...editFormData, birthDate: e.target.value })}
-                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">Gender</label>
-                            <select
-                                value={editFormData.gender || ''}
-                                onChange={(e) => setEditFormData({ ...editFormData, gender: e.target.value })}
-                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                            >
-                                <option value="">Not Specified</option>
-                                <option value="MALE">Male</option>
-                                <option value="FEMALE">Female</option>
-                                <option value="OTHER">Other</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3">
-                        <div className="col-span-2">
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">Street & Number</label>
-                            <input
-                                type="text"
-                                value={editFormData.street || ''}
-                                onChange={(e) => setEditFormData({ ...editFormData, street: e.target.value })}
-                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">Postal Code</label>
-                            <input
-                                type="text"
-                                value={editFormData.postalCode || ''}
-                                onChange={(e) => setEditFormData({ ...editFormData, postalCode: e.target.value })}
-                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">City</label>
-                            <input
-                                type="text"
-                                value={editFormData.city || ''}
-                                onChange={(e) => setEditFormData({ ...editFormData, city: e.target.value })}
-                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">Country</label>
-                            <input
-                                type="text"
-                                value={editFormData.country || 'Switzerland'}
-                                onChange={(e) => setEditFormData({ ...editFormData, country: e.target.value })}
-                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">ELO Points</label>
-                            <input
-                                type="number"
-                                value={editFormData.eloPoints || 1000}
-                                onChange={(e) => setEditFormData({ ...editFormData, eloPoints: parseInt(e.target.value, 10) || 1000 })}
-                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none font-mono"
-                            />
-                        </div>
-                        <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">Email Verification Status</label>
-                            <select
-                                value={editFormData.emailVerified ? 'true' : 'false'}
-                                onChange={(e) => setEditFormData({ ...editFormData, emailVerified: e.target.value === 'true' })}
-                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                            >
-                                <option value="true">Verified</option>
-                                <option value="false">Pending Verification</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
-                        <button
-                            type="button"
-                            onClick={() => setEditingUser(null)}
-                            className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={editLoading}
-                            className="px-4 py-1.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-50 transition shadow"
-                        >
-                            {editLoading ? 'Saving...' : 'Save Changes'}
-                        </button>
-                    </div>
-                </form>
-            </Modal>
 
             {/* ========================================================================= */}
             {/* Modal: Reset User Password */}
