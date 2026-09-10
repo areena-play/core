@@ -499,7 +499,7 @@ export function AuditTrailViewer({
                                 setSelectedCategory(e.target.value);
                                 setPage(1);
                             }}
-                            className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-red-500"
+                            className="rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none outline-none focus:ring-2 focus:ring-red-500"
                         >
                             <option value="ALL">{t('audit.filterCategory')}</option>
                             <option value="AUTH">Auth & Logins</option>

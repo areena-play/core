@@ -213,7 +213,7 @@ function SearchPageContent() {
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Search by player name, license number, club, tournament, city, or tool..."
-                        className="w-full bg-transparent py-4 text-sm sm:text-base font-medium text-slate-900 dark:text-white placeholder-slate-400 outline-hidden"
+                        className="w-full bg-transparent py-4 text-sm sm:text-base font-medium text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:outline-none focus:ring-0 ring-0 border-none shadow-none"
                     />
 
                     {query && (

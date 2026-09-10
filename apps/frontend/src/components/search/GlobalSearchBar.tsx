@@ -183,7 +183,7 @@ export function GlobalSearchBar({
                     }}
                     onKeyDown={handleKeyDown}
                     placeholder={placeholder}
-                    className={`w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/90 pl-10 pr-12 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-hidden focus:ring-2 focus:ring-red-500/20 transition shadow-2xs ${
+                    className={`w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/90 pl-10 pr-12 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none outline-none focus:ring-2 focus:ring-red-500/20 transition shadow-2xs ${
                         compact ? 'py-1.5' : 'py-2'
                     }`}
                 />
