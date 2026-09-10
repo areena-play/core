@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
@@ -186,7 +186,7 @@ export default function SingleClubPage() {
 
                     <div className="flex items-center gap-2">
                         <Link
-                            href="/licenses/apply"
+                            href="/profile?tab=licenses&apply=true"
                             className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition"
                         >
                             <Plus className="h-4 w-4" />

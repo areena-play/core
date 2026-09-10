@@ -58,13 +58,9 @@ export function PageTitleManager() {
                 pageName = t('billing.title', undefined, 'Finances & Invoicing');
             } else if (pathname === '/associations/audit-logs' || pathname.endsWith('/audit-logs')) {
                 pageName = t('audit.title', undefined, 'Audit & Activity Trail');
-            } else if (pathname === '/licenses') {
-                pageName = t('nav.licenses', undefined, 'Licenses');
-            } else if (pathname === '/licenses/apply') {
-                pageName = t('licenses.applyNew', undefined, 'Apply for License');
-            } else if (pathname === '/licenses/approvals') {
-                pageName = 'License Approvals';
-            } else if (pathname === '/licenses/refresher-courses') {
+            } else if (pathname === '/management/licenses' || pathname.endsWith('/management/licenses')) {
+                pageName = t('nav.licensingHub', undefined, 'Licensing Hub');
+            } else if (pathname.includes('/management/licenses/refresher-courses')) {
                 pageName = 'Refresher Courses';
             } else if (pathname === '/search') {
                 pageName = 'Search';

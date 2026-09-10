@@ -49,6 +49,7 @@ import {
     Eye,
     EyeOff,
     ArrowLeft,
+    Plus,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { AccessDenied } from '@/components/auth/AccessDenied';
@@ -102,6 +103,21 @@ function ProfilePageContent() {
     const [passwordSuccessMsg, setPasswordSuccessMsg] = useState('');
     const [passwordErrorMsg, setPasswordErrorMsg] = useState('');
 
+    // License Request / Application State
+    const [showLicenseApplyForm, setShowLicenseApplyForm] = useState(false);
+    const [associations, setAssociations] = useState<any[]>([]);
+    const [clubs, setClubs] = useState<any[]>([]);
+    const [seasons, setSeasons] = useState<any[]>([]);
+    const [applyLicenseType, setApplyLicenseType] = useState<string>('PLAYER_REGULAR');
+    const [applyAssocId, setApplyAssocId] = useState<string>('');
+    const [applyClubId, setApplyClubId] = useState<string>('');
+    const [applySeasonId, setApplySeasonId] = useState<string>('');
+    const [applyNotes, setApplyNotes] = useState<string>('');
+    const [applySubmitting, setApplySubmitting] = useState(false);
+    const [applyErrorMsg, setApplyErrorMsg] = useState('');
+    const [applySuccessMsg, setApplySuccessMsg] = useState('');
+    const [loadingLicenseFormData, setLoadingLicenseFormData] = useState(false);
+
     // Reset window scroll on mount to prevent mobile browser offset behind navbar
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -109,29 +125,144 @@ function ProfilePageContent() {
         }
     }, []);
 
+    const loadLicenseFormData = async () => {
+        if (associations.length > 0) return;
+        setLoadingLicenseFormData(true);
+        try {
+            const [assocRes, clubsRes] = await Promise.all([
+                api.getAssociations(),
+                api.getClubs(),
+            ]);
+            const assocs = assocRes.associations || [];
+            setAssociations(assocs);
+            setClubs(clubsRes || []);
+
+            if (assocs.length > 0) {
+                const top = assocs.find((a: any) => a.isTopLevel) || assocs[0];
+                setApplyAssocId(top.id);
+                const seasonsRes = await api.getSeasons(top.id).catch(() => []);
+                setSeasons(seasonsRes || []);
+                if (seasonsRes?.length > 0) {
+                    const curr = seasonsRes.find((s: any) => s.isCurrent) || seasonsRes[0];
+                    setApplySeasonId(curr.id);
+                }
+            }
+            if (clubsRes?.length > 0) {
+                setApplyClubId(clubsRes[0].id);
+            }
+        } catch (err) {
+            console.error('Failed to load license form data:', err);
+        } finally {
+            setLoadingLicenseFormData(false);
+        }
+    };
+
     // Synchronize tab with URL Query parameter or fallback Hash
     useEffect(() => {
         const validTabs: ProfileTab[] = ['personal', 'preferences', 'licenses', 'competitions', 'courses', 'admin-access'];
         const tabParam = searchParams.get('tab') as ProfileTab;
+        const applyParam = searchParams.get('apply');
+        const actionParam = searchParams.get('action');
+        const typeParam = searchParams.get('type');
+
+        if (typeParam) {
+            setApplyLicenseType(typeParam);
+        }
+
         if (tabParam && validTabs.includes(tabParam)) {
             setActiveTab(tabParam);
+            if (tabParam === 'licenses' && (applyParam === 'true' || applyParam === '1' || actionParam === 'apply' || typeParam)) {
+                setShowLicenseApplyForm(true);
+                loadLicenseFormData();
+            }
             return;
         }
+
+        if (applyParam === 'true' || applyParam === '1' || actionParam === 'apply' || typeParam) {
+            setActiveTab('licenses');
+            setShowLicenseApplyForm(true);
+            loadLicenseFormData();
+            return;
+        }
+
         if (typeof window !== 'undefined' && window.location.hash) {
             const hash = window.location.hash.replace('#', '') as ProfileTab;
             if (validTabs.includes(hash)) {
                 setActiveTab(hash);
+                if (hash === 'licenses' && (applyParam === 'true' || applyParam === '1' || actionParam === 'apply')) {
+                    setShowLicenseApplyForm(true);
+                    loadLicenseFormData();
+                }
             }
         }
     }, [searchParams]);
 
     const handleTabChange = (tab: ProfileTab) => {
         setActiveTab(tab);
+        if (tab === 'licenses') {
+            loadLicenseFormData();
+        }
         if (typeof window !== 'undefined') {
             const url = new URL(window.location.href);
             url.searchParams.set('tab', tab);
             url.hash = '';
             window.history.replaceState(null, '', url.pathname + url.search);
+        }
+    };
+
+    const handleAssociationChange = async (newAssocId: string) => {
+        setApplyAssocId(newAssocId);
+        try {
+            const s = await api.getSeasons(newAssocId).catch(() => []);
+            setSeasons(s || []);
+            if (s?.length > 0) {
+                const curr = s.find((item: any) => item.isCurrent) || s[0];
+                setApplySeasonId(curr.id);
+            } else {
+                setApplySeasonId('');
+            }
+        } catch {}
+    };
+
+    const handleApplyLicense = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user) return;
+        setApplySubmitting(true);
+        setApplyErrorMsg('');
+        setApplySuccessMsg('');
+
+        try {
+            const payload: any = {
+                userId: user.id,
+                type: applyLicenseType,
+                associationId: applyAssocId,
+                clubId: (applyLicenseType === 'PLAYER_REGULAR' || applyLicenseType === 'PLAYER_WOMEN') ? applyClubId : null,
+                seasonId: applySeasonId || null,
+                notes: applyNotes,
+            };
+
+            const result = await api.applyLicense(payload);
+
+            if (result.autoApproved) {
+                setApplySuccessMsg('🎉 Tournament Pass auto-approved! Your license is active immediately.');
+            } else if (result.status === 'PENDING_CLUB') {
+                setApplySuccessMsg('Application submitted! Awaiting club official verification.');
+            } else {
+                setApplySuccessMsg('Application submitted! Awaiting federation association approval.');
+            }
+
+            await fetchOverview();
+            await refreshUser();
+
+            setTimeout(() => {
+                setShowLicenseApplyForm(false);
+                setApplySuccessMsg('');
+                setApplyNotes('');
+            }, 3000);
+        } catch (err: any) {
+            setApplyErrorMsg(err.message || 'Failed to submit license application');
+        } finally {
+            setApplySubmitting(false);
         }
     };
 
@@ -988,23 +1119,342 @@ function ProfilePageContent() {
             {/* 3. LICENSES TAB */}
             {activeTab === 'licenses' && (
                 <div className="space-y-6">
-                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-sm space-y-2">
-                        <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                            <Award className="h-5 w-5 text-amber-500" />
-                            <span>{t('profile.activeLicenseBadge')}</span>
-                        </h2>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                            {t('profile.licensesDesc')}
-                        </p>
+                    {/* Header Card */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="space-y-1">
+                                <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                    <Award className="h-5 w-5 text-amber-500" />
+                                    <span>{t('profile.activeLicenseBadge') || 'Active Federation Licenses'}</span>
+                                </h2>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    {t('profile.licensesDesc') || 'Manage your registered competition licenses, tournament passes, and official credentials.'}
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowLicenseApplyForm(!showLicenseApplyForm);
+                                    if (!showLicenseApplyForm) loadLicenseFormData();
+                                }}
+                                className="inline-flex items-center gap-2 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 text-xs font-bold shadow-xs transition shrink-0"
+                            >
+                                {showLicenseApplyForm ? (
+                                    <>
+                                        <X className="h-4 w-4" />
+                                        <span>Close Application</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Plus className="h-4 w-4" />
+                                        <span>Request License</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
+                        {/* License ID Callout if assigned */}
+                        {user?.licenseId && (
+                            <div className="rounded-2xl border border-amber-200 dark:border-amber-900/40 bg-gradient-to-r from-amber-50/80 via-white to-amber-50/50 dark:from-amber-950/40 dark:via-slate-900 dark:to-slate-950 p-4 flex items-center justify-between shadow-xs">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-600 font-mono font-black text-white text-base shadow-xs">
+                                        ID
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                                            Permanent Federation License ID
+                                        </div>
+                                        <div className="font-mono text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-widest">
+                                            {user.licenseId}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="text-right hidden sm:block">
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800/60">
+                                        <Check className="h-3 w-3" />
+                                        <span>Verified Holder</span>
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
+                    {/* License Request / Application Form Panel */}
+                    {showLicenseApplyForm && (
+                        <div className="rounded-3xl border border-amber-200 dark:border-amber-800/80 bg-white dark:bg-slate-900/90 p-6 sm:p-8 shadow-md space-y-6 animate-in fade-in slide-in-from-top-4">
+                            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                                <div className="space-y-0.5">
+                                    <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                        <Sparkles className="h-4 w-4 text-amber-500" />
+                                        <span>Apply for a Federation License</span>
+                                    </h3>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                        Select your desired license category and affiliated association.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowLicenseApplyForm(false)}
+                                    className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+
+                            {applyErrorMsg && (
+                                <div className="flex items-start gap-2.5 rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/80 p-4 text-xs text-red-700 dark:text-red-300">
+                                    <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                        <strong className="font-semibold">{t('common.error')}: </strong>
+                                        <span>{applyErrorMsg}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {applySuccessMsg && (
+                                <div className="flex items-start gap-2.5 rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/80 p-4 text-xs text-emerald-700 dark:text-emerald-300">
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                                    <div>{applySuccessMsg}</div>
+                                </div>
+                            )}
+
+                            <form onSubmit={handleApplyLicense} className="space-y-5 text-xs">
+                                {/* License Type Options */}
+                                <div className="space-y-2">
+                                    <label className="font-bold text-slate-900 dark:text-white">
+                                        License Category & Over-Type
+                                    </label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <label
+                                            className={`flex cursor-pointer flex-col justify-between rounded-2xl border p-4 transition ${
+                                                applyLicenseType === 'PLAYER_REGULAR'
+                                                    ? 'border-amber-500 bg-amber-50/60 dark:bg-amber-950/20 text-slate-900 dark:text-white shadow-xs'
+                                                    : 'border-slate-200 bg-slate-50/50 text-slate-700 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+                                            }`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="applyLicenseType"
+                                                value="PLAYER_REGULAR"
+                                                checked={applyLicenseType === 'PLAYER_REGULAR'}
+                                                onChange={(e) => setApplyLicenseType(e.target.value)}
+                                                className="sr-only"
+                                            />
+                                            <div className="font-bold text-slate-900 dark:text-white flex items-center justify-between">
+                                                <span>Regular Player License</span>
+                                                <span className="text-[10px] rounded-full bg-amber-600/10 text-amber-600 dark:text-amber-400 font-bold px-2 py-0.5">
+                                                    Club Attached
+                                                </span>
+                                            </div>
+                                            <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                                                Valid for all interclub league matches and open tournaments for the full season.
+                                            </p>
+                                        </label>
+
+                                        <label
+                                            className={`flex cursor-pointer flex-col justify-between rounded-2xl border p-4 transition ${
+                                                applyLicenseType === 'PLAYER_TCARD'
+                                                    ? 'border-amber-500 bg-amber-50/60 dark:bg-amber-950/20 text-slate-900 dark:text-white shadow-xs'
+                                                    : 'border-slate-200 bg-slate-50/50 text-slate-700 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+                                            }`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="applyLicenseType"
+                                                value="PLAYER_TCARD"
+                                                checked={applyLicenseType === 'PLAYER_TCARD'}
+                                                onChange={(e) => setApplyLicenseType(e.target.value)}
+                                                className="sr-only"
+                                            />
+                                            <div className="font-bold text-slate-900 dark:text-white flex items-center justify-between">
+                                                <span>Tournament Pass (T-Card)</span>
+                                                <span className="text-[10px] rounded-full bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 font-bold px-2 py-0.5">
+                                                    Auto-Approval
+                                                </span>
+                                            </div>
+                                            <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                                                For tournament participation. No club attachment required. Instant verification for domestic athletes.
+                                            </p>
+                                        </label>
+
+                                        <label
+                                            className={`flex cursor-pointer flex-col justify-between rounded-2xl border p-4 transition ${
+                                                applyLicenseType === 'COACH'
+                                                    ? 'border-amber-500 bg-amber-50/60 dark:bg-amber-950/20 text-slate-900 dark:text-white shadow-xs'
+                                                    : 'border-slate-200 bg-slate-50/50 text-slate-700 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+                                            }`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="applyLicenseType"
+                                                value="COACH"
+                                                checked={applyLicenseType === 'COACH'}
+                                                onChange={(e) => setApplyLicenseType(e.target.value)}
+                                                className="sr-only"
+                                            />
+                                            <div className="font-bold text-slate-900 dark:text-white flex items-center justify-between">
+                                                <span>Certified Coach License</span>
+                                                <span className="text-[10px] rounded-full bg-purple-600/10 text-purple-600 dark:text-purple-400 font-bold px-2 py-0.5">
+                                                    Refresher Required
+                                                </span>
+                                            </div>
+                                            <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                                                Official coaching credential. Requires periodic refresher course credits.
+                                            </p>
+                                        </label>
+
+                                        <label
+                                            className={`flex cursor-pointer flex-col justify-between rounded-2xl border p-4 transition ${
+                                                applyLicenseType === 'REFEREE'
+                                                    ? 'border-amber-500 bg-amber-50/60 dark:bg-amber-950/20 text-slate-900 dark:text-white shadow-xs'
+                                                    : 'border-slate-200 bg-slate-50/50 text-slate-700 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+                                            }`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="applyLicenseType"
+                                                value="REFEREE"
+                                                checked={applyLicenseType === 'REFEREE'}
+                                                onChange={(e) => setApplyLicenseType(e.target.value)}
+                                                className="sr-only"
+                                            />
+                                            <div className="font-bold text-slate-900 dark:text-white flex items-center justify-between">
+                                                <span>Official Referee / Umpire</span>
+                                                <span className="text-[10px] rounded-full bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold px-2 py-0.5">
+                                                    Refresher Required
+                                                </span>
+                                            </div>
+                                            <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                                                Federation match official credential requiring attendance at annual rule seminars.
+                                            </p>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {/* Association Selection */}
+                                    <div className="space-y-1.5">
+                                        <label className="font-bold text-slate-900 dark:text-white">
+                                            Federation / Association
+                                        </label>
+                                        <select
+                                            value={applyAssocId}
+                                            onChange={(e) => handleAssociationChange(e.target.value)}
+                                            className="w-full rounded-2xl border border-slate-300 bg-white dark:border-slate-800 dark:bg-slate-950 px-3.5 py-2.5 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                        >
+                                            {associations.map((a) => (
+                                                <option key={a.id} value={a.id}>
+                                                    {a.name} ({a.code})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Season Selection */}
+                                    <div className="space-y-1.5">
+                                        <label className="font-bold text-slate-900 dark:text-white">
+                                            Competition Season
+                                        </label>
+                                        <select
+                                            value={applySeasonId}
+                                            onChange={(e) => setApplySeasonId(e.target.value)}
+                                            className="w-full rounded-2xl border border-slate-300 bg-white dark:border-slate-800 dark:bg-slate-950 px-3.5 py-2.5 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                        >
+                                            {seasons.map((s) => (
+                                                <option key={s.id} value={s.id}>
+                                                    Season {s.name} {s.isCurrent ? '(Active Current Season)' : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Club Selection (for regular licenses) */}
+                                {(applyLicenseType === 'PLAYER_REGULAR' || applyLicenseType === 'PLAYER_WOMEN') && (
+                                    <div className="space-y-1.5">
+                                        <label className="font-bold text-slate-900 dark:text-white">
+                                            Affiliated Sports Club
+                                        </label>
+                                        <select
+                                            value={applyClubId}
+                                            onChange={(e) => setApplyClubId(e.target.value)}
+                                            className="w-full rounded-2xl border border-slate-300 bg-white dark:border-slate-800 dark:bg-slate-950 px-3.5 py-2.5 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                        >
+                                            {clubs.map((c) => (
+                                                <option key={c.id} value={c.id}>
+                                                    {c.name} ({c.code}) - {c.city}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                {/* Remarks / Notes */}
+                                <div className="space-y-1.5">
+                                    <label className="font-bold text-slate-900 dark:text-white">
+                                        Remarks & Additional Notes (Optional)
+                                    </label>
+                                    <textarea
+                                        rows={2}
+                                        placeholder="Any notes or remarks for verification..."
+                                        value={applyNotes}
+                                        onChange={(e) => setApplyNotes(e.target.value)}
+                                        className="w-full rounded-2xl border border-slate-300 bg-white dark:border-slate-800 dark:bg-slate-950 px-3.5 py-2.5 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowLicenseApplyForm(false)}
+                                        className="px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold transition"
+                                    >
+                                        {t('common.cancel')}
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={applySubmitting}
+                                        className="inline-flex items-center gap-2 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white px-6 py-2.5 font-bold shadow-xs transition disabled:opacity-50"
+                                    >
+                                        {applySubmitting ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                <span>Submitting...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Award className="h-4 w-4" />
+                                                <span>Submit License Request</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
+                    {/* Existing Licenses Grid / Empty State */}
                     {overviewData?.licenses?.length === 0 ? (
                         <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-12 text-center space-y-3">
                             <Award className="h-10 w-10 text-slate-400 mx-auto" />
                             <h3 className="font-bold text-sm text-slate-900 dark:text-white">{t('profile.noLicenses')}</h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-                                Contact your club administrator or federation secretariat to apply for a verified license pass.
+                                You do not have any registered licenses yet. Request a competition license pass or short-term tournament card above.
                             </p>
+                            {!showLicenseApplyForm && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowLicenseApplyForm(true);
+                                        loadLicenseFormData();
+                                    }}
+                                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition shadow-xs mt-2"
+                                >
+                                    <Plus className="h-3.5 w-3.5" />
+                                    <span>Request Your First License</span>
+                                </button>
+                            )}
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

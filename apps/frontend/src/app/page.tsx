@@ -463,7 +463,7 @@ export default function DashboardPage() {
                             </p>
                         </div>
                         <Link
-                            href="/licenses/apply"
+                            href="/profile?tab=licenses&apply=true"
                             className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline pt-2"
                         >
                             <span>Request License</span>
@@ -509,7 +509,7 @@ export default function DashboardPage() {
                     </div>
 
                     <Link
-                        href="/licenses"
+                        href="/profile?tab=licenses"
                         className="flex items-center gap-1 text-xs font-bold text-red-600 dark:text-red-400 hover:underline"
                     >
                         <span>My Licenses</span>
@@ -535,7 +535,7 @@ export default function DashboardPage() {
                             </p>
                         </div>
                         <Link
-                            href="/licenses/apply?type=PLAYER_REGULAR"
+                            href="/profile?tab=licenses&apply=true&type=PLAYER_REGULAR"
                             className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 text-xs font-bold transition shadow-xs"
                         >
                             <span>Apply Regular License</span>
@@ -560,7 +560,7 @@ export default function DashboardPage() {
                             </p>
                         </div>
                         <Link
-                            href="/licenses/apply?type=PLAYER_TCARD"
+                            href="/profile?tab=licenses&apply=true&type=PLAYER_TCARD"
                             className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-2.5 text-xs font-bold transition shadow-xs"
                         >
                             <span>Get Tournament Pass</span>
@@ -585,7 +585,7 @@ export default function DashboardPage() {
                             </p>
                         </div>
                         <Link
-                            href="/licenses/apply?type=REFEREE"
+                            href="/profile?tab=licenses&apply=true&type=REFEREE"
                             className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white py-2.5 text-xs font-bold transition shadow-xs"
                         >
                             <span>Request Official Pass</span>
