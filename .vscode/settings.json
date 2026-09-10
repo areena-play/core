@@ -1,56 +1,19 @@
 {
-    "npm.exclude": [
-        "**/apps/**",
-        "**/packages/**"
-    ],
-    "files.exclude": {
-        "**/.git": true,
-        "**/.svn": true,
-        "**/.hg": true,
-        "**/CVS": true,
-        "**/.DS_Store": true,
-        "**/Thumbs.db": true,
-        "**/node_modules": true,
-        "**/.next": true,
-        "**/dist": true,
-        "**/build": true,
-        "**/out": true,
-        "**/.turbo": true,
-        "**/.nyc_output": true,
-        "**/coverage": true,
-        "**/*.tsbuildinfo": true,
-        "**/.minio.sys": true,
-        "**/docker-data": true,
-        "**/postgres-data": true,
-        "**/minio-data": true
-    },
-    "search.exclude": {
-        "**/node_modules": true,
-        "**/.next": true,
-        "**/dist": true,
-        "**/build": true,
-        "**/out": true,
-        "**/.turbo": true,
-        "**/.nyc_output": true,
-        "**/coverage": true,
-        "**/*.tsbuildinfo": true,
-        "**/.minio.sys": true,
-        "**/docker-data": true,
-        "**/postgres-data": true,
-        "**/minio-data": true
-    },
+    "git.autofetch": false,
+    "git.untrackedChanges": "mixed",
+    "git.autoRepositoryDetection": "openEditors",
     "files.watcherExclude": {
         "**/.git/objects/**": true,
         "**/.git/subtree-cache/**": true,
         "**/node_modules/**": true,
         "**/.next/**": true,
         "**/dist/**": true,
-        "**/build/**": true,
-        "**/out/**": true,
         "**/.turbo/**": true,
-        "**/.coverage/**": true
+        "**/coverage/**": true
     },
-    "search.useIgnoreFiles": true,
-    "editor.tabSize": 4,
-    "editor.insertSpaces": true
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/.next": true,
+        "**/dist": true
+    }
 }
