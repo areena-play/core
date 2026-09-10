@@ -571,4 +571,328 @@ router.delete('/:id/seasons/:seasonId', authenticateToken, async (req: AuthReque
     }
 });
 
+// ========================================================
+// ASSOCIATION OFFICIALS & GOVERNANCE MANAGEMENT
+// ========================================================
+
+// GET /associations/:id/officials - List all officials with user details
+router.get('/:id/officials', async (req, res, next) => {
+    try {
+        const idOrSlug = req.params.id;
+        const association = await prisma.association.findFirst({
+            where: {
+                OR: [
+                    { id: idOrSlug },
+                    { slug: idOrSlug.toLowerCase() },
+                    { code: idOrSlug.toUpperCase() },
+                ],
+            },
+        });
+
+        if (!association) {
+            return res.status(404).json({ error: 'Association not found' });
+        }
+
+        const officials = await prisma.userAssociationRole.findMany({
+            where: { associationId: association.id },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        phone: true,
+                        avatarUrl: true,
+                        eloPoints: true,
+                        licenseId: true,
+                        currentLevel: true,
+                    },
+                },
+            },
+            orderBy: { createdAt: 'asc' },
+        });
+
+        res.json(officials);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// POST /associations/:id/officials - Assign or add an official to the association
+router.post('/:id/officials', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const idOrSlug = req.params.id;
+        const association = await prisma.association.findFirst({
+            where: {
+                OR: [
+                    { id: idOrSlug },
+                    { slug: idOrSlug.toLowerCase() },
+                    { code: idOrSlug.toUpperCase() },
+                ],
+            },
+        });
+
+        if (!association) {
+            return res.status(404).json({ error: 'Association not found' });
+        }
+
+        const isAuthorized =
+            req.user?.isSuperAdmin ||
+            req.user?.associationRoles.some(
+                (r: any) => r.associationId === association.id && ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
+            );
+
+        if (!isAuthorized) {
+            return res.status(403).json({ error: 'Only association administrators can manage officials' });
+        }
+
+        const { userId, userIdentifier, email, role } = req.body;
+
+        if (!role) {
+            return res.status(400).json({ error: 'Role is required' });
+        }
+
+        // Find target user
+        let targetUser = null;
+        if (userId) {
+            targetUser = await prisma.user.findUnique({ where: { id: userId } });
+        }
+
+        const queryTerm = (userIdentifier || email || '').trim();
+        if (!targetUser && queryTerm) {
+            targetUser = await prisma.user.findFirst({
+                where: {
+                    OR: [
+                        { email: { equals: queryTerm, mode: 'insensitive' } },
+                        { licenseId: { equals: queryTerm, mode: 'insensitive' } },
+                        { id: queryTerm },
+                    ],
+                },
+            });
+        }
+
+        if (!targetUser) {
+            return res.status(404).json({
+                error: 'User not found. Please provide a valid registered user Email, License ID, or User ID.',
+            });
+        }
+
+        // Check if role already exists for this user in the association
+        const existingRole = await prisma.userAssociationRole.findUnique({
+            where: {
+                userId_associationId_role: {
+                    userId: targetUser.id,
+                    associationId: association.id,
+                    role: role.toUpperCase(),
+                },
+            },
+        });
+
+        if (existingRole) {
+            return res.status(400).json({
+                error: `User "${targetUser.firstName} ${targetUser.lastName}" is already assigned as ${role} in this association.`,
+            });
+        }
+
+        const official = await prisma.userAssociationRole.create({
+            data: {
+                userId: targetUser.id,
+                associationId: association.id,
+                role: role.toUpperCase(),
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        phone: true,
+                        avatarUrl: true,
+                        eloPoints: true,
+                        licenseId: true,
+                        currentLevel: true,
+                    },
+                },
+            },
+        });
+
+        await AuditService.record({
+            req,
+            action: 'OFFICIAL_ASSIGNED',
+            category: AuditCategory.GOVERNANCE,
+            entityType: 'UserAssociationRole',
+            entityId: official.id,
+            associationId: association.id,
+            description: `Assigned ${targetUser.firstName} ${targetUser.lastName} (${targetUser.email || targetUser.licenseId || targetUser.id}) as official (${role})`,
+            status: 'SUCCESS',
+            metadata: {
+                targetUserId: targetUser.id,
+                role: role.toUpperCase(),
+            },
+        });
+
+        res.status(201).json(official);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// PUT /associations/:id/officials/:roleId - Update an official's role
+router.put('/:id/officials/:roleId', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const idOrSlug = req.params.id;
+        const association = await prisma.association.findFirst({
+            where: {
+                OR: [
+                    { id: idOrSlug },
+                    { slug: idOrSlug.toLowerCase() },
+                    { code: idOrSlug.toUpperCase() },
+                ],
+            },
+        });
+
+        if (!association) {
+            return res.status(404).json({ error: 'Association not found' });
+        }
+
+        const isAuthorized =
+            req.user?.isSuperAdmin ||
+            req.user?.associationRoles.some(
+                (r: any) => r.associationId === association.id && ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
+            );
+
+        if (!isAuthorized) {
+            return res.status(403).json({ error: 'Only association administrators can manage officials' });
+        }
+
+        const { role } = req.body;
+        if (!role) {
+            return res.status(400).json({ error: 'Role is required' });
+        }
+
+        const currentRole = await prisma.userAssociationRole.findFirst({
+            where: {
+                id: req.params.roleId,
+                associationId: association.id,
+            },
+            include: {
+                user: true,
+            },
+        });
+
+        if (!currentRole) {
+            return res.status(404).json({ error: 'Official role not found' });
+        }
+
+        const updated = await prisma.userAssociationRole.update({
+            where: { id: currentRole.id },
+            data: { role: role.toUpperCase() },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        phone: true,
+                        avatarUrl: true,
+                        eloPoints: true,
+                        licenseId: true,
+                        currentLevel: true,
+                    },
+                },
+            },
+        });
+
+        await AuditService.record({
+            req,
+            action: 'OFFICIAL_UPDATED',
+            category: AuditCategory.GOVERNANCE,
+            entityType: 'UserAssociationRole',
+            entityId: updated.id,
+            associationId: association.id,
+            description: `Updated official role for ${currentRole.user.firstName} ${currentRole.user.lastName} from ${currentRole.role} to ${role.toUpperCase()}`,
+            status: 'SUCCESS',
+            metadata: {
+                previousRole: currentRole.role,
+                newRole: role.toUpperCase(),
+                targetUserId: currentRole.userId,
+            },
+        });
+
+        res.json(updated);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// DELETE /associations/:id/officials/:roleId - Remove official role
+router.delete('/:id/officials/:roleId', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const idOrSlug = req.params.id;
+        const association = await prisma.association.findFirst({
+            where: {
+                OR: [
+                    { id: idOrSlug },
+                    { slug: idOrSlug.toLowerCase() },
+                    { code: idOrSlug.toUpperCase() },
+                ],
+            },
+        });
+
+        if (!association) {
+            return res.status(404).json({ error: 'Association not found' });
+        }
+
+        const isAuthorized =
+            req.user?.isSuperAdmin ||
+            req.user?.associationRoles.some(
+                (r: any) => r.associationId === association.id && ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
+            );
+
+        if (!isAuthorized) {
+            return res.status(403).json({ error: 'Only association administrators can manage officials' });
+        }
+
+        const targetRole = await prisma.userAssociationRole.findFirst({
+            where: {
+                id: req.params.roleId,
+                associationId: association.id,
+            },
+            include: {
+                user: true,
+            },
+        });
+
+        if (!targetRole) {
+            return res.status(404).json({ error: 'Official role not found' });
+        }
+
+        await prisma.userAssociationRole.delete({
+            where: { id: targetRole.id },
+        });
+
+        await AuditService.record({
+            req,
+            action: 'OFFICIAL_REMOVED',
+            category: AuditCategory.GOVERNANCE,
+            entityType: 'UserAssociationRole',
+            entityId: targetRole.id,
+            associationId: association.id,
+            description: `Removed official role "${targetRole.role}" from ${targetRole.user.firstName} ${targetRole.user.lastName}`,
+            status: 'SUCCESS',
+            metadata: {
+                removedRole: targetRole.role,
+                targetUserId: targetRole.userId,
+            },
+        });
+
+        res.json({ message: 'Official removed successfully', id: targetRole.id });
+    } catch (err) {
+        next(err);
+    }
+});
+
 export default router;

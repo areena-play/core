@@ -91,5 +91,29 @@ export class AssociationsApi {
             method: 'DELETE',
         });
     }
+
+    getOfficials(associationId: string) {
+        return this.http.request(`/associations/${associationId}/officials`);
+    }
+
+    addOfficial(associationId: string, body: { userId?: string; userIdentifier?: string; email?: string; role: string }) {
+        return this.http.request(`/associations/${associationId}/officials`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
+
+    updateOfficial(associationId: string, roleId: string, body: { role: string }) {
+        return this.http.request(`/associations/${associationId}/officials/${roleId}`, {
+            method: 'PUT',
+            body: JSON.stringify(body),
+        });
+    }
+
+    removeOfficial(associationId: string, roleId: string) {
+        return this.http.request(`/associations/${associationId}/officials/${roleId}`, {
+            method: 'DELETE',
+        });
+    }
 }
 

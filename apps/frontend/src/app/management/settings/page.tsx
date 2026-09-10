@@ -26,11 +26,66 @@ import {
     Mail,
     Globe,
     FileText,
+    Award,
+    Sparkles,
+    Clock,
+    Check,
+    Layers,
+    UserCheck,
+    HelpCircle,
+    ExternalLink,
+    Search,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AccessDenied } from '@/components/auth/AccessDenied';
-import { getAllCountryPhoneOptions, DEFAULT_PRIORITIZED_COUNTRIES, CountryPhoneOption } from '@areena/shared';
+import { getAllCountryPhoneOptions, DEFAULT_PRIORITIZED_COUNTRIES } from '@areena/shared';
 import { FlagIcon } from '@/components/ui/FlagIcon';
+import { prompt, confirm } from '@/lib/dialog';
+
+// ==========================================
+// TYPES & DATA STRUCTURES
+// ==========================================
+
+interface OfficialItem {
+    id: string;
+    userId: string;
+    associationId: string;
+    role: string;
+    createdAt: string;
+    user: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email?: string | null;
+        phone?: string | null;
+        avatarUrl?: string | null;
+        eloPoints?: number;
+        licenseId?: string | null;
+        currentLevel?: string;
+    };
+}
+
+const OFFICIAL_ROLES = [
+    { value: 'ADMIN', label: 'System Administrator', description: 'Full administrative access across federation governance, data, and system settings' },
+    { value: 'PRESIDENT', label: 'Association President', description: 'Executive head of the association and chief representative' },
+    { value: 'VICE_PRESIDENT', label: 'Vice President', description: 'Deputy executive officer and board representation' },
+    { value: 'SECRETARY', label: 'General Secretary', description: 'Administrative operations, correspondence, and federation protocol' },
+    { value: 'TREASURER', label: 'Financial Director / Treasurer', description: 'Financial management, licensing accounting, and budget oversight' },
+    { value: 'REFEREE_HEAD', label: 'Head of Match Officials', description: 'Umpire coordination, rules enforcement, and referee development' },
+    { value: 'COACH_HEAD', label: 'Head of Coaching & Education', description: 'Coaching certification, youth development, and training curricula' },
+    { value: 'COMMUNICATIONS', label: 'Media & PR Officer', description: 'Public relations, news, marketing, and federation press releases' },
+    { value: 'MEMBER', label: 'Board / Committee Member', description: 'General committee member and governance delegate' },
+];
+
+interface SportItem {
+    id: string;
+    name: string;
+    unitNaming: string;
+    isCustom?: boolean;
+    active: boolean;
+    matchFormat?: string;
+    pointsPerSet?: number;
+}
 
 interface AgeSeriesItem {
     id: string;
@@ -43,19 +98,37 @@ interface AgeSeriesItem {
     active: boolean;
 }
 
+interface CustomLicenseTypeItem {
+    id: string;
+    name: string;
+    code: string;
+    overType: 'PLAYER' | 'COACH' | 'REFEREE';
+    validityDuration: 'SEASON' | 'MONTH_12' | 'DAY_1' | 'TOURNAMENT' | 'CUSTOM_DAYS';
+    customDays?: number;
+    requiresClub: boolean;
+    scope: 'ALL_COMPETITIONS' | 'LEAGUE_ONLY' | 'TOURNAMENT_ONLY';
+    requiresRefresherCourse: boolean;
+    description?: string;
+    active: boolean;
+}
+
+const DEFAULT_SPORTS: SportItem[] = [
+    { id: 'table_tennis', name: 'Table Tennis', unitNaming: 'Table', active: true, matchFormat: 'BEST_OF_5', pointsPerSet: 11 },
+    { id: 'badminton', name: 'Badminton', unitNaming: 'Court', active: false, matchFormat: 'BEST_OF_3', pointsPerSet: 21 },
+    { id: 'tennis', name: 'Tennis', unitNaming: 'Court', active: false, matchFormat: 'BEST_OF_3', pointsPerSet: 6 },
+    { id: 'squash', name: 'Squash', unitNaming: 'Court', active: false, matchFormat: 'BEST_OF_5', pointsPerSet: 11 },
+    { id: 'padel', name: 'Padel', unitNaming: 'Court', active: false, matchFormat: 'BEST_OF_3', pointsPerSet: 6 },
+    { id: 'pickleball', name: 'Pickleball', unitNaming: 'Court', active: false, matchFormat: 'BEST_OF_3', pointsPerSet: 11 },
+];
+
 const DEFAULT_AGE_SERIES: AgeSeriesItem[] = [
-    // Youth Series
     { id: 'u9', code: 'U9', name: 'Under 9', type: 'YOUTH', maxAge: 9, description: 'Youth athletes aged 8 and under', active: true },
     { id: 'u11', code: 'U11', name: 'Under 11', type: 'YOUTH', minAge: 9, maxAge: 11, description: 'Youth athletes aged 9 to 10', active: true },
     { id: 'u13', code: 'U13', name: 'Under 13', type: 'YOUTH', minAge: 11, maxAge: 13, description: 'Youth athletes aged 11 to 12', active: true },
     { id: 'u15', code: 'U15', name: 'Under 15 / Cadets', type: 'YOUTH', minAge: 13, maxAge: 15, description: 'Cadet athletes aged 13 to 14', active: true },
     { id: 'u18', code: 'U18', name: 'Under 18 / Juniors', type: 'YOUTH', minAge: 15, maxAge: 18, description: 'Junior athletes aged 15 to 17', active: true },
     { id: 'u21', code: 'U21', name: 'Under 21 / Espoirs', type: 'YOUTH', minAge: 18, maxAge: 21, description: 'Espoir athletes aged 18 to 20', active: true },
-
-    // Actives / Open Series
     { id: 'actives', code: 'ACTIVES', name: 'Actives / Open Division', type: 'ACTIVES', minAge: 18, maxAge: 39, description: 'Standard open adult competition category', active: true },
-
-    // Seniors / Masters Series (Over X)
     { id: 'o40', code: 'O40', name: 'Seniors / Masters 40+', type: 'SENIORS', minAge: 40, maxAge: 49, description: 'Veteran athletes aged 40 and older', active: true },
     { id: 'o50', code: 'O50', name: 'Seniors / Masters 50+', type: 'SENIORS', minAge: 50, maxAge: 59, description: 'Veteran athletes aged 50 and older', active: true },
     { id: 'o60', code: 'O60', name: 'Seniors / Masters 60+', type: 'SENIORS', minAge: 60, maxAge: 69, description: 'Veteran athletes aged 60 and older', active: true },
@@ -63,24 +136,106 @@ const DEFAULT_AGE_SERIES: AgeSeriesItem[] = [
     { id: 'o80', code: 'O80', name: 'Seniors / Masters 80+', type: 'SENIORS', minAge: 80, description: 'Veteran athletes aged 80 and older', active: true },
 ];
 
+const DEFAULT_LICENSE_TYPES: CustomLicenseTypeItem[] = [
+    {
+        id: 'player_regular',
+        name: 'Regular Player Season License',
+        code: 'PLAYER_REGULAR',
+        overType: 'PLAYER',
+        validityDuration: 'SEASON',
+        requiresClub: true,
+        scope: 'ALL_COMPETITIONS',
+        requiresRefresherCourse: false,
+        description: 'Standard season-long competition license for interclub leagues and open tournaments.',
+        active: true,
+    },
+    {
+        id: 'player_tcard',
+        name: 'Short-Term Tournament Pass (T-Card)',
+        code: 'PLAYER_TCARD',
+        overType: 'PLAYER',
+        validityDuration: 'TOURNAMENT',
+        requiresClub: false,
+        scope: 'TOURNAMENT_ONLY',
+        requiresRefresherCourse: false,
+        description: 'Single-event or tournament pass for guest and recreational participants.',
+        active: true,
+    },
+    {
+        id: 'player_women_league',
+        name: 'Secondary Club League License (Women Exception)',
+        code: 'PLAYER_WOMEN',
+        overType: 'PLAYER',
+        validityDuration: 'SEASON',
+        requiresClub: true,
+        scope: 'LEAGUE_ONLY',
+        requiresRefresherCourse: false,
+        description: 'Dual registration permit allowing female athletes to play in secondary club leagues.',
+        active: true,
+    },
+    {
+        id: 'player_junior',
+        name: 'Junior Youth License',
+        code: 'PLAYER_JUNIOR',
+        overType: 'PLAYER',
+        validityDuration: 'SEASON',
+        requiresClub: true,
+        scope: 'ALL_COMPETITIONS',
+        requiresRefresherCourse: false,
+        description: 'Subsidized season license for youth athletes under U18.',
+        active: true,
+    },
+    {
+        id: 'coach_certified',
+        name: 'Certified Head Coach License',
+        code: 'COACH',
+        overType: 'COACH',
+        validityDuration: 'MONTH_12',
+        requiresClub: true,
+        scope: 'ALL_COMPETITIONS',
+        requiresRefresherCourse: true,
+        description: 'Official federation coaching credential requiring biennial refresher course credits.',
+        active: true,
+    },
+    {
+        id: 'referee_official',
+        name: 'Official National / Regional Referee',
+        code: 'REFEREE',
+        overType: 'REFEREE',
+        validityDuration: 'MONTH_12',
+        requiresClub: false,
+        scope: 'ALL_COMPETITIONS',
+        requiresRefresherCourse: true,
+        description: 'Certified match official credential with mandatory 24-month refresher renewal.',
+        active: true,
+    },
+];
+
+// ==========================================
+// COMPONENT IMPLEMENTATION
+// ==========================================
+
 export default function AssociationSettingsPage() {
     const { user, loading: authLoading } = useAuth();
     const { t } = useI18n();
     const [topAssoc, setTopAssoc] = useState<any | null>(null);
 
-    // Active Navigation Tab
-    const [activeTab, setActiveTab] = useState<'branding' | 'impressum' | 'sports' | 'age-series' | 'seasons' | 'license-engine'>('branding');
+    // Active Navigation Tab: 7 Sections
+    const [activeTab, setActiveTab] = useState<'branding' | 'general' | 'sports' | 'age-series' | 'seasons' | 'licensing' | 'officials'>('branding');
 
-    // 1. Identity & Branding
+    // ----------------------------------------------------
+    // SECTION 1: Identity & Branding (Combined with Impressum)
+    // ----------------------------------------------------
     const [assocName, setAssocName] = useState('');
     const [assocShortName, setAssocShortName] = useState('');
+    const [homepageUrl, setHomepageUrl] = useState('');
     const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
     const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
     const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Impressum & Legal Entity
+    // Impressum & Legal Entity Fields
     const [impressumOrgName, setImpressumOrgName] = useState('');
     const [impressumAddress1, setImpressumAddress1] = useState('');
     const [impressumAddress2, setImpressumAddress2] = useState('');
@@ -94,51 +249,55 @@ export default function AssociationSettingsPage() {
     const [impressumPresident, setImpressumPresident] = useState('');
     const [impressumLegalNotes, setImpressumLegalNotes] = useState('');
 
-    // 2. Sports & Competition Configuration
-    const [sportType, setSportType] = useState('Table Tennis');
-    const [unitNaming, setUnitNaming] = useState('Table');
-    const [matchFormat, setMatchFormat] = useState('BEST_OF_5');
-    const [pointsPerSet, setPointsPerSet] = useState(11);
-    const [maxForeignersPerTeam, setMaxForeignersPerTeam] = useState(2);
-    const [allowTCardDualRegistration, setAllowTCardDualRegistration] = useState(true);
-    const [requireRefereeCourseForSenior, setRequireRefereeCourseForSenior] = useState(false);
-    const [refresherCourseValidityMonths, setRefresherCourseValidityMonths] = useState(24);
-    const [eloKFactor, setEloKFactor] = useState(32);
+    // ----------------------------------------------------
+    // SECTION 2: General Settings (Phone Calling Codes & Platform Defaults)
+    // ----------------------------------------------------
     const [prioritizedCountryCodes, setPrioritizedCountryCodes] = useState<string[]>(DEFAULT_PRIORITIZED_COUNTRIES);
     const [selectedAddCountry, setSelectedAddCountry] = useState<string>('');
     const allCountryOptions = useMemo(() => getAllCountryPhoneOptions(), []);
 
-    // 3. Age Series Configuration
+    // ----------------------------------------------------
+    // SECTION 3: Sports & Rules (Multi-sport & Custom Sports)
+    // ----------------------------------------------------
+    const [sportsList, setSportsList] = useState<SportItem[]>(DEFAULT_SPORTS);
+
+    // General Tournament & Competition Rules
+    const [maxForeignersPerTeam, setMaxForeignersPerTeam] = useState(2);
+    const [allowTCardDualRegistration, setAllowTCardDualRegistration] = useState(true);
+    const [eloKFactor, setEloKFactor] = useState(32);
+
+    // ----------------------------------------------------
+    // SECTION 4: Age Series & Divisions
+    // ----------------------------------------------------
     const [ageSeries, setAgeSeries] = useState<AgeSeriesItem[]>(DEFAULT_AGE_SERIES);
     const [ageCutoffDate, setAgeCutoffDate] = useState('07-01'); // July 1st cutoff
-    const [compAllowedCreators, setCompAllowedCreators] = useState<string>('CLUB_ADMIN');
-    const [compRequireApproval, setCompRequireApproval] = useState<boolean>(true);
-    const [compLeagueCreator, setCompLeagueCreator] = useState<string>('ASSOCIATION_ADMIN');
-    const [compTournCreator, setCompTournCreator] = useState<string>('CLUB_ADMIN');
-    const [compInofficialCreator, setCompInofficialCreator] = useState<string>('ANY_USER');
-    const [compTournApproval, setCompTournApproval] = useState<boolean>(true);
-    const [ageModalOpen, setAgeModalOpen] = useState(false);
-    const [editingAgeItem, setEditingAgeItem] = useState<AgeSeriesItem | null>(null);
-    const [ageFormCode, setAgeFormCode] = useState('');
-    const [ageFormName, setAgeFormName] = useState('');
-    const [ageFormType, setAgeFormType] = useState<'YOUTH' | 'ACTIVES' | 'SENIORS' | 'CUSTOM'>('YOUTH');
-    const [ageFormMin, setAgeFormMin] = useState<number | ''>('');
-    const [ageFormMax, setAgeFormMax] = useState<number | ''>('');
-    const [ageFormDesc, setAgeFormDesc] = useState('');
 
-    // 4. Seasons Management
+    // ----------------------------------------------------
+    // SECTION 5: Seasons Management
+    // ----------------------------------------------------
     const [seasons, setSeasons] = useState<any[]>([]);
-    const [seasonModalOpen, setSeasonModalOpen] = useState(false);
-    const [seasonName, setSeasonName] = useState('');
-    const [seasonStartDate, setSeasonStartDate] = useState('');
-    const [seasonEndDate, setSeasonEndDate] = useState('');
-    const [seasonIsCurrent, setSeasonIsCurrent] = useState(false);
-    const [seasonSubmitting, setSeasonSubmitting] = useState(false);
 
-    // 5. License ID Engine
+    // ----------------------------------------------------
+    // SECTION 6: Licensing (Generator, Validity Periods, Custom Types & Re-validation)
+    // ----------------------------------------------------
     const [template, setTemplate] = useState('{regionDigit}{year2}{counter3}');
     const [counter, setCounter] = useState(1);
     const [regionDigit, setRegionDigit] = useState(1);
+
+    // License Types & Re-validation rules
+    const [licenseTypes, setLicenseTypes] = useState<CustomLicenseTypeItem[]>(DEFAULT_LICENSE_TYPES);
+
+    // Re-validation & Refresher Requirements
+    const [requireRefereeCourseForSenior, setRequireRefereeCourseForSenior] = useState(false);
+    const [refresherCourseValidityMonths, setRefresherCourseValidityMonths] = useState(24);
+    const [expiryWarningDays, setExpiryWarningDays] = useState(60);
+    const [refresherGracePeriodMonths, setRefresherGracePeriodMonths] = useState(3);
+
+    // ----------------------------------------------------
+    // SECTION 7: Officials & Governance Board
+    // ----------------------------------------------------
+    const [officials, setOfficials] = useState<OfficialItem[]>([]);
+    const [officialsSearch, setOfficialsSearch] = useState('');
 
     // General state
     const [loading, setLoading] = useState(true);
@@ -150,6 +309,7 @@ export default function AssociationSettingsPage() {
         user?.isSuperAdmin ||
         user?.associationRoles?.some((r: any) => ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role));
 
+    // Load initial data
     const loadData = async () => {
         setLoading(true);
         try {
@@ -166,40 +326,9 @@ export default function AssociationSettingsPage() {
 
                 // Load rules
                 const rules = top.rules || {};
-                if (rules.sportType) setSportType(rules.sportType);
-                if (rules.unitNaming) setUnitNaming(rules.unitNaming);
-                if (rules.matchFormat) setMatchFormat(rules.matchFormat);
-                if (rules.pointsPerSet !== undefined) setPointsPerSet(rules.pointsPerSet);
-                if (rules.maxForeignersPerTeam !== undefined) setMaxForeignersPerTeam(rules.maxForeignersPerTeam);
-                if (rules.allowTCardDualRegistration !== undefined) setAllowTCardDualRegistration(rules.allowTCardDualRegistration);
-                if (rules.requireRefereeCourseForSenior !== undefined) setRequireRefereeCourseForSenior(rules.requireRefereeCourseForSenior);
-                if (rules.refresherCourseValidityMonths !== undefined) setRefresherCourseValidityMonths(rules.refresherCourseValidityMonths);
-                if (rules.eloKFactor !== undefined) setEloKFactor(rules.eloKFactor);
-                if (rules.competitionGovernance) {
-                    const cg = rules.competitionGovernance;
-                    if (cg.allowedCreators) setCompAllowedCreators(cg.allowedCreators);
-                    if (cg.requireApproval !== undefined) setCompRequireApproval(cg.requireApproval);
-                    if (cg.allowedCreatorsByType?.LEAGUE) setCompLeagueCreator(cg.allowedCreatorsByType.LEAGUE);
-                    if (cg.allowedCreatorsByType?.TOURNAMENT) setCompTournCreator(cg.allowedCreatorsByType.TOURNAMENT);
-                    if (cg.allowedCreatorsByType?.INOFFICIAL) setCompInofficialCreator(cg.allowedCreatorsByType.INOFFICIAL);
-                    if (cg.requireApprovalByType?.TOURNAMENT !== undefined) setCompTournApproval(cg.requireApprovalByType.TOURNAMENT);
-                }
-
-                if (Array.isArray(rules.prioritizedCountryCodes) && rules.prioritizedCountryCodes.length > 0) {
-                    setPrioritizedCountryCodes(rules.prioritizedCountryCodes);
-                } else {
-                    setPrioritizedCountryCodes(DEFAULT_PRIORITIZED_COUNTRIES);
-                }
-
-                if (Array.isArray(rules.ageSeries) && rules.ageSeries.length > 0) {
-                    setAgeSeries(rules.ageSeries);
-                }
-                if (rules.ageCutoffDate) {
-                    setAgeCutoffDate(rules.ageCutoffDate);
-                }
-
-                // Load impressum details
                 const imp = rules.impressum || {};
+
+                setHomepageUrl(rules.homepageUrl || imp.website || '');
                 setImpressumOrgName(imp.organizationName || top.name || '');
                 setImpressumAddress1(imp.addressLine1 || '');
                 setImpressumAddress2(imp.addressLine2 || '');
@@ -209,13 +338,45 @@ export default function AssociationSettingsPage() {
                 setImpressumAffiliation(imp.affiliation || '');
                 setImpressumEmail(imp.email || '');
                 setImpressumPhone(imp.phone || '');
-                setImpressumWebsite(imp.website || '');
+                setImpressumWebsite(imp.website || rules.homepageUrl || '');
                 setImpressumPresident(imp.presidentName || '');
                 setImpressumLegalNotes(imp.customLegalNotes || '');
 
-                // Load seasons
-                const seasonsData = await api.getSeasons(top.id).catch(() => []);
+                if (Array.isArray(rules.prioritizedCountryCodes) && rules.prioritizedCountryCodes.length > 0) {
+                    setPrioritizedCountryCodes(rules.prioritizedCountryCodes);
+                } else {
+                    setPrioritizedCountryCodes(DEFAULT_PRIORITIZED_COUNTRIES);
+                }
+
+                if (Array.isArray(rules.sportsList) && rules.sportsList.length > 0) {
+                    setSportsList(rules.sportsList);
+                }
+                if (rules.maxForeignersPerTeam !== undefined) setMaxForeignersPerTeam(rules.maxForeignersPerTeam);
+                if (rules.allowTCardDualRegistration !== undefined) setAllowTCardDualRegistration(rules.allowTCardDualRegistration);
+                if (rules.eloKFactor !== undefined) setEloKFactor(rules.eloKFactor);
+
+                if (Array.isArray(rules.ageSeries) && rules.ageSeries.length > 0) {
+                    setAgeSeries(rules.ageSeries);
+                }
+                if (rules.ageCutoffDate) {
+                    setAgeCutoffDate(rules.ageCutoffDate);
+                }
+
+                if (Array.isArray(rules.licenseTypes) && rules.licenseTypes.length > 0) {
+                    setLicenseTypes(rules.licenseTypes);
+                }
+                if (rules.requireRefereeCourseForSenior !== undefined) setRequireRefereeCourseForSenior(rules.requireRefereeCourseForSenior);
+                if (rules.refresherCourseValidityMonths !== undefined) setRefresherCourseValidityMonths(rules.refresherCourseValidityMonths);
+                if (rules.expiryWarningDays !== undefined) setExpiryWarningDays(rules.expiryWarningDays);
+                if (rules.refresherGracePeriodMonths !== undefined) setRefresherGracePeriodMonths(rules.refresherGracePeriodMonths);
+
+                // Load seasons & officials
+                const [seasonsData, officialsData] = await Promise.all([
+                    api.getSeasons(top.id).catch(() => []),
+                    api.getOfficials(top.id).catch(() => []),
+                ]);
                 setSeasons(Array.isArray(seasonsData) ? seasonsData : []);
+                setOfficials(Array.isArray(officialsData) ? officialsData : []);
             }
         } catch (err) {
             console.error('Failed to load association settings:', err);
@@ -279,18 +440,7 @@ export default function AssociationSettingsPage() {
 
             const updatedRules = {
                 ...(topAssoc.rules || {}),
-                sportType,
-                unitNaming,
-                matchFormat,
-                pointsPerSet: Number(pointsPerSet),
-                maxForeignersPerTeam: Number(maxForeignersPerTeam),
-                allowTCardDualRegistration: Boolean(allowTCardDualRegistration),
-                requireRefereeCourseForSenior: Boolean(requireRefereeCourseForSenior),
-                refresherCourseValidityMonths: Number(refresherCourseValidityMonths),
-                eloKFactor: Number(eloKFactor),
-                ageSeries,
-                ageCutoffDate,
-                prioritizedCountryCodes,
+                homepageUrl,
                 impressum: {
                     organizationName: impressumOrgName,
                     addressLine1: impressumAddress1,
@@ -301,10 +451,22 @@ export default function AssociationSettingsPage() {
                     affiliation: impressumAffiliation,
                     email: impressumEmail,
                     phone: impressumPhone,
-                    website: impressumWebsite,
+                    website: impressumWebsite || homepageUrl,
                     presidentName: impressumPresident,
                     customLegalNotes: impressumLegalNotes,
                 },
+                prioritizedCountryCodes,
+                sportsList,
+                maxForeignersPerTeam: Number(maxForeignersPerTeam),
+                allowTCardDualRegistration: Boolean(allowTCardDualRegistration),
+                eloKFactor: Number(eloKFactor),
+                ageSeries,
+                ageCutoffDate,
+                licenseTypes,
+                requireRefereeCourseForSenior: Boolean(requireRefereeCourseForSenior),
+                refresherCourseValidityMonths: Number(refresherCourseValidityMonths),
+                expiryWarningDays: Number(expiryWarningDays),
+                refresherGracePeriodMonths: Number(refresherGracePeriodMonths),
             };
 
             await api.updateAssociationSettings(topAssoc.id, {
@@ -317,7 +479,7 @@ export default function AssociationSettingsPage() {
                 rules: updatedRules,
             });
 
-            setSuccessMsg('Association settings and configuration saved successfully!');
+            setSuccessMsg('All association settings and configurations saved successfully!');
             setTimeout(() => setSuccessMsg(''), 5000);
             loadData();
         } catch (err: any) {
@@ -331,6 +493,14 @@ export default function AssociationSettingsPage() {
     // Delete Logo
     const handleDeleteLogo = async () => {
         if (!topAssoc) return;
+        const shouldDelete = await confirm({
+            title: 'Remove Association Logo',
+            message: 'Are you sure you want to remove the current association logo?',
+            confirmText: 'Remove Logo',
+            variant: 'danger',
+        });
+        if (!shouldDelete) return;
+
         setUploadingLogo(true);
         try {
             await api.deleteAssociationLogo(topAssoc.id);
@@ -346,69 +516,396 @@ export default function AssociationSettingsPage() {
         }
     };
 
+    // Sport handlers
+    const toggleSportActive = (id: string) => {
+        setSportsList(prev => prev.map(s => s.id === id ? { ...s, active: !s.active } : s));
+    };
+
+    const handleOpenSportPrompt = async (sportToEdit?: SportItem) => {
+        const res = await prompt({
+            title: sportToEdit ? 'Edit Sport Configuration' : 'Add Custom Sport',
+            subtitle: 'Configure sport rules and playing unit terminology',
+            fields: [
+                {
+                    name: 'name',
+                    label: 'Sport Discipline Name',
+                    type: 'text',
+                    required: true,
+                    placeholder: 'e.g. Pickleball, Billiards, Pétanque, Squash',
+                    defaultValue: sportToEdit?.name || '',
+                },
+                {
+                    name: 'unitNaming',
+                    label: 'Playing Unit Terminology',
+                    type: 'text',
+                    required: true,
+                    placeholder: 'e.g. Court, Table, Pitch, Lane, Board, Terrain',
+                    defaultValue: sportToEdit?.unitNaming || 'Court',
+                },
+                {
+                    name: 'matchFormat',
+                    label: 'Default Match Format',
+                    type: 'select',
+                    required: true,
+                    defaultValue: sportToEdit?.matchFormat || 'BEST_OF_5',
+                    options: [
+                        { label: 'Best of 3 Sets', value: 'BEST_OF_3' },
+                        { label: 'Best of 5 Sets', value: 'BEST_OF_5' },
+                        { label: 'Best of 7 Sets', value: 'BEST_OF_7' },
+                    ],
+                },
+                {
+                    name: 'pointsPerSet',
+                    label: 'Points per Set / Frame',
+                    type: 'number',
+                    required: true,
+                    min: 1,
+                    max: 100,
+                    defaultValue: sportToEdit?.pointsPerSet || 11,
+                },
+            ],
+            confirmText: sportToEdit ? 'Save Sport' : 'Add Sport',
+        });
+
+        if (!res || !res.name?.trim() || !res.unitNaming?.trim()) return;
+
+        if (sportToEdit) {
+            setSportsList(prev => prev.map(s => s.id === sportToEdit.id ? {
+                ...s,
+                name: res.name.trim(),
+                unitNaming: res.unitNaming.trim(),
+                matchFormat: res.matchFormat,
+                pointsPerSet: Number(res.pointsPerSet) || 11,
+            } : s));
+        } else {
+            const newSport: SportItem = {
+                id: `custom_${Date.now()}`,
+                name: res.name.trim(),
+                unitNaming: res.unitNaming.trim(),
+                isCustom: true,
+                active: true,
+                matchFormat: res.matchFormat,
+                pointsPerSet: Number(res.pointsPerSet) || 11,
+            };
+            setSportsList(prev => [...prev, newSport]);
+        }
+    };
+
+    const handleDeleteSport = async (id: string) => {
+        const sportToDelete = sportsList.find(s => s.id === id);
+        const shouldDelete = await confirm({
+            title: 'Delete Custom Sport',
+            message: `Are you sure you want to remove "${sportToDelete?.name || 'this sport'}" from the federation sports list?`,
+            confirmText: 'Delete Sport',
+            variant: 'danger',
+        });
+        if (!shouldDelete) return;
+        setSportsList(prev => prev.filter(s => s.id !== id));
+    };
+
     // Age Series handlers
     const toggleAgeActive = (id: string) => {
         setAgeSeries(prev => prev.map(item => item.id === id ? { ...item, active: !item.active } : item));
     };
 
-    const handleSaveAgeSeries = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (editingAgeItem) {
-            setAgeSeries(prev => prev.map(item => item.id === editingAgeItem.id ? {
+    const handleOpenAgeSeriesPrompt = async (itemToEdit?: AgeSeriesItem) => {
+        const res = await prompt({
+            title: itemToEdit ? 'Edit Age Category' : 'Add Age Category',
+            subtitle: 'Configure age bracket specifications and classification',
+            fields: [
+                {
+                    name: 'code',
+                    label: 'Series Code',
+                    type: 'text',
+                    required: true,
+                    placeholder: 'e.g. U10, O35, ELITE',
+                    defaultValue: itemToEdit?.code || '',
+                },
+                {
+                    name: 'name',
+                    label: 'Category Name',
+                    type: 'text',
+                    required: true,
+                    placeholder: 'e.g. Under 10 Juniors, Masters 35+',
+                    defaultValue: itemToEdit?.name || '',
+                },
+                {
+                    name: 'type',
+                    label: 'Division Type',
+                    type: 'select',
+                    required: true,
+                    defaultValue: itemToEdit?.type || 'YOUTH',
+                    options: [
+                        { label: 'Youth', value: 'YOUTH' },
+                        { label: 'Actives', value: 'ACTIVES' },
+                        { label: 'Seniors', value: 'SENIORS' },
+                        { label: 'Custom', value: 'CUSTOM' },
+                    ],
+                },
+                {
+                    name: 'minAge',
+                    label: 'Min Age (optional)',
+                    type: 'number',
+                    placeholder: 'Optional',
+                    defaultValue: itemToEdit?.minAge ?? '',
+                    min: 0,
+                    max: 120,
+                },
+                {
+                    name: 'maxAge',
+                    label: 'Max Age (optional)',
+                    type: 'number',
+                    placeholder: 'Optional',
+                    defaultValue: itemToEdit?.maxAge ?? '',
+                    min: 0,
+                    max: 120,
+                },
+                {
+                    name: 'description',
+                    label: 'Description / Guidelines',
+                    type: 'textarea',
+                    placeholder: 'Description of the category...',
+                    defaultValue: itemToEdit?.description || '',
+                },
+            ],
+            confirmText: itemToEdit ? 'Save Category' : 'Add Category',
+        });
+
+        if (!res || !res.code?.trim() || !res.name?.trim()) return;
+
+        if (itemToEdit) {
+            setAgeSeries(prev => prev.map(item => item.id === itemToEdit.id ? {
                 ...item,
-                code: ageFormCode.toUpperCase(),
-                name: ageFormName,
-                type: ageFormType,
-                minAge: ageFormMin !== '' ? Number(ageFormMin) : undefined,
-                maxAge: ageFormMax !== '' ? Number(ageFormMax) : undefined,
-                description: ageFormDesc,
+                code: res.code.trim().toUpperCase(),
+                name: res.name.trim(),
+                type: res.type,
+                minAge: res.minAge !== '' && res.minAge !== undefined ? Number(res.minAge) : undefined,
+                maxAge: res.maxAge !== '' && res.maxAge !== undefined ? Number(res.maxAge) : undefined,
+                description: res.description?.trim() || '',
             } : item));
         } else {
             const newItem: AgeSeriesItem = {
                 id: `custom_${Date.now()}`,
-                code: ageFormCode.toUpperCase(),
-                name: ageFormName,
-                type: ageFormType,
-                minAge: ageFormMin !== '' ? Number(ageFormMin) : undefined,
-                maxAge: ageFormMax !== '' ? Number(ageFormMax) : undefined,
-                description: ageFormDesc,
+                code: res.code.trim().toUpperCase(),
+                name: res.name.trim(),
+                type: res.type,
+                minAge: res.minAge !== '' && res.minAge !== undefined ? Number(res.minAge) : undefined,
+                maxAge: res.maxAge !== '' && res.maxAge !== undefined ? Number(res.maxAge) : undefined,
+                description: res.description?.trim() || '',
                 active: true,
             };
             setAgeSeries(prev => [...prev, newItem]);
         }
-        setAgeModalOpen(false);
-        setEditingAgeItem(null);
     };
 
-    const handleDeleteAgeSeries = (id: string) => {
+    const handleDeleteAgeSeries = async (id: string) => {
+        const itemToDelete = ageSeries.find(i => i.id === id);
+        const shouldDelete = await confirm({
+            title: 'Delete Age Category',
+            message: `Are you sure you want to remove "${itemToDelete?.name || 'this category'}"?`,
+            confirmText: 'Delete Category',
+            variant: 'danger',
+        });
+        if (!shouldDelete) return;
         setAgeSeries(prev => prev.filter(item => item.id !== id));
     };
 
+    // License Type handlers
+    const toggleLicenseTypeActive = (id: string) => {
+        setLicenseTypes(prev => prev.map(lt => lt.id === id ? { ...lt, active: !lt.active } : lt));
+    };
+
+    const handleOpenLicenseTypePrompt = async (licToEdit?: CustomLicenseTypeItem) => {
+        const res = await prompt({
+            title: licToEdit ? 'Edit License Type' : 'Create Custom License Type',
+            subtitle: 'Configure specialized license under one of the 3 master over-types',
+            fields: [
+                {
+                    name: 'name',
+                    label: 'License Name',
+                    type: 'text',
+                    required: true,
+                    placeholder: 'e.g. Recreational League Pass, T-Card Guest',
+                    defaultValue: licToEdit?.name || '',
+                },
+                {
+                    name: 'code',
+                    label: 'Code / Identifier',
+                    type: 'text',
+                    required: true,
+                    placeholder: 'e.g. REC_LEAGUE, TCARD_GUEST',
+                    defaultValue: licToEdit?.code || '',
+                },
+                {
+                    name: 'overType',
+                    label: 'Master Over-Type (Fixed)',
+                    type: 'select',
+                    required: true,
+                    defaultValue: licToEdit?.overType || 'PLAYER',
+                    options: [
+                        { label: 'PLAYER (Athlete Pass)', value: 'PLAYER' },
+                        { label: 'COACH (Instructor Credential)', value: 'COACH' },
+                        { label: 'REFEREE (Official & Umpire)', value: 'REFEREE' },
+                    ],
+                },
+                {
+                    name: 'validityDuration',
+                    label: 'Validity Duration',
+                    type: 'select',
+                    required: true,
+                    defaultValue: licToEdit?.validityDuration || 'SEASON',
+                    options: [
+                        { label: 'Full Sporting Season', value: 'SEASON' },
+                        { label: '12 Months from Issue', value: 'MONTH_12' },
+                        { label: 'Single Day (1 Day)', value: 'DAY_1' },
+                        { label: 'Specific Tournament Duration', value: 'TOURNAMENT' },
+                        { label: 'Custom Number of Days', value: 'CUSTOM_DAYS' },
+                    ],
+                },
+                {
+                    name: 'customDays',
+                    label: 'Custom Validity in Days (if Custom Days selected)',
+                    type: 'number',
+                    defaultValue: licToEdit?.customDays || 30,
+                    min: 1,
+                    max: 365,
+                },
+                {
+                    name: 'scope',
+                    label: 'Competition Scope',
+                    type: 'select',
+                    required: true,
+                    defaultValue: licToEdit?.scope || 'ALL_COMPETITIONS',
+                    options: [
+                        { label: 'All Competitions & Leagues', value: 'ALL_COMPETITIONS' },
+                        { label: 'League Encounters Only', value: 'LEAGUE_ONLY' },
+                        { label: 'Tournaments & Open Cups Only', value: 'TOURNAMENT_ONLY' },
+                    ],
+                },
+                {
+                    name: 'requiresClub',
+                    label: 'Requires Active Club Affiliation',
+                    type: 'checkbox',
+                    defaultValue: licToEdit ? licToEdit.requiresClub : true,
+                },
+                {
+                    name: 'requiresRefresherCourse',
+                    label: 'Requires Refresher Course for Re-Validation',
+                    type: 'checkbox',
+                    defaultValue: licToEdit ? licToEdit.requiresRefresherCourse : false,
+                },
+                {
+                    name: 'description',
+                    label: 'Description & Guidelines',
+                    type: 'textarea',
+                    placeholder: 'Purpose, target athletes or officials, and eligibility notes...',
+                    defaultValue: licToEdit?.description || '',
+                },
+            ],
+            confirmText: licToEdit ? 'Save License Type' : 'Create License Type',
+            size: 'lg',
+        });
+
+        if (!res || !res.name?.trim() || !res.code?.trim()) return;
+
+        if (licToEdit) {
+            setLicenseTypes(prev => prev.map(lt => lt.id === licToEdit.id ? {
+                ...lt,
+                name: res.name.trim(),
+                code: res.code.trim().toUpperCase(),
+                overType: res.overType,
+                validityDuration: res.validityDuration,
+                customDays: res.validityDuration === 'CUSTOM_DAYS' ? Number(res.customDays) || 30 : undefined,
+                requiresClub: Boolean(res.requiresClub),
+                scope: res.scope,
+                requiresRefresherCourse: Boolean(res.requiresRefresherCourse),
+                description: res.description?.trim() || '',
+            } : lt));
+        } else {
+            const newLicType: CustomLicenseTypeItem = {
+                id: `custom_lic_${Date.now()}`,
+                name: res.name.trim(),
+                code: res.code.trim().toUpperCase(),
+                overType: res.overType,
+                validityDuration: res.validityDuration,
+                customDays: res.validityDuration === 'CUSTOM_DAYS' ? Number(res.customDays) || 30 : undefined,
+                requiresClub: Boolean(res.requiresClub),
+                scope: res.scope,
+                requiresRefresherCourse: Boolean(res.requiresRefresherCourse),
+                description: res.description?.trim() || '',
+                active: true,
+            };
+            setLicenseTypes(prev => [...prev, newLicType]);
+        }
+    };
+
+    const handleDeleteLicenseType = async (id: string) => {
+        const licToDelete = licenseTypes.find(l => l.id === id);
+        const shouldDelete = await confirm({
+            title: 'Delete License Type',
+            message: `Are you sure you want to delete "${licToDelete?.name || 'this license type'}"?`,
+            confirmText: 'Delete License Type',
+            variant: 'danger',
+        });
+        if (!shouldDelete) return;
+        setLicenseTypes(prev => prev.filter(lt => lt.id !== id));
+    };
+
     // Seasons handlers
-    const handleCreateSeason = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleOpenSeasonPrompt = async () => {
         if (!topAssoc) return;
-        setSeasonSubmitting(true);
+        const currentYear = new Date().getFullYear();
+        const res = await prompt({
+            title: 'Create New Season',
+            subtitle: 'Register an official competition period for this federation',
+            fields: [
+                {
+                    name: 'name',
+                    label: 'Season Name',
+                    type: 'text',
+                    required: true,
+                    placeholder: `e.g. Season ${currentYear}/${currentYear + 1}`,
+                    defaultValue: `Season ${currentYear}/${currentYear + 1}`,
+                },
+                {
+                    name: 'startDate',
+                    label: 'Start Date',
+                    type: 'date',
+                    required: true,
+                    defaultValue: `${currentYear}-08-01`,
+                },
+                {
+                    name: 'endDate',
+                    label: 'End Date',
+                    type: 'date',
+                    required: true,
+                    defaultValue: `${currentYear + 1}-06-30`,
+                },
+                {
+                    name: 'isCurrent',
+                    label: 'Set immediately as active current season',
+                    type: 'checkbox',
+                    defaultValue: false,
+                },
+            ],
+            confirmText: 'Create Season',
+        });
+
+        if (!res || !res.name?.trim() || !res.startDate || !res.endDate) return;
+
         setErrorMsg('');
         try {
             await api.createSeason(topAssoc.id, {
-                name: seasonName,
-                startDate: new Date(seasonStartDate).toISOString(),
-                endDate: new Date(seasonEndDate).toISOString(),
-                isCurrent: seasonIsCurrent,
+                name: res.name.trim(),
+                startDate: new Date(res.startDate).toISOString(),
+                endDate: new Date(res.endDate).toISOString(),
+                isCurrent: Boolean(res.isCurrent),
             });
-            setSeasonModalOpen(false);
-            setSeasonName('');
-            setSeasonStartDate('');
-            setSeasonEndDate('');
-            setSeasonIsCurrent(false);
             setSuccessMsg('New season created successfully!');
             setTimeout(() => setSuccessMsg(''), 4000);
             loadData();
         } catch (err: any) {
             setErrorMsg(err.message || 'Failed to create season.');
-        } finally {
-            setSeasonSubmitting(false);
         }
     };
 
@@ -426,7 +923,15 @@ export default function AssociationSettingsPage() {
 
     const handleDeleteSeason = async (seasonId: string) => {
         if (!topAssoc) return;
-        if (!confirm('Are you sure you want to delete this season?')) return;
+        const seasonToDelete = seasons.find(s => s.id === seasonId);
+        const shouldDelete = await confirm({
+            title: 'Delete Season',
+            message: `Are you sure you want to delete season "${seasonToDelete?.name || 'selected season'}"?`,
+            confirmText: 'Delete Season',
+            variant: 'danger',
+        });
+        if (!shouldDelete) return;
+
         try {
             await api.deleteSeason(topAssoc.id, seasonId);
             setSuccessMsg('Season deleted successfully.');
@@ -434,6 +939,166 @@ export default function AssociationSettingsPage() {
             loadData();
         } catch (err: any) {
             setErrorMsg(err.message || 'Failed to delete season.');
+        }
+    };
+
+    // Officials & Governance Handlers
+    const handleOpenAddOfficialPrompt = async () => {
+        if (!topAssoc) return;
+        const res = await prompt({
+            title: 'Assign Association Official',
+            subtitle: 'Assign a registered member to an official governance role in this federation',
+            fields: [
+                {
+                    name: 'userIdentifier',
+                    label: 'User Email, License ID, or User ID',
+                    type: 'text',
+                    required: true,
+                    placeholder: 'e.g. name@federation.org, 102450, or user UUID',
+                },
+                {
+                    name: 'role',
+                    label: 'Governance Role / Position',
+                    type: 'select',
+                    required: true,
+                    defaultValue: 'MEMBER',
+                    options: OFFICIAL_ROLES.map(r => ({ label: `${r.label} (${r.value})`, value: r.value })),
+                },
+            ],
+            confirmText: 'Assign Official',
+        });
+
+        if (!res || !res.userIdentifier?.trim() || !res.role) return;
+
+        setErrorMsg('');
+        try {
+            const newOfficial = await api.addOfficial(topAssoc.id, {
+                userIdentifier: res.userIdentifier.trim(),
+                role: res.role,
+            });
+            setOfficials(prev => [...prev, newOfficial]);
+            setSuccessMsg(`Assigned ${newOfficial.user?.firstName || 'user'} ${newOfficial.user?.lastName || ''} as ${res.role}`);
+            setTimeout(() => setSuccessMsg(''), 4000);
+        } catch (err: any) {
+            setErrorMsg(err.message || 'Failed to assign official');
+            setTimeout(() => setErrorMsg(''), 6000);
+        }
+    };
+
+    const handleOpenEditOfficialPrompt = async (official: OfficialItem) => {
+        if (!topAssoc) return;
+        const res = await prompt({
+            title: 'Update Official Role',
+            subtitle: `Change governance position for ${official.user.firstName} ${official.user.lastName}`,
+            fields: [
+                {
+                    name: 'role',
+                    label: 'Assigned Role',
+                    type: 'select',
+                    required: true,
+                    defaultValue: official.role,
+                    options: OFFICIAL_ROLES.map(r => ({ label: `${r.label} (${r.value})`, value: r.value })),
+                },
+            ],
+            confirmText: 'Update Role',
+        });
+
+        if (!res || !res.role || res.role === official.role) return;
+
+        setErrorMsg('');
+        try {
+            const updated = await api.updateOfficial(topAssoc.id, official.id, {
+                role: res.role,
+            });
+            setOfficials(prev => prev.map(o => o.id === official.id ? updated : o));
+            setSuccessMsg(`Updated role for ${official.user.firstName} ${official.user.lastName} to ${res.role}`);
+            setTimeout(() => setSuccessMsg(''), 4000);
+        } catch (err: any) {
+            setErrorMsg(err.message || 'Failed to update official role');
+            setTimeout(() => setErrorMsg(''), 6000);
+        }
+    };
+
+    const handleRemoveOfficial = async (official: OfficialItem) => {
+        if (!topAssoc) return;
+        const shouldDelete = await confirm({
+            title: 'Remove Official',
+            message: `Are you sure you want to remove "${official.user.firstName} ${official.user.lastName}" from their position as "${official.role}"?`,
+            confirmText: 'Remove Official',
+            variant: 'danger',
+        });
+        if (!shouldDelete) return;
+
+        setErrorMsg('');
+        try {
+            await api.removeOfficial(topAssoc.id, official.id);
+            setOfficials(prev => prev.filter(o => o.id !== official.id));
+            setSuccessMsg(`Removed ${official.user.firstName} ${official.user.lastName} from officials`);
+            setTimeout(() => setSuccessMsg(''), 4000);
+        } catch (err: any) {
+            setErrorMsg(err.message || 'Failed to remove official');
+            setTimeout(() => setErrorMsg(''), 6000);
+        }
+    };
+
+    const filteredOfficials = useMemo(() => {
+        if (!officialsSearch.trim()) return officials;
+        const q = officialsSearch.toLowerCase().trim();
+        return officials.filter(o =>
+            `${o.user.firstName} ${o.user.lastName}`.toLowerCase().includes(q) ||
+            o.role.toLowerCase().includes(q) ||
+            (o.user.email && o.user.email.toLowerCase().includes(q)) ||
+            (o.user.licenseId && o.user.licenseId.toLowerCase().includes(q))
+        );
+    }, [officials, officialsSearch]);
+
+    const getRoleBadge = (role: string) => {
+        switch (role.toUpperCase()) {
+            case 'ADMIN':
+                return {
+                    label: 'System Admin',
+                    className: 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400 border-red-200 dark:border-red-900',
+                };
+            case 'PRESIDENT':
+                return {
+                    label: 'President',
+                    className: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200 dark:border-amber-900',
+                };
+            case 'VICE_PRESIDENT':
+                return {
+                    label: 'Vice President',
+                    className: 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400 border-orange-200 dark:border-orange-900',
+                };
+            case 'SECRETARY':
+                return {
+                    label: 'General Secretary',
+                    className: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-900',
+                };
+            case 'TREASURER':
+                return {
+                    label: 'Treasurer / Finance',
+                    className: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900',
+                };
+            case 'REFEREE_HEAD':
+                return {
+                    label: 'Head of Match Officials',
+                    className: 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400 border-purple-200 dark:border-purple-900',
+                };
+            case 'COACH_HEAD':
+                return {
+                    label: 'Head of Coaching',
+                    className: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900',
+                };
+            case 'COMMUNICATIONS':
+                return {
+                    label: 'Media & PR',
+                    className: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-400 border-cyan-200 dark:border-cyan-900',
+                };
+            default:
+                return {
+                    label: role,
+                    className: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700',
+                };
         }
     };
 
@@ -482,7 +1147,7 @@ export default function AssociationSettingsPage() {
 
     return (
         <div className="space-y-8 pb-16">
-            {/* Navigation Header */}
+            {/* Top Navigation Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
                 <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -494,7 +1159,7 @@ export default function AssociationSettingsPage() {
                                 {topAssoc?.name || 'Association Settings'}
                             </h1>
                             <p className="text-xs text-slate-500 dark:text-slate-400">
-                                Configure sports rules, age categories, competition structures, seasons, and licensing engine.
+                                Configure organization identity & impressum, sports & rules, age brackets, seasons, and licensing engine.
                             </p>
                         </div>
                     </div>
@@ -528,8 +1193,9 @@ export default function AssociationSettingsPage() {
                 </div>
             )}
 
-            {/* Section Tab Bar */}
+            {/* 6 SECTION TABS */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-200 dark:border-slate-800 scrollbar-none">
+                {/* 1. Identity & Branding */}
                 <button
                     type="button"
                     onClick={() => setActiveTab('branding')}
@@ -543,19 +1209,21 @@ export default function AssociationSettingsPage() {
                     <span>Identity & Branding</span>
                 </button>
 
+                {/* 2. General Settings */}
                 <button
                     type="button"
-                    onClick={() => setActiveTab('impressum')}
+                    onClick={() => setActiveTab('general')}
                     className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition ${
-                        activeTab === 'impressum'
+                        activeTab === 'general'
                             ? 'bg-amber-600 text-white shadow-xs'
                             : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                 >
-                    <FileText className="h-4 w-4" />
-                    <span>Impressum & Legal</span>
+                    <Phone className="h-4 w-4" />
+                    <span>General Settings</span>
                 </button>
 
+                {/* 3. Sports & Rules */}
                 <button
                     type="button"
                     onClick={() => setActiveTab('sports')}
@@ -567,8 +1235,12 @@ export default function AssociationSettingsPage() {
                 >
                     <Trophy className="h-4 w-4" />
                     <span>Sports & Rules</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        {sportsList.filter(s => s.active).length}
+                    </span>
                 </button>
 
+                {/* 4. Age Series */}
                 <button
                     type="button"
                     onClick={() => setActiveTab('age-series')}
@@ -579,12 +1251,13 @@ export default function AssociationSettingsPage() {
                     }`}
                 >
                     <Users className="h-4 w-4" />
-                    <span>Age Series & Divisions</span>
+                    <span>Age Series</span>
                     <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                         {ageSeries.filter(a => a.active).length}
                     </span>
                 </button>
 
+                {/* 5. Seasons */}
                 <button
                     type="button"
                     onClick={() => setActiveTab('seasons')}
@@ -595,37 +1268,61 @@ export default function AssociationSettingsPage() {
                     }`}
                 >
                     <Calendar className="h-4 w-4" />
-                    <span>Seasons & Transition</span>
+                    <span>Seasons</span>
                     <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                         {seasons.length}
                     </span>
                 </button>
 
+                {/* 6. Licensing */}
                 <button
                     type="button"
-                    onClick={() => setActiveTab('license-engine')}
+                    onClick={() => setActiveTab('licensing')}
                     className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition ${
-                        activeTab === 'license-engine'
+                        activeTab === 'licensing'
                             ? 'bg-amber-600 text-white shadow-xs'
                             : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                 >
                     <Key className="h-4 w-4" />
-                    <span>License ID Engine</span>
+                    <span>Licensing</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        {licenseTypes.filter(l => l.active).length}
+                    </span>
+                </button>
+
+                {/* 7. Officials */}
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('officials')}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition ${
+                        activeTab === 'officials'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                >
+                    <UserCheck className="h-4 w-4" />
+                    <span>Officials</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        {officials.length}
+                    </span>
                 </button>
             </div>
 
-            {/* TAB 1: IDENTITY & BRANDING */}
+            {/* ======================================================== */}
+            {/* SECTION 1: IDENTITY, BRANDING & IMPRESSUM                */}
+            {/* ======================================================== */}
             {activeTab === 'branding' && (
                 <div className="space-y-6">
+                    {/* Organization Identity & Homepage URL */}
                     <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
                         <div className="space-y-1">
                             <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                 <Building2 className="h-5 w-5 text-amber-500" />
-                                <span>Association Identity & Details</span>
+                                <span>Federation Identity & Homepage URL</span>
                             </h2>
                             <p className="text-xs text-slate-500 dark:text-slate-400">
-                                Set official organization name, acronym, and governance level.
+                                Official organization branding, public acronym, and direct link to the federation homepage.
                             </p>
                         </div>
 
@@ -653,36 +1350,36 @@ export default function AssociationSettingsPage() {
                                     required
                                     value={assocShortName}
                                     onChange={(e) => setAssocShortName(e.target.value)}
-                                    placeholder="e.g. STTF"
+                                    placeholder="e.g. STT"
                                     className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
                                 />
                             </div>
 
-                            <div>
+                            <div className="sm:col-span-2">
                                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                    Federation Code
+                                    Link to Association Homepage URL *
                                 </label>
-                                <input
-                                    type="text"
-                                    disabled
-                                    value={topAssoc?.code || ''}
-                                    className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/50 px-4 py-2.5 text-xs font-mono text-slate-500 cursor-not-allowed"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                    Hierarchy Level
-                                </label>
-                                <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold">
-                                    <Shield className="h-4 w-4" />
-                                    <span>{topAssoc?.level || 'NATIONAL'} (Top Level Federation)</span>
+                                <div className="relative">
+                                    <Globe className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                                    <input
+                                        type="url"
+                                        value={homepageUrl}
+                                        onChange={(e) => {
+                                            setHomepageUrl(e.target.value);
+                                            setImpressumWebsite(e.target.value);
+                                        }}
+                                        placeholder="https://www.swisstabletennis.ch"
+                                        className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 pl-10 pr-4 py-2.5 text-xs font-mono text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                    />
                                 </div>
+                                <p className="text-[11px] text-slate-400 mt-1">
+                                    This URL is linked across navigation headers, official impressum, and tournament exports.
+                                </p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Logo & Visual Branding Card */}
+                    {/* Logo & Emblem S3 Card */}
                     <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
                         <div className="space-y-1">
                             <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -743,28 +1440,23 @@ export default function AssociationSettingsPage() {
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
 
-            {/* TAB: IMPRESSUM & FEDERATION LEGAL */}
-            {activeTab === 'impressum' && (
-                <div className="space-y-6">
-                    {/* Legal Entity & Headquarters Card */}
+                    {/* Impressum & Legal Headquarters */}
                     <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
                         <div className="space-y-1">
                             <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                <Building2 className="h-5 w-5 text-amber-500" />
-                                <span>Federation Headquarters & Legal Entity</span>
+                                <FileText className="h-5 w-5 text-amber-500" />
+                                <span>Impressum, Legal Headquarters & Governance</span>
                             </h2>
                             <p className="text-xs text-slate-500 dark:text-slate-400">
-                                Configure the official legal company name, headquarters address, and official register UID shown in the home page and legal impressum.
+                                Legal company details, physical headquarters, commercial UID, official contact, and board leadership.
                             </p>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                    Legal Organization Name
+                                    Legal Entity Name
                                 </label>
                                 <input
                                     type="text"
@@ -777,7 +1469,7 @@ export default function AssociationSettingsPage() {
 
                             <div>
                                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                    UID / Commercial Register Number
+                                    Commercial UID / Company Register
                                 </label>
                                 <input
                                     type="text"
@@ -803,13 +1495,13 @@ export default function AssociationSettingsPage() {
 
                             <div>
                                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                    Additional Address info (Line 2, Optional)
+                                    Additional Address Line 2 (Optional)
                                 </label>
                                 <input
                                     type="text"
                                     value={impressumAddress2}
                                     onChange={(e) => setImpressumAddress2(e.target.value)}
-                                    placeholder="e.g. Postfach 123 / Building B"
+                                    placeholder="e.g. Postfach / Suite 300"
                                     className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
                                 />
                             </div>
@@ -840,43 +1532,15 @@ export default function AssociationSettingsPage() {
                                 />
                             </div>
 
-                            <div className="sm:col-span-2">
-                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                    Olympic & Federation Affiliations
-                                </label>
-                                <input
-                                    type="text"
-                                    value={impressumAffiliation}
-                                    onChange={(e) => setImpressumAffiliation(e.target.value)}
-                                    placeholder="e.g. Swiss Olympic Member • ITTF • ETTU"
-                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Official Contact & Web Communication */}
-                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
-                        <div className="space-y-1">
-                            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                <Mail className="h-5 w-5 text-amber-500" />
-                                <span>Official Communication & Web Channels</span>
-                            </h2>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                                Contact channels displayed to the public for inquiries, press, and data protection requests.
-                            </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                    Official Email Address
+                                    Official Contact Email
                                 </label>
                                 <input
                                     type="email"
                                     value={impressumEmail}
                                     onChange={(e) => setImpressumEmail(e.target.value)}
-                                    placeholder="e.g. info@swisstabletennis.ch"
+                                    placeholder="info@swisstabletennis.ch"
                                     className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
                                 />
                             </div>
@@ -889,39 +1553,11 @@ export default function AssociationSettingsPage() {
                                     type="text"
                                     value={impressumPhone}
                                     onChange={(e) => setImpressumPhone(e.target.value)}
-                                    placeholder="e.g. +41 (0)31 359 73 90"
+                                    placeholder="+41 (0)31 359 73 90"
                                     className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
                                 />
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                    Official Website Domain
-                                </label>
-                                <input
-                                    type="text"
-                                    value={impressumWebsite}
-                                    onChange={(e) => setImpressumWebsite(e.target.value)}
-                                    placeholder="e.g. www.swisstabletennis.ch"
-                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Federation Leadership & Legal Governance */}
-                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
-                        <div className="space-y-1">
-                            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                <Shield className="h-5 w-5 text-amber-500" />
-                                <span>Federation Leadership & Operating Policy</span>
-                            </h2>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                                Representative board members and platform governance notices.
-                            </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                                     President / Executive Representative
@@ -947,256 +1583,29 @@ export default function AssociationSettingsPage() {
                                     className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
                                 />
                             </div>
-                        </div>
-                    </div>
 
-                    {/* Live Preview Card */}
-                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-6 sm:p-8 space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                <FileText className="h-4 w-4 text-amber-500" />
-                                <span>Live Home Page Impressum Preview</span>
-                            </div>
-                            <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                                REAL-TIME PREVIEW
-                            </span>
-                        </div>
-
-                        <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-sm space-y-4">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                                <div>
-                                    <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                                        {impressumOrgName || assocName || 'Swiss Table Tennis (STT)'} • Impressum
-                                    </h3>
-                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                        {impressumLegalNotes || 'Official Sports Platform Governance & Federation Administration'}
-                                    </p>
-                                </div>
-                                <span className="text-[10px] font-bold text-red-600 dark:text-red-400">
-                                    Full Legal & Tech Impressum ↗
-                                </span>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-600 dark:text-slate-300">
-                                <div className="space-y-1">
-                                    <div className="font-bold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
-                                        <Building2 className="h-3.5 w-3.5 text-red-500" />
-                                        <span>Federation Headquarters</span>
-                                    </div>
-                                    <p className="leading-relaxed text-[11px]">
-                                        {impressumOrgName || assocName || 'Swiss Table Tennis (STT)'}<br />
-                                        {impressumAddress1 || 'Haus des Sports, Talgut-Zentrum 27'}<br />
-                                        {impressumAddress2 ? <>{impressumAddress2}<br /></> : null}
-                                        {impressumCityPostal || 'CH-3063 Ittigen / Bern'}, {impressumCountry || 'Switzerland'}
-                                    </p>
-                                    <p className="text-slate-400 font-mono text-[10px]">
-                                        UID: {impressumUid || 'CHE-107.822.451'}
-                                        {impressumAffiliation ? ` • ${impressumAffiliation}` : ' • Swiss Olympic Member'}
-                                    </p>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <div className="font-bold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
-                                        <Mail className="h-3.5 w-3.5 text-red-500" />
-                                        <span>Official Contact</span>
-                                    </div>
-                                    <p className="flex items-center gap-1.5 text-[11px]">
-                                        <Mail className="h-3 w-3 text-slate-400" />
-                                        <span>{impressumEmail || 'info@swisstabletennis.ch'}</span>
-                                    </p>
-                                    <p className="flex items-center gap-1.5 text-[11px]">
-                                        <Phone className="h-3 w-3 text-slate-400" />
-                                        <span>{impressumPhone || '+41 (0)31 359 73 90'}</span>
-                                    </p>
-                                    <p className="flex items-center gap-1.5 text-[11px]">
-                                        <Globe className="h-3 w-3 text-slate-400" />
-                                        <span>{impressumWebsite || 'www.swisstabletennis.ch'}</span>
-                                    </p>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <div className="font-bold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
-                                        <Shield className="h-3.5 w-3.5 text-red-500" />
-                                        <span>Platform & Leadership</span>
-                                    </div>
-                                    <p className="leading-relaxed text-[11px]">
-                                        Operating System: <strong>AREENA v1.4.0</strong><br />
-                                        Rating Standard: <strong>STT Elo & Level Tier (D1–A20)</strong>
-                                    </p>
-                                    {impressumPresident && (
-                                        <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                                            Leadership: <strong>{impressumPresident}</strong>
-                                        </p>
-                                    )}
-                                </div>
+                            <div className="sm:col-span-2">
+                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Olympic & Federation Affiliations
+                                </label>
+                                <input
+                                    type="text"
+                                    value={impressumAffiliation}
+                                    onChange={(e) => setImpressumAffiliation(e.target.value)}
+                                    placeholder="e.g. Swiss Olympic Member • ITTF • ETTU"
+                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
                             </div>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* TAB 2: SPORTS & RULES CONFIGURATION */}
-            {activeTab === 'sports' && (
+            {/* ======================================================== */}
+            {/* SECTION 2: GENERAL SETTINGS                              */}
+            {/* ======================================================== */}
+            {activeTab === 'general' && (
                 <div className="space-y-6">
-                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
-                        <div className="space-y-1">
-                            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                <Trophy className="h-5 w-5 text-amber-500" />
-                                <span>Sport Definition & Playing Facilities</span>
-                            </h2>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                                Configure the sport discipline, court/table terminology, and live scoring structure.
-                            </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                    Sport Discipline *
-                                </label>
-                                <select
-                                    value={sportType}
-                                    onChange={(e) => setSportType(e.target.value)}
-                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                >
-                                    <option value="Table Tennis">Table Tennis (Tischtennis)</option>
-                                    <option value="Tennis">Tennis</option>
-                                    <option value="Squash">Squash</option>
-                                    <option value="Badminton">Badminton</option>
-                                    <option value="Padel">Padel</option>
-                                    <option value="Volleyball">Volleyball</option>
-                                    <option value="Floorball">Floorball / Unihockey</option>
-                                    <option value="Football">Football / Soccer</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                    Playing Unit Terminology *
-                                </label>
-                                <select
-                                    value={unitNaming}
-                                    onChange={(e) => setUnitNaming(e.target.value)}
-                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                >
-                                    <option value="Table">Table (Tisch / Table)</option>
-                                    <option value="Court">Court (Platz / Terrain)</option>
-                                    <option value="Pitch">Pitch (Spielfeld / Terrain)</option>
-                                    <option value="Lane">Lane (Bahn / Piste)</option>
-                                    <option value="Board">Board (Brett / Échiquier)</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                    Default Match Format
-                                </label>
-                                <select
-                                    value={matchFormat}
-                                    onChange={(e) => setMatchFormat(e.target.value)}
-                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                >
-                                    <option value="BEST_OF_3">Best of 3 Sets</option>
-                                    <option value="BEST_OF_5">Best of 5 Sets (Standard)</option>
-                                    <option value="BEST_OF_7">Best of 7 Sets (Championship Finals)</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Competition Rules & Regulations Card */}
-                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
-                        <div className="space-y-1">
-                            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                <Shield className="h-5 w-5 text-amber-500" />
-                                <span>Federation Competition Regulations</span>
-                            </h2>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                                Define player eligibility limits, dual club registrations, and referee requirements.
-                            </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 space-y-3">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
-                                        Max Foreign / Non-National Players per Team
-                                    </label>
-                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">
-                                        Quota of foreign licensed athletes allowed per league team encounter.
-                                    </p>
-                                </div>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    max="10"
-                                    value={maxForeignersPerTeam}
-                                    onChange={(e) => setMaxForeignersPerTeam(Number(e.target.value))}
-                                    className="w-28 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 space-y-3">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
-                                        Referee Course Validity Period (Months)
-                                    </label>
-                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">
-                                        Duration before an official must complete a refresher course.
-                                    </p>
-                                </div>
-                                <input
-                                    type="number"
-                                    min="6"
-                                    max="60"
-                                    value={refresherCourseValidityMonths}
-                                    onChange={(e) => setRefresherCourseValidityMonths(Number(e.target.value))}
-                                    className="w-28 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-4">
-                                <div className="space-y-0.5">
-                                    <div className="text-xs font-bold text-slate-900 dark:text-white">
-                                        Allow T-Card / Dual Club Registration
-                                    </div>
-                                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                        Enables athletes to compete in secondary regional club leagues.
-                                    </div>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={allowTCardDualRegistration}
-                                        onChange={(e) => setAllowTCardDualRegistration(e.target.checked)}
-                                        className="sr-only peer"
-                                    />
-                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-amber-600"></div>
-                                </label>
-                            </div>
-
-                            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-4">
-                                <div className="space-y-0.5">
-                                    <div className="text-xs font-bold text-slate-900 dark:text-white">
-                                        Mandatory Refresher Course for Seniors
-                                    </div>
-                                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                        Requires captain/referee certification for top league teams.
-                                    </div>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={requireRefereeCourseForSenior}
-                                        onChange={(e) => setRequireRefereeCourseForSenior(e.target.checked)}
-                                        className="sr-only peer"
-                                    />
-                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-amber-600"></div>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
                     {/* Phone Calling Code Priorities Card */}
                     <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1206,7 +1615,7 @@ export default function AssociationSettingsPage() {
                                     <span>Prioritized Phone Calling Codes</span>
                                 </h2>
                                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    Define the preferred countries that appear at the top of phone number inputs across the platform. The rest of the world (~240 countries) is sorted alphabetically.
+                                    Define the preferred countries that appear at the top of phone number dropdowns across all registration and member forms.
                                 </p>
                             </div>
 
@@ -1215,14 +1624,14 @@ export default function AssociationSettingsPage() {
                                 onClick={() => setPrioritizedCountryCodes(DEFAULT_PRIORITIZED_COUNTRIES)}
                                 className="text-xs text-amber-600 dark:text-amber-400 hover:underline font-semibold"
                             >
-                                Reset to Defaults
+                                Reset to Default European Codes
                             </button>
                         </div>
 
                         {/* List of currently prioritized countries */}
                         <div className="space-y-3">
                             <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                Priority Countries ({prioritizedCountryCodes.length})
+                                Currently Priority Ranked Countries ({prioritizedCountryCodes.length})
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
                                 {prioritizedCountryCodes.map((code, idx) => {
@@ -1260,7 +1669,7 @@ export default function AssociationSettingsPage() {
 
                         {/* Add Country to Priority List */}
                         <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                            <div className="flex-1 min-w-[200px] max-w-sm">
+                            <div className="flex-1 min-w-[220px] max-w-sm">
                                 <select
                                     value={selectedAddCountry}
                                     onChange={(e) => setSelectedAddCountry(e.target.value)}
@@ -1295,7 +1704,177 @@ export default function AssociationSettingsPage() {
                 </div>
             )}
 
-            {/* TAB 3: AGE SERIES & DIVISIONS */}
+            {/* ======================================================== */}
+            {/* SECTION 3: SPORTS & RULES                                */}
+            {/* ======================================================== */}
+            {activeTab === 'sports' && (
+                <div className="space-y-6">
+                    {/* Multi-Sport Governance & Custom Sport Creation */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="space-y-1">
+                                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    <Trophy className="h-5 w-5 text-amber-500" />
+                                    <span>Governed Sports & Playing Unit Terminology</span>
+                                </h2>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    Select multiple sports governed by this federation or create custom sports with tailored unit naming (e.g. Table, Court, Lane, Board).
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => handleOpenSportPrompt()}
+                                className="inline-flex items-center gap-2 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 text-xs font-bold shadow-xs transition"
+                            >
+                                <Plus className="h-4 w-4" />
+                                <span>Add Custom Sport</span>
+                            </button>
+                        </div>
+
+                        {/* Sports Grid List */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {sportsList.map((sport) => (
+                                <div
+                                    key={sport.id}
+                                    className={`rounded-2xl border p-4 transition flex flex-col justify-between space-y-3 ${
+                                        sport.active
+                                            ? 'border-amber-500/40 bg-amber-50/20 dark:bg-amber-950/20 dark:border-amber-800/60 shadow-2xs'
+                                            : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 opacity-70'
+                                    }`}
+                                >
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                                                    {sport.name}
+                                                </h3>
+                                                {sport.isCustom && (
+                                                    <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                                        Custom
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                Unit Terminology: <strong>{sport.unitNaming}</strong> • {sport.matchFormat?.replace(/_/g, ' ')}
+                                            </p>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleSportActive(sport.id)}
+                                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition shrink-0 ${
+                                                sport.active
+                                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                                    : 'bg-slate-200 dark:bg-slate-800 text-slate-500'
+                                            }`}
+                                        >
+                                            {sport.active ? 'Active' : 'Disabled'}
+                                        </button>
+                                    </div>
+
+                                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                                        <span className="text-[11px] text-slate-400">
+                                            Points per set: <strong>{sport.pointsPerSet || 11}</strong>
+                                        </span>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleOpenSportPrompt(sport)}
+                                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                            >
+                                                <Edit3 className="h-3.5 w-3.5" />
+                                            </button>
+                                            {sport.isCustom && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteSport(sport.id)}
+                                                    className="p-1 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Federation-wide Competition Rules Card */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
+                        <div className="space-y-1">
+                            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <Shield className="h-5 w-5 text-amber-500" />
+                                <span>Competition Quotas & Rating Parameters</span>
+                            </h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Foreign athlete eligibility quotas, dual club league rules, and Elo K-factor math.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 space-y-2">
+                                <label className="block text-xs font-bold text-slate-900 dark:text-white">
+                                    Max Foreign Players per Team
+                                </label>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                    Allowed foreign license holders per encounter.
+                                </p>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="10"
+                                    value={maxForeignersPerTeam}
+                                    onChange={(e) => setMaxForeignersPerTeam(Number(e.target.value))}
+                                    className="w-28 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 space-y-2">
+                                <label className="block text-xs font-bold text-slate-900 dark:text-white">
+                                    Elo Exchange K-Factor
+                                </label>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                    Rating volatility constant (default: 32).
+                                </p>
+                                <input
+                                    type="number"
+                                    min="8"
+                                    max="64"
+                                    value={eloKFactor}
+                                    onChange={(e) => setEloKFactor(Number(e.target.value))}
+                                    className="w-28 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-4">
+                                <div className="space-y-0.5">
+                                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                                        Dual Club Registration
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                        Allow T-Cards & secondary league registrations.
+                                    </div>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={allowTCardDualRegistration}
+                                        onChange={(e) => setAllowTCardDualRegistration(e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-amber-600"></div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ======================================================== */}
+            {/* SECTION 4: AGE SERIES & BRACKETS                         */}
+            {/* ======================================================== */}
             {activeTab === 'age-series' && (
                 <div className="space-y-6">
                     <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
@@ -1312,16 +1891,7 @@ export default function AssociationSettingsPage() {
 
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setEditingAgeItem(null);
-                                    setAgeFormCode('');
-                                    setAgeFormName('');
-                                    setAgeFormType('YOUTH');
-                                    setAgeFormMin('');
-                                    setAgeFormMax('');
-                                    setAgeFormDesc('');
-                                    setAgeModalOpen(true);
-                                }}
+                                onClick={() => handleOpenAgeSeriesPrompt()}
                                 className="inline-flex items-center gap-2 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 text-xs font-bold shadow-xs transition"
                             >
                                 <Plus className="h-4 w-4" />
@@ -1413,16 +1983,7 @@ export default function AssociationSettingsPage() {
                                                 <div className="flex items-center justify-end gap-1">
                                                     <button
                                                         type="button"
-                                                        onClick={() => {
-                                                            setEditingAgeItem(item);
-                                                            setAgeFormCode(item.code);
-                                                            setAgeFormName(item.name);
-                                                            setAgeFormType(item.type);
-                                                            setAgeFormMin(item.minAge ?? '');
-                                                            setAgeFormMax(item.maxAge ?? '');
-                                                            setAgeFormDesc(item.description);
-                                                            setAgeModalOpen(true);
-                                                        }}
+                                                        onClick={() => handleOpenAgeSeriesPrompt(item)}
                                                         className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                                     >
                                                         <Edit3 className="h-3.5 w-3.5" />
@@ -1447,7 +2008,9 @@ export default function AssociationSettingsPage() {
                 </div>
             )}
 
-            {/* TAB 4: SEASONS CONFIGURATION */}
+            {/* ======================================================== */}
+            {/* SECTION 5: SEASONS                                       */}
+            {/* ======================================================== */}
             {activeTab === 'seasons' && (
                 <div className="space-y-6">
                     <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
@@ -1464,13 +2027,7 @@ export default function AssociationSettingsPage() {
 
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setSeasonName('');
-                                    setSeasonStartDate('');
-                                    setSeasonEndDate('');
-                                    setSeasonIsCurrent(false);
-                                    setSeasonModalOpen(true);
-                                }}
+                                onClick={() => handleOpenSeasonPrompt()}
                                 className="inline-flex items-center gap-2 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 text-xs font-bold shadow-xs transition"
                             >
                                 <Plus className="h-4 w-4" />
@@ -1550,9 +2107,12 @@ export default function AssociationSettingsPage() {
                 </div>
             )}
 
-            {/* TAB 5: LICENSE ID ENGINE */}
-            {activeTab === 'license-engine' && (
+            {/* ======================================================== */}
+            {/* SECTION 6: LICENSING ENGINE & CUSTOM TYPES               */}
+            {/* ======================================================== */}
+            {activeTab === 'licensing' && (
                 <div className="space-y-6">
+                    {/* 1. License ID Generator Format */}
                     <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
                         <div className="space-y-1">
                             <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -1635,203 +2195,474 @@ export default function AssociationSettingsPage() {
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
 
-            {/* AGE SERIES MODAL */}
-            {ageModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-                    <div className="w-full max-w-md rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                                {editingAgeItem ? 'Edit Age Category' : 'Add Age Category'}
-                            </h3>
+                    {/* 2. Custom License Types under 3 Fixed Over-Types */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="space-y-1">
+                                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    <Award className="h-5 w-5 text-amber-500" />
+                                    <span>License Types & Over-Type Classification</span>
+                                </h2>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    Configure customized license types under the 3 fixed master categories: <strong>PLAYER</strong>, <strong>COACH</strong>, and <strong>REFEREE</strong>.
+                                </p>
+                            </div>
+
                             <button
                                 type="button"
-                                onClick={() => setAgeModalOpen(false)}
-                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                onClick={() => handleOpenLicenseTypePrompt()}
+                                className="inline-flex items-center gap-2 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 text-xs font-bold shadow-xs transition"
                             >
-                                <X className="h-4 w-4" />
+                                <Plus className="h-4 w-4" />
+                                <span>Add Custom License Type</span>
                             </button>
                         </div>
 
-                        <form onSubmit={handleSaveAgeSeries} className="space-y-3 text-xs">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Code *</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="e.g. U10"
-                                        value={ageFormCode}
-                                        onChange={(e) => setAgeFormCode(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Type *</label>
-                                    <select
-                                        value={ageFormType}
-                                        onChange={(e) => setAgeFormType(e.target.value as any)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                    >
-                                        <option value="YOUTH">Youth</option>
-                                        <option value="ACTIVES">Actives</option>
-                                        <option value="SENIORS">Seniors</option>
-                                        <option value="CUSTOM">Custom</option>
-                                    </select>
-                                </div>
-                            </div>
+                        {/* License Types Table */}
+                        <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+                            <table className="w-full text-left text-xs">
+                                <thead className="bg-slate-50 dark:bg-slate-950/80 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200 dark:border-slate-800">
+                                    <tr>
+                                        <th className="px-4 py-3">License Name & Code</th>
+                                        <th className="px-4 py-3">Master Over-Type</th>
+                                        <th className="px-4 py-3">Validity Period</th>
+                                        <th className="px-4 py-3">Club Requirement</th>
+                                        <th className="px-4 py-3">Scope & Rules</th>
+                                        <th className="px-4 py-3 text-center">Status</th>
+                                        <th className="px-4 py-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                                    {licenseTypes.map((lt) => (
+                                        <tr key={lt.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                                            <td className="px-4 py-3">
+                                                <div className="font-bold text-slate-900 dark:text-white">
+                                                    {lt.name}
+                                                </div>
+                                                <div className="font-mono text-[10px] text-slate-400">
+                                                    {lt.code}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                                    lt.overType === 'PLAYER'
+                                                        ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                                                        : lt.overType === 'COACH'
+                                                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                                        : 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
+                                                }`}>
+                                                    {lt.overType}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">
+                                                {lt.validityDuration === 'SEASON' && 'Full Season'}
+                                                {lt.validityDuration === 'MONTH_12' && '12 Months (Fixed)'}
+                                                {lt.validityDuration === 'DAY_1' && '1 Day (Single Match)'}
+                                                {lt.validityDuration === 'TOURNAMENT' && 'Tournament Duration'}
+                                                {lt.validityDuration === 'CUSTOM_DAYS' && `${lt.customDays || 30} Days`}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {lt.requiresClub ? (
+                                                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                                                        <Check className="h-3 w-3" /> Required
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-400">Not Required</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 space-y-0.5">
+                                                <div className="text-slate-700 dark:text-slate-300">
+                                                    {lt.scope === 'ALL_COMPETITIONS' && 'All Competitions & Leagues'}
+                                                    {lt.scope === 'LEAGUE_ONLY' && 'League Matches Only'}
+                                                    {lt.scope === 'TOURNAMENT_ONLY' && 'Tournaments Only'}
+                                                </div>
+                                                {lt.requiresRefresherCourse && (
+                                                    <div className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                                                        • Refresher Course Mandatory
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleLicenseTypeActive(lt.id)}
+                                                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition ${
+                                                        lt.active
+                                                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                                            : 'bg-slate-200 dark:bg-slate-800 text-slate-500'
+                                                    }`}
+                                                >
+                                                    {lt.active ? 'Active' : 'Disabled'}
+                                                </button>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleOpenLicenseTypePrompt(lt)}
+                                                        className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                                    >
+                                                        <Edit3 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteLicenseType(lt.id)}
+                                                        className="p-1 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
-                            <div>
-                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Category Name *</label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="e.g. Under 10 Juniors"
-                                    value={ageFormName}
-                                    onChange={(e) => setAgeFormName(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                />
-                            </div>
+                    {/* 3. Re-validation & Refresher Courses Requirements */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
+                        <div className="space-y-1">
+                            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <UserCheck className="h-5 w-5 text-amber-500" />
+                                <span>Requirements for License Re-Validation & Course Refreshers</span>
+                            </h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Define mandatory course re-certification intervals, advance expiration warnings, and automatic validity renewal.
+                            </p>
+                        </div>
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Min Age</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 space-y-2">
+                                <label className="block text-xs font-bold text-slate-900 dark:text-white">
+                                    Refresher Course Validity
+                                </label>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                    Months before a certified coach or referee must re-attend.
+                                </p>
+                                <div className="flex items-center gap-2">
                                     <input
                                         type="number"
-                                        placeholder="Optional"
-                                        value={ageFormMin}
-                                        onChange={(e) => setAgeFormMin(e.target.value === '' ? '' : Number(e.target.value))}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                        min="6"
+                                        max="60"
+                                        value={refresherCourseValidityMonths}
+                                        onChange={(e) => setRefresherCourseValidityMonths(Number(e.target.value))}
+                                        className="w-24 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
                                     />
+                                    <span className="text-xs text-slate-500">Months</span>
                                 </div>
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Max Age</label>
+                            </div>
+
+                            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 space-y-2">
+                                <label className="block text-xs font-bold text-slate-900 dark:text-white">
+                                    Advance Expiry Warning
+                                </label>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                    Notice days sent to athletes and officials before license expiration.
+                                </p>
+                                <div className="flex items-center gap-2">
                                     <input
                                         type="number"
-                                        placeholder="Optional"
-                                        value={ageFormMax}
-                                        onChange={(e) => setAgeFormMax(e.target.value === '' ? '' : Number(e.target.value))}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                        min="7"
+                                        max="180"
+                                        value={expiryWarningDays}
+                                        onChange={(e) => setExpiryWarningDays(Number(e.target.value))}
+                                        className="w-24 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
                                     />
+                                    <span className="text-xs text-slate-500">Days</span>
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Description</label>
-                                <textarea
-                                    rows={2}
-                                    placeholder="Description of the category..."
-                                    value={ageFormDesc}
-                                    onChange={(e) => setAgeFormDesc(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                />
+                            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 space-y-2">
+                                <label className="block text-xs font-bold text-slate-900 dark:text-white">
+                                    Re-Certification Grace Period
+                                </label>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                    Grace window allowed to complete overdue courses.
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="12"
+                                        value={refresherGracePeriodMonths}
+                                        onChange={(e) => setRefresherGracePeriodMonths(Number(e.target.value))}
+                                        className="w-24 rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                    />
+                                    <span className="text-xs text-slate-500">Months</span>
+                                </div>
                             </div>
 
-                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                <button
-                                    type="button"
-                                    onClick={() => setAgeModalOpen(false)}
-                                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-400"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs transition"
-                                >
-                                    Save Category
-                                </button>
+                            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                                <div className="space-y-0.5">
+                                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                                        Mandatory for Senior Teams
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                        Requires referee course certificate for senior captains.
+                                    </div>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                                    <input
+                                        type="checkbox"
+                                        checked={requireRefereeCourseForSenior}
+                                        onChange={(e) => setRequireRefereeCourseForSenior(e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-amber-600"></div>
+                                </label>
                             </div>
-                        </form>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* SEASONS MODAL */}
-            {seasonModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-                    <div className="w-full max-w-md rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                                Create New Season
-                            </h3>
+            {/* ======================================================== */}
+            {/* SECTION 7: OFFICIALS & GOVERNANCE BOARD                   */}
+            {/* ======================================================== */}
+            {activeTab === 'officials' && (
+                <div className="space-y-6">
+                    {/* Header & Controls Card */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <UserCheck className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                                    <h2 className="text-base font-black text-slate-900 dark:text-white">
+                                        Association Officials & Governance Board
+                                    </h2>
+                                </div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    Manage designated federation officials, board executives, department heads, and committee delegates.
+                                </p>
+                            </div>
+
                             <button
                                 type="button"
-                                onClick={() => setSeasonModalOpen(false)}
-                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                onClick={handleOpenAddOfficialPrompt}
+                                className="inline-flex items-center gap-2 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 text-xs font-bold shadow-xs transition"
                             >
-                                <X className="h-4 w-4" />
+                                <Plus className="h-4 w-4" />
+                                <span>Assign Official</span>
                             </button>
                         </div>
 
-                        <form onSubmit={handleCreateSeason} className="space-y-3 text-xs">
-                            <div>
-                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Season Name *</label>
+                        {/* Search & Filter Bar */}
+                        <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                            <div className="relative flex-1 w-full">
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                 <input
                                     type="text"
-                                    required
-                                    placeholder="e.g. 2026/2027"
-                                    value={seasonName}
-                                    onChange={(e) => setSeasonName(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                    value={officialsSearch}
+                                    onChange={(e) => setOfficialsSearch(e.target.value)}
+                                    placeholder="Search officials by name, email, role, or license ID..."
+                                    className="w-full pl-10 pr-4 py-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-amber-500 focus:outline-none transition"
                                 />
+                                {officialsSearch && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setOfficialsSearch('')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                )}
                             </div>
+                            <div className="text-xs font-medium text-slate-500 shrink-0">
+                                {filteredOfficials.length} of {officials.length} officials
+                            </div>
+                        </div>
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Start Date *</label>
-                                    <input
-                                        type="date"
-                                        required
-                                        value={seasonStartDate}
-                                        onChange={(e) => setSeasonStartDate(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                    />
+                        {/* Officials List Table / Cards */}
+                        {filteredOfficials.length === 0 ? (
+                            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-8 text-center space-y-3">
+                                <div className="mx-auto w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                                    <UserCheck className="h-6 w-6" />
                                 </div>
-                                <div>
-                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">End Date *</label>
-                                    <input
-                                        type="date"
-                                        required
-                                        value={seasonEndDate}
-                                        onChange={(e) => setSeasonEndDate(e.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                                    />
+                                <div className="space-y-1">
+                                    <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                                        {officialsSearch ? 'No officials match your search' : 'No officials assigned yet'}
+                                    </h3>
+                                    <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+                                        {officialsSearch
+                                            ? 'Try refining your query or clear the filter to see all federation officials.'
+                                            : 'Assign federation executives, general secretaries, referee heads, and administrators to grant governance privileges.'}
+                                    </p>
                                 </div>
+                                {!officialsSearch && (
+                                    <button
+                                        type="button"
+                                        onClick={handleOpenAddOfficialPrompt}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition"
+                                    >
+                                        <Plus className="h-3.5 w-3.5" />
+                                        <span>Assign First Official</span>
+                                    </button>
+                                )}
                             </div>
+                        ) : (
+                            <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+                                <table className="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/50 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                            <th className="py-3 px-4">Official / Member</th>
+                                            <th className="py-3 px-4">Role & Function</th>
+                                            <th className="py-3 px-4">Contact Info</th>
+                                            <th className="py-3 px-4">Appointed</th>
+                                            <th className="py-3 px-4 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium text-slate-700 dark:text-slate-300">
+                                        {filteredOfficials.map((off) => {
+                                            const badge = getRoleBadge(off.role);
+                                            const roleMeta = OFFICIAL_ROLES.find(r => r.value === off.role.toUpperCase());
+                                            const initials = `${off.user.firstName?.[0] || ''}${off.user.lastName?.[0] || ''}`.toUpperCase() || 'OF';
 
-                            <div className="flex items-center gap-2 pt-2">
-                                <input
-                                    type="checkbox"
-                                    id="isCurrentSeason"
-                                    checked={seasonIsCurrent}
-                                    onChange={(e) => setSeasonIsCurrent(e.target.checked)}
-                                    className="rounded text-amber-600 focus:ring-amber-500 h-4 w-4"
-                                />
-                                <label htmlFor="isCurrentSeason" className="text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
-                                    Set as Active Current Season
-                                </label>
-                            </div>
+                                            return (
+                                                <tr
+                                                    key={off.id}
+                                                    className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors"
+                                                >
+                                                    {/* User Identity Column */}
+                                                    <td className="py-3.5 px-4">
+                                                        <div className="flex items-center gap-3">
+                                                            {off.user.avatarUrl ? (
+                                                                <img
+                                                                    src={off.user.avatarUrl}
+                                                                    alt={`${off.user.firstName} ${off.user.lastName}`}
+                                                                    className="h-9 w-9 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+                                                                />
+                                                            ) : (
+                                                                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 text-white font-bold flex items-center justify-center text-xs shadow-xs">
+                                                                    {initials}
+                                                                </div>
+                                                            )}
+                                                            <div className="space-y-0.5">
+                                                                <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                                                    <span>{off.user.firstName} {off.user.lastName}</span>
+                                                                    {off.user.currentLevel && (
+                                                                        <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                                                            {off.user.currentLevel}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {off.user.licenseId && (
+                                                                    <div className="text-[10px] font-mono text-slate-400 flex items-center gap-1">
+                                                                        <span>License: {off.user.licenseId}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </td>
 
-                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                <button
-                                    type="button"
-                                    onClick={() => setSeasonModalOpen(false)}
-                                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-400"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={seasonSubmitting}
-                                    className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs transition disabled:opacity-50"
-                                >
-                                    {seasonSubmitting ? 'Creating...' : 'Create Season'}
-                                </button>
+                                                    {/* Role Column */}
+                                                    <td className="py-3.5 px-4">
+                                                        <div className="space-y-1">
+                                                            <span
+                                                                className={`inline-flex items-center px-2.5 py-1 rounded-xl text-[11px] font-bold border ${badge.className}`}
+                                                            >
+                                                                {badge.label}
+                                                            </span>
+                                                            {roleMeta?.description && (
+                                                                <p className="text-[10px] text-slate-400 max-w-xs line-clamp-1">
+                                                                    {roleMeta.description}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Contact Column */}
+                                                    <td className="py-3.5 px-4">
+                                                        <div className="space-y-0.5 text-[11px]">
+                                                            {off.user.email ? (
+                                                                <div className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
+                                                                    <Mail className="h-3 w-3 text-slate-400 shrink-0" />
+                                                                    <span className="truncate max-w-[180px]">{off.user.email}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-slate-400 italic">No email</span>
+                                                            )}
+                                                            {off.user.phone && (
+                                                                <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                                                                    <Phone className="h-3 w-3 text-slate-400 shrink-0" />
+                                                                    <span>{off.user.phone}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Appointed Date Column */}
+                                                    <td className="py-3.5 px-4 whitespace-nowrap text-slate-500 dark:text-slate-400 text-[11px]">
+                                                        {new Date(off.createdAt).toLocaleDateString(undefined, {
+                                                            year: 'numeric',
+                                                            month: 'short',
+                                                            day: 'numeric',
+                                                        })}
+                                                    </td>
+
+                                                    {/* Actions Column */}
+                                                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                                        <div className="flex items-center justify-end gap-1.5">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleOpenEditOfficialPrompt(off)}
+                                                                className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition"
+                                                                title="Change Role"
+                                                            >
+                                                                <Edit3 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRemoveOfficial(off)}
+                                                                className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 hover:border-red-200 dark:hover:border-red-900 transition"
+                                                                title="Remove Official"
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
-                        </form>
+                        )}
+                    </div>
+
+                    {/* Governance Roles Guide Card */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-4">
+                        <div className="flex items-center gap-2">
+                            <Shield className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                                Federation Governance Structure & Role Directory
+                            </h3>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                            The following standard roles define executive responsibilities, reporting lines, and platform access:
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                            {OFFICIAL_ROLES.map((roleDef) => {
+                                const b = getRoleBadge(roleDef.value);
+                                return (
+                                    <div
+                                        key={roleDef.value}
+                                        className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800/80 space-y-1.5"
+                                    >
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold border ${b.className}`}>
+                                                {b.label}
+                                            </span>
+                                            <span className="font-mono text-[10px] text-slate-400 font-bold">{roleDef.value}</span>
+                                        </div>
+                                        <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
+                                            {roleDef.description}
+                                        </p>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             )}
