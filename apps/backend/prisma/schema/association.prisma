@@ -20,19 +20,20 @@ model Association {
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
-  parentHierarchies AssociationHierarchy[] @relation("ChildAssociation")
-  childHierarchies  AssociationHierarchy[] @relation("ParentAssociation")
+  parentHierarchies AssociationHierarchy[]  @relation("ChildAssociation")
+  childHierarchies  AssociationHierarchy[]  @relation("ParentAssociation")
   clubAssociations  ClubAssociation[]
   seasons           Season[]
   competitions      Competition[]
   licenses          License[]
+  ratingSnapshots   RatingSnapshotHistory[]
   refresherCourses  RefresherCourse[]
   calendarEvents    CalendarEvent[]
   adminRoles        UserAssociationRole[]
   broadcastMessages BroadcastMessage[]
-  invoicesIssued    Invoice[]             @relation("AssociationInvoices")
+  invoicesIssued    Invoice[]               @relation("AssociationInvoices")
   bexioConfig       BexioConfig?
-  auditLogs         AuditLog[]            @relation("AssociationAuditLogs")
+  auditLogs         AuditLog[]              @relation("AssociationAuditLogs")
   adminNotices      AdminNotice[]
   faqItems          FaqItem[]
   supportSubjects   SupportSubject[]
@@ -78,4 +79,3 @@ model Season {
   licenses     License[]
   competitions Competition[]
 }
-

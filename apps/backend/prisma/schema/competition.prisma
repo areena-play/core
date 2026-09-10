@@ -59,6 +59,13 @@ enum MatchWinner {
   PENDING
 }
 
+enum ParticipantSide {
+  HOME_1
+  HOME_2
+  AWAY_1
+  AWAY_2
+}
+
 model Competition {
   id               String            @id @default(uuid())
   type             CompetitionType
@@ -81,16 +88,17 @@ model Competition {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
-  association      Association                 @relation(fields: [associationId], references: [id], onDelete: Cascade)
-  season           Season?                     @relation(fields: [seasonId], references: [id], onDelete: SetNull)
-  categories       Category[]
-  calendarEvents   CalendarEvent[]
-  faqItems         FaqItem[]
-  supportSubjects  SupportSubject[]
-  locations        CompetitionLocation[]
-  unitReservations LocationUnitReservation[]
-  roles            CompetitionUserRole[]
-  speakerCallouts  CompetitionSpeakerCallout[]
+  association        Association                 @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  season             Season?                     @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  categories         Category[]
+  calendarEvents     CalendarEvent[]
+  faqItems           FaqItem[]
+  supportSubjects    SupportSubject[]
+  locations          CompetitionLocation[]
+  unitReservations   LocationUnitReservation[]
+  roles              CompetitionUserRole[]
+  speakerCallouts    CompetitionSpeakerCallout[]
+  tournamentLicenses License[]                   @relation("TournamentLicenses")
 
   @@index([seriesSlug])
 }
@@ -125,12 +133,13 @@ model Team {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  club           Club?                      @relation(fields: [clubId], references: [id], onDelete: SetNull)
-  members        TeamMember[]
-  registrations  TeamCategoryRegistration[]
-  homeEncounters Encounter[]                @relation("HomeTeamEncounters")
-  awayEncounters Encounter[]                @relation("AwayTeamEncounters")
-  standings      GroupStanding[]
+  club              Club?                      @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  members           TeamMember[]
+  registrations     TeamCategoryRegistration[]
+  homeEncounters    Encounter[]                @relation("HomeTeamEncounters")
+  awayEncounters    Encounter[]                @relation("AwayTeamEncounters")
+  standings         GroupStanding[]
+  matchParticipants MatchParticipant[]
 }
 
 model TeamMember {
@@ -242,11 +251,35 @@ model Match {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
-  encounter   Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
-  homePlayer1 User?     @relation("HomePlayer1", fields: [homePlayer1Id], references: [id], onDelete: SetNull)
-  homePlayer2 User?     @relation("HomePlayer2", fields: [homePlayer2Id], references: [id], onDelete: SetNull)
-  awayPlayer1 User?     @relation("AwayPlayer1", fields: [awayPlayer1Id], references: [id], onDelete: SetNull)
-  awayPlayer2 User?     @relation("AwayPlayer2", fields: [awayPlayer2Id], references: [id], onDelete: SetNull)
+  encounter    Encounter          @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  homePlayer1  User?              @relation("HomePlayer1", fields: [homePlayer1Id], references: [id], onDelete: SetNull)
+  homePlayer2  User?              @relation("HomePlayer2", fields: [homePlayer2Id], references: [id], onDelete: SetNull)
+  awayPlayer1  User?              @relation("AwayPlayer1", fields: [awayPlayer1Id], references: [id], onDelete: SetNull)
+  awayPlayer2  User?              @relation("AwayPlayer2", fields: [awayPlayer2Id], references: [id], onDelete: SetNull)
+  participants MatchParticipant[]
+}
+
+model MatchParticipant {
+  id               String                 @id @default(uuid())
+  matchId          String
+  userId           String
+  side             ParticipantSide        @default(HOME_1)
+  teamId           String?
+  clubIdAtTime     String?
+  licenseIdUsed    String?
+  ratingSnapshotId String?
+  createdAt        DateTime               @default(now())
+
+  match          Match                  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team           Team?                  @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  club           Club?                  @relation(fields: [clubIdAtTime], references: [id], onDelete: SetNull)
+  license        License?               @relation(fields: [licenseIdUsed], references: [id], onDelete: SetNull)
+  ratingSnapshot RatingSnapshotHistory? @relation(fields: [ratingSnapshotId], references: [id], onDelete: SetNull)
+
+  @@index([matchId])
+  @@index([userId])
+  @@index([ratingSnapshotId])
 }
 
 model CompetitionUserRole {

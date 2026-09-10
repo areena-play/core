@@ -29,8 +29,10 @@ import locationsRoutes from './routes/locations.routes';
 import searchRoutes from './routes/search.routes';
 import pushRoutes from './routes/push.routes';
 import relationshipRoutes from './routes/relationships.routes';
+import { ratingsRouter } from './routes/ratings.routes';
 import { startDemoScheduler } from './services/demoScheduler.service';
 import { CronSchedulerService } from './services/cronScheduler.service';
+import { RatingSchedulerService } from './services/ratingScheduler.service';
 
 const app = express();
 
@@ -95,6 +97,7 @@ v1Router.use('/locations', locationsRoutes);
 v1Router.use('/search', searchRoutes);
 v1Router.use('/push', pushRoutes);
 v1Router.use('/relationships', relationshipRoutes);
+v1Router.use('/ratings', ratingsRouter);
 
 // 404 Catch-All Handler for unmatched v1 routes
 v1Router.use((req, res) => {
@@ -135,6 +138,7 @@ app.listen(PORT, () => {
     });
 
     startDemoScheduler();
+    RatingSchedulerService.init();
     CronSchedulerService.start();
 });
 

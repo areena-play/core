@@ -17,6 +17,11 @@ export enum LicenseStatus {
     SUSPENDED = 'SUSPENDED',
 }
 
+export enum LicenseScope {
+    ALL = 'ALL',
+    LEAGUE_ONLY = 'LEAGUE_ONLY',
+}
+
 export enum CourseType {
     COACH_REFRESHER = 'COACH_REFRESHER',
     REFEREE_REFRESHER = 'REFEREE_REFRESHER',
@@ -30,6 +35,9 @@ export interface LicenseDto {
     clubId?: string | null;
     associationId: string;
     seasonId?: string | null;
+    tournamentId?: string | null;
+    isSecondaryClubLicense?: boolean;
+    scope?: LicenseScope | string;
     validFrom: string;
     validUntil: string;
     autoApproved: boolean;
@@ -42,5 +50,5 @@ export interface LicenseDto {
     user?: any;
     club?: any;
     association?: any;
+    tournament?: any;
 }
-

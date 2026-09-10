@@ -7,3 +7,4 @@ export * from './license';
 export * from './competition';
 export * from './billing';
 export * from './communication';
+export * from './rating';

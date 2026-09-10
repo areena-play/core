@@ -17,13 +17,14 @@ model Club {
   associations      ClubAssociation[]
   licenses          License[]
   teams             Team[]
+  matchParticipants MatchParticipant[]
   calendarEvents    CalendarEvent[]
   adminRoles        UserClubRole[]
   broadcastMessages BroadcastMessage[]
-  invoicesIssued    Invoice[]             @relation("ClubInvoices")
-  invoicesReceived  Invoice[]             @relation("ClubInvoicesReceived")
+  invoicesIssued    Invoice[]                 @relation("ClubInvoices")
+  invoicesReceived  Invoice[]                 @relation("ClubInvoicesReceived")
   bexioConfig       BexioConfig?
-  auditLogs         AuditLog[]            @relation("ClubAuditLogs")
+  auditLogs         AuditLog[]                @relation("ClubAuditLogs")
   adminNotices      AdminNotice[]
   faqItems          FaqItem[]
   supportSubjects   SupportSubject[]
@@ -55,4 +56,3 @@ model UserClubRole {
 
   @@unique([userId, clubId, role])
 }
-

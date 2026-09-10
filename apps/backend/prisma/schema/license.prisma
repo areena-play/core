@@ -17,28 +17,36 @@ enum LicenseStatus {
   SUSPENDED
 }
 
+enum LicenseScope {
+  ALL
+  LEAGUE_ONLY
+}
+
 enum CourseType {
   COACH_REFRESHER
   REFEREE_REFRESHER
 }
 
 model License {
-  id               String        @id @default(uuid())
-  userId           String
-  type             LicenseType
-  status           LicenseStatus @default(PENDING_CLUB)
-  clubId           String?
-  associationId    String
-  seasonId         String?
-  validFrom        DateTime
-  validUntil       DateTime
-  autoApproved     Boolean       @default(false)
-  appliedByUserId  String
-  approvedByUserId String?
-  rejectionReason  String?
-  metadata         Json          @default("{}")
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  id                     String        @id @default(uuid())
+  userId                 String
+  type                   LicenseType
+  status                 LicenseStatus @default(PENDING_CLUB)
+  clubId                 String?
+  associationId          String
+  seasonId               String?
+  tournamentId           String?
+  isSecondaryClubLicense Boolean       @default(false)
+  scope                  LicenseScope  @default(ALL)
+  validFrom              DateTime
+  validUntil             DateTime
+  autoApproved           Boolean       @default(false)
+  appliedByUserId        String
+  approvedByUserId       String?
+  rejectionReason        String?
+  metadata               Json          @default("{}")
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
 
   user              User               @relation("UserLicenses", fields: [userId], references: [id], onDelete: Cascade)
   appliedBy         User               @relation("AppliedByUser", fields: [appliedByUserId], references: [id], onDelete: Cascade)
@@ -46,7 +54,9 @@ model License {
   club              Club?              @relation(fields: [clubId], references: [id], onDelete: SetNull)
   association       Association        @relation(fields: [associationId], references: [id], onDelete: Cascade)
   season            Season?            @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  tournament        Competition?       @relation("TournamentLicenses", fields: [tournamentId], references: [id], onDelete: SetNull)
   courseAttendances CourseAttendance[]
+  matchParticipants MatchParticipant[]
 }
 
 model RefresherCourse {
@@ -86,4 +96,3 @@ model CourseAttendance {
 
   @@unique([courseId, userId])
 }
-

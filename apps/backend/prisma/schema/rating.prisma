@@ -1,0 +1,31 @@
+enum RatingTriggerReason {
+  MONTHLY_SCHEDULE
+  BI_ANNUAL_LEVEL
+  MATCH_EVENT
+  INITIAL_PROVISIONAL
+  MANUAL_ADJUSTMENT
+}
+
+model RatingSnapshotHistory {
+  id                String              @id @default(uuid())
+  userId            String
+  associationId     String?
+  elo               Float
+  level             String              @default("D1")
+  rankOverall       Int?
+  rankGender        Int?
+  rankAgeCategory   Int?
+  effectiveFrom     DateTime            @default(now())
+  effectiveTo       DateTime?
+  triggerReason     RatingTriggerReason @default(MONTHLY_SCHEDULE)
+  metadata          Json                @default("{}")
+  createdAt         DateTime            @default(now())
+
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  association       Association?        @relation(fields: [associationId], references: [id], onDelete: SetNull)
+  matchParticipants MatchParticipant[]
+
+  @@index([userId, effectiveFrom])
+  @@index([associationId, effectiveFrom])
+}
+

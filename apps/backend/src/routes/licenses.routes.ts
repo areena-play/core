@@ -275,4 +275,21 @@ router.post('/courses/:id/attest', authenticateToken, async (req: AuthRequest, r
     }
 });
 
+// GET /licenses/check-eligibility - Validate player eligibility for competition
+router.get('/check-eligibility', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const { userId, competitionId, matchDate } = req.query;
+
+        if (!userId || !competitionId) {
+            return res.status(400).json({ error: 'userId and competitionId are required' });
+        }
+
+        const date = matchDate ? new Date(String(matchDate)) : new Date();
+        const result = await LicenseService.checkPlayerEligibility(String(userId), String(competitionId), date);
+        res.json(result);
+    } catch (err: any) {
+        next(err);
+    }
+});
+
 export default router;

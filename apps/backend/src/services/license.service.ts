@@ -1,5 +1,5 @@
 import { prisma } from '../config/prisma';
-import { LicenseType, LicenseStatus } from '@areena/shared';
+import { LicenseType, LicenseStatus, LicenseScope, PlayerEligibilityResult } from '@areena/shared';
 import { redisPub } from '../config/redis';
 import { DistributedLockService } from './distributedLock.service';
 
@@ -68,6 +68,7 @@ export class LicenseService {
 
     /**
      * Applies for a license with transactional validation and PostgreSQL advisory lock protection.
+     * Enforces single/multi-club rules, female league second-club exceptions, and tournament passes.
      */
     static async applyForLicense(data: {
         userId: string;
@@ -75,6 +76,9 @@ export class LicenseService {
         associationId: string;
         clubId?: string | null;
         seasonId?: string | null;
+        tournamentId?: string | null;
+        isSecondaryClubLicense?: boolean;
+        scope?: LicenseScope | string;
         validFrom?: Date;
         validUntil?: Date;
         appliedByUserId: string;
@@ -88,14 +92,17 @@ export class LicenseService {
                     throw new Error('User not found');
                 }
 
-                // 1. Regular Player License: strictly 1 regular license per season
+                const isSecondary = data.isSecondaryClubLicense || false;
+                const scope = (data.scope as LicenseScope) || (isSecondary ? LicenseScope.LEAGUE_ONLY : LicenseScope.ALL);
+
+                // 1. Regular Player License & Club limits
                 if (data.type === LicenseType.PLAYER_REGULAR) {
-                    if (!data.clubId) {
+                    if (!data.clubId && !data.tournamentId) {
                         throw new Error('Regular player license must be attached to a club');
                     }
 
                     if (data.seasonId) {
-                        const existingRegular = await tx.license.findFirst({
+                        const existingLicenses = await tx.license.findMany({
                             where: {
                                 userId: data.userId,
                                 type: LicenseType.PLAYER_REGULAR,
@@ -110,10 +117,26 @@ export class LicenseService {
                             },
                         });
 
-                        if (existingRegular) {
+                        const primaryLicense = existingLicenses.find((l: any) => !l.isSecondaryClubLicense);
+                        const secondaryLicense = existingLicenses.find((l: any) => l.isSecondaryClubLicense);
+
+                        if (!isSecondary && primaryLicense) {
                             throw new Error(
-                                'Player already has an active or pending regular license for this season. Only 1 regular license per season is permitted.',
+                                'Player already has an active or pending primary license for this season. Only 1 primary club license is permitted.',
                             );
+                        }
+
+                        if (isSecondary) {
+                            if (user.gender !== 'FEMALE') {
+                                throw new Error(
+                                    'Secondary club licenses are only permitted for female players participating in league play.',
+                                );
+                            }
+                            if (secondaryLicense) {
+                                throw new Error(
+                                    'Player already has a secondary league license for this season.',
+                                );
+                            }
                         }
                     }
                 }
@@ -123,7 +146,13 @@ export class LicenseService {
                 let validUntil = data.validUntil;
 
                 if (!validUntil) {
-                    if (data.seasonId) {
+                    if (data.tournamentId) {
+                        const tournament = await tx.competition.findUnique({ where: { id: data.tournamentId } });
+                        if (tournament) {
+                            validFrom = new Date(tournament.startDate);
+                            validUntil = new Date(tournament.endDate);
+                        }
+                    } else if (data.seasonId) {
                         const season = await tx.season.findUnique({ where: { id: data.seasonId } });
                         if (season) {
                             validUntil = season.endDate;
@@ -136,11 +165,11 @@ export class LicenseService {
                     }
                 }
 
-                // 2. Check T-Card auto-approval criteria
+                // 2. Check Auto-approval criteria
                 let initialStatus: LicenseStatus = LicenseStatus.PENDING_CLUB;
                 let autoApproved = false;
 
-                if (data.type === LicenseType.PLAYER_TCARD) {
+                if (data.type === LicenseType.PLAYER_TCARD || data.tournamentId) {
                     const association = await tx.association.findUnique({ where: { id: data.associationId } });
                     const rules = (association?.rules as any) || {};
                     const autoApproveDomestic = rules.autoApproveDomesticTCards !== false; // default true
@@ -170,9 +199,12 @@ export class LicenseService {
                         userId: data.userId,
                         type: data.type,
                         status: initialStatus,
-                        clubId: data.clubId,
+                        clubId: data.clubId || null,
                         associationId: data.associationId,
-                        seasonId: data.seasonId,
+                        seasonId: data.seasonId || null,
+                        tournamentId: data.tournamentId || null,
+                        isSecondaryClubLicense: isSecondary,
+                        scope: scope === LicenseScope.LEAGUE_ONLY ? 'LEAGUE_ONLY' : 'ALL',
                         validFrom,
                         validUntil,
                         autoApproved,
@@ -183,10 +215,11 @@ export class LicenseService {
                         user: true,
                         club: true,
                         association: true,
+                        tournament: true,
                     },
                 });
 
-                // If auto-approved and user doesn't have a licenseId yet, generate one
+                // If auto-approved and user doesn't have a permanent licenseId yet, generate one
                 if (autoApproved && !user.licenseId) {
                     const newLicenseId = await this.generateLicenseId(data.associationId, tx);
                     await tx.user.update({
@@ -220,6 +253,7 @@ export class LicenseService {
 
     /**
      * Approves or rejects a license within a PostgreSQL transaction advisory lock.
+     * Generates a permanent unique licenseId upon the user's very first approved license.
      */
     static async processLicenseApproval(data: {
         licenseId: string;
@@ -248,7 +282,7 @@ export class LicenseService {
                         approvedByUserId: data.approvedByUserId,
                         rejectionReason: data.approved ? null : data.rejectionReason,
                     },
-                    include: { user: true, club: true, association: true },
+                    include: { user: true, club: true, association: true, tournament: true },
                 });
 
                 // If approved and user doesn't have a license ID yet, assign one atomically
@@ -284,6 +318,75 @@ export class LicenseService {
         } catch {}
 
         return updatedLicense;
+    }
+
+    /**
+     * Validates whether a player holds an active, eligible license for a specific competition on a given date.
+     */
+    static async checkPlayerEligibility(
+        userId: string,
+        competitionId: string,
+        matchDate: Date = new Date(),
+    ): Promise<PlayerEligibilityResult> {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                licenses: {
+                    where: {
+                        status: LicenseStatus.APPROVED,
+                        validFrom: { lte: matchDate },
+                        validUntil: { gte: matchDate },
+                    },
+                    include: { club: true },
+                },
+            },
+        });
+
+        if (!user) {
+            return { eligible: false, reason: 'USER_NOT_FOUND' };
+        }
+
+        if (user.licenses.length === 0) {
+            return { eligible: false, reason: 'NO_ACTIVE_LICENSE' };
+        }
+
+        const competition = await prisma.competition.findUnique({
+            where: { id: competitionId },
+        });
+
+        if (!competition) {
+            return { eligible: false, reason: 'COMPETITION_NOT_FOUND' };
+        }
+
+        // 1. Direct tournament pass match
+        const tournamentPass = user.licenses.find((l) => l.tournamentId === competitionId);
+        if (tournamentPass) {
+            return { eligible: true, licenseUsed: tournamentPass };
+        }
+
+        // 2. League Match eligibility
+        if (competition.type === 'LEAGUE') {
+            // Allows primary licenses OR female league secondary licenses
+            const leagueLicense = user.licenses.find(
+                (l) => l.scope === 'ALL' || (l.scope === 'LEAGUE_ONLY' && user.gender === 'FEMALE'),
+            );
+            if (leagueLicense) {
+                return { eligible: true, licenseUsed: leagueLicense };
+            }
+            return { eligible: false, reason: 'NO_VALID_LEAGUE_LICENSE' };
+        }
+
+        // 3. Regular Individual Tournament / Cup
+        // Secondary league-only licenses are strictly not valid for regular open individual tournaments
+        const openLicense = user.licenses.find((l) => l.scope === 'ALL');
+        if (openLicense) {
+            return { eligible: true, licenseUsed: openLicense };
+        }
+
+        return {
+            eligible: false,
+            reason: 'SECONDARY_LEAGUE_LICENSE_NOT_PERMITTED_IN_OPEN_TOURNAMENT',
+        };
     }
 
     /**

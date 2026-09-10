@@ -2,6 +2,7 @@ import { prisma } from '../config/prisma';
 import { EncounterStatus, MatchWinner, MatchType } from '@areena/shared';
 import { redisPub } from '../config/redis';
 import { DistributedLockService } from './distributedLock.service';
+import { RatingService } from './rating.service';
 
 export class CompetitionService {
     /**
@@ -232,6 +233,15 @@ export class CompetitionService {
             // If encounter is in a group, update group standings atomically within transaction
             if (initialMatch.encounter.groupId) {
                 await this.recalculateGroupStandings(initialMatch.encounter.groupId, tx);
+            }
+
+            // If match is finished, update ratings and link match participants to rating snapshots
+            if (matchStatus === EncounterStatus.FINISHED) {
+                try {
+                    await RatingService.recordMatchResultRatingUpdate(data.matchId, tx);
+                } catch (ratingErr) {
+                    console.error(`[CompetitionService] Rating calculation error for match ${data.matchId}:`, ratingErr);
+                }
             }
 
             return {
