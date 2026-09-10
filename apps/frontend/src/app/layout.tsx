@@ -50,8 +50,8 @@ export const metadata: Metadata = {
         'mobile-web-app-capable': 'yes',
     },
     title: {
-        template: 'AREENA – %s',
-        default: 'AREENA – Sports Federation, Tournament & League Management',
+        template: '%s',
+        default: 'AREENA',
     },
     description:
         'Next-generation web platform for national and regional sports federations, leagues, tournaments, and licenses.',
