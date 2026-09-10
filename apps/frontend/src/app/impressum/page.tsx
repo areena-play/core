@@ -190,20 +190,32 @@ export default function ImpressumPage() {
 
                     <div className="space-y-2 text-xs text-slate-600 dark:text-slate-300">
                         <div className="font-semibold text-slate-900 dark:text-white text-sm">
-                            {mainAssoc?.name || 'AREENA Platform Operator'}
+                            {mainAssoc?.rules?.impressum?.organizationName || mainAssoc?.name || 'AREENA Platform Operator'}
                         </div>
-                        <p>{t('impressumDoc.administration')}</p>
-                        <p>{t('impressumDoc.governance')}</p>
+                        {mainAssoc?.rules?.impressum?.addressLine1 ? (
+                            <p className="leading-relaxed">
+                                {mainAssoc.rules.impressum.addressLine1}
+                                {mainAssoc.rules.impressum.addressLine2 ? <><br />{mainAssoc.rules.impressum.addressLine2}</> : null}
+                                <br />
+                                {mainAssoc.rules.impressum.cityPostalCode ? `${mainAssoc.rules.impressum.cityPostalCode}, ` : ''}{mainAssoc.rules.impressum.country || 'Switzerland'}
+                                {mainAssoc.rules.impressum.uidNumber ? <span className="block font-mono text-[11px] text-slate-400 mt-0.5">UID: {mainAssoc.rules.impressum.uidNumber}</span> : null}
+                            </p>
+                        ) : (
+                            <>
+                                <p>{t('impressumDoc.administration')}</p>
+                                <p>{t('impressumDoc.governance')}</p>
+                            </>
+                        )}
                     </div>
 
                     <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2 text-xs text-slate-500 dark:text-slate-400">
                         <div className="flex items-center gap-2">
                             <Mail className="h-3.5 w-3.5 text-red-500" />
-                            <span>info@areena.app • privacy@areena.app</span>
+                            <span>{mainAssoc?.rules?.impressum?.email || 'info@areena.app • privacy@areena.app'}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <Globe className="h-3.5 w-3.5 text-slate-400" />
-                            <span>www.areena.app</span>
+                            <span>{mainAssoc?.rules?.impressum?.website || 'www.areena.app'}</span>
                         </div>
                     </div>
                 </div>

@@ -680,10 +680,10 @@ export default function DashboardPage() {
                         </div>
                         <div>
                             <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                                {nationalAssoc?.name || 'Swiss Table Tennis Federation'} • Impressum
+                                {nationalAssoc?.rules?.impressum?.organizationName || nationalAssoc?.name || 'Swiss Table Tennis Federation'} • Impressum
                             </h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400">
-                                Official Sports Platform Governance & Federation Administration
+                                {nationalAssoc?.rules?.impressum?.customLegalNotes || 'Official Sports Platform Governance & Federation Administration'}
                             </p>
                         </div>
                     </div>
@@ -705,12 +705,20 @@ export default function DashboardPage() {
                             <span>Federation Headquarters</span>
                         </div>
                         <p className="leading-relaxed">
-                            {nationalAssoc?.name || 'Swiss Table Tennis (STT)'}<br />
-                            Haus des Sports, Talgut-Zentrum 27<br />
-                            CH-3063 Ittigen / Bern, Switzerland
+                            {nationalAssoc?.rules?.impressum?.organizationName || nationalAssoc?.name || 'Swiss Table Tennis (STT)'}<br />
+                            {nationalAssoc?.rules?.impressum?.addressLine1 || 'Haus des Sports, Talgut-Zentrum 27'}<br />
+                            {nationalAssoc?.rules?.impressum?.addressLine2 ? (
+                                <>
+                                    {nationalAssoc.rules.impressum.addressLine2}<br />
+                                </>
+                            ) : null}
+                            {nationalAssoc?.rules?.impressum?.cityPostalCode || 'CH-3063 Ittigen / Bern'}, {nationalAssoc?.rules?.impressum?.country || 'Switzerland'}
                         </p>
                         <p className="text-slate-400 font-mono text-[11px]">
-                            UID: CHE-107.822.451 • Swiss Olympic Member
+                            UID: {nationalAssoc?.rules?.impressum?.uidNumber || 'CHE-107.822.451'}
+                            {nationalAssoc?.rules?.impressum?.affiliation
+                                ? ` • ${nationalAssoc.rules.impressum.affiliation}`
+                                : ' • Swiss Olympic Member'}
                         </p>
                     </div>
 
@@ -722,15 +730,15 @@ export default function DashboardPage() {
                         </div>
                         <p className="flex items-center gap-1.5">
                             <Mail className="h-3.5 w-3.5 text-slate-400" />
-                            <span>info@swisstabletennis.ch</span>
+                            <span>{nationalAssoc?.rules?.impressum?.email || 'info@swisstabletennis.ch'}</span>
                         </p>
                         <p className="flex items-center gap-1.5">
                             <Phone className="h-3.5 w-3.5 text-slate-400" />
-                            <span>+41 (0)31 359 73 90</span>
+                            <span>{nationalAssoc?.rules?.impressum?.phone || '+41 (0)31 359 73 90'}</span>
                         </p>
                         <p className="flex items-center gap-1.5">
                             <Globe className="h-3.5 w-3.5 text-slate-400" />
-                            <span>www.swisstabletennis.ch</span>
+                            <span>{nationalAssoc?.rules?.impressum?.website || 'www.swisstabletennis.ch'}</span>
                         </p>
                     </div>
 
@@ -745,6 +753,11 @@ export default function DashboardPage() {
                             Rating Standard: <strong>FIDE / STT Elo & Classification Matrix (D1–A20)</strong><br />
                             Tournament Engine: <strong>DAG Multi-Parent League & Swiss Circuit</strong>
                         </p>
+                        {nationalAssoc?.rules?.impressum?.presidentName && (
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+                                Leadership: <strong>{nationalAssoc.rules.impressum.presidentName}</strong>
+                            </p>
+                        )}
                         <div className="flex items-center gap-3 pt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                             <Link href="/manual" className="hover:underline">User Manual</Link>
                             <span>•</span>

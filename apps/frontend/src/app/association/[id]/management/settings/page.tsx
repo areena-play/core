@@ -22,6 +22,10 @@ import {
     X,
     Save,
     Phone,
+    MapPin,
+    Mail,
+    Globe,
+    FileText,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AccessDenied } from '@/components/auth/AccessDenied';
@@ -65,7 +69,7 @@ export default function AssociationSettingsPage() {
     const [topAssoc, setTopAssoc] = useState<any | null>(null);
 
     // Active Navigation Tab
-    const [activeTab, setActiveTab] = useState<'branding' | 'sports' | 'age-series' | 'seasons' | 'license-engine'>('branding');
+    const [activeTab, setActiveTab] = useState<'branding' | 'impressum' | 'sports' | 'age-series' | 'seasons' | 'license-engine'>('branding');
 
     // 1. Identity & Branding
     const [assocName, setAssocName] = useState('');
@@ -75,6 +79,20 @@ export default function AssociationSettingsPage() {
     const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Impressum & Legal Entity
+    const [impressumOrgName, setImpressumOrgName] = useState('');
+    const [impressumAddress1, setImpressumAddress1] = useState('');
+    const [impressumAddress2, setImpressumAddress2] = useState('');
+    const [impressumCityPostal, setImpressumCityPostal] = useState('');
+    const [impressumCountry, setImpressumCountry] = useState('Switzerland');
+    const [impressumUid, setImpressumUid] = useState('');
+    const [impressumAffiliation, setImpressumAffiliation] = useState('');
+    const [impressumEmail, setImpressumEmail] = useState('');
+    const [impressumPhone, setImpressumPhone] = useState('');
+    const [impressumWebsite, setImpressumWebsite] = useState('');
+    const [impressumPresident, setImpressumPresident] = useState('');
+    const [impressumLegalNotes, setImpressumLegalNotes] = useState('');
 
     // 2. Sports & Competition Configuration
     const [sportType, setSportType] = useState('Table Tennis');
@@ -180,6 +198,21 @@ export default function AssociationSettingsPage() {
                     setAgeCutoffDate(rules.ageCutoffDate);
                 }
 
+                // Load impressum details
+                const imp = rules.impressum || {};
+                setImpressumOrgName(imp.organizationName || top.name || '');
+                setImpressumAddress1(imp.addressLine1 || '');
+                setImpressumAddress2(imp.addressLine2 || '');
+                setImpressumCityPostal(imp.cityPostalCode || '');
+                setImpressumCountry(imp.country || 'Switzerland');
+                setImpressumUid(imp.uidNumber || '');
+                setImpressumAffiliation(imp.affiliation || '');
+                setImpressumEmail(imp.email || '');
+                setImpressumPhone(imp.phone || '');
+                setImpressumWebsite(imp.website || '');
+                setImpressumPresident(imp.presidentName || '');
+                setImpressumLegalNotes(imp.customLegalNotes || '');
+
                 // Load seasons
                 const seasonsData = await api.getSeasons(top.id).catch(() => []);
                 setSeasons(Array.isArray(seasonsData) ? seasonsData : []);
@@ -258,6 +291,20 @@ export default function AssociationSettingsPage() {
                 ageSeries,
                 ageCutoffDate,
                 prioritizedCountryCodes,
+                impressum: {
+                    organizationName: impressumOrgName,
+                    addressLine1: impressumAddress1,
+                    addressLine2: impressumAddress2,
+                    cityPostalCode: impressumCityPostal,
+                    country: impressumCountry,
+                    uidNumber: impressumUid,
+                    affiliation: impressumAffiliation,
+                    email: impressumEmail,
+                    phone: impressumPhone,
+                    website: impressumWebsite,
+                    presidentName: impressumPresident,
+                    customLegalNotes: impressumLegalNotes,
+                },
             };
 
             await api.updateAssociationSettings(topAssoc.id, {
@@ -498,6 +545,19 @@ export default function AssociationSettingsPage() {
 
                 <button
                     type="button"
+                    onClick={() => setActiveTab('impressum')}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition ${
+                        activeTab === 'impressum'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                >
+                    <FileText className="h-4 w-4" />
+                    <span>Impressum & Legal</span>
+                </button>
+
+                <button
+                    type="button"
                     onClick={() => setActiveTab('sports')}
                     className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition ${
                         activeTab === 'sports'
@@ -678,6 +738,295 @@ export default function AssociationSettingsPage() {
                                             <Trash2 className="h-3.5 w-3.5" />
                                             <span>Remove Logo</span>
                                         </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB: IMPRESSUM & FEDERATION LEGAL */}
+            {activeTab === 'impressum' && (
+                <div className="space-y-6">
+                    {/* Legal Entity & Headquarters Card */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
+                        <div className="space-y-1">
+                            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <Building2 className="h-5 w-5 text-amber-500" />
+                                <span>Federation Headquarters & Legal Entity</span>
+                            </h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Configure the official legal company name, headquarters address, and official register UID shown in the home page and legal impressum.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Legal Organization Name
+                                </label>
+                                <input
+                                    type="text"
+                                    value={impressumOrgName}
+                                    onChange={(e) => setImpressumOrgName(e.target.value)}
+                                    placeholder="e.g. Swiss Table Tennis (STT)"
+                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    UID / Commercial Register Number
+                                </label>
+                                <input
+                                    type="text"
+                                    value={impressumUid}
+                                    onChange={(e) => setImpressumUid(e.target.value)}
+                                    placeholder="e.g. CHE-107.822.451"
+                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 font-mono text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Street Address (Line 1)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={impressumAddress1}
+                                    onChange={(e) => setImpressumAddress1(e.target.value)}
+                                    placeholder="e.g. Haus des Sports, Talgut-Zentrum 27"
+                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Additional Address info (Line 2, Optional)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={impressumAddress2}
+                                    onChange={(e) => setImpressumAddress2(e.target.value)}
+                                    placeholder="e.g. Postfach 123 / Building B"
+                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Postal Code & City
+                                </label>
+                                <input
+                                    type="text"
+                                    value={impressumCityPostal}
+                                    onChange={(e) => setImpressumCityPostal(e.target.value)}
+                                    placeholder="e.g. CH-3063 Ittigen / Bern"
+                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Country
+                                </label>
+                                <input
+                                    type="text"
+                                    value={impressumCountry}
+                                    onChange={(e) => setImpressumCountry(e.target.value)}
+                                    placeholder="e.g. Switzerland"
+                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div className="sm:col-span-2">
+                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Olympic & Federation Affiliations
+                                </label>
+                                <input
+                                    type="text"
+                                    value={impressumAffiliation}
+                                    onChange={(e) => setImpressumAffiliation(e.target.value)}
+                                    placeholder="e.g. Swiss Olympic Member • ITTF • ETTU"
+                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Official Contact & Web Communication */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
+                        <div className="space-y-1">
+                            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <Mail className="h-5 w-5 text-amber-500" />
+                                <span>Official Communication & Web Channels</span>
+                            </h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Contact channels displayed to the public for inquiries, press, and data protection requests.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Official Email Address
+                                </label>
+                                <input
+                                    type="email"
+                                    value={impressumEmail}
+                                    onChange={(e) => setImpressumEmail(e.target.value)}
+                                    placeholder="e.g. info@swisstabletennis.ch"
+                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Official Telephone Number
+                                </label>
+                                <input
+                                    type="text"
+                                    value={impressumPhone}
+                                    onChange={(e) => setImpressumPhone(e.target.value)}
+                                    placeholder="e.g. +41 (0)31 359 73 90"
+                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Official Website Domain
+                                </label>
+                                <input
+                                    type="text"
+                                    value={impressumWebsite}
+                                    onChange={(e) => setImpressumWebsite(e.target.value)}
+                                    placeholder="e.g. www.swisstabletennis.ch"
+                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Federation Leadership & Legal Governance */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
+                        <div className="space-y-1">
+                            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <Shield className="h-5 w-5 text-amber-500" />
+                                <span>Federation Leadership & Operating Policy</span>
+                            </h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Representative board members and platform governance notices.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    President / Executive Representative
+                                </label>
+                                <input
+                                    type="text"
+                                    value={impressumPresident}
+                                    onChange={(e) => setImpressumPresident(e.target.value)}
+                                    placeholder="e.g. Freddy Falck, President"
+                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Governance Subtitle / Motto
+                                </label>
+                                <input
+                                    type="text"
+                                    value={impressumLegalNotes}
+                                    onChange={(e) => setImpressumLegalNotes(e.target.value)}
+                                    placeholder="e.g. Official Sports Platform Governance & Federation Administration"
+                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Live Preview Card */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-6 sm:p-8 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                <FileText className="h-4 w-4 text-amber-500" />
+                                <span>Live Home Page Impressum Preview</span>
+                            </div>
+                            <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                REAL-TIME PREVIEW
+                            </span>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                                <div>
+                                    <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                                        {impressumOrgName || assocName || 'Swiss Table Tennis (STT)'} • Impressum
+                                    </h3>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                        {impressumLegalNotes || 'Official Sports Platform Governance & Federation Administration'}
+                                    </p>
+                                </div>
+                                <span className="text-[10px] font-bold text-red-600 dark:text-red-400">
+                                    Full Legal & Tech Impressum ↗
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-600 dark:text-slate-300">
+                                <div className="space-y-1">
+                                    <div className="font-bold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
+                                        <Building2 className="h-3.5 w-3.5 text-red-500" />
+                                        <span>Federation Headquarters</span>
+                                    </div>
+                                    <p className="leading-relaxed text-[11px]">
+                                        {impressumOrgName || assocName || 'Swiss Table Tennis (STT)'}<br />
+                                        {impressumAddress1 || 'Haus des Sports, Talgut-Zentrum 27'}<br />
+                                        {impressumAddress2 ? <>{impressumAddress2}<br /></> : null}
+                                        {impressumCityPostal || 'CH-3063 Ittigen / Bern'}, {impressumCountry || 'Switzerland'}
+                                    </p>
+                                    <p className="text-slate-400 font-mono text-[10px]">
+                                        UID: {impressumUid || 'CHE-107.822.451'}
+                                        {impressumAffiliation ? ` • ${impressumAffiliation}` : ' • Swiss Olympic Member'}
+                                    </p>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <div className="font-bold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
+                                        <Mail className="h-3.5 w-3.5 text-red-500" />
+                                        <span>Official Contact</span>
+                                    </div>
+                                    <p className="flex items-center gap-1.5 text-[11px]">
+                                        <Mail className="h-3 w-3 text-slate-400" />
+                                        <span>{impressumEmail || 'info@swisstabletennis.ch'}</span>
+                                    </p>
+                                    <p className="flex items-center gap-1.5 text-[11px]">
+                                        <Phone className="h-3 w-3 text-slate-400" />
+                                        <span>{impressumPhone || '+41 (0)31 359 73 90'}</span>
+                                    </p>
+                                    <p className="flex items-center gap-1.5 text-[11px]">
+                                        <Globe className="h-3 w-3 text-slate-400" />
+                                        <span>{impressumWebsite || 'www.swisstabletennis.ch'}</span>
+                                    </p>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <div className="font-bold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
+                                        <Shield className="h-3.5 w-3.5 text-red-500" />
+                                        <span>Platform & Leadership</span>
+                                    </div>
+                                    <p className="leading-relaxed text-[11px]">
+                                        Operating System: <strong>AREENA v1.4.0</strong><br />
+                                        Rating Standard: <strong>STT Elo & Level Tier (D1–A20)</strong>
+                                    </p>
+                                    {impressumPresident && (
+                                        <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                                            Leadership: <strong>{impressumPresident}</strong>
+                                        </p>
                                     )}
                                 </div>
                             </div>
