@@ -115,6 +115,24 @@ export function GlobalSearchBar({
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            setIsOpen(false);
+            inputRef.current?.blur();
+            return;
+        }
+
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (isOpen && results.length > 0 && results[selectedIndex]) {
+                handleSelectResult(results[selectedIndex]);
+            } else if (query.trim()) {
+                setIsOpen(false);
+                if (onSelect) onSelect();
+                router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+            }
+            return;
+        }
+
         if (!isOpen || results.length === 0) return;
 
         if (e.key === 'ArrowDown') {
@@ -123,14 +141,6 @@ export function GlobalSearchBar({
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
             setSelectedIndex((prev) => (prev - 1 + results.length) % results.length);
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (results[selectedIndex]) {
-                handleSelectResult(results[selectedIndex]);
-            }
-        } else if (e.key === 'Escape') {
-            setIsOpen(false);
-            inputRef.current?.blur();
         }
     };
 
@@ -166,10 +176,14 @@ export function GlobalSearchBar({
                         setQuery(e.target.value);
                         setIsOpen(true);
                     }}
-                    onFocus={() => setIsOpen(true)}
+                    onFocus={() => {
+                        if (query.trim().length >= 2) {
+                            setIsOpen(true);
+                        }
+                    }}
                     onKeyDown={handleKeyDown}
                     placeholder={placeholder}
-                    className={`w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/90 pl-10 pr-12 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition shadow-xs ${
+                    className={`w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/90 pl-10 pr-12 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-hidden focus:ring-2 focus:ring-red-500/20 transition shadow-2xs ${
                         compact ? 'py-1.5' : 'py-2'
                     }`}
                 />
@@ -214,6 +228,10 @@ export function GlobalSearchBar({
                                     <button
                                         key={`${item.type}-${item.id}`}
                                         type="button"
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            handleSelectResult(item);
+                                        }}
                                         onClick={() => handleSelectResult(item)}
                                         onMouseEnter={() => setSelectedIndex(idx)}
                                         className={`w-full flex items-center justify-between gap-2.5 rounded-xl px-2.5 py-2 text-left transition ${
@@ -226,7 +244,7 @@ export function GlobalSearchBar({
                                             <div
                                                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${
                                                     isSelected
-                                                        ? 'bg-white dark:bg-slate-900 border-red-200 dark:border-red-800/80 shadow-xs'
+                                                        ? 'bg-white dark:bg-slate-900 border-red-200 dark:border-red-800/80 shadow-2xs'
                                                         : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                                                 }`}
                                             >
@@ -274,6 +292,29 @@ export function GlobalSearchBar({
                                 </p>
                             </div>
                         )
+                    )}
+
+                    {query.trim().length >= 2 && (
+                        <div className="p-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                            <button
+                                type="button"
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    setIsOpen(false);
+                                    if (onSelect) onSelect();
+                                    router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+                                }}
+                                onClick={() => {
+                                    setIsOpen(false);
+                                    if (onSelect) onSelect();
+                                    router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+                                }}
+                                className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+                            >
+                                <span>View all results on dedicated Search Page</span>
+                                <ArrowRight className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
                     )}
                 </div>
             )}

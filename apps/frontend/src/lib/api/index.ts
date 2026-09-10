@@ -17,6 +17,7 @@ import { SupportApi } from './modules/support.api';
 import { AdminApi } from './modules/admin.api';
 import { PushApi } from './modules/push.api';
 import { RelationshipsApi } from './modules/relationships.api';
+import { SearchApi } from './modules/search.api';
 
 export * from './client';
 export * from './modules/system.api';
@@ -37,6 +38,7 @@ export * from './modules/support.api';
 export * from './modules/admin.api';
 export * from './modules/push.api';
 export * from './modules/relationships.api';
+export * from './modules/search.api';
 
 export class ApiClient extends HttpClient {
     public readonly system: SystemApi;
@@ -57,6 +59,7 @@ export class ApiClient extends HttpClient {
     public readonly admin: AdminApi;
     public readonly push: PushApi;
     public readonly relationships: RelationshipsApi;
+    public readonly search: SearchApi;
 
     constructor() {
         super();
@@ -78,6 +81,7 @@ export class ApiClient extends HttpClient {
         this.admin = new AdminApi(this);
         this.push = new PushApi(this);
         this.relationships = new RelationshipsApi(this);
+        this.search = new SearchApi(this);
     }
 
     // Direct proxy convenience methods for unified access & 100% backward compatibility
