@@ -101,6 +101,9 @@ interface MainViewContextType {
     mainAssoc: any | null;
     associations: any[];
     refetchAssociations: () => Promise<void>;
+    headerTitle: string;
+    headerBadge: string;
+    headerLogoUrl: string | null;
 }
 
 const MainViewContext = createContext<MainViewContextType | undefined>(undefined);
@@ -223,6 +226,22 @@ export function MainViewProvider({ children }: { children: React.ReactNode }) {
         return parseContextFromUrl(pathname);
     }, [pathname, isContextAgnosticRoute, clientContext]);
 
+    // Reset entityMeta when returning to main association view or navigating to a different entity
+    useEffect(() => {
+        if (!isContextAgnosticRoute) {
+            if (activeView === 'association' && entityId === 'main') {
+                setEntityMetaState(null);
+            } else if (
+                entityMeta &&
+                entityId &&
+                entityMeta.id !== entityId &&
+                entityMeta.code?.toLowerCase() !== entityId.toLowerCase()
+            ) {
+                setEntityMetaState(null);
+            }
+        }
+    }, [pathname, activeView, entityId, isContextAgnosticRoute]);
+
     // Store active context when navigating entity pages
     useEffect(() => {
         if (!isContextAgnosticRoute) {
@@ -285,6 +304,51 @@ export function MainViewProvider({ children }: { children: React.ReactNode }) {
     // Effective entityMeta preserves last known entityMeta during profile/auth views
     const effectiveEntityMeta = entityMeta || (isContextAgnosticRoute ? lastContextRef.current.entityMeta : null);
 
+    const headerTitle = useMemo(() => {
+        if (activeView === 'association') {
+            if (entityId && entityId !== 'main' && effectiveEntityMeta?.title) {
+                return effectiveEntityMeta.title;
+            }
+            return mainAssoc?.name;
+        }
+        if (activeView === 'club') {
+            return effectiveEntityMeta?.title;
+        }
+        if (activeView === 'tournament') {
+            return effectiveEntityMeta?.title;
+        }
+        if (activeView === 'admin') {
+            return 'System Administration';
+        }
+        return 'Sports Federation';
+    }, [activeView, entityId, effectiveEntityMeta, mainAssoc]);
+
+    const headerBadge = useMemo(() => {
+        if (activeView === 'association') {
+            if (entityId && entityId !== 'main') {
+                return effectiveEntityMeta?.badge || 'SUB_ASSOCIATION';
+            }
+            return mainAssoc?.level || 'NATIONAL';
+        }
+        if (activeView === 'club') {
+            return effectiveEntityMeta?.badge || 'CLUB';
+        }
+        if (activeView === 'tournament') {
+            return effectiveEntityMeta?.badge || 'TOURNAMENT';
+        }
+        if (activeView === 'admin') {
+            return 'SYSTEM_ROOT';
+        }
+        return effectiveEntityMeta?.badge || 'FEDERATION';
+    }, [activeView, entityId, effectiveEntityMeta, mainAssoc]);
+
+    const headerLogoUrl = useMemo(() => {
+        if (activeView === 'association' && (!entityId || entityId === 'main')) {
+            return mainAssoc?.logoUrl || null;
+        }
+        return null;
+    }, [activeView, entityId, mainAssoc]);
+
     return (
         <MainViewContext.Provider
             value={{
@@ -297,6 +361,9 @@ export function MainViewProvider({ children }: { children: React.ReactNode }) {
                 mainAssoc,
                 associations,
                 refetchAssociations: fetchAssociations,
+                headerTitle,
+                headerBadge,
+                headerLogoUrl,
             }}
         >
             {children}

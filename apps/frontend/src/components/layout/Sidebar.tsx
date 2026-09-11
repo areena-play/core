@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -47,6 +47,7 @@ import { useMainView } from '@/lib/mainViewContext';
 import { useAuth } from '@/lib/authContext';
 import { useTour } from '@/lib/tourContext';
 import { getCommonNavSections, NavSection, NavItem, SubNavItem } from '@/lib/navigation';
+import { WorkspaceHeaderCard } from '@/components/layout/WorkspaceHeaderCard';
 
 function SidebarContent() {
     const pathname = usePathname();
@@ -85,12 +86,6 @@ function SidebarContent() {
         mainAssoc,
         associations,
     });
-
-    // Determine header card contents
-    const headerTitle =
-        entityMeta?.title ||
-        (activeView === 'association' ? (mainAssoc?.name) : t(currentViewMeta.labelKey));
-    const headerBadge = entityMeta?.badge || t(currentViewMeta.badgeKey);
 
     // Precise active navigation resolver
     const isNavActive = (targetHref: string) => {
@@ -186,23 +181,7 @@ function SidebarContent() {
                 className={`flex-1 min-h-0 overflow-y-auto p-4 space-y-5 overscroll-contain scrollbar-hover ${isScrolling ? 'is-scrolling' : ''}`}
             >
                 {/* Active Workspace Header Card */}
-                <div
-                    data-tour="workspace-switcher"
-                    className="rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60 p-2.5 space-y-1.5 transition-colors duration-150"
-                >
-                    <div className="flex items-center gap-2">
-                        <span
-                            className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${currentViewMeta.badgeColor}`}
-                        >
-                            {headerBadge}
-                        </span>
-                        <div>
-                            <h3 className="font-bold text-xs text-slate-900 dark:text-white leading-snug break-words">
-                                {headerTitle}
-                            </h3>
-                        </div>
-                    </div>
-                </div>
+                <WorkspaceHeaderCard dataTour="workspace-switcher" />
 
                 {/* Dynamic Navigation Sections */}
                 <nav className="space-y-5">

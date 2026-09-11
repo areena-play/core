@@ -15,6 +15,7 @@ import { useTour } from '@/lib/tourContext';
 import { getCommonNavSections, NavSection, NavItem } from '@/lib/navigation';
 import { GlobalSearchBar } from '@/components/search/GlobalSearchBar';
 import { FlagIcon } from '@/components/ui/FlagIcon';
+import { WorkspaceHeaderCard } from '@/components/layout/WorkspaceHeaderCard';
 import {
     Menu,
     X,
@@ -156,11 +157,6 @@ export function Navbar() {
         const qs = params.toString();
         return `/support${qs ? `?${qs}` : ''}`;
     }, [activeView, entityId, mainAssoc, pathname]);
-
-    const headerTitle =
-        entityMeta?.title ||
-        (activeView === 'association' ? (mainAssoc?.name || 'Sports Federation') : t(currentViewMeta.labelKey));
-    const headerBadge = entityMeta?.badge || t(currentViewMeta.badgeKey);
 
     return (
         <>
@@ -804,20 +800,7 @@ export function Navbar() {
                             </div>
 
                             {/* Active Workspace Header Card */}
-                            <div className="rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60 p-2.5 space-y-1.5">
-                                <div className="flex items-center gap-2">
-                                    <span
-                                        className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${currentViewMeta.badgeColor}`}
-                                    >
-                                        {headerBadge}
-                                    </span>
-                                    <div>
-                                        <h3 className="font-bold text-xs text-slate-900 dark:text-white leading-snug break-words">
-                                            {headerTitle}
-                                        </h3>
-                                    </div>
-                                </div>
-                            </div>
+                            <WorkspaceHeaderCard />
 
                             {/* Regular Navigation Sections */}
                             <nav className="space-y-4">
