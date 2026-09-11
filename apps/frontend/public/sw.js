@@ -1,4 +1,4 @@
-const CACHE_NAME = 'areena-pwa-v1';
+const CACHE_NAME = 'areena-pwa-v2';
 const STATIC_ASSETS = [
   '/',
   '/favicon.svg',
@@ -24,40 +24,43 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys.filter((key) => key !== CACHE_NAME && key !== 'areena-api-cache').map((key) => caches.delete(key))
       );
     })
   );
   self.clients.claim();
 });
 
-// 3. Fetch: Stale-While-Revalidate for API reads, Cache-First for static assets
+// 3. Fetch: Network-First for API reads with Offline Fallback, Network-First for static assets
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  // Skip non-GET requests (mutations always go to network)
+  // Skip non-GET requests (mutations always go directly to network)
   if (request.method !== 'GET') {
     return;
   }
 
-  // Handle API GET requests with Stale-While-Revalidate
+  // Handle API GET requests: Network-First (always fresh when online, cache only when offline)
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      caches.open('areena-api-cache').then((cache) => {
-        return cache.match(request).then((cachedResponse) => {
-          const fetchPromise = fetch(request)
-            .then((networkResponse) => {
-              if (networkResponse && networkResponse.status === 200) {
-                cache.put(request, networkResponse.clone());
-              }
-              return networkResponse;
-            })
-            .catch(() => cachedResponse);
-
-          return cachedResponse || fetchPromise;
-        });
-      })
+      fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open('areena-api-cache').then((cache) => cache.put(request, responseClone));
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          // Device is completely offline: fallback to offline cached data
+          const cached = await caches.match(request);
+          if (cached) return cached;
+          return new Response(JSON.stringify({ error: 'Offline', message: 'You are currently offline.' }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        })
     );
     return;
   }

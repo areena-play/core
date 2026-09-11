@@ -68,7 +68,8 @@ export function autoTransaction(req: Request, res: Response, next: NextFunction)
             });
         },
         {
-            timeout: 30000, // 30s transaction timeout for complex operations
+            maxWait: 60000,  // Maximum time to acquire transaction lock (60s)
+            timeout: 300000, // 5 minutes transaction timeout for long-running operations
         }
     ).catch((err) => {
         // If transaction rolled back due to an error and response hasn't finished, delegate to Express error handler

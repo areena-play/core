@@ -631,20 +631,14 @@ export default function DashboardPage() {
                     {/* Regional Sub-Associations Nodes */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2">
                         {regionalAssocs.length === 0 ? (
-                            ['OTTV', 'MTTV', 'TTVI', 'AGTT', 'NWTTV', 'AVVF'].map((code, idx) => (
-                                <div
-                                    key={idx}
-                                    className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 p-3.5 text-center space-y-1.5"
-                                >
-                                    <span className="font-mono font-black text-xs text-red-600 dark:text-red-400">
-                                        {code}
-                                    </span>
-                                    <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
-                                        Regional Association
-                                    </div>
-                                    <p className="text-[10px] text-slate-400">Affiliated Regional Sub-body</p>
-                                </div>
-                            ))
+                            <div className="col-span-full rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-8 text-center space-y-1 bg-slate-50/50 dark:bg-slate-900/30">
+                                <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                                    No regional sub-associations created yet.
+                                </p>
+                                <p className="text-[11px] text-slate-400">
+                                    Import from ClickTT or add regional federations in Management Settings.
+                                </p>
+                            </div>
                         ) : (
                             regionalAssocs.map((ra) => (
                                 <Link

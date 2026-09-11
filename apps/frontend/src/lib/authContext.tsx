@@ -75,9 +75,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 localStorage.setItem('areena_user', JSON.stringify(userData));
             }
         } catch (err: any) {
-            // Only invalidate local session if token is explicitly rejected (401 or 403)
-            if (err?.status === 401 || err?.status === 403 || err?.error === 'Invalid or expired token') {
-                console.warn('[Auth] Stored session is invalid or expired. Logging out.');
+            // Invalidate local session if token is rejected or user not found (401, 403, 404)
+            if (err?.status === 401 || err?.status === 403 || err?.status === 404 || err?.error === 'Invalid or expired token') {
+                console.warn('[Auth] Stored session is invalid, expired, or user deleted. Logging out.');
                 localStorage.removeItem('areena_token');
                 localStorage.removeItem('areena_user');
                 setUser(null);

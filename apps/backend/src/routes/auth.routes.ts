@@ -729,7 +729,7 @@ router.get('/me', authenticateToken, async (req: AuthRequest, res: Response, nex
         });
 
         if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+            return res.status(401).json({ error: 'User not found or session invalidated' });
         }
 
         res.json(user);

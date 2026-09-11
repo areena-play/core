@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 async function handleProxy(request: NextRequest, { params }: { params: { path: string[] } }) {
     const path = params.path ? params.path.join('/') : '';
     const search = request.nextUrl.search || '';
@@ -73,13 +75,13 @@ async function handleProxy(request: NextRequest, { params }: { params: { path: s
             'content-type',
             'content-length',
             'content-disposition',
-            'cache-control',
             'x-ratelimit-limit',
             'x-ratelimit-remaining',
         ].forEach((h) => {
             const v = backendRes.headers.get(h);
             if (v) responseHeaders.set(h, v);
         });
+        responseHeaders.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
         return new NextResponse(responseData, {
             status: backendRes.status,
