@@ -1614,19 +1614,72 @@ router.get('/users/:identifier/stats', optionalAuth, async (req: AuthRequest, re
             };
         });
 
+        // Compute Head-to-Head opponent summary
+        const h2hMap = new Map<string, any>();
+        formattedMatches.forEach((m) => {
+            m.opponents.forEach((opp: any) => {
+                if (!opp || !opp.id || opp.id === user.id) return;
+                const existing = h2hMap.get(opp.id) || {
+                    opponent: {
+                        id: opp.id,
+                        firstName: opp.firstName,
+                        lastName: opp.lastName,
+                        licenseId: opp.licenseId,
+                        eloPoints: opp.eloPoints,
+                        avatarUrl: opp.avatarUrl,
+                    },
+                    totalMatches: 0,
+                    wins: 0,
+                    losses: 0,
+                    draws: 0,
+                    setsWon: 0,
+                    setsLost: 0,
+                    lastMatchDate: m.date,
+                    lastMatchResult: m.result,
+                    matches: [],
+                };
+
+                existing.totalMatches += 1;
+                if (m.result === 'WIN') existing.wins += 1;
+                else if (m.result === 'LOSS') existing.losses += 1;
+                else existing.draws += 1;
+
+                const [myS, oppS] = m.scoreSets.split(':').map((s: string) => parseInt(s, 10) || 0);
+                existing.setsWon += myS;
+                existing.setsLost += oppS;
+
+                existing.matches.push({
+                    id: m.id,
+                    date: m.date,
+                    competitionName: m.competitionName,
+                    competitionType: m.competitionType,
+                    categoryName: m.categoryName,
+                    matchType: m.matchType,
+                    result: m.result,
+                    scoreSets: m.scoreSets,
+                    setsDetail: m.setsDetail,
+                });
+
+                h2hMap.set(opp.id, existing);
+            });
+        });
+
+        const headToHead = Array.from(h2hMap.values())
+            .map((h: any) => ({
+                ...h,
+                matchesCount: h.totalMatches,
+                winRate: h.totalMatches > 0 ? Math.round((h.wins / h.totalMatches) * 100) : 0,
+            }))
+            .sort((a, b) => b.totalMatches - a.totalMatches || b.wins - a.wins);
+
         const totalMatches = wins + losses;
         const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
         const totalSets = setsWon + setsLost;
         const setWinRate = totalSets > 0 ? Math.round((setsWon / totalSets) * 100) : 0;
-
-        const allEloValues = [
-            user.eloPoints,
-            ...eloHistory.map((h) => Math.round(h.elo)),
-        ].filter((n) => typeof n === 'number' && !isNaN(n));
-
-        const highestElo = allEloValues.length > 0 ? Math.max(...allEloValues) : user.eloPoints;
-        const lowestElo = allEloValues.length > 0 ? Math.min(...allEloValues) : user.eloPoints;
-        const recentForm = formattedMatches.slice(0, 5).map((m) => m.result);
+        const eloValues = eloHistory.map((h: any) => h.elo).concat(user.eloPoints);
+        const highestElo = eloValues.length > 0 ? Math.round(Math.max(...eloValues)) : user.eloPoints;
+        const lowestElo = eloValues.length > 0 ? Math.round(Math.min(...eloValues)) : user.eloPoints;
+        const recentForm = formattedMatches.slice(0, 5).map((m: any) => m.result);
 
         res.json({
             stats: {
@@ -1655,7 +1708,162 @@ router.get('/users/:identifier/stats', optionalAuth, async (req: AuthRequest, re
                 recentForm,
             },
             matches: formattedMatches,
+            headToHead,
             eloHistory,
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
+/**
+ * GET /auth/users/:identifier/h2h/:opponentIdentifier
+ * Direct Head-to-Head breakdown and analysis between two players.
+ */
+router.get('/users/:identifier/h2h/:opponentIdentifier', optionalAuth, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const { identifier, opponentIdentifier } = req.params;
+        if (!identifier || !opponentIdentifier) {
+            return res.status(400).json({ error: 'Both player identifiers are required' });
+        }
+
+        const [player, opponent] = await Promise.all([
+            prisma.user.findFirst({
+                where: { OR: [{ id: identifier }, { licenseId: identifier }] },
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    licenseId: true,
+                    eloPoints: true,
+                    currentLevel: true,
+                    rank: true,
+                    avatarUrl: true,
+                    clubRoles: {
+                        select: { club: { select: { id: true, name: true, code: true, slug: true } } },
+                    },
+                },
+            }),
+            prisma.user.findFirst({
+                where: { OR: [{ id: opponentIdentifier }, { licenseId: opponentIdentifier }] },
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    licenseId: true,
+                    eloPoints: true,
+                    currentLevel: true,
+                    rank: true,
+                    avatarUrl: true,
+                    clubRoles: {
+                        select: { club: { select: { id: true, name: true, code: true, slug: true } } },
+                    },
+                },
+            }),
+        ]);
+
+        if (!player || !opponent) {
+            return res.status(404).json({ error: 'One or both players could not be found' });
+        }
+
+        // Fetch matches between player and opponent
+        const matches = await prisma.match.findMany({
+            where: {
+                status: 'FINISHED',
+                AND: [
+                    {
+                        OR: [
+                            { homePlayer1Id: player.id },
+                            { homePlayer2Id: player.id },
+                            { awayPlayer1Id: player.id },
+                            { awayPlayer2Id: player.id },
+                        ],
+                    },
+                    {
+                        OR: [
+                            { homePlayer1Id: opponent.id },
+                            { homePlayer2Id: opponent.id },
+                            { awayPlayer1Id: opponent.id },
+                            { awayPlayer2Id: opponent.id },
+                        ],
+                    },
+                ],
+            },
+            include: {
+                encounter: {
+                    include: {
+                        category: {
+                            include: {
+                                competition: {
+                                    include: { season: true },
+                                },
+                            },
+                        },
+                    },
+                },
+                homePlayer1: { select: { id: true, firstName: true, lastName: true } },
+                homePlayer2: { select: { id: true, firstName: true, lastName: true } },
+                awayPlayer1: { select: { id: true, firstName: true, lastName: true } },
+                awayPlayer2: { select: { id: true, firstName: true, lastName: true } },
+            },
+            orderBy: { encounter: { scheduledAt: 'desc' } },
+        });
+
+        let wins = 0;
+        let losses = 0;
+        let draws = 0;
+        let setsWon = 0;
+        let setsLost = 0;
+
+        const formattedMatches = matches.map((m) => {
+            const isHome = m.homePlayer1Id === player.id || m.homePlayer2Id === player.id;
+            const isWinner = (isHome && m.winner === 'HOME') || (!isHome && m.winner === 'AWAY');
+            const isDraw = m.winner === 'DRAW';
+
+            if (isWinner) wins++;
+            else if (!isDraw && m.winner !== 'PENDING') losses++;
+            else draws++;
+
+            const mySets = isHome ? m.homeWonSets : m.awayWonSets;
+            const oppSets = isHome ? m.awayWonSets : m.homeWonSets;
+            setsWon += mySets;
+            setsLost += oppSets;
+
+            return {
+                id: m.id,
+                date: m.encounter?.scheduledAt || m.createdAt,
+                competitionName: m.encounter?.category?.competition?.name || 'Competition',
+                competitionType: m.encounter?.category?.competition?.type || 'LEAGUE',
+                categoryName: m.encounter?.category?.name || 'Category',
+                matchType: m.matchType,
+                result: isWinner ? 'WIN' : isDraw ? 'DRAW' : 'LOSS',
+                scoreSets: `${mySets}:${oppSets}`,
+                setsDetail: m.sets,
+            };
+        });
+
+        const totalMatches = wins + losses + draws;
+        const winRate = totalMatches > 0 ? Math.round((wins / (wins + losses || 1)) * 100) : 0;
+        const eloDiff = player.eloPoints - opponent.eloPoints;
+        const expectedWinProbability = Math.round(
+            (1 / (1 + Math.pow(10, (opponent.eloPoints - player.eloPoints) / 400))) * 100
+        );
+
+        res.json({
+            player,
+            opponent,
+            eloDifference: eloDiff,
+            expectedWinProbability,
+            record: {
+                totalMatches,
+                wins,
+                losses,
+                draws,
+                setsWon,
+                setsLost,
+                winRate,
+            },
+            matches: formattedMatches,
         });
     } catch (err) {
         next(err);

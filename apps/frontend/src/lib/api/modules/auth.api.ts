@@ -81,6 +81,12 @@ export class AuthApi {
         return this.http.request<any>(`/auth/users/${encodeURIComponent(identifier)}/stats`);
     }
 
+    getHeadToHead(identifier: string, opponentIdentifier: string) {
+        return this.http.request<any>(
+            `/auth/users/${encodeURIComponent(identifier)}/h2h/${encodeURIComponent(opponentIdentifier)}`
+        );
+    }
+
     globalSearch(query: string) {
         return this.http.request<{ results: any[] }>(`/search/global?q=${encodeURIComponent(query)}`);
     }

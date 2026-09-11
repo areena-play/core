@@ -106,6 +106,7 @@ export class ApiClient extends HttpClient {
     getUsers = (params?: string | { q?: string; associationId?: string; role?: string; page?: number; limit?: number }) => this.auth.getUsers(params);
     getPerson = (identifier: string) => this.auth.getPerson(identifier);
     getPersonStats = (identifier: string) => this.auth.getPersonStats(identifier);
+    getHeadToHead = (identifier: string, opponentIdentifier: string) => this.auth.getHeadToHead(identifier, opponentIdentifier);
     globalSearch = (query: string) => this.auth.globalSearch(query);
 
     getAdminUsers = (params?: Record<string, any>) => this.users.getAdminUsers(params);
