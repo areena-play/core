@@ -143,7 +143,7 @@ router.get('/global', async (req: Request, res: Response, next) => {
                 id: c.id,
                 title: c.name,
                 subtitle: c.city ? `${c.city} • Code: ${c.code}` : `Code: ${c.code}`,
-                href: `/club/${c.id}`,
+                href: `/club/${c.slug || c.id}`,
                 badge: c.code || 'Club',
                 avatarUrl: c.logoUrl || undefined,
             });
@@ -156,7 +156,7 @@ router.get('/global', async (req: Request, res: Response, next) => {
                 id: cmp.id,
                 title: cmp.name,
                 subtitle: cmp.association?.name ? `${cmp.type} • ${cmp.association.name}` : cmp.type,
-                href: `/competition/${cmp.id}`,
+                href: `/competition/${cmp.slug || cmp.id}`,
                 badge: cmp.type,
             });
         });
@@ -168,7 +168,7 @@ router.get('/global', async (req: Request, res: Response, next) => {
                 id: a.id,
                 title: a.name,
                 subtitle: a.code ? `Federation • Code: ${a.code}` : 'Federation',
-                href: `/association/${a.id}`,
+                href: `/association/${a.slug || a.id}`,
                 badge: a.code || 'Assoc',
                 avatarUrl: a.logoUrl || undefined,
             });

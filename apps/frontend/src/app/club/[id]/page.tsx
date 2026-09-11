@@ -29,7 +29,7 @@ import { DataTable, DataTableColumnHeader } from '@/components/ui/DataTable';
 
 export default function SingleClubPage() {
     const params = useParams();
-    const clubId = params?.id as string;
+    const clubIdentifier = params?.id as string;
     const { user } = useAuth();
     const { t } = useI18n();
     const { setEntityMeta } = useMainView();
@@ -40,26 +40,47 @@ export default function SingleClubPage() {
     const [loading, setLoading] = useState(true);
 
     const fetchClubData = async () => {
+        setLoading(true);
         try {
-            const clubs = await api.getClubs();
-            const foundClub = clubs.find((c: any) => c.id === clubId);
-            if (foundClub) {
-                setClub(foundClub);
-                setEntityMeta({
-                    id: foundClub.id,
-                    title: foundClub.name,
-                    code: foundClub.code,
-                    badge: 'Club',
-                    subtitle: `${foundClub.city} • Affiliated with Regional & National Associations`,
-                });
+            let targetClub: any = null;
+            try {
+                targetClub = await api.getClub(clubIdentifier);
+            } catch {
+                const clubs = await api.getClubs().catch(() => []);
+                targetClub = clubs.find(
+                    (c: any) =>
+                        c.id === clubIdentifier ||
+                        c.slug?.toLowerCase() === clubIdentifier?.toLowerCase() ||
+                        c.code?.toLowerCase() === clubIdentifier?.toLowerCase()
+                );
             }
 
-            // Load licenses/members associated
-            const licensesData = await api.getLicenses();
-            setMembers(licensesData || []);
+            if (targetClub) {
+                setClub(targetClub);
+                setEntityMeta({
+                    id: targetClub.id,
+                    title: targetClub.name,
+                    code: targetClub.code,
+                    badge: 'Club',
+                    subtitle: `${targetClub.city || 'Switzerland'} • Affiliated with Regional & National Associations`,
+                });
+
+                if (Array.isArray(targetClub.licenses) && targetClub.licenses.length > 0) {
+                    setMembers(targetClub.licenses);
+                } else {
+                    const licensesData = await api.getLicenses().catch(() => []);
+                    const clubLicenses = (licensesData || []).filter(
+                        (m: any) => m.clubId === targetClub.id || m.club?.id === targetClub.id
+                    );
+                    setMembers(clubLicenses);
+                }
+            } else {
+                setClub(null);
+                setMembers([]);
+            }
 
             // Load competitions
-            const compsData = await api.getCompetitions();
+            const compsData = await api.getCompetitions().catch(() => []);
             setCompetitions(compsData || []);
         } catch (err) {
             console.error('Failed to load club details', err);
@@ -69,12 +90,21 @@ export default function SingleClubPage() {
     };
 
     useEffect(() => {
-        if (clubId) {
+        if (clubIdentifier) {
             fetchClubData();
         }
-    }, [clubId]);
+    }, [clubIdentifier]);
 
-    const filteredMembers = members.filter((m) => m.clubId === clubId || m.club?.id === clubId);
+    const filteredMembers = useMemo(() => {
+        if (!club) return [];
+        return members.filter(
+            (m) =>
+                m.clubId === club.id ||
+                m.club?.id === club.id ||
+                m.club?.slug === club.slug ||
+                (clubIdentifier && (m.clubId === clubIdentifier || m.club?.slug === clubIdentifier))
+        );
+    }, [members, club, clubIdentifier]);
 
     const memberColumns = useMemo<ColumnDef<any>[]>(
         () => [
@@ -155,6 +185,33 @@ export default function SingleClubPage() {
         return (
             <div className="flex h-64 items-center justify-center">
                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
+            </div>
+        );
+    }
+
+    if (!club) {
+        return (
+            <div className="space-y-6 pb-12">
+                <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 sm:p-12 text-center max-w-lg mx-auto shadow-sm space-y-4">
+                    <div className="w-14 h-14 mx-auto rounded-2xl bg-red-500/10 text-red-600 flex items-center justify-center">
+                        <Shield className="w-7 h-7" />
+                    </div>
+                    <div className="space-y-1">
+                        <h2 className="text-xl font-black text-slate-900 dark:text-white">Club Not Found</h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                            No club matching identifier &quot;{clubIdentifier}&quot; could be located.
+                        </p>
+                    </div>
+                    <div>
+                        <Link
+                            href="/clubs"
+                            className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition"
+                        >
+                            <span>Back to Clubs Directory</span>
+                            <ChevronRight className="w-4 h-4" />
+                        </Link>
+                    </div>
+                </div>
             </div>
         );
     }
