@@ -256,49 +256,51 @@ export function ClickTTImportModal({ isOpen, onClose, onSuccess }: ClickTTImport
 
                             <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-emerald-500/20">
                                 <div className="text-[10px] text-slate-500 font-semibold flex items-center gap-1">
+                                    <Clock className="w-3 h-3 text-indigo-500" />
+                                    Seasons
+                                </div>
+                                <div className="text-base font-bold text-slate-900 dark:text-white">
+                                    {result.seasonsProcessed || 0} Bundled
+                                </div>
+                            </div>
+
+                            <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-emerald-500/20">
+                                <div className="text-[10px] text-slate-500 font-semibold flex items-center gap-1">
                                     <Building2 className="w-3 h-3 text-blue-500" />
                                     Real Clubs
                                 </div>
                                 <div className="text-base font-bold text-slate-900 dark:text-white">
                                     {result.clubsProcessed} Created
                                 </div>
-                                <div className="text-[9px] text-slate-400">
-                                    ({result.clubsSkippedFakeTCard} fake T-Card bypassed)
+                            </div>
+
+                            <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-emerald-500/20">
+                                <div className="text-[10px] text-slate-500 font-semibold flex items-center gap-1">
+                                    <Award className="w-3 h-3 text-amber-500" />
+                                    Competitions
+                                </div>
+                                <div className="text-base font-bold text-slate-900 dark:text-white">
+                                    {result.competitionsProcessed || 0} Ingested
+                                </div>
+                            </div>
+
+                            <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-emerald-500/20">
+                                <div className="text-[10px] text-slate-500 font-semibold flex items-center gap-1">
+                                    <FolderCheck className="w-3 h-3 text-emerald-500" />
+                                    Categories
+                                </div>
+                                <div className="text-base font-bold text-slate-900 dark:text-white">
+                                    {result.categoriesProcessed || 0} Divisions
                                 </div>
                             </div>
 
                             <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-emerald-500/20">
                                 <div className="text-[10px] text-slate-500 font-semibold flex items-center gap-1">
                                     <Users className="w-3 h-3 text-emerald-500" />
-                                    Players &amp; Users
+                                    Athletes &amp; Passes
                                 </div>
                                 <div className="text-base font-bold text-slate-900 dark:text-white">
-                                    {result.playersProcessed} Imported
-                                </div>
-                                <div className="text-[9px] text-slate-400">
-                                    ({result.tcardPlayersProcessed} T-Card athletes)
-                                </div>
-                            </div>
-
-                            <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-emerald-500/20">
-                                <div className="text-[10px] text-slate-500 font-semibold flex items-center gap-1">
-                                    <Award className="w-3 h-3 text-amber-500" />
-                                    Licenses Issued
-                                </div>
-                                <div className="text-base font-bold text-slate-900 dark:text-white">
-                                    {result.licensesCreated} Passes
-                                </div>
-                            </div>
-
-                            <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-emerald-500/20 sm:col-span-2">
-                                <div className="text-[10px] text-slate-500 font-semibold flex items-center gap-1">
-                                    <Clock className="w-3 h-3 text-indigo-500" />
-                                    Status
-                                </div>
-                                <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                                    {result.dryRun
-                                        ? 'Ready to execute live database import'
-                                        : 'Database populated and synchronized with ClickTT registry'}
+                                    {result.playersProcessed} Players
                                 </div>
                             </div>
                         </div>

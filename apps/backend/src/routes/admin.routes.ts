@@ -465,7 +465,11 @@ router.post('/import/clicktt', async (req: AuthRequest, res: Response) => {
             description: `Admin ${req.user?.email} executed ClickTT data import (dryRun: ${dryRun})`,
             metadata: {
                 dryRun,
+                associationsProcessed: result.associationsProcessed,
+                seasonsProcessed: result.seasonsProcessed,
                 clubsProcessed: result.clubsProcessed,
+                competitionsProcessed: result.competitionsProcessed,
+                categoriesProcessed: result.categoriesProcessed,
                 playersProcessed: result.playersProcessed,
                 tcardPlayersProcessed: result.tcardPlayersProcessed,
                 licensesCreated: result.licensesCreated,
@@ -481,7 +485,7 @@ router.post('/import/clicktt', async (req: AuthRequest, res: Response) => {
 });
 // Register custom 10-minute transaction timeout for ClickTT bulk ingestion
 registerTransactionTimeout('/admin/import/clicktt', {
-    timeout: 10 * 60 * 1000, // 10 minutes
+    timeout: 15 * 60 * 1000, // 15 minutes
     maxWait: 2 * 60 * 1000,  // 2 minutes
 });
 

@@ -8,6 +8,9 @@ import {
     LicenseScope,
     Gender,
     UserAccountStatus,
+    CompetitionType,
+    CompetitionStatus,
+    GenderRestriction,
 } from '@prisma/client';
 
 export interface ClickTTImportOptions {
@@ -15,6 +18,8 @@ export interface ClickTTImportOptions {
     dryRun?: boolean;
     batchSize?: number;
     importLicenses?: boolean;
+    importCompetitions?: boolean;
+    importSeasons?: boolean;
     onProgress?: (progress: {
         stage: string;
         current: number;
@@ -28,8 +33,11 @@ export interface ClickTTImportResult {
     dryRun: boolean;
     durationMs: number;
     associationsProcessed: number;
+    seasonsProcessed: number;
     clubsProcessed: number;
     clubsSkippedFakeTCard: number;
+    competitionsProcessed: number;
+    categoriesProcessed: number;
     playersProcessed: number;
     tcardPlayersProcessed: number;
     licensesCreated: number;
@@ -95,6 +103,30 @@ const REGION_MAPPING: Record<string, { shortName: string; code: string; name: st
     },
 };
 
+const REGION_CODE_TO_ASSOC_CODE: Record<string, string> = {
+    'CH': 'STTF',
+    'CH.01': 'AGTT',
+    'CH.02': 'ANJTT',
+    'CH.03': 'ATTT',
+    'CH.04': 'AVVF',
+    'CH.05': 'MTTV',
+    'CH.06': 'NWTTV',
+    'CH.07': 'OTTV',
+    'CH.08': 'TTVI',
+};
+
+const REGION_NAME_PATTERNS: Array<{ pattern: RegExp; code: string }> = [
+    { pattern: /\b(agtt|genev|genf)\b/i, code: 'AGTT' },
+    { pattern: /\b(anjtt|neuch|jura)\b/i, code: 'ANJTT' },
+    { pattern: /\b(attt|tessin|ticino)\b/i, code: 'ATTT' },
+    { pattern: /\b(avvf|vaud|valais|wallis|fribourg|freiburg)\b/i, code: 'AVVF' },
+    { pattern: /\b(mttv|mittelland|bern|biel)\b/i, code: 'MTTV' },
+    { pattern: /\b(nwttv|nordwest|basel|solothurn|aargau)\b/i, code: 'NWTTV' },
+    { pattern: /\b(ottv|ostschweiz|zürich|zurich|st\.?\s*gallen|graub|thurgau|schaffhausen)\b/i, code: 'OTTV' },
+    { pattern: /\b(ttvi|innerschweiz|luzern|zug|schwyz|uri|unterwalden)\b/i, code: 'TTVI' },
+    { pattern: /\b(stt|sttf|schweiz|suisse|svizzera|switzerland|national)\b/i, code: 'STTF' },
+];
+
 export class ClickTTImportService {
     /**
      * Check if ClickTT dataset files are available and return summary metadata.
@@ -114,18 +146,24 @@ export class ClickTTImportService {
             clubs: fs.existsSync(path.join(dir, 'clubs_and_teams.json')),
             players: fs.existsSync(path.join(dir, 'players.json')),
             portraits: fs.existsSync(path.join(dir, 'player_portraits.json')),
+            seasons: fs.existsSync(path.join(dir, 'seasons.json')),
+            championships: fs.existsSync(path.join(dir, 'championships.json')),
+            groups: fs.existsSync(path.join(dir, 'groups.json')),
+            tournaments:
+                fs.existsSync(path.join(dir, 'tournaments_list.json')) ||
+                fs.existsSync(path.join(dir, 'tournaments.json')),
             full: fs.existsSync(path.join(dir, 'swiss_table_tennis_full.json')),
         };
 
         return {
-            available: files.clubs || files.players || files.full,
+            available: files.clubs || files.players || files.full || files.seasons || files.championships,
             path: dir,
             files,
         };
     }
 
     /**
-     * Helper to slugify names
+     * Helper to slugify text safely
      */
     private static slugify(text: string): string {
         return text
@@ -139,6 +177,66 @@ export class ClickTTImportService {
     }
 
     /**
+     * Parse season code into standard years, name and nickname
+     */
+    private static parseSeasonCode(str?: string | null): { name: string; nickname: string; startYear: number; endYear: number } | null {
+        if (!str) return null;
+        const m = str.match(/(?:19|20)?(\d{2})\s*\/\s*(?:19|20)?(\d{2})/);
+        if (m) {
+            const y1 = parseInt(m[1], 10) < 50 ? 2000 + parseInt(m[1], 10) : 1900 + parseInt(m[1], 10);
+            const y2 = parseInt(m[2], 10) < 50 ? 2000 + parseInt(m[2], 10) : 1900 + parseInt(m[2], 10);
+            return {
+                name: `${y1}/${(y2 % 100).toString().padStart(2, '0')}`,
+                nickname: `${y1 % 100}/${y2 % 100}`,
+                startYear: y1,
+                endYear: y2,
+            };
+        }
+        return null;
+    }
+
+    /**
+     * Derive season years and name from a given date
+     */
+    private static getSeasonForDate(date: Date | string): { name: string; nickname: string; startYear: number; endYear: number } {
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = d.getMonth() + 1; // 1..12
+        const startYear = month >= 7 ? year : year - 1;
+        const endYear = startYear + 1;
+        return {
+            name: `${startYear}/${(endYear % 100).toString().padStart(2, '0')}`,
+            nickname: `${startYear % 100}/${endYear % 100}`,
+            startYear,
+            endYear,
+        };
+    }
+
+    /**
+     * Resolve association code from arbitrary region string or code
+     */
+    private static resolveAssocCode(regionString?: string | null): string {
+        if (!regionString) return 'STTF';
+        const trimmed = String(regionString).trim();
+
+        if (REGION_CODE_TO_ASSOC_CODE[trimmed]) {
+            return REGION_CODE_TO_ASSOC_CODE[trimmed];
+        }
+
+        if (REGION_MAPPING[trimmed]) {
+            return REGION_MAPPING[trimmed].code;
+        }
+
+        for (const item of REGION_NAME_PATTERNS) {
+            if (item.pattern.test(trimmed)) {
+                return item.code;
+            }
+        }
+
+        return 'STTF';
+    }
+
+    /**
      * Main import execution method.
      */
     static async importClickTTData(options: ClickTTImportOptions = {}): Promise<ClickTTImportResult> {
@@ -147,6 +245,8 @@ export class ClickTTImportService {
         const dryRun = Boolean(options.dryRun);
         const batchSize = options.batchSize || 250;
         const importLicenses = options.importLicenses !== false;
+        const importSeasons = options.importSeasons !== false;
+        const importCompetitions = options.importCompetitions !== false;
         const errors: string[] = [];
 
         console.log(`\n======================================================`);
@@ -163,18 +263,27 @@ export class ClickTTImportService {
 
         let rawClubs: any[] = [];
         let rawPlayers: any[] = [];
+        let rawSeasons: any[] = [];
+        let rawChampionshipsBySeason: Record<string, any[]> = {};
+        let rawTournaments: any[] = [];
+        let rawGroups: any[] = [];
         const portraitsByLicence = new Map<string, any>();
         const portraitsByPersonId = new Map<string, any>();
 
         // Load Clubs
         const clubsFile = path.join(dataDir, 'clubs_and_teams.json');
         if (fs.existsSync(clubsFile)) {
-            const parsed = JSON.parse(fs.readFileSync(clubsFile, 'utf8'));
-            rawClubs = Array.isArray(parsed) ? parsed : parsed.clubs || [];
-            console.log(`✅ Loaded ${rawClubs.length} clubs from clubs_and_teams.json`);
+            try {
+                const parsed = JSON.parse(fs.readFileSync(clubsFile, 'utf8'));
+                rawClubs = Array.isArray(parsed) ? parsed : parsed.clubs || [];
+                console.log(`✅ Loaded ${rawClubs.length} clubs from clubs_and_teams.json`);
+            } catch (err: any) {
+                console.warn(`⚠️ Warning: Failed to parse clubs_and_teams.json: ${err.message}`);
+                errors.push(`Clubs parse error: ${err.message}`);
+            }
         }
 
-        // Load Player Portraits (for accurate birth dates and rank details)
+        // Load Player Portraits
         const portraitsFile = path.join(dataDir, 'player_portraits.json');
         if (fs.existsSync(portraitsFile)) {
             try {
@@ -201,15 +310,88 @@ export class ClickTTImportService {
         // Load Players
         const playersFile = path.join(dataDir, 'players.json');
         if (fs.existsSync(playersFile)) {
-            const parsed = JSON.parse(fs.readFileSync(playersFile, 'utf8'));
-            rawPlayers = Array.isArray(parsed) ? parsed : parsed.players || [];
-            console.log(`✅ Loaded ${rawPlayers.length} players from players.json`);
+            try {
+                const parsed = JSON.parse(fs.readFileSync(playersFile, 'utf8'));
+                rawPlayers = Array.isArray(parsed) ? parsed : parsed.players || [];
+                console.log(`✅ Loaded ${rawPlayers.length} players from players.json`);
+            } catch (err: any) {
+                console.warn(`⚠️ Warning: Failed to parse players.json: ${err.message}`);
+                errors.push(`Players parse error: ${err.message}`);
+            }
+        }
+
+        // Load Seasons
+        const seasonsFile = path.join(dataDir, 'seasons.json');
+        if (fs.existsSync(seasonsFile)) {
+            try {
+                const parsed = JSON.parse(fs.readFileSync(seasonsFile, 'utf8'));
+                rawSeasons = Array.isArray(parsed) ? parsed : parsed.seasons || [];
+                console.log(`✅ Loaded ${rawSeasons.length} seasons from seasons.json`);
+            } catch (err: any) {
+                console.warn(`⚠️ Warning: Failed to parse seasons.json: ${err.message}`);
+                errors.push(`Seasons parse error: ${err.message}`);
+            }
+        }
+
+        // Load Championships
+        const championshipsFile = path.join(dataDir, 'championships.json');
+        if (fs.existsSync(championshipsFile)) {
+            try {
+                const parsed = JSON.parse(fs.readFileSync(championshipsFile, 'utf8'));
+                rawChampionshipsBySeason = parsed.championshipsBySeason || (Array.isArray(parsed) ? {} : parsed);
+                const totalChamps = Object.values(rawChampionshipsBySeason).reduce((sum, list) => sum + (Array.isArray(list) ? list.length : 0), 0);
+                console.log(`✅ Loaded ${totalChamps} championships across ${Object.keys(rawChampionshipsBySeason).length} seasons from championships.json`);
+            } catch (err: any) {
+                console.warn(`⚠️ Warning: Failed to parse championships.json: ${err.message}`);
+                errors.push(`Championships parse error: ${err.message}`);
+            }
+        }
+
+        // Load Groups (Divisions & Categories)
+        const groupsFile = path.join(dataDir, 'groups.json');
+        if (fs.existsSync(groupsFile)) {
+            try {
+                const parsed = JSON.parse(fs.readFileSync(groupsFile, 'utf8'));
+                rawGroups = Array.isArray(parsed) ? parsed : parsed.groups || [];
+                console.log(`✅ Loaded ${rawGroups.length} groups/divisions from groups.json`);
+            } catch (err: any) {
+                console.warn(`⚠️ Warning: Failed to parse groups.json: ${err.message}`);
+                errors.push(`Groups parse error: ${err.message}`);
+            }
+        }
+
+        // Load Tournaments
+        const tournamentsListFile = path.join(dataDir, 'tournaments_list.json');
+        const tournamentsFile = path.join(dataDir, 'tournaments.json');
+        if (fs.existsSync(tournamentsListFile)) {
+            try {
+                const parsed = JSON.parse(fs.readFileSync(tournamentsListFile, 'utf8'));
+                rawTournaments = Array.isArray(parsed) ? parsed : parsed.tournaments || [];
+                console.log(`✅ Loaded ${rawTournaments.length} tournaments from tournaments_list.json`);
+            } catch (err: any) {
+                console.warn(`⚠️ Warning: Failed to parse tournaments_list.json: ${err.message}`);
+                errors.push(`Tournaments parse error: ${err.message}`);
+            }
+        } else if (fs.existsSync(tournamentsFile)) {
+            try {
+                const parsed = JSON.parse(fs.readFileSync(tournamentsFile, 'utf8'));
+                rawTournaments = Array.isArray(parsed) ? parsed : parsed.tournaments || [];
+                console.log(`✅ Loaded ${rawTournaments.length} tournaments from tournaments.json`);
+            } catch (err: any) {
+                console.warn(`⚠️ Warning: Failed to parse tournaments.json: ${err.message}`);
+                errors.push(`Tournaments parse error: ${err.message}`);
+            }
         }
 
         // ---------------------------------------------------------------------
         // STAGE 1: Ensure Associations & Hierarchy
         // ---------------------------------------------------------------------
-        options.onProgress?.({ stage: 'ASSOCIATIONS', current: 0, total: Object.keys(REGION_MAPPING).length, message: 'Syncing National & Regional Associations...' });
+        options.onProgress?.({
+            stage: 'ASSOCIATIONS',
+            current: 0,
+            total: Object.keys(REGION_MAPPING).length,
+            message: 'Syncing National & Regional Associations...',
+        });
         console.log('\n🏛️ Syncing Swiss Associations & Regional Federations...');
 
         const assocByCode = new Map<string, any>();
@@ -256,25 +438,8 @@ export class ClickTTImportService {
 
             assocByCode.set('STTF', nationalAssoc);
             assocByCode.set('Schweiz', nationalAssoc);
+            assocByCode.set('CH', nationalAssoc);
             associationsProcessed++;
-
-            // Ensure current active season exists for STTF
-            const currentYear = new Date().getFullYear();
-            const seasonName = `${currentYear}/${(currentYear + 1).toString().slice(-2)}`;
-            let defaultSeason = await prisma.season.findFirst({
-                where: { associationId: nationalAssoc.id, isCurrent: true },
-            });
-            if (!defaultSeason) {
-                defaultSeason = await prisma.season.create({
-                    data: {
-                        associationId: nationalAssoc.id,
-                        name: `Season ${seasonName}`,
-                        startDate: new Date(`${currentYear}-08-01T00:00:00.000Z`),
-                        endDate: new Date(`${currentYear + 1}-06-30T23:59:59.000Z`),
-                        isCurrent: true,
-                    },
-                });
-            }
 
             // Upsert 8 Regional Associations
             for (const [regionKey, meta] of Object.entries(REGION_MAPPING)) {
@@ -338,7 +503,6 @@ export class ClickTTImportService {
                 });
             }
         } else {
-            // In dry run, fetch existing associations or mock them
             const existingAssocs = await prisma.association.findMany();
             for (const a of existingAssocs) {
                 assocByCode.set(a.code, a);
@@ -346,31 +510,217 @@ export class ClickTTImportService {
             }
             for (const [regionKey, meta] of Object.entries(REGION_MAPPING)) {
                 if (!assocByCode.has(meta.code)) {
-                    assocByCode.set(meta.code, { id: `mock-${meta.code}`, code: meta.code, name: meta.name });
-                    assocByCode.set(regionKey, { id: `mock-${meta.code}`, code: meta.code, name: meta.name });
+                    const mock = { id: `mock-${meta.code}`, code: meta.code, name: meta.name };
+                    assocByCode.set(meta.code, mock);
+                    assocByCode.set(regionKey, mock);
                 }
             }
+            nationalAssoc = assocByCode.get('STTF') || { id: 'mock-STTF', code: 'STTF', name: 'Swiss Table Tennis' };
+            assocByCode.set('CH', nationalAssoc);
             associationsProcessed = Object.keys(REGION_MAPPING).length;
         }
 
         console.log(`✅ Processed ${associationsProcessed} Associations.`);
 
         // ---------------------------------------------------------------------
-        // STAGE 2: Upsert Real Clubs (Filter out fake T-Card clubs)
+        // STAGE 2: Ingest Seasons for All Associations
         // ---------------------------------------------------------------------
-        options.onProgress?.({ stage: 'CLUBS', current: 0, total: rawClubs.length, message: 'Processing and upserting real clubs...' });
+        options.onProgress?.({
+            stage: 'SEASONS',
+            current: 0,
+            total: 15,
+            message: 'Syncing Sporting Seasons across associations...',
+        });
+        console.log('\n📅 Syncing Seasons for all federations...');
+
+        let seasonsProcessed = 0;
+        const seasonMap = new Map<string, any>(); // key: `${assocId}:${seasonKey}` => Season record
+        const seasonsListByAssoc = new Map<string, any[]>(); // assocId => Season records array
+
+        // Gather all season periods
+        const discoveredSeasons = new Map<string, { name: string; nickname: string; startYear: number; endYear: number; isCurrent: boolean; startDate: Date; endDate: Date }>();
+
+        // Default baseline Swiss TT seasons (2012/13 through 2026/27)
+        for (let startYear = 2012; startYear <= 2026; startYear++) {
+            const endYear = startYear + 1;
+            const name = `${startYear}/${(endYear % 100).toString().padStart(2, '0')}`;
+            const nickname = `${startYear % 100}/${endYear % 100}`;
+            const isCurrent = startYear === 2026;
+            discoveredSeasons.set(name, {
+                name,
+                nickname,
+                startYear,
+                endYear,
+                isCurrent,
+                startDate: new Date(Date.UTC(startYear, 6, 1, 0, 0, 0)), // July 1
+                endDate: new Date(Date.UTC(endYear, 5, 30, 23, 59, 59)), // June 30
+            });
+        }
+
+        // Enrich with seasons.json if available
+        for (const s of rawSeasons) {
+            const parsed = ClickTTImportService.parseSeasonCode(s.name || s.nickname);
+            if (parsed) {
+                const isCurrent = s.state === 'active' || parsed.startYear === 2026;
+                const startDate = s.start ? new Date(s.start) : new Date(Date.UTC(parsed.startYear, 6, 1, 0, 0, 0));
+                const endDate = s.end ? new Date(s.end) : new Date(Date.UTC(parsed.endYear, 5, 30, 23, 59, 59));
+                discoveredSeasons.set(parsed.name, {
+                    name: parsed.name,
+                    nickname: parsed.nickname,
+                    startYear: parsed.startYear,
+                    endYear: parsed.endYear,
+                    isCurrent,
+                    startDate,
+                    endDate,
+                });
+            }
+        }
+
+        // Add seasons from championshipsBySeason keys
+        for (const seasonKey of Object.keys(rawChampionshipsBySeason)) {
+            const parsed = ClickTTImportService.parseSeasonCode(seasonKey);
+            if (parsed && !discoveredSeasons.has(parsed.name)) {
+                discoveredSeasons.set(parsed.name, {
+                    name: parsed.name,
+                    nickname: parsed.nickname,
+                    startYear: parsed.startYear,
+                    endYear: parsed.endYear,
+                    isCurrent: parsed.startYear === 2026,
+                    startDate: new Date(Date.UTC(parsed.startYear, 6, 1, 0, 0, 0)),
+                    endDate: new Date(Date.UTC(parsed.endYear, 5, 30, 23, 59, 59)),
+                });
+            }
+        }
+
+        const distinctAssocs: any[] = [];
+        const seenAssocIds = new Set<string>();
+        for (const a of assocByCode.values()) {
+            if (a?.id && !seenAssocIds.has(a.id)) {
+                seenAssocIds.add(a.id);
+                distinctAssocs.push(a);
+            }
+        }
+
+        if (importSeasons) {
+            for (const assoc of distinctAssocs) {
+                const assocSeasons: any[] = [];
+                for (const seasonMeta of discoveredSeasons.values()) {
+                    if (!dryRun) {
+                        try {
+                            const existing = await prisma.season.findFirst({
+                                where: {
+                                    associationId: assoc.id,
+                                    name: seasonMeta.name,
+                                },
+                            });
+
+                            let seasonRecord: any;
+                            if (existing) {
+                                seasonRecord = await prisma.season.update({
+                                    where: { id: existing.id },
+                                    data: {
+                                        startDate: seasonMeta.startDate,
+                                        endDate: seasonMeta.endDate,
+                                        isCurrent: seasonMeta.isCurrent,
+                                    },
+                                });
+                            } else {
+                                seasonRecord = await prisma.season.create({
+                                    data: {
+                                        associationId: assoc.id,
+                                        name: seasonMeta.name,
+                                        startDate: seasonMeta.startDate,
+                                        endDate: seasonMeta.endDate,
+                                        isCurrent: seasonMeta.isCurrent,
+                                    },
+                                });
+                            }
+
+                            assocSeasons.push(seasonRecord);
+                            seasonMap.set(`${assoc.id}:${seasonMeta.name}`, seasonRecord);
+                            seasonMap.set(`${assoc.id}:${seasonMeta.nickname}`, seasonRecord);
+                            seasonMap.set(`${assoc.code}:${seasonMeta.name}`, seasonRecord);
+                            seasonMap.set(`${assoc.code}:${seasonMeta.nickname}`, seasonRecord);
+                            seasonsProcessed++;
+                        } catch (err: any) {
+                            errors.push(`Season ${seasonMeta.name} for ${assoc.code}: ${err.message}`);
+                        }
+                    } else {
+                        const mockSeason = {
+                            id: `mock-season-${assoc.code}-${seasonMeta.nickname}`,
+                            associationId: assoc.id,
+                            name: seasonMeta.name,
+                            startDate: seasonMeta.startDate,
+                            endDate: seasonMeta.endDate,
+                            isCurrent: seasonMeta.isCurrent,
+                        };
+                        assocSeasons.push(mockSeason);
+                        seasonMap.set(`${assoc.id}:${seasonMeta.name}`, mockSeason);
+                        seasonMap.set(`${assoc.id}:${seasonMeta.nickname}`, mockSeason);
+                        seasonMap.set(`${assoc.code}:${seasonMeta.name}`, mockSeason);
+                        seasonMap.set(`${assoc.code}:${seasonMeta.nickname}`, mockSeason);
+                        seasonsProcessed++;
+                    }
+                }
+                seasonsListByAssoc.set(assoc.id, assocSeasons);
+            }
+        }
+
+        console.log(`✅ Processed ${seasonsProcessed} Seasons across ${distinctAssocs.length} federations.`);
+
+        // Helper to resolve season for an association and date or string
+        const resolveSeason = (assocId: string, seasonStrOrDate?: any): any => {
+            if (!seasonStrOrDate) {
+                // Return current season
+                return seasonMap.get(`${assocId}:2026/27`) || seasonsListByAssoc.get(assocId)?.find((s) => s.isCurrent) || null;
+            }
+
+            if (typeof seasonStrOrDate === 'string') {
+                const parsed = ClickTTImportService.parseSeasonCode(seasonStrOrDate);
+                if (parsed) {
+                    const match =
+                        seasonMap.get(`${assocId}:${parsed.name}`) ||
+                        seasonMap.get(`${assocId}:${parsed.nickname}`);
+                    if (match) return match;
+                }
+            }
+
+            const date = new Date(seasonStrOrDate);
+            if (!isNaN(date.getTime())) {
+                const assocSeasons = seasonsListByAssoc.get(assocId) || [];
+                for (const s of assocSeasons) {
+                    if (date >= new Date(s.startDate) && date <= new Date(s.endDate)) {
+                        return s;
+                    }
+                }
+                const derived = ClickTTImportService.getSeasonForDate(date);
+                return seasonMap.get(`${assocId}:${derived.name}`) || null;
+            }
+
+            return seasonsListByAssoc.get(assocId)?.find((s) => s.isCurrent) || null;
+        };
+
+        // ---------------------------------------------------------------------
+        // STAGE 3: Upsert Real Clubs (Filter out fake T-Card clubs)
+        // ---------------------------------------------------------------------
+        options.onProgress?.({
+            stage: 'CLUBS',
+            current: 0,
+            total: rawClubs.length,
+            message: 'Processing and upserting real clubs...',
+        });
         console.log('\n🏓 Processing Clubs (filtering fake ClickTT T-Card clubs)...');
 
         let clubsProcessed = 0;
         let clubsSkippedFakeTCard = 0;
         const clubMapByNr = new Map<string, any>();
+        const clubMapByName = new Map<string, any>();
 
         for (let i = 0; i < rawClubs.length; i++) {
             const rawClub = rawClubs[i];
             const clubNr = String(rawClub.clubNr || '').trim();
             const clubName = String(rawClub.name || '').trim();
 
-            // Check if fake T-Card club
             const isFakeTCard =
                 clubNr === '9999' ||
                 clubNr === '10000' ||
@@ -379,12 +729,12 @@ export class ClickTTImportService {
 
             if (isFakeTCard) {
                 clubsSkippedFakeTCard++;
-                console.log(`  🚫 Skipped fake ClickTT placeholder club: "${clubName}" (#${clubNr})`);
                 continue;
             }
 
             const regionName = rawClub.regionName || '';
-            const assoc = assocByCode.get(regionName) || assocByCode.get('STTF');
+            const assocCode = ClickTTImportService.resolveAssocCode(regionName);
+            const assoc = assocByCode.get(assocCode) || nationalAssoc;
 
             const slug = `${ClickTTImportService.slugify(clubName)}-${clubNr}`;
             const contact = rawClub.contactAddress || {};
@@ -424,6 +774,7 @@ export class ClickTTImportService {
                     });
 
                     clubMapByNr.set(clubNr, clubRecord);
+                    clubMapByName.set(clubName.toLowerCase(), clubRecord);
                     clubsProcessed++;
 
                     // Link Club to its Regional Association
@@ -447,7 +798,9 @@ export class ClickTTImportService {
                     errors.push(`Club #${clubNr} (${clubName}): ${err.message}`);
                 }
             } else {
-                clubMapByNr.set(clubNr, { id: `mock-${clubNr}`, name: clubName, code: clubNr });
+                const mock = { id: `mock-${clubNr}`, name: clubName, code: clubNr, associationId: assoc?.id };
+                clubMapByNr.set(clubNr, mock);
+                clubMapByName.set(clubName.toLowerCase(), mock);
                 clubsProcessed++;
             }
 
@@ -464,9 +817,315 @@ export class ClickTTImportService {
         console.log(`✅ Clubs Processed: ${clubsProcessed} real clubs created/updated. ${clubsSkippedFakeTCard} fake T-Card clubs bypassed.`);
 
         // ---------------------------------------------------------------------
-        // STAGE 3: Upsert Players / Users & Licenses (Special T-Card Handling)
+        // STAGE 4: Ingest Competitions & Categories
         // ---------------------------------------------------------------------
-        options.onProgress?.({ stage: 'PLAYERS', current: 0, total: rawPlayers.length, message: 'Processing and importing players and licenses...' });
+        let competitionsProcessed = 0;
+        let categoriesProcessed = 0;
+
+        if (importCompetitions) {
+            console.log('\n🏆 Ingesting Championships, Leagues, Cups, and Tournaments...');
+            options.onProgress?.({
+                stage: 'COMPETITIONS',
+                current: 0,
+                total: 100,
+                message: 'Importing Championships, Leagues, Cups, and Tournaments...',
+            });
+
+            // Index groups by championship nickname for division/category mapping
+            const groupsByChmpNickname = new Map<string, any[]>();
+            for (const g of rawGroups) {
+                const chmp = g.chmpNickname ? String(g.chmpNickname).trim() : '';
+                if (chmp) {
+                    if (!groupsByChmpNickname.has(chmp)) {
+                        groupsByChmpNickname.set(chmp, []);
+                    }
+                    groupsByChmpNickname.get(chmp)!.push(g);
+                }
+            }
+
+            // Track unique league per association per season: `${assocId}:${seasonId}`
+            const assignedLeagues = new Set<string>();
+            const usedCompetitionSlugs = new Set<string>();
+
+            // --- 4A: Championships & Leagues & Cups ---
+            for (const [seasonKey, champList] of Object.entries(rawChampionshipsBySeason)) {
+                if (!Array.isArray(champList)) continue;
+
+                for (const c of champList) {
+                    const rawName = String(c.name || '').replace('${nationalligen}', 'Nationalligen').trim();
+                    const nickname = String(c.nickname || '').trim();
+                    const region = c.region || '';
+                    const assocCode = ClickTTImportService.resolveAssocCode(region || nickname);
+                    const assoc = assocByCode.get(assocCode) || nationalAssoc;
+
+                    // Resolve season
+                    const season = resolveSeason(assoc.id, c.seasonNickname || seasonKey || c.competitionStart);
+                    const seasonId = season?.id || null;
+
+                    // Determine Competition Type
+                    let compType: CompetitionType = CompetitionType.LEAGUE;
+                    if (seasonKey.startsWith('C ') || /\b(cup|coupe|coppa|pokal)\b/i.test(rawName) || /\bcup\b/i.test(nickname)) {
+                        compType = CompetitionType.CUP;
+                    } else if (seasonKey.startsWith('SJC ') || /\bjunior\s*challenge\b/i.test(rawName) || /\bsjc\b/i.test(nickname)) {
+                        compType = CompetitionType.SEASON_TOURNAMENT;
+                    } else if (seasonKey.startsWith('FL ') || /\b(friendship|freundschaft)\b/i.test(rawName) || /\bfl\b/i.test(nickname)) {
+                        compType = CompetitionType.FRIENDLY;
+                    } else {
+                        // Regular Championship
+                        compType = CompetitionType.LEAGUE;
+                        // Enforce: only ONE league competition per association per season
+                        const leagueKey = `${assoc.id}:${seasonId}`;
+                        if (assignedLeagues.has(leagueKey)) {
+                            // If this association already has a league this season, classify additional ones as SEASON_TOURNAMENT
+                            compType = CompetitionType.SEASON_TOURNAMENT;
+                        } else {
+                            assignedLeagues.add(leagueKey);
+                        }
+                    }
+
+                    // Generate deterministic slug
+                    let compSlug = ClickTTImportService.slugify(nickname ? nickname : `${rawName}-${seasonKey}`);
+                    if (usedCompetitionSlugs.has(compSlug)) {
+                        compSlug = `${compSlug}-${ClickTTImportService.slugify(assoc.code)}`;
+                    }
+                    if (usedCompetitionSlugs.has(compSlug)) {
+                        compSlug = `${compSlug}-${Math.floor(Math.random() * 10000)}`;
+                    }
+                    usedCompetitionSlugs.add(compSlug);
+
+                    const startDate = c.competitionStart
+                        ? new Date(c.competitionStart)
+                        : season?.startDate || new Date('2026-08-01T00:00:00.000Z');
+                    const endDate = c.competitionEnd
+                        ? new Date(c.competitionEnd)
+                        : season?.endDate || new Date('2027-06-30T23:59:59.000Z');
+
+                    let status: CompetitionStatus = CompetitionStatus.APPROVED;
+                    if (c.state === 'closed' || c.state === 'archive' || c.state === 'completed' || endDate < new Date()) {
+                        status = CompetitionStatus.COMPLETED;
+                    } else if (c.state === 'active') {
+                        status = CompetitionStatus.IN_PROGRESS;
+                    }
+
+                    if (!dryRun) {
+                        try {
+                            const compRecord = await prisma.competition.upsert({
+                                where: { slug: compSlug },
+                                update: {
+                                    name: rawName,
+                                    type: compType,
+                                    associationId: assoc.id,
+                                    seasonId,
+                                    startDate,
+                                    endDate,
+                                    status,
+                                    isOfficial: true,
+                                    countsForElo: true,
+                                },
+                                create: {
+                                    name: rawName,
+                                    slug: compSlug,
+                                    type: compType,
+                                    associationId: assoc.id,
+                                    seasonId,
+                                    startDate,
+                                    endDate,
+                                    status,
+                                    isOfficial: true,
+                                    countsForElo: true,
+                                },
+                            });
+                            competitionsProcessed++;
+
+                            // Ingest Categories from linked groups in groups.json
+                            const matchingGroups = groupsByChmpNickname.get(nickname) || [];
+                            const distinctCategories = new Set<string>();
+                            for (const g of matchingGroups) {
+                                const catName = (g.league || g.name || g.contest || '').trim();
+                                if (catName) distinctCategories.add(catName);
+                            }
+
+                            for (const catName of distinctCategories) {
+                                const isFemale = /\b(damen|dames|femmes|women|girls)\b/i.test(catName);
+                                const isMale = /\b(herren|hommes|messieurs|men|boys)\b/i.test(catName);
+                                const genderRestriction = isFemale
+                                    ? GenderRestriction.FEMALE_ONLY
+                                    : isMale
+                                    ? GenderRestriction.MALE_ONLY
+                                    : GenderRestriction.ANY;
+
+                                await prisma.category.create({
+                                    data: {
+                                        competitionId: compRecord.id,
+                                        name: catName,
+                                        teamSize: compType === CompetitionType.LEAGUE ? 3 : 1,
+                                        genderRestriction,
+                                        roundsPerGroup: compType === CompetitionType.LEAGUE ? 2 : 1,
+                                    },
+                                });
+                                categoriesProcessed++;
+                            }
+                        } catch (err: any) {
+                            errors.push(`Championship ${rawName} (${compSlug}): ${err.message}`);
+                        }
+                    } else {
+                        competitionsProcessed++;
+                        const matchingGroups = groupsByChmpNickname.get(nickname) || [];
+                        const distinctCategories = new Set<string>();
+                        for (const g of matchingGroups) {
+                            const catName = (g.league || g.name || g.contest || '').trim();
+                            if (catName) distinctCategories.add(catName);
+                        }
+                        categoriesProcessed += distinctCategories.size;
+                    }
+                }
+            }
+
+            // --- 4B: Tournaments (tournaments_list.json / tournaments.json) ---
+            for (const t of rawTournaments) {
+                const tourName = String(t.name || 'Turnier').trim();
+                const tourRegion = t.tournamentRegion || t.operatorRegion || '';
+                const hostName = t.hostName || '';
+
+                let assocCode = ClickTTImportService.resolveAssocCode(tourRegion);
+                if (assocCode === 'STTF' && hostName) {
+                    const hostClub = clubMapByName.get(hostName.toLowerCase());
+                    if (hostClub && hostClub.associationId) {
+                        const matched = distinctAssocs.find((a) => a.id === hostClub.associationId);
+                        if (matched) assocCode = matched.code;
+                    }
+                }
+                const assoc = assocByCode.get(assocCode) || nationalAssoc;
+
+                const startDate = t.startDate ? new Date(t.startDate) : new Date();
+                const endDate = t.endDate ? new Date(t.endDate) : startDate;
+
+                const season = resolveSeason(assoc.id, startDate);
+                const seasonId = season?.id || null;
+
+                // Determine Competition Type
+                let compType: CompetitionType = CompetitionType.TOURNAMENT;
+                if (/\b(cup|coupe|coppa|pokal)\b/i.test(tourName)) {
+                    compType = CompetitionType.CUP;
+                } else if (/\b(rangliste|ranking|rlt|top\s*16|top\s*8|qualifikation|qualification)\b/i.test(tourName)) {
+                    compType = CompetitionType.RANKING_TOURNAMENT;
+                }
+
+                // Determine Status
+                let status: CompetitionStatus = CompetitionStatus.APPROVED;
+                if (t.state === 'completed' || endDate < new Date()) {
+                    status = CompetitionStatus.COMPLETED;
+                } else if (t.state === 'active' || t.state === 'in_progress') {
+                    status = CompetitionStatus.IN_PROGRESS;
+                } else if (t.onlineRegistration && startDate > new Date()) {
+                    status = CompetitionStatus.REGISTRATION_OPEN;
+                }
+
+                const tourId = String(t.tournamentId || t.tournamentNr || '').trim();
+                let compSlug = ClickTTImportService.slugify(
+                    tourId ? `${tourName}-${tourId}` : `${tourName}-${startDate.getFullYear()}`
+                );
+                if (usedCompetitionSlugs.has(compSlug)) {
+                    compSlug = `${compSlug}-${ClickTTImportService.slugify(assoc.code)}`;
+                }
+                if (usedCompetitionSlugs.has(compSlug)) {
+                    compSlug = `${compSlug}-${Math.floor(Math.random() * 10000)}`;
+                }
+                usedCompetitionSlugs.add(compSlug);
+
+                const location = [t.locationName, t.locationCity, t.locationZIPCode]
+                    .filter((s) => s && s !== 'Test')
+                    .join(', ') || null;
+
+                if (!dryRun) {
+                    try {
+                        const compRecord = await prisma.competition.upsert({
+                            where: { slug: compSlug },
+                            update: {
+                                name: tourName,
+                                type: compType,
+                                associationId: assoc.id,
+                                seasonId,
+                                startDate,
+                                endDate,
+                                location,
+                                status,
+                                isOfficial: true,
+                                countsForElo: Boolean(t.fedRankValuation !== false),
+                            },
+                            create: {
+                                name: tourName,
+                                slug: compSlug,
+                                type: compType,
+                                associationId: assoc.id,
+                                seasonId,
+                                startDate,
+                                endDate,
+                                location,
+                                status,
+                                isOfficial: true,
+                                countsForElo: Boolean(t.fedRankValuation !== false),
+                            },
+                        });
+                        competitionsProcessed++;
+
+                        // Ingest Categories from competitionAbbr
+                        const compAbbr = Array.isArray(t.competitionAbbr) ? t.competitionAbbr : [];
+                        for (const cat of compAbbr) {
+                            const catName = String(cat.name || '').trim();
+                            if (!catName) continue;
+
+                            const isDouble = /\b(doppel|double|mixed)\b/i.test(catName);
+                            const isMixed = /\bmixed\b/i.test(catName);
+                            const isFemale = /\b(damen|dames|femmes|women|girls)\b/i.test(catName);
+                            const isMale = /\b(herren|hommes|messieurs|men|boys)\b/i.test(catName);
+
+                            const genderRestriction = isMixed
+                                ? GenderRestriction.MIXED
+                                : isFemale
+                                ? GenderRestriction.FEMALE_ONLY
+                                : isMale
+                                ? GenderRestriction.MALE_ONLY
+                                : GenderRestriction.ANY;
+
+                            const minElo = cat.fedRankFrom ? parseInt(cat.fedRankFrom, 10) : null;
+                            const maxElo = cat.fedRankTo ? parseInt(cat.fedRankTo, 10) : null;
+
+                            await prisma.category.create({
+                                data: {
+                                    competitionId: compRecord.id,
+                                    name: catName,
+                                    teamSize: isDouble ? 2 : 1,
+                                    minElo: minElo && !isNaN(minElo) ? minElo : null,
+                                    maxElo: maxElo && !isNaN(maxElo) ? maxElo : null,
+                                    genderRestriction,
+                                    roundsPerGroup: 1,
+                                },
+                            });
+                            categoriesProcessed++;
+                        }
+                    } catch (err: any) {
+                        errors.push(`Tournament ${tourName} (${compSlug}): ${err.message}`);
+                    }
+                } else {
+                    competitionsProcessed++;
+                    const compAbbr = Array.isArray(t.competitionAbbr) ? t.competitionAbbr : [];
+                    categoriesProcessed += compAbbr.length;
+                }
+            }
+
+            console.log(`✅ Competitions Ingested: ${competitionsProcessed} competitions, ${categoriesProcessed} categories.`);
+        }
+
+        // ---------------------------------------------------------------------
+        // STAGE 5: Upsert Players / Users & Licenses (Special T-Card Handling)
+        // ---------------------------------------------------------------------
+        options.onProgress?.({
+            stage: 'PLAYERS',
+            current: 0,
+            total: rawPlayers.length,
+            message: 'Processing and importing players and licenses...',
+        });
         console.log(`\n👥 Importing ${rawPlayers.length} Players & Issuing Licenses...`);
 
         let playersProcessed = 0;
@@ -519,7 +1178,6 @@ export class ClickTTImportService {
 
                 const fedRank = portrait?.player?.fedRank || p.fedRank || null;
                 const rankNumber = typeof fedRank === 'number' ? fedRank : parseInt(fedRank, 10) || null;
-                // Baseline ELO points approximation based on ranking
                 const eloPoints = rankNumber ? Math.max(600, 1000 + (rankNumber - 1) * 75) : 1000;
 
                 const isTCardPlayer =
@@ -535,8 +1193,6 @@ export class ClickTTImportService {
 
                 if (!dryRun) {
                     try {
-                        // Upsert User
-                        // If player has license ID, use it as unique identifier; otherwise find by name
                         let userRecord: any = null;
                         if (licenceNr) {
                             userRecord = await prisma.user.upsert({
@@ -563,7 +1219,6 @@ export class ClickTTImportService {
                                 },
                             });
                         } else {
-                            // Find existing or create
                             userRecord = await prisma.user.findFirst({
                                 where: { firstName: firstname, lastName: lastname, birthDate },
                             });
@@ -589,7 +1244,7 @@ export class ClickTTImportService {
                             tcardPlayersProcessed++;
                         }
 
-                        // 1. Club Role (ONLY for real clubs, never for T-Card fake clubs)
+                        // Club Role (ONLY for real clubs, never for fake T-Card clubs)
                         if (targetClub && !isTCardPlayer) {
                             await prisma.userClubRole.upsert({
                                 where: {
@@ -608,7 +1263,7 @@ export class ClickTTImportService {
                             });
                         }
 
-                        // 2. License Issuance
+                        // License Issuance
                         if (importLicenses && (targetAssoc || nationalAssoc)) {
                             const licenseType = isTCardPlayer
                                 ? LicenseType.PLAYER_TCARD
@@ -618,7 +1273,6 @@ export class ClickTTImportService {
                                 ? nationalAssoc?.id || targetAssoc?.id
                                 : targetAssoc?.id || nationalAssoc?.id;
 
-                            // Check existing active license
                             const existingLic = await prisma.license.findFirst({
                                 where: {
                                     userId: userRecord.id,
@@ -671,8 +1325,11 @@ export class ClickTTImportService {
         console.log(`\n======================================================`);
         console.log(`✨ ClickTT Import Completed in ${(durationMs / 1000).toFixed(2)}s`);
         console.log(`   - Associations: ${associationsProcessed}`);
+        console.log(`   - Seasons: ${seasonsProcessed}`);
         console.log(`   - Real Clubs: ${clubsProcessed}`);
         console.log(`   - Skipped T-Card Fake Clubs: ${clubsSkippedFakeTCard}`);
+        console.log(`   - Competitions: ${competitionsProcessed}`);
+        console.log(`   - Categories/Divisions: ${categoriesProcessed}`);
         console.log(`   - Players/Users Imported: ${playersProcessed}`);
         console.log(`   - T-Card Players (Direct Federation): ${tcardPlayersProcessed}`);
         console.log(`   - Licenses Issued: ${licensesCreated}`);
@@ -684,8 +1341,11 @@ export class ClickTTImportService {
             dryRun,
             durationMs,
             associationsProcessed,
+            seasonsProcessed,
             clubsProcessed,
             clubsSkippedFakeTCard,
+            competitionsProcessed,
+            categoriesProcessed,
             playersProcessed,
             tcardPlayersProcessed,
             licensesCreated,

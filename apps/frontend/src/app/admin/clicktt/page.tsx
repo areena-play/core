@@ -82,7 +82,7 @@ export default function AdminClickTTPage() {
             setResult(res);
             setLogs((prev) => [
                 `[${new Date().toLocaleTimeString()}] ✓ Migration successfully finished in ${(res.durationMs / 1000).toFixed(2)}s.`,
-                `[${new Date().toLocaleTimeString()}] Summary: ${res.associationsProcessed} Associations, ${res.clubsProcessed} Real Clubs (${res.clubsSkippedFakeTCard} fake clubs bypassed), ${res.playersProcessed} Players, ${res.licensesCreated} Licenses.`,
+                `[${new Date().toLocaleTimeString()}] Summary: ${res.associationsProcessed} Associations, ${res.seasonsProcessed || 0} Seasons, ${res.clubsProcessed} Real Clubs, ${res.competitionsProcessed || 0} Competitions, ${res.categoriesProcessed || 0} Categories, ${res.playersProcessed} Athletes, ${res.licensesCreated} Licenses.`,
                 ...prev,
             ]);
         } catch (err: any) {
@@ -377,7 +377,7 @@ export default function AdminClickTTPage() {
                         </span>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
                         <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
                             <div className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
                                 <Building2 className="w-3.5 h-3.5 text-purple-500" />
@@ -387,6 +387,17 @@ export default function AdminClickTTPage() {
                                 {result.associationsProcessed}
                             </div>
                             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Synchronized</span>
+                        </div>
+
+                        <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
+                            <div className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                                Seasons
+                            </div>
+                            <div className="text-xl font-mono font-black text-slate-900 dark:text-white mt-1">
+                                {result.seasonsProcessed || 0}
+                            </div>
+                            <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">Bundled</span>
                         </div>
 
                         <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
@@ -402,13 +413,24 @@ export default function AdminClickTTPage() {
 
                         <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
                             <div className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
-                                <Filter className="w-3.5 h-3.5 text-amber-500" />
-                                Fake Clubs
+                                <Award className="w-3.5 h-3.5 text-amber-500" />
+                                Competitions
                             </div>
                             <div className="text-xl font-mono font-black text-slate-900 dark:text-white mt-1">
-                                {result.clubsSkippedFakeTCard}
+                                {result.competitionsProcessed || 0}
                             </div>
-                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">Bypassed (#9999)</span>
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">Leagues &amp; Cups</span>
+                        </div>
+
+                        <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
+                            <div className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
+                                <FolderCheck className="w-3.5 h-3.5 text-emerald-500" />
+                                Categories
+                            </div>
+                            <div className="text-xl font-mono font-black text-slate-900 dark:text-white mt-1">
+                                {result.categoriesProcessed || 0}
+                            </div>
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Divisions</span>
                         </div>
 
                         <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
@@ -425,27 +447,23 @@ export default function AdminClickTTPage() {
                         <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
                             <div className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
                                 <Shield className="w-3.5 h-3.5 text-cyan-500" />
-                                T-Card Passes
-                            </div>
-                            <div className="text-xl font-mono font-black text-slate-900 dark:text-white mt-1">
-                                {result.tcardPlayersProcessed}
-                            </div>
-                            <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-bold">Direct STT</span>
-                        </div>
-
-                        <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
-                            <div className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
-                                <Award className="w-3.5 h-3.5 text-amber-500" />
                                 Licenses
                             </div>
                             <div className="text-xl font-mono font-black text-slate-900 dark:text-white mt-1">
                                 {result.licensesCreated}
                             </div>
-                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">Issued</span>
+                            <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-bold">Passports</span>
                         </div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3 pt-2">
+                        <Link
+                            href="/competitions"
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition"
+                        >
+                            <span>Explore Competitions &amp; Leagues</span>
+                            <ArrowRight className="h-3.5 w-3.5" />
+                        </Link>
                         <Link
                             href="/admin/users"
                             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 text-white dark:bg-slate-800 text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-700 transition"
