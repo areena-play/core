@@ -84,16 +84,23 @@ router.get('/admin/list', async (req: AuthRequest, res: Response, next) => {
             });
         }
 
-        if (role === 'SUPER_ADMIN') {
+        const normalizedRole = role.toUpperCase();
+        if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ADMIN') {
             where.isSuperAdmin = true;
-        } else if (role === 'FEDERATION') {
+        } else if (normalizedRole === 'FEDERATION' || normalizedRole === 'OFFICIAL') {
             where.associationRoles = { some: {} };
-        } else if (role === 'CLUB') {
+        } else if (normalizedRole === 'CLUB' || normalizedRole === 'CLUB_ADMIN') {
             where.clubRoles = { some: {} };
-        } else if (role === 'ATHLETE') {
-            where.licenses = { some: {} };
-        } else if (role === 'UNVERIFIED') {
+        } else if (normalizedRole === 'ATHLETE' || normalizedRole === 'PLAYER') {
+            where.licenses = { some: { type: 'PLAYER' } };
+        } else if (normalizedRole === 'COACH') {
+            where.licenses = { some: { type: 'COACH' } };
+        } else if (normalizedRole === 'REFEREE' || normalizedRole === 'UMPIRE') {
+            where.licenses = { some: { type: { in: ['REFEREE', 'UMPIRE'] } } };
+        } else if (normalizedRole === 'UNVERIFIED') {
             where.emailVerified = false;
+        } else if (normalizedRole === 'VERIFIED') {
+            where.emailVerified = true;
         }
 
         if (andConditions.length > 0) {
@@ -170,6 +177,7 @@ router.get('/admin/list', async (req: AuthRequest, res: Response, next) => {
         res.json({
             users,
             total,
+            totalUnfiltered: totalUsers,
             page,
             limit,
             totalPages,
