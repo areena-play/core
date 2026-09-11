@@ -424,6 +424,7 @@ function LoginForm() {
                                         </label>
                                         <button
                                             type="button"
+                                            tabIndex={-1}
                                             onClick={() => {
                                                 setForgotMode(true);
                                                 setForgotEmail(email);
