@@ -60,16 +60,32 @@ export default function ManagementDashboardPage() {
 
     const loadDashboardData = async () => {
         try {
+            let targetAssocId = assocId;
+            if (assocId) {
+                try {
+                    const assoc = await api.getAssociation(assocId);
+                    if (assoc?.id) targetAssocId = assoc.id;
+                } catch {
+                    const data = await api.getAssociations().catch(() => ({ associations: [] }));
+                    const found = data.associations?.find((a: any) =>
+                        a.id === assocId ||
+                        a.slug?.toLowerCase() === assocId.toLowerCase() ||
+                        a.code?.toUpperCase() === assocId.toUpperCase()
+                    );
+                    if (found?.id) targetAssocId = found.id;
+                }
+            }
+
             const licenseParams: Record<string, string> = {
                 status: 'PENDING_CLUB,PENDING_ASSOCIATION',
                 limit: '25',
             };
-            if (assocId) licenseParams.associationId = assocId;
+            if (targetAssocId) licenseParams.associationId = targetAssocId;
 
             const [usersRes, clubsRes, licenseStatsRes, pendingLicensesRes, invoicesRes, auditRes] = await Promise.allSettled([
-                api.getUsers(assocId ? { page: 1, limit: 1, associationId: assocId } : { page: 1, limit: 1 }),
+                api.getUsers(targetAssocId ? { page: 1, limit: 1, associationId: targetAssocId } : { page: 1, limit: 1 }),
                 api.getClubs(),
-                api.getLicenseStats(assocId ? { associationId: assocId } : {}),
+                api.getLicenseStats(targetAssocId ? { associationId: targetAssocId } : {}),
                 api.getLicenses(licenseParams),
                 api.getInvoices().catch(() => []),
                 api.getAuditLogs({ limit: '5' }).catch(() => ({ logs: [] })),

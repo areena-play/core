@@ -85,7 +85,11 @@ export function RefresherCoursesView({ scopedAssociationId }: RefresherCoursesVi
                 const list = res.associations || [];
                 setAssociations(list);
                 if (scopedAssociationId) {
-                    const found = list.find((a: any) => a.id === scopedAssociationId);
+                    const found = list.find((a: any) =>
+                        a.id === scopedAssociationId ||
+                        a.slug?.toLowerCase() === scopedAssociationId.toLowerCase() ||
+                        a.code?.toUpperCase() === scopedAssociationId.toUpperCase()
+                    );
                     if (found) {
                         setScopedAssoc(found);
                         setAssociationId(found.id);

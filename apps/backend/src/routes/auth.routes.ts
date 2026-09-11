@@ -1074,13 +1074,29 @@ router.get('/users', authenticateToken, async (req: AuthRequest, res: Response, 
             });
         }
 
-        if (associationId) {
+        let resolvedAssocId = associationId;
+        if (resolvedAssocId) {
+            const a = await prisma.association.findFirst({
+                where: {
+                    OR: [
+                        { id: resolvedAssocId },
+                        { slug: resolvedAssocId.toLowerCase() },
+                        { code: resolvedAssocId.toUpperCase() },
+                    ],
+                },
+                select: { id: true },
+            });
+            if (a) resolvedAssocId = a.id;
+        }
+
+        if (resolvedAssocId) {
             andConditions.push({
                 OR: [
-                    { associationRoles: { some: { associationId } } },
-                    { clubRoles: { some: { club: { associations: { some: { associationId } } } } } },
-                    { licenses: { some: { associationId } } },
-                    { licenses: { some: { club: { associations: { some: { associationId } } } } } },
+                    { associationRoles: { some: { associationId: resolvedAssocId } } },
+                    { clubRoles: { some: { club: { associations: { some: { associationId: resolvedAssocId } } } } } },
+                    { licenses: { some: { associationId: resolvedAssocId } } },
+                    { licenses: { some: { club: { associations: { some: { associationId: resolvedAssocId } } } } } },
+                    { teamMemberships: { some: { team: { club: { associations: { some: { associationId: resolvedAssocId } } } } } } },
                 ],
             });
         }
@@ -1141,6 +1157,7 @@ router.get('/users', authenticateToken, async (req: AuthRequest, res: Response, 
                     country: true,
                     licenseId: true,
                     eloPoints: true,
+                    currentLevel: true,
                     rank: true,
                     avatarUrl: true,
                     associationRoles: {
@@ -1163,7 +1180,14 @@ router.get('/users', authenticateToken, async (req: AuthRequest, res: Response, 
                             type: true,
                             status: true,
                             validUntil: true,
-                            club: { select: { id: true, name: true } },
+                            club: { select: { id: true, name: true, code: true } },
+                        },
+                    },
+                    teamMemberships: {
+                        select: {
+                            id: true,
+                            role: true,
+                            team: { select: { id: true, name: true, club: { select: { id: true, name: true, code: true } } } },
                         },
                     },
                 },

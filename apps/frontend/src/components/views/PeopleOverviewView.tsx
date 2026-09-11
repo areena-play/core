@@ -77,8 +77,15 @@ function PeopleOverviewViewContent({ scopedAssociationId }: PeopleOverviewViewPr
                 const list = data.associations || [];
                 setAssociations(list);
                 if (scopedAssociationId) {
-                    const found = list.find((a: any) => a.id === scopedAssociationId);
-                    if (found) setScopedAssoc(found);
+                    const found = list.find((a: any) =>
+                        a.id === scopedAssociationId ||
+                        a.slug?.toLowerCase() === scopedAssociationId.toLowerCase() ||
+                        a.code?.toUpperCase() === scopedAssociationId.toUpperCase()
+                    );
+                    if (found) {
+                        setScopedAssoc(found);
+                        setSelectedAssoc(found.id);
+                    }
                 }
             } catch (err) {
                 console.error('Failed to load associations:', err);
@@ -91,7 +98,7 @@ function PeopleOverviewViewContent({ scopedAssociationId }: PeopleOverviewViewPr
     const loadUsers = async () => {
         setLoading(true);
         try {
-            const activeAssocId = scopedAssociationId || selectedAssoc;
+            const activeAssocId = scopedAssoc?.id || selectedAssoc || scopedAssociationId;
             const res = await api.getUsers({
                 q: debouncedSearch,
                 associationId: activeAssocId || undefined,

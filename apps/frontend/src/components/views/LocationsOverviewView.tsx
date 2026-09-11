@@ -95,6 +95,17 @@ export function LocationsOverviewView({ scopedAssociationId }: LocationsOverview
             setLocations(rawLocs);
             setAssociations(rawAssocs);
             setClubs(rawClubs);
+
+            if (scopedAssociationId) {
+                const found = rawAssocs.find((a: any) =>
+                    a.id === scopedAssociationId ||
+                    a.slug?.toLowerCase() === scopedAssociationId.toLowerCase() ||
+                    a.code?.toUpperCase() === scopedAssociationId.toUpperCase()
+                );
+                if (found && !selectedAssoc) {
+                    setSelectedAssoc(found.id);
+                }
+            }
         } catch (err) {
             console.error('Failed to load locations:', err);
             setLocations([]);

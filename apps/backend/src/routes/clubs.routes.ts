@@ -33,7 +33,34 @@ function isClubOfficial(req: AuthRequest, clubId: string) {
 // GET /clubs
 router.get('/', async (req, res, next) => {
     try {
+        const { associationId } = req.query;
+        let resolvedAssocId = associationId ? String(associationId) : undefined;
+        if (resolvedAssocId) {
+            const a = await prisma.association.findFirst({
+                where: {
+                    OR: [
+                        { id: resolvedAssocId },
+                        { slug: resolvedAssocId.toLowerCase() },
+                        { code: resolvedAssocId.toUpperCase() },
+                    ],
+                },
+                select: { id: true },
+            });
+            if (a) resolvedAssocId = a.id;
+        }
+
         const clubs = await prisma.club.findMany({
+            where: {
+                ...(resolvedAssocId
+                    ? {
+                          associations: {
+                              some: {
+                                  associationId: resolvedAssocId,
+                              },
+                          },
+                      }
+                    : {}),
+            },
             include: {
                 associations: { include: { association: true } },
                 _count: { select: { licenses: true, teams: true } },

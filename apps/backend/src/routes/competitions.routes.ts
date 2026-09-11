@@ -82,10 +82,25 @@ router.get('/', async (req, res, next) => {
     try {
         const { type, associationId, seasonId, status, isOfficial } = req.query;
 
+        let resolvedAssocId = associationId ? String(associationId) : undefined;
+        if (resolvedAssocId) {
+            const a = await prisma.association.findFirst({
+                where: {
+                    OR: [
+                        { id: resolvedAssocId },
+                        { slug: resolvedAssocId.toLowerCase() },
+                        { code: resolvedAssocId.toUpperCase() },
+                    ],
+                },
+                select: { id: true },
+            });
+            if (a) resolvedAssocId = a.id;
+        }
+
         const competitions = await prisma.competition.findMany({
             where: {
                 ...(type ? { type: type as any } : {}),
-                ...(associationId ? { associationId: String(associationId) } : {}),
+                ...(resolvedAssocId ? { associationId: resolvedAssocId } : {}),
                 ...(seasonId ? { seasonId: String(seasonId) } : {}),
                 ...(status ? { status: status as any } : {}),
                 ...(isOfficial !== undefined ? { isOfficial: isOfficial === 'true' } : {}),

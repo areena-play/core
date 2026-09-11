@@ -12,9 +12,40 @@ const router = Router();
 router.get('/stats', authenticateToken, async (req: AuthRequest, res: Response, next) => {
     try {
         const { associationId, clubId } = req.query;
+
+        let resolvedAssocId = associationId ? String(associationId) : undefined;
+        if (resolvedAssocId) {
+            const a = await prisma.association.findFirst({
+                where: {
+                    OR: [
+                        { id: resolvedAssocId },
+                        { slug: resolvedAssocId.toLowerCase() },
+                        { code: resolvedAssocId.toUpperCase() },
+                    ],
+                },
+                select: { id: true },
+            });
+            if (a) resolvedAssocId = a.id;
+        }
+
+        let resolvedClubId = clubId ? String(clubId) : undefined;
+        if (resolvedClubId) {
+            const c = await prisma.club.findFirst({
+                where: {
+                    OR: [
+                        { id: resolvedClubId },
+                        { slug: resolvedClubId.toLowerCase() },
+                        { code: resolvedClubId.toUpperCase() },
+                    ],
+                },
+                select: { id: true },
+            });
+            if (c) resolvedClubId = c.id;
+        }
+
         const where: any = {
-            ...(associationId ? { associationId: String(associationId) } : {}),
-            ...(clubId ? { clubId: String(clubId) } : {}),
+            ...(resolvedAssocId ? { associationId: resolvedAssocId } : {}),
+            ...(resolvedClubId ? { clubId: resolvedClubId } : {}),
         };
 
         const [total, pendingClub, pendingAssociation, approved, rejected] = await Promise.all([
@@ -43,6 +74,36 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response, next)
     try {
         const { userId, clubId, associationId, type, status, limit, page } = req.query;
 
+        let resolvedAssocId = associationId ? String(associationId) : undefined;
+        if (resolvedAssocId) {
+            const a = await prisma.association.findFirst({
+                where: {
+                    OR: [
+                        { id: resolvedAssocId },
+                        { slug: resolvedAssocId.toLowerCase() },
+                        { code: resolvedAssocId.toUpperCase() },
+                    ],
+                },
+                select: { id: true },
+            });
+            if (a) resolvedAssocId = a.id;
+        }
+
+        let resolvedClubId = clubId ? String(clubId) : undefined;
+        if (resolvedClubId) {
+            const c = await prisma.club.findFirst({
+                where: {
+                    OR: [
+                        { id: resolvedClubId },
+                        { slug: resolvedClubId.toLowerCase() },
+                        { code: resolvedClubId.toUpperCase() },
+                    ],
+                },
+                select: { id: true },
+            });
+            if (c) resolvedClubId = c.id;
+        }
+
         const take = limit
             ? String(limit).toLowerCase() === 'all'
                 ? 1000
@@ -59,8 +120,8 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response, next)
         const licenses = await prisma.license.findMany({
             where: {
                 ...(userId ? { userId: String(userId) } : {}),
-                ...(clubId ? { clubId: String(clubId) } : {}),
-                ...(associationId ? { associationId: String(associationId) } : {}),
+                ...(resolvedClubId ? { clubId: resolvedClubId } : {}),
+                ...(resolvedAssocId ? { associationId: resolvedAssocId } : {}),
                 ...(type ? { type: type as any } : {}),
                 ...(statusFilter ? { status: statusFilter } : {}),
             },

@@ -504,9 +504,8 @@ export function getCommonNavSections({
                     children: [
                         ...subAssocsList.map((sub: any) => ({
                             id: sub.slug || sub.id,
-                            label: sub.name,
-                            href: `/association/${sub.slug || sub.id}`,
-                            badge: sub.code || sub.shortName,
+                            label: sub.code || sub.shortName || sub.name,
+                            href: `/association/${sub.slug || sub.code?.toLowerCase() || sub.id}`,
                         })),
                     ],
                 },

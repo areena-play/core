@@ -26,7 +26,11 @@ export function AssociationsOverviewView({ scopedAssociationId }: AssociationsOv
             setHierarchy(data);
             const assocs = data.associations || [];
             if (scopedAssociationId) {
-                const found = assocs.find((a: any) => a.id === scopedAssociationId);
+                const found = assocs.find((a: any) =>
+                    a.id === scopedAssociationId ||
+                    a.slug?.toLowerCase() === scopedAssociationId.toLowerCase() ||
+                    a.code?.toUpperCase() === scopedAssociationId.toUpperCase()
+                );
                 if (found) {
                     setScopedAssoc(found);
                     setSelectedAssoc(found);

@@ -805,32 +805,17 @@ export function Navbar() {
 
                             {/* Active Workspace Header Card */}
                             <div className="rounded-xl border border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/60 p-2.5 space-y-1.5">
-                                <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
                                     <span
                                         className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${currentViewMeta.badgeColor}`}
                                     >
                                         {headerBadge}
                                     </span>
-                                    {activeView === 'association' && mainAssoc?.logoUrl ? (
-                                        <div className="relative h-5 max-w-[80px] shrink-0 flex items-center justify-end">
-                                            <img
-                                                src={mainAssoc.logoUrl}
-                                                alt={headerTitle}
-                                                className="h-4.5 max-w-[80px] object-contain"
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div
-                                            className={`flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br ${currentViewMeta.gradientBg} text-white shadow-xs shrink-0`}
-                                        >
-                                            <CurrentViewIcon className="h-3 w-3" />
-                                        </div>
-                                    )}
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-xs text-slate-900 dark:text-white leading-snug break-words">
-                                         {headerTitle}
-                                     </h3>
+                                    <div>
+                                        <h3 className="font-bold text-xs text-slate-900 dark:text-white leading-snug break-words">
+                                            {headerTitle}
+                                        </h3>
+                                    </div>
                                 </div>
                             </div>
 

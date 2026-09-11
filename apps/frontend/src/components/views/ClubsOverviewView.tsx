@@ -93,8 +93,15 @@ function ClubsOverviewContent({ scopedAssociationId }: ClubsOverviewViewProps) {
             const list = assocData?.associations || [];
             setAssociations(list);
             if (scopedAssociationId) {
-                const found = list.find((a: any) => a.id === scopedAssociationId);
-                if (found) setScopedAssoc(found);
+                const found = list.find((a: any) =>
+                    a.id === scopedAssociationId ||
+                    a.slug?.toLowerCase() === scopedAssociationId.toLowerCase() ||
+                    a.code?.toUpperCase() === scopedAssociationId.toUpperCase()
+                );
+                if (found) {
+                    setScopedAssoc(found);
+                    setSelectedAssoc(found.id);
+                }
             }
         } catch (err) {
             console.error('Failed to load clubs:', err);
@@ -141,18 +148,25 @@ function ClubsOverviewContent({ scopedAssociationId }: ClubsOverviewViewProps) {
         }
     };
 
-    const effectiveAssocId = scopedAssociationId || selectedAssoc;
+    const effectiveAssocId = scopedAssoc?.id || selectedAssoc || scopedAssociationId;
 
     // Filter clubs by association scope if selected
     const filteredClubs = useMemo(() => {
-        if (!effectiveAssocId) return clubs;
+        if (!effectiveAssocId && !scopedAssoc) return clubs;
+        const targetId = scopedAssoc?.id || effectiveAssocId;
+        const targetCode = scopedAssoc?.code || (scopedAssociationId ? scopedAssociationId.toUpperCase() : undefined);
+        const targetSlug = scopedAssoc?.slug || (scopedAssociationId ? scopedAssociationId.toLowerCase() : undefined);
+
         return clubs.filter((c) =>
             c.associations?.some(
                 (ca: any) =>
-                    ca.associationId === effectiveAssocId || ca.association?.id === effectiveAssocId,
-            ),
+                    ca.associationId === targetId ||
+                    ca.association?.id === targetId ||
+                    (targetCode && (ca.association?.code?.toUpperCase() === targetCode || ca.associationCode === targetCode)) ||
+                    (targetSlug && (ca.association?.slug?.toLowerCase() === targetSlug || ca.associationSlug === targetSlug))
+            )
         );
-    }, [clubs, effectiveAssocId]);
+    }, [clubs, effectiveAssocId, scopedAssoc, scopedAssociationId]);
 
     // Table Column Definitions
     const columns = useMemo<ColumnDef<any>[]>(

@@ -76,8 +76,15 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                 const list = assocData.associations || [];
                 setAssociations(list);
                 if (scopedAssociationId) {
-                    const found = list.find((a: any) => a.id === scopedAssociationId);
-                    if (found) setScopedAssoc(found);
+                    const found = list.find((a: any) =>
+                        a.id === scopedAssociationId ||
+                        a.slug?.toLowerCase() === scopedAssociationId.toLowerCase() ||
+                        a.code?.toUpperCase() === scopedAssociationId.toUpperCase()
+                    );
+                    if (found) {
+                        setScopedAssoc(found);
+                        setFormAssocId(found.id);
+                    }
                 } else if (list.length > 0 && !formAssocId) {
                     setFormAssocId(list[0].id);
                 }
