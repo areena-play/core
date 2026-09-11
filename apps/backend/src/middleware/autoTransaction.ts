@@ -4,11 +4,84 @@ import { basePrisma } from '../config/prisma';
 
 const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
+export const DEFAULT_TRANSACTION_TIMEOUT = 300000; // 5 minutes default
+export const DEFAULT_TRANSACTION_MAX_WAIT = 60000;  // 60 seconds default
+
+export interface TransactionOptions {
+    timeout?: number;
+    maxWait?: number;
+    skip?: boolean;
+}
+
+interface RouteTimeoutRule {
+    pattern: string | RegExp;
+    options: TransactionOptions;
+}
+
+/**
+ * Registry of custom transaction timeout overrides per route pattern.
+ */
+const routeTimeoutRegistry: RouteTimeoutRule[] = [];
+
+/**
+ * Register custom transaction options / timeout for a specific route path or regex pattern.
+ *
+ * @example
+ * registerTransactionTimeout('/admin/import/clicktt', 600000); // 10 minutes
+ * registerTransactionTimeout(/\/admin\/bulk\/.+/, { timeout: 450000, maxWait: 90000 });
+ */
+export function registerTransactionTimeout(
+    pattern: string | RegExp,
+    optionsOrTimeout: number | TransactionOptions
+) {
+    const options: TransactionOptions =
+        typeof optionsOrTimeout === 'number'
+            ? { timeout: optionsOrTimeout }
+            : optionsOrTimeout;
+
+    routeTimeoutRegistry.unshift({ pattern, options });
+}
+
+/**
+ * Resolves the effective transaction options (timeout, maxWait, skip) for an incoming request URL.
+ */
+export function resolveTransactionOptions(urlOrPath: string): {
+    timeout: number;
+    maxWait: number;
+    skip: boolean;
+} {
+    for (const rule of routeTimeoutRegistry) {
+        if (typeof rule.pattern === 'string') {
+            if (urlOrPath.includes(rule.pattern)) {
+                return {
+                    timeout: rule.options.timeout ?? DEFAULT_TRANSACTION_TIMEOUT,
+                    maxWait: rule.options.maxWait ?? DEFAULT_TRANSACTION_MAX_WAIT,
+                    skip: Boolean(rule.options.skip),
+                };
+            }
+        } else if (rule.pattern instanceof RegExp) {
+            if (rule.pattern.test(urlOrPath)) {
+                return {
+                    timeout: rule.options.timeout ?? DEFAULT_TRANSACTION_TIMEOUT,
+                    maxWait: rule.options.maxWait ?? DEFAULT_TRANSACTION_MAX_WAIT,
+                    skip: Boolean(rule.options.skip),
+                };
+            }
+        }
+    }
+
+    return {
+        timeout: DEFAULT_TRANSACTION_TIMEOUT,
+        maxWait: DEFAULT_TRANSACTION_MAX_WAIT,
+        skip: false,
+    };
+}
+
 /**
  * Automatically wraps mutating HTTP requests (POST, PUT, PATCH, DELETE) in an atomic database transaction.
  *
  * How it works:
- * 1. Begins a PostgreSQL transaction.
+ * 1. Begins a PostgreSQL transaction with the route-specific (or 5-minute default) timeout.
  * 2. Injects the active transaction client (`tx`) into the request-scoped AsyncLocalStorage.
  * 3. All `prisma.<model>.<action>` calls throughout the application automatically route through `tx`.
  * 4. If the route succeeds (response sent), the transaction COMMITS.
@@ -19,8 +92,15 @@ export function autoTransaction(req: Request, res: Response, next: NextFunction)
         return next();
     }
 
+    const targetUrl = req.originalUrl || req.url || req.path;
+
     // Skip transaction for explicit file stream uploads or health endpoints
     if (req.path.startsWith('/upload') || req.path.startsWith('/health')) {
+        return next();
+    }
+
+    const txOptions = resolveTransactionOptions(targetUrl);
+    if (txOptions.skip) {
         return next();
     }
 
@@ -68,8 +148,8 @@ export function autoTransaction(req: Request, res: Response, next: NextFunction)
             });
         },
         {
-            maxWait: 60000,  // Maximum time to acquire transaction lock (60s)
-            timeout: 300000, // 5 minutes transaction timeout for long-running operations
+            maxWait: txOptions.maxWait,
+            timeout: txOptions.timeout,
         }
     ).catch((err) => {
         // If transaction rolled back due to an error and response hasn't finished, delegate to Express error handler

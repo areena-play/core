@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import { authenticateToken, requireSuperAdmin, AuthRequest } from '../middleware/auth';
+import { registerTransactionTimeout } from '../middleware/autoTransaction';
 import { SystemService } from '../services/system.service';
 import { AuditService } from '../services/audit.service';
 import { DatabaseBackupService } from '../services/databaseBackup.service';
@@ -477,6 +478,11 @@ router.post('/import/clicktt', async (req: AuthRequest, res: Response) => {
         console.error('ClickTT Import Execution Error:', err);
         res.status(500).json({ error: err.message || 'ClickTT import failed' });
     }
+});
+// Register custom 10-minute transaction timeout for ClickTT bulk ingestion
+registerTransactionTimeout('/admin/import/clicktt', {
+    timeout: 10 * 60 * 1000, // 10 minutes
+    maxWait: 2 * 60 * 1000,  // 2 minutes
 });
 
 export default router;
