@@ -1367,7 +1367,7 @@ export default function AssociationSettingsPage() {
                                     required
                                     value={assocName}
                                     onChange={(e) => setAssocName(e.target.value)}
-                                    placeholder="e.g. Swiss Table Tennis Federation"
+                                    placeholder="e.g. Swiss Table Tennis"
                                     className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
                                 />
                             </div>

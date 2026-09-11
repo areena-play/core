@@ -56,7 +56,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
         email: 'president.sttf@areena.ch',
         badge: 'National Federation',
         badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40',
-        description: 'Swiss Table Tennis Federation rules, seasonal approvals, and sanctioning.',
+        description: 'Swiss Table Tennis rules, seasonal approvals, and sanctioning.',
         icon: <Building2 className="w-4 h-4 text-indigo-400" />,
     },
     {

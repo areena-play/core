@@ -138,7 +138,7 @@ export default function AdminClickTTPage() {
                             ClickTT Registry Migration Engine
                         </h1>
                         <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                            Ingest official Swiss Table Tennis Federation (STT) and regional association datasets directly from clicktt-scraper JSON dumps. Creates clubs, athletes, national licensing passports, and ranking profiles without fake club clutter.
+                            Ingest official Swiss Table Tennis (STT) and regional association datasets directly from clicktt-scraper JSON dumps. Creates clubs, athletes, national licensing passports, and ranking profiles without fake club clutter.
                         </p>
                     </div>
                     <div className="absolute -right-10 -bottom-10 h-64 w-64 rounded-full bg-red-600/10 blur-3xl pointer-events-none" />

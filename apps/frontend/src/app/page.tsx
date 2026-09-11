@@ -141,7 +141,7 @@ export default function DashboardPage() {
                 <div className="relative z-10 max-w-4xl space-y-4">
                     <div className="inline-flex items-center gap-2 rounded-full bg-red-600/10 dark:bg-red-600/20 px-3.5 py-1.5 text-xs font-bold text-red-600 dark:text-red-400 border border-red-500/20 dark:border-red-500/30">
                         <Sparkles className="h-3.5 w-3.5 animate-pulse" />
-                        <span>{nationalAssoc?.name || 'Swiss Table Tennis Federation'} • Official AREENA Portal</span>
+                        <span>{nationalAssoc?.name} • Official AREENA Portal</span>
                     </div>
 
                     <h1 className="text-2xl sm:text-3xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
@@ -671,7 +671,7 @@ export default function DashboardPage() {
                         </div>
                         <div>
                             <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                                {nationalAssoc?.rules?.impressum?.organizationName || nationalAssoc?.name || 'Swiss Table Tennis Federation'} • Impressum
+                                {nationalAssoc?.rules?.impressum?.organizationName || nationalAssoc?.name} • Impressum
                             </h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400">
                                 {nationalAssoc?.rules?.impressum?.customLegalNotes || 'Official Sports Platform Governance & Federation Administration'}

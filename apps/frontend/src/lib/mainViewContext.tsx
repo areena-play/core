@@ -432,13 +432,13 @@ export function MainViewProvider({ children }: { children: React.ReactNode }) {
                 if (assoc?.name) return assoc.name;
                 return entityId.toUpperCase();
             }
-            return mainAssoc?.name || 'Swiss Table Tennis Federation';
+            return mainAssoc?.name;
         }
         if (activeView === 'club') {
-            return effectiveEntityMeta?.title || 'Sports Club';
+            return effectiveEntityMeta?.title;
         }
         if (activeView === 'tournament') {
-            return effectiveEntityMeta?.title || 'Tournament & Competition';
+            return effectiveEntityMeta?.title;
         }
         if (activeView === 'admin') {
             return 'Administration';

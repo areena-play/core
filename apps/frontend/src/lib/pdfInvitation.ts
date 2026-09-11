@@ -40,8 +40,8 @@ export function generateTournamentInvitationPdf(data: TournamentInvitationData) 
     const hallLocation = competition.location || 'Salle Omnisport, Rue du Mont Noble 37, 3960 Sierre';
     const tournamentName = competition.name || 'GREGOR KUONEN CUP XXL';
     const entryFee = competition.entryFee || 39;
-    const assocName = competition.association?.name || 'Swiss Table Tennis Federation';
-    const assocCode = competition.association?.code || 'STTV';
+    const assocName = competition.association?.name;
+    const assocCode = competition.association?.code;
 
     // 3. Category Scheduling (Split into days or schedule times)
     const cats = competition.categories && competition.categories.length > 0 ? competition.categories : categories;

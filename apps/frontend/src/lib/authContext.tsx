@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from './api';
 
 export interface User {
@@ -31,8 +32,9 @@ export interface AuthContextType {
     token: string | null;
     loading: boolean;
     justLoggedOut: boolean;
+    authEpoch: number;
     login: (token: string, user: User) => void;
-    logout: () => void;
+    logout: (redirectTo?: string) => void;
     refreshUser: () => Promise<void>;
 }
 
@@ -41,16 +43,19 @@ const AuthContext = createContext<AuthContextType>({
     token: null,
     loading: true,
     justLoggedOut: false,
+    authEpoch: 0,
     login: () => {},
     logout: () => {},
     refreshUser: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+    const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [justLoggedOut, setJustLoggedOut] = useState(false);
+    const [authEpoch, setAuthEpoch] = useState(0);
 
     const refreshUser = async () => {
         if (typeof window === 'undefined') {
@@ -112,19 +117,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setToken(newToken);
         setUser(newUser);
         setJustLoggedOut(false);
+        setAuthEpoch((prev) => prev + 1);
         setLoading(false);
     };
 
-    const logout = () => {
+    const logout = (redirectTo?: string) => {
         localStorage.removeItem('areena_token');
         localStorage.removeItem('areena_user');
         setToken(null);
         setUser(null);
-        setJustLoggedOut(true);
+        setAuthEpoch((prev) => prev + 1);
+
+        if (redirectTo) {
+            setJustLoggedOut(false);
+            router.replace(redirectTo);
+        } else {
+            setJustLoggedOut(true);
+            setTimeout(() => {
+                setJustLoggedOut(false);
+            }, 1000);
+        }
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, justLoggedOut, login, logout, refreshUser }}>
+        <AuthContext.Provider value={{ user, token, loading, justLoggedOut, authEpoch, login, logout, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

@@ -174,7 +174,7 @@ export function UtilitiesOverviewView({ scopedAssociationId }: UtilitiesOverview
                         </div>
                         <div>
                             <h4 className="font-bold text-sm text-slate-900 dark:text-white">
-                                Swiss Table Tennis Federation (STT) Rating Formula
+                                Swiss Table Tennis (STT) Rating Formula
                             </h4>
                             <p className="text-xs text-slate-500 dark:text-slate-400">
                                 Official rating computation uses standard logistic distribution with K-factors: K=32 (Juniors/Standard), K=24 (Active leagues), K=16 (Elite tournaments).

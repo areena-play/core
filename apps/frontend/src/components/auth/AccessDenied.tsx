@@ -1,11 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
-import { ShieldAlert, LogIn, ArrowLeft, UserX, KeyRound, Sparkles } from 'lucide-react';
+import { ShieldAlert, LogIn, ArrowLeft, UserX, KeyRound } from 'lucide-react';
 
 interface AccessDeniedProps {
     title?: string;
@@ -22,7 +22,7 @@ export function AccessDenied({
     returnHref = '/',
     loading: externalLoading,
 }: AccessDeniedProps) {
-    const { user, loading: authLoading, justLoggedOut } = useAuth();
+    const { user, loading: authLoading, justLoggedOut, logout } = useAuth();
     const { t } = useI18n();
     const pathname = usePathname();
     const router = useRouter();
@@ -30,14 +30,18 @@ export function AccessDenied({
     const isAnonymous = !user;
     const loginHref = pathname && pathname !== '/auth/login' ? `/auth/login?redirect=${encodeURIComponent(pathname)}` : '/auth/login';
 
-    // If the user logs out and lands on an AccessDenied page, immediately redirect to homepage
-    const prevUserRef = React.useRef(user);
-    React.useEffect(() => {
+    const handleSwitchAccount = () => {
+        logout(loginHref);
+    };
+
+    // Only redirect to homepage when coming from logout
+    const prevUserRef = useRef(user);
+    useEffect(() => {
         if (justLoggedOut || (!authLoading && prevUserRef.current && !user)) {
-            router.replace('/');
+            router.replace(returnHref || '/');
         }
         prevUserRef.current = user;
-    }, [user, authLoading, justLoggedOut, router]);
+    }, [user, authLoading, justLoggedOut, returnHref, router]);
 
     if (justLoggedOut) {
         return null;
@@ -125,17 +129,19 @@ export function AccessDenied({
                             <span>Sign In with Admin Account</span>
                         </Link>
                     ) : (
-                        <Link
-                            href={loginHref}
-                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                        <button
+                            type="button"
+                            onClick={handleSwitchAccount}
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
                         >
                             <LogIn className="h-4 w-4" />
                             <span>Switch Account</span>
-                        </Link>
+                        </button>
                     )}
                 </div>
             </div>
         </div>
     );
 }
+
 
