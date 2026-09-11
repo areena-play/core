@@ -223,13 +223,6 @@ export default function ClubSettingsPage() {
         <div className="space-y-8 pb-12 max-w-4xl">
             {/* Header */}
             <div>
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                    <Link href={`/club/${club.slug || clubIdentifier}`} className="hover:text-red-600 transition">
-                        {club.name}
-                    </Link>
-                    <span>/</span>
-                    <span className="text-slate-900 dark:text-white">Settings</span>
-                </div>
                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
                     <Settings className="w-8 h-8 text-red-600" />
                     <span>Club Settings & Configuration</span>

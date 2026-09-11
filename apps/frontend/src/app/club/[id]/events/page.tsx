@@ -114,13 +114,6 @@ export default function ClubEventsPage() {
         <div className="space-y-8 pb-12">
             {/* Header */}
             <div>
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                    <Link href={`/club/${clubIdentifier}`} className="hover:text-red-600 transition">
-                        {club.name}
-                    </Link>
-                    <span>/</span>
-                    <span className="text-slate-900 dark:text-white">Events & Fixtures</span>
-                </div>
                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
                     <Calendar className="w-8 h-8 text-red-600" />
                     <span>Club Events & League Fixtures</span>
