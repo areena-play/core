@@ -118,14 +118,21 @@ export const fr: TranslationDictionary = {
 
     // Club Workspace Sidebar & Sections
     clubWorkspace: {
-        title: 'Vereins-Arbeitsbereich',
-        overview: 'Vereinsübersicht',
-        members: 'Vereinsmitglieder & Lizenzen',
-        teams: 'Gemeldete Ligamannschaften',
-        calendar: 'Vereinstermine & Spielplan',
-        communications: 'Vereinsmitteilungen',
-        registeredPlayersCount: '{count} Gemeldete Spieler',
-        activeLeagueTeamsCount: '{count} Aktive Ligamannschaften',
+        title: 'Espace Club',
+        navInformation: 'Informations du Club',
+        overview: 'Aperçu',
+        contacts: 'Contacts & Salles',
+        members: 'Membres Inscrits',
+        events: 'Événements & Rencontres',
+        teams: 'Équipes de Championnat',
+        calendar: 'Calendrier du Club',
+        navOperations: 'Opérations du Club',
+        licensingHub: 'Pôle Licences',
+        membersHub: 'Pôle Membres',
+        communications: 'Pôle Communications',
+        settings: 'Paramètres du Club',
+        registeredPlayersCount: '{count} Joueurs Inscrits',
+        activeLeagueTeamsCount: '{count} Équipes Actives',
     },
 
     // User Menu & Accessible Pages

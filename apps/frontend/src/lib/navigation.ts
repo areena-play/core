@@ -256,48 +256,83 @@ export function getCommonNavSections({
 
     // 2. CLUB WORKSPACE VIEW
     if (activeView === 'club' && entityId) {
-        return [
+        const isClubOfficial =
+            user?.isSuperAdmin ||
+            user?.clubRoles?.some(
+                (r: any) =>
+                    (r.clubId === entityId || r.club?.slug === entityId || r.club?.id === entityId) &&
+                    ['ADMIN', 'PRESIDENT', 'SECRETARY', 'TREASURER', 'COACH', 'TECHNICAL_DIRECTOR', 'JUNIOR_COACH', 'OFFICIAL'].includes(r.role),
+            ) ||
+            user?.clubRoles?.some(
+                (r: any) => ['ADMIN', 'PRESIDENT', 'SECRETARY', 'TREASURER', 'COACH', 'TECHNICAL_DIRECTOR', 'JUNIOR_COACH', 'OFFICIAL'].includes(r.role)
+            );
+
+        const sections: NavSection[] = [
             {
-                sectionTitle: 'Club Management',
+                sectionTitle: t('clubWorkspace.navInformation') || 'Club Information',
                 items: [
                     {
                         id: 'club-overview',
-                        label: t('clubWorkspace.overview'),
+                        label: t('clubWorkspace.overview') || 'Overview',
                         href: `/club/${entityId}`,
                         icon: Shield,
                     },
                     {
+                        id: 'club-contacts',
+                        label: t('clubWorkspace.contacts') || 'Contacts & Venues',
+                        href: `/club/${entityId}/contacts`,
+                        icon: MapPin,
+                    },
+                    {
                         id: 'club-members',
-                        label: t('clubWorkspace.members'),
-                        href: `/club/${entityId}#members`,
+                        label: t('clubWorkspace.members') || 'Registered Members',
+                        href: `/club/${entityId}/members`,
                         icon: Users,
                     },
                     {
-                        id: 'club-teams',
-                        label: t('clubWorkspace.teams'),
-                        href: `/club/${entityId}#teams`,
-                        icon: Trophy,
-                    },
-                ],
-            },
-            {
-                sectionTitle: 'Club Activities',
-                items: [
-                    {
-                        id: 'club-calendar',
-                        label: t('clubWorkspace.calendar'),
-                        href: `/calendar?clubId=${entityId}`,
+                        id: 'club-events',
+                        label: t('clubWorkspace.events') || 'Events & Fixtures',
+                        href: `/club/${entityId}/events`,
                         icon: Calendar,
-                    },
-                    {
-                        id: 'club-communications',
-                        label: t('clubWorkspace.communications'),
-                        href: `/communications?clubId=${entityId}`,
-                        icon: Mail,
                     },
                 ],
             },
         ];
+
+        // Club Officials Only Hubs
+        if (isClubOfficial) {
+            sections.push({
+                sectionTitle: t('clubWorkspace.navOperations') || 'Club Operations',
+                items: [
+                    {
+                        id: 'club-settings',
+                        label: t('clubWorkspace.settings') || 'Club Settings',
+                        href: `/club/${entityId}/settings`,
+                        icon: Settings,
+                    },
+                    {
+                        id: 'club-licensing',
+                        label: t('clubWorkspace.licensingHub') || 'Licensing Hub',
+                        href: `/club/${entityId}/licensing`,
+                        icon: Award,
+                    },
+                    {
+                        id: 'club-members-hub',
+                        label: t('clubWorkspace.membersHub') || 'Members Hub',
+                        href: `/club/${entityId}/members-hub`,
+                        icon: UserCheck,
+                    },
+                    {
+                        id: 'club-communications',
+                        label: t('clubWorkspace.communications') || 'Communication Hub',
+                        href: `/club/${entityId}/communications`,
+                        icon: MessageSquare,
+                    },
+                ],
+            });
+        }
+
+        return sections;
     }
 
     // 3. MAIN & SUB-ASSOCIATION VIEWS (Dynamic Hierarchy Structure)

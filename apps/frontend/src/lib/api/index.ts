@@ -137,6 +137,20 @@ export class ApiClient extends HttpClient {
     getClubs = () => this.clubs.getClubs();
     getClub = (id: string) => this.clubs.getClub(id);
     createClub = (body: any) => this.clubs.createClub(body);
+    getClubContacts = (idOrSlug: string) => this.clubs.getClubContacts(idOrSlug);
+    getClubMembers = (idOrSlug: string) => this.clubs.getClubMembers(idOrSlug);
+    getClubEvents = (idOrSlug: string) => this.clubs.getClubEvents(idOrSlug);
+    getClubLicensing = (idOrSlug: string) => this.clubs.getClubLicensing(idOrSlug);
+    applyClubLicenseOnBehalf = (idOrSlug: string, data: { userId: string; type: string; validUntil?: string; notes?: string }) => this.clubs.applyClubLicenseOnBehalf(idOrSlug, data);
+    approveClubLicense = (idOrSlug: string, licenseId: string) => this.clubs.approveClubLicense(idOrSlug, licenseId);
+    rejectClubLicense = (idOrSlug: string, licenseId: string, reason?: string) => this.clubs.rejectClubLicense(idOrSlug, licenseId, reason);
+    getClubMembersHub = (idOrSlug: string) => this.clubs.getClubMembersHub(idOrSlug);
+    registerClubMember = (idOrSlug: string, data: any) => this.clubs.registerClubMember(idOrSlug, data);
+    grantClubRole = (idOrSlug: string, data: { userId: string; role: string; title?: string }) => this.clubs.grantClubRole(idOrSlug, data);
+    revokeClubRole = (idOrSlug: string, roleId: string) => this.clubs.revokeClubRole(idOrSlug, roleId);
+    getClubCommunications = (idOrSlug: string) => this.clubs.getClubCommunications(idOrSlug);
+    sendClubCommunication = (idOrSlug: string, data: { subject: string; body: string; targetGroup?: string; channel?: string }) => this.clubs.sendClubCommunication(idOrSlug, data);
+    updateClub = (idOrSlug: string, body: any) => this.clubs.updateClub(idOrSlug, body);
 
     getLicenses = (params?: Record<string, string | number>) => this.licenses.getLicenses(params);
     getLicenseStats = (params?: Record<string, string>) => this.licenses.getLicenseStats(params);

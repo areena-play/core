@@ -22,12 +22,15 @@ import {
     Clock,
     Search,
     Flame,
+    Building2,
+    UserCheck,
+    Megaphone,
+    Sparkles,
+    Settings,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { ColumnDef } from '@tanstack/react-table';
-import { DataTable, DataTableColumnHeader } from '@/components/ui/DataTable';
 
-export default function SingleClubPage() {
+export default function SingleClubOverviewPage() {
     const params = useParams();
     const clubIdentifier = params?.id as string;
     const { user } = useAuth();
@@ -36,54 +39,46 @@ export default function SingleClubPage() {
 
     const [club, setClub] = useState<any>(null);
     const [members, setMembers] = useState<any[]>([]);
-    const [competitions, setCompetitions] = useState<any[]>([]);
+    const [contactsData, setContactsData] = useState<any>(null);
+    const [eventsData, setEventsData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+
+    const isClubOfficial =
+        user?.isSuperAdmin ||
+        user?.clubRoles?.some(
+            (r: any) =>
+                (r.clubId === club?.id || r.club?.slug === club?.slug || r.clubId === clubIdentifier || r.club?.slug === clubIdentifier) &&
+                ['ADMIN', 'PRESIDENT', 'SECRETARY', 'TREASURER', 'COACH', 'TECHNICAL_DIRECTOR', 'JUNIOR_COACH', 'OFFICIAL'].includes(r.role)
+        );
 
     const fetchClubData = async () => {
         setLoading(true);
         try {
-            let targetClub: any = null;
-            try {
-                targetClub = await api.getClub(clubIdentifier);
-            } catch {
-                const clubs = await api.getClubs().catch(() => []);
-                targetClub = clubs.find(
-                    (c: any) =>
-                        c.id === clubIdentifier ||
-                        c.slug?.toLowerCase() === clubIdentifier?.toLowerCase() ||
-                        c.code?.toLowerCase() === clubIdentifier?.toLowerCase()
-                );
-            }
+            const [contactsRes, membersRes, eventsRes] = await Promise.all([
+                api.getClubContacts(clubIdentifier).catch(() => null),
+                api.getClubMembers(clubIdentifier).catch(() => null),
+                api.getClubEvents(clubIdentifier).catch(() => null),
+            ]);
 
+            const targetClub = contactsRes?.club || membersRes?.club || eventsRes?.club;
             if (targetClub) {
                 setClub(targetClub);
+                setContactsData(contactsRes);
+                setMembers(membersRes?.members || membersRes?.licenses || []);
+                setEventsData(eventsRes);
+
                 setEntityMeta({
                     id: targetClub.id,
                     title: targetClub.name,
                     code: targetClub.code,
                     badge: 'Club',
-                    subtitle: `${targetClub.city || 'Switzerland'} • Affiliated with Regional & National Associations`,
+                    subtitle: `${targetClub.city || 'Switzerland'} • Official Sports Club Overview`,
                 });
-
-                if (Array.isArray(targetClub.licenses) && targetClub.licenses.length > 0) {
-                    setMembers(targetClub.licenses);
-                } else {
-                    const licensesData = await api.getLicenses().catch(() => []);
-                    const clubLicenses = (licensesData || []).filter(
-                        (m: any) => m.clubId === targetClub.id || m.club?.id === targetClub.id
-                    );
-                    setMembers(clubLicenses);
-                }
             } else {
                 setClub(null);
-                setMembers([]);
             }
-
-            // Load competitions
-            const compsData = await api.getCompetitions().catch(() => []);
-            setCompetitions(compsData || []);
         } catch (err) {
-            console.error('Failed to load club details', err);
+            console.error('Failed to load club overview', err);
         } finally {
             setLoading(false);
         }
@@ -95,91 +90,19 @@ export default function SingleClubPage() {
         }
     }, [clubIdentifier]);
 
-    const filteredMembers = useMemo(() => {
-        if (!club) return [];
-        return members.filter(
-            (m) =>
-                m.clubId === club.id ||
-                m.club?.id === club.id ||
-                m.club?.slug === club.slug ||
-                (clubIdentifier && (m.clubId === clubIdentifier || m.club?.slug === clubIdentifier))
-        );
-    }, [members, club, clubIdentifier]);
+    const topAthletes = useMemo(() => {
+        return [...members]
+            .filter((m) => m.status === 'APPROVED' && m.user)
+            .sort((a, b) => (b.user?.eloPoints || 1200) - (a.user?.eloPoints || 1200))
+            .slice(0, 5);
+    }, [members]);
 
-    const memberColumns = useMemo<ColumnDef<any>[]>(
-        () => [
-            {
-                id: 'member',
-                accessorFn: (row) => `${row.user?.firstName || ''} ${row.user?.lastName || ''}`,
-                header: ({ column }) => <DataTableColumnHeader column={column} title="Member / Athlete" />,
-                cell: ({ row }) => (
-                    <span className="font-semibold text-slate-900 dark:text-white">
-                        {row.original.user ? `${row.original.user.firstName} ${row.original.user.lastName}` : 'Club Member'}
-                    </span>
-                ),
-            },
-            {
-                id: 'type',
-                accessorFn: (row) => row.type,
-                header: ({ column }) => <DataTableColumnHeader column={column} title="License Type" />,
-                cell: ({ row }) => (
-                    <span className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-mono text-slate-700 dark:text-slate-300">
-                        {row.original.type}
-                    </span>
-                ),
-            },
-            {
-                id: 'licenseNumber',
-                accessorFn: (row) => row.licenseNumber || row.user?.licenseId || '',
-                header: ({ column }) => <DataTableColumnHeader column={column} title="License #" />,
-                cell: ({ row }) => (
-                    <span className="font-mono font-bold text-red-600 dark:text-red-400">
-                        {row.original.licenseNumber || row.original.user?.licenseId || 'PENDING'}
-                    </span>
-                ),
-            },
-            {
-                id: 'eloPoints',
-                accessorFn: (row) => row.user?.eloPoints || 1200,
-                header: ({ column }) => <DataTableColumnHeader column={column} title="Elo Points" />,
-                cell: ({ row }) => (
-                    <span className="font-mono font-bold text-slate-900 dark:text-white">
-                        {row.original.user?.eloPoints || 1200} pts
-                    </span>
-                ),
-            },
-            {
-                id: 'status',
-                accessorFn: (row) => row.status,
-                header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
-                cell: ({ row }) => {
-                    const isApproved = row.original.status === 'APPROVED';
-                    return (
-                        <span
-                            className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
-                                isApproved
-                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800/50'
-                                    : 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800/50'
-                            }`}
-                        >
-                            {row.original.status}
-                        </span>
-                    );
-                },
-            },
-            {
-                id: 'validity',
-                accessorFn: (row) => (row.validUntil ? new Date(row.validUntil).getTime() : 0),
-                header: ({ column }) => <DataTableColumnHeader column={column} title="Validity" className="justify-end w-full" />,
-                cell: ({ row }) => (
-                    <div className="text-right text-slate-500 dark:text-slate-400">
-                        {row.original.validUntil ? format(new Date(row.original.validUntil), 'MMM yyyy') : 'Current Season'}
-                    </div>
-                ),
-            },
-        ],
-        []
-    );
+    const upcomingMatches = useMemo(() => {
+        const encs = eventsData?.encounters || [];
+        return encs
+            .filter((e: any) => e.status !== 'COMPLETED')
+            .slice(0, 4);
+    }, [eventsData]);
 
     if (loading) {
         return (
@@ -191,121 +114,380 @@ export default function SingleClubPage() {
 
     if (!club) {
         return (
-            <div className="space-y-6 pb-12">
-                <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 sm:p-12 text-center max-w-lg mx-auto shadow-sm space-y-4">
-                    <div className="w-14 h-14 mx-auto rounded-2xl bg-red-500/10 text-red-600 flex items-center justify-center">
-                        <Shield className="w-7 h-7" />
-                    </div>
-                    <div className="space-y-1">
-                        <h2 className="text-xl font-black text-slate-900 dark:text-white">Club Not Found</h2>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                            No club matching identifier &quot;{clubIdentifier}&quot; could be located.
-                        </p>
-                    </div>
-                    <div>
-                        <Link
-                            href="/clubs"
-                            className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition"
-                        >
-                            <span>Back to Clubs Directory</span>
-                            <ChevronRight className="w-4 h-4" />
-                        </Link>
-                    </div>
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 sm:p-12 text-center max-w-lg mx-auto shadow-sm space-y-4">
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-red-500/10 text-red-600 flex items-center justify-center">
+                    <Shield className="w-7 h-7" />
+                </div>
+                <div className="space-y-1">
+                    <h2 className="text-xl font-black text-slate-900 dark:text-white">Club Not Found</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                        No club matching identifier &quot;{clubIdentifier}&quot; could be located.
+                    </p>
+                </div>
+                <div>
+                    <Link
+                        href="/clubs"
+                        className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition"
+                    >
+                        <span>Back to Clubs Directory</span>
+                        <ChevronRight className="w-4 h-4" />
+                    </Link>
                 </div>
             </div>
         );
     }
 
+    const officialsCount = contactsData?.officials?.length || 0;
+    const venuesCount = contactsData?.locations?.length || 0;
+    const teamsCount = eventsData?.teams?.length || 0;
+
     return (
-        <div className="space-y-6 pb-12">
+        <div className="space-y-8 pb-12">
             {/* Club Banner Header */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 shadow-sm relative overflow-hidden">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 dark:border-slate-800 dark:bg-slate-900/80 shadow-sm relative overflow-hidden">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="flex items-center gap-4">
-                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-red-600 to-rose-700 text-white flex items-center justify-center font-bold text-xl shadow-md">
-                            {club?.code || 'CLB'}
+                        <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-gradient-to-br from-red-600 to-rose-700 text-white flex items-center justify-center font-bold text-2xl shadow-md">
+                            {club.code || 'CLB'}
                         </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                                    {club?.name || 'Club Directory'}
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                                    {club.name}
                                 </h1>
-                                <span className="rounded-full bg-red-100 dark:bg-red-950 px-2.5 py-0.5 text-xs font-bold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/40">
+                                <span className="rounded-full bg-red-100 dark:bg-red-950 px-3 py-0.5 text-xs font-bold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/40">
                                     Active Club
                                 </span>
                             </div>
-                            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
-                                <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                                <span>{club?.address || `${club?.city || 'Switzerland'}`}</span>
+                            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                                <MapPin className="h-4 w-4 text-red-500" />
+                                <span>{club.address || `${club.city || 'Switzerland'}`}</span>
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                         <Link
-                            href="/profile?tab=licenses&apply=true"
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition"
+                            href={`/club/${clubIdentifier}/members`}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 transition"
                         >
-                            <Plus className="h-4 w-4" />
-                            <span>Request Club License</span>
+                            <Users className="w-4 h-4" />
+                            <span>View Roster</span>
                         </Link>
+                        <Link
+                            href={`/club/${clubIdentifier}/contacts`}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition"
+                        >
+                            <Building2 className="w-4 h-4" />
+                            <span>Contacts & Venues</span>
+                        </Link>
+                        {isClubOfficial && (
+                            <Link
+                                href={`/club/${clubIdentifier}/settings`}
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 px-3.5 py-2.5 text-xs font-bold shadow-xs transition"
+                                title="Club Settings"
+                            >
+                                <Settings className="w-4 h-4 text-slate-300" />
+                                <span>Settings</span>
+                            </Link>
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* Quick Metrics */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between">
                     <div>
-                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Registered Athletes</div>
-                        <div className="text-2xl font-black text-slate-900 dark:text-white">{filteredMembers.length}</div>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Members</div>
+                        <div className="text-2xl font-black text-slate-900 dark:text-white">{members.length}</div>
                     </div>
-                    <Users className="w-8 h-8 text-red-500" />
+                    <Users className="w-7 h-7 text-red-500" />
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between">
                     <div>
-                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Average Rating</div>
-                        <div className="text-2xl font-black text-slate-900 dark:text-white">
-                            {filteredMembers.length > 0
-                                ? Math.round(
-                                      filteredMembers.reduce((acc, m) => acc + (m.user?.eloPoints || 1200), 0) /
-                                          filteredMembers.length
-                                  )
-                                : 1200}{' '}
-                            <span className="text-xs font-normal text-slate-400">pts</span>
-                        </div>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Teams</div>
+                        <div className="text-2xl font-black text-blue-600 dark:text-blue-400">{teamsCount}</div>
                     </div>
-                    <Trophy className="w-8 h-8 text-amber-500" />
+                    <Trophy className="w-7 h-7 text-blue-500" />
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between">
                     <div>
-                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Affiliated City</div>
-                        <div className="text-lg font-black text-slate-900 dark:text-white truncate">{club?.city || 'Switzerland'}</div>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Officials</div>
+                        <div className="text-2xl font-black text-amber-600 dark:text-amber-400">{officialsCount}</div>
                     </div>
-                    <MapPin className="w-8 h-8 text-blue-500" />
+                    <UserCheck className="w-7 h-7 text-amber-500" />
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between">
+                    <div>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sports Halls</div>
+                        <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{venuesCount}</div>
+                    </div>
+                    <MapPin className="w-7 h-7 text-emerald-500" />
                 </div>
             </div>
 
-            {/* Members Interactive DataTable */}
-            <div className="space-y-3" id="members">
-                <div>
-                    <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <Users className="h-5 w-5 text-red-500" />
-                        <span>{t('clubWorkspace.members')}</span>
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Manage club athlete passes, Elo ratings, and licensing validation.
-                    </p>
+            {/* Quick Navigation Cards */}
+            <div className="space-y-4">
+                <h2 className="text-lg font-black text-slate-900 dark:text-white">Club Sections & Sites</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Link
+                        href={`/club/${clubIdentifier}/contacts`}
+                        className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-red-300 dark:hover:border-red-900 transition group space-y-3"
+                    >
+                        <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-950 text-red-600 flex items-center justify-center font-bold">
+                            <Building2 className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-red-600 transition">
+                                    Contacts & Venues
+                                </h3>
+                                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-red-600 transition" />
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                Club address, board officials, and sports court facilities.
+                            </p>
+                        </div>
+                    </Link>
+
+                    <Link
+                        href={`/club/${clubIdentifier}/members`}
+                        className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-red-300 dark:hover:border-red-900 transition group space-y-3"
+                    >
+                        <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-600 flex items-center justify-center font-bold">
+                            <Users className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-red-600 transition">
+                                    Registered Members
+                                </h3>
+                                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-red-600 transition" />
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                Complete athlete roster with Elo ratings and profile links.
+                            </p>
+                        </div>
+                    </Link>
+
+                    <Link
+                        href={`/club/${clubIdentifier}/events`}
+                        className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-red-300 dark:hover:border-red-900 transition group space-y-3"
+                    >
+                        <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-600 flex items-center justify-center font-bold">
+                            <Calendar className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-red-600 transition">
+                                    Events & League Fixtures
+                                </h3>
+                                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-red-600 transition" />
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                League matches, schedules, scores, and calendar events.
+                            </p>
+                        </div>
+                    </Link>
+                </div>
+            </div>
+
+            {/* Club Officials Hubs Section (Shown for Officials / Admins) */}
+            {isClubOfficial && (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <Shield className="w-5 h-5 text-red-600" />
+                            <span>Club Officials Operations</span>
+                        </h2>
+                        <span className="rounded-full bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide border border-red-200 dark:border-red-900/40">
+                            Sanctioned Area
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <Link
+                            href={`/club/${clubIdentifier}/licensing`}
+                            className="rounded-2xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/30 dark:bg-amber-950/10 p-5 shadow-sm hover:border-amber-400 transition group space-y-3"
+                        >
+                            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold">
+                                <Award className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-amber-600 transition">
+                                        Licensing Hub
+                                    </h3>
+                                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-600 transition" />
+                                </div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Sanction licenses, renew passes, or apply on behalf.
+                                </p>
+                            </div>
+                        </Link>
+
+                        <Link
+                            href={`/club/${clubIdentifier}/members-hub`}
+                            className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-red-300 dark:hover:border-red-900 transition group space-y-3"
+                        >
+                            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold">
+                                <UserCheck className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-red-600 transition">
+                                        Members Hub
+                                    </h3>
+                                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-red-600 transition" />
+                                </div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Register people, assign official roles, and manage access.
+                                </p>
+                            </div>
+                        </Link>
+
+                        <Link
+                            href={`/club/${clubIdentifier}/communications`}
+                            className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-red-300 dark:hover:border-red-900 transition group space-y-3"
+                        >
+                            <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold">
+                                <Megaphone className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-red-600 transition">
+                                        Communication
+                                    </h3>
+                                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-red-600 transition" />
+                                </div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Broadcast announcements and newsletters to members.
+                                </p>
+                            </div>
+                        </Link>
+
+                        <Link
+                            href={`/club/${clubIdentifier}/settings`}
+                            className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-red-300 dark:hover:border-red-900 transition group space-y-3"
+                        >
+                            <div className="w-10 h-10 rounded-xl bg-slate-800 text-white flex items-center justify-center font-bold">
+                                <Settings className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-red-600 transition">
+                                        Club Settings
+                                    </h3>
+                                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-red-600 transition" />
+                                </div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Edit contact addresses, website, branding, and slug.
+                                </p>
+                            </div>
+                        </Link>
+                    </div>
+                </div>
+            )}
+
+            {/* Split Content: Top Rated Athletes & Upcoming Fixtures */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Top Rated Athletes */}
+                <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <Trophy className="w-5 h-5 text-amber-500" />
+                            <span>Top Rated Athletes</span>
+                        </h2>
+                        <Link
+                            href={`/club/${clubIdentifier}/members`}
+                            className="text-xs font-bold text-red-600 hover:underline flex items-center gap-1"
+                        >
+                            <span>Full Roster</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                        </Link>
+                    </div>
+
+                    {topAthletes.length === 0 ? (
+                        <div className="py-8 text-center text-xs text-slate-400">
+                            No ranked athletes registered.
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {topAthletes.map((m, idx) => {
+                                const u = m.user || {};
+                                const personId = u.licenseId || u.id;
+                                return (
+                                    <div key={m.id} className="py-3 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <span className="w-6 text-center font-bold text-xs text-slate-400">
+                                                #{idx + 1}
+                                            </span>
+                                            <div>
+                                                <Link
+                                                    href={`/people/${personId}`}
+                                                    className="font-bold text-xs text-slate-900 dark:text-white hover:text-red-600 transition"
+                                                >
+                                                    {u.firstName} {u.lastName}
+                                                </Link>
+                                                <span className="text-[11px] text-slate-400 block font-mono">
+                                                    {m.licenseNumber || u.licenseId || 'LICENSED'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span className="font-mono font-bold text-xs text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                                            {u.eloPoints || 1200} pts
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
 
-                <DataTable
-                    columns={memberColumns}
-                    data={filteredMembers}
-                    searchPlaceholder="Search club athletes, license #, type..."
-                    emptyMessage="No athletes currently registered under this club."
-                    defaultPageSize={10}
-                    pageSizeOptions={[5, 10, 25, 50]}
-                />
+                {/* Upcoming Fixtures Preview */}
+                <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <Calendar className="w-5 h-5 text-red-600" />
+                            <span>Upcoming Fixtures</span>
+                        </h2>
+                        <Link
+                            href={`/club/${clubIdentifier}/events`}
+                            className="text-xs font-bold text-red-600 hover:underline flex items-center gap-1"
+                        >
+                            <span>All Fixtures</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                        </Link>
+                    </div>
+
+                    {upcomingMatches.length === 0 ? (
+                        <div className="py-8 text-center text-xs text-slate-400">
+                            No upcoming league fixtures scheduled.
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {upcomingMatches.map((enc: any) => (
+                                <div
+                                    key={enc.id}
+                                    className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 text-xs"
+                                >
+                                    <div className="space-y-0.5 min-w-0">
+                                        <div className="font-bold text-slate-900 dark:text-white truncate">
+                                            {enc.homeTeam?.name || 'Home'} vs {enc.awayTeam?.name || 'Away'}
+                                        </div>
+                                        <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                            {enc.scheduledDate ? format(new Date(enc.scheduledDate), 'MMM dd, HH:mm') : 'Scheduled'}
+                                        </div>
+                                    </div>
+                                    <span className="rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-400 px-2 py-0.5 text-[10px] font-bold uppercase shrink-0">
+                                        {enc.status || 'SCHEDULED'}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

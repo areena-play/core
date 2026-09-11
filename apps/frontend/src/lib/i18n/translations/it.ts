@@ -119,13 +119,20 @@ export const it: TranslationDictionary = {
     // Club Workspace Sidebar & Sections
     clubWorkspace: {
         title: 'Area Club',
-        overview: 'Panoramica club',
-        members: 'Tesserati & Licenze',
-        teams: 'Squadre iscritte ai campionati',
-        calendar: 'Calendario ed eventi club',
-        communications: 'Comunicazioni societarie',
-        registeredPlayersCount: '{count} Atleti registrati',
-        activeLeagueTeamsCount: '{count} Squadre di campionato attive',
+        navInformation: 'Informazioni Club',
+        overview: 'Panoramica',
+        contacts: 'Contatti & Sedi',
+        members: 'Tesserati Registrati',
+        events: 'Eventi & Incontri',
+        teams: 'Squadre Iscritte',
+        calendar: 'Calendario del Club',
+        navOperations: 'Operazioni Club',
+        licensingHub: 'Hub Licenze',
+        membersHub: 'Hub Tesserati',
+        communications: 'Hub Comunicazioni',
+        settings: 'Impostazioni Club',
+        registeredPlayersCount: '{count} Atleti Registrati',
+        activeLeagueTeamsCount: '{count} Squadre Attive',
     },
 
     // User Menu & Accessible Pages
