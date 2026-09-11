@@ -77,10 +77,60 @@ router.get('/live', async (req, res, next) => {
     }
 });
 
+// GET /competitions/seasons - List available seasons
+router.get('/seasons', async (req, res, next) => {
+    try {
+        const { associationId } = req.query;
+        let resolvedAssocId = associationId ? String(associationId) : undefined;
+        if (resolvedAssocId) {
+            const a = await prisma.association.findFirst({
+                where: {
+                    OR: [
+                        { id: resolvedAssocId },
+                        { slug: resolvedAssocId.toLowerCase() },
+                        { code: resolvedAssocId.toUpperCase() },
+                    ],
+                },
+                select: { id: true },
+            });
+            if (a) resolvedAssocId = a.id;
+        }
+
+        const seasons = await prisma.season.findMany({
+            where: {
+                ...(resolvedAssocId ? { associationId: resolvedAssocId } : {}),
+            },
+            orderBy: { startDate: 'desc' },
+            select: {
+                id: true,
+                name: true,
+                isCurrent: true,
+                startDate: true,
+                endDate: true,
+                associationId: true,
+            },
+        });
+
+        // Deduplicate distinct season names
+        const seenNames = new Set<string>();
+        const distinctSeasons: any[] = [];
+        for (const s of seasons) {
+            if (!seenNames.has(s.name)) {
+                seenNames.add(s.name);
+                distinctSeasons.push(s);
+            }
+        }
+
+        res.json(distinctSeasons);
+    } catch (err) {
+        next(err);
+    }
+});
+
 // GET /competitions - List leagues and tournaments
 router.get('/', async (req, res, next) => {
     try {
-        const { type, associationId, seasonId, status, isOfficial } = req.query;
+        const { type, associationId, seasonId, seasonName, isCurrentSeason, status, isOfficial } = req.query;
 
         let resolvedAssocId = associationId ? String(associationId) : undefined;
         if (resolvedAssocId) {
@@ -102,12 +152,17 @@ router.get('/', async (req, res, next) => {
                 ...(type ? { type: type as any } : {}),
                 ...(resolvedAssocId ? { associationId: resolvedAssocId } : {}),
                 ...(seasonId ? { seasonId: String(seasonId) } : {}),
+                ...(isCurrentSeason === 'true'
+                    ? { season: { isCurrent: true } }
+                    : seasonName
+                    ? { season: { name: String(seasonName) } }
+                    : {}),
                 ...(status ? { status: status as any } : {}),
                 ...(isOfficial !== undefined ? { isOfficial: isOfficial === 'true' } : {}),
             },
             include: {
                 association: { select: { id: true, name: true, code: true, slug: true } },
-                season: { select: { id: true, name: true } },
+                season: { select: { id: true, name: true, isCurrent: true, startDate: true, endDate: true } },
                 categories: {
                     include: {
                         _count: { select: { teams: true, encounters: true } },

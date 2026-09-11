@@ -1,12 +1,27 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
-import { Trophy, Plus, Filter, Calendar, MapPin, Users, ChevronRight, Shield, Search, Lock, ExternalLink } from 'lucide-react';
+import { ColumnDef } from '@tanstack/react-table';
+import { DataTable, DataTableColumnHeader } from '@/components/ui/DataTable';
+import {
+    Trophy,
+    Plus,
+    Calendar,
+    MapPin,
+    Users,
+    ChevronRight,
+    Shield,
+    Lock,
+    ExternalLink,
+    Layers,
+    Medal,
+    Swords,
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { Modal } from '@/components/ui/Modal';
 
@@ -15,19 +30,92 @@ interface CompetitionsOverviewViewProps {
     defaultType?: string;
 }
 
+function getTypeBadge(type: string) {
+    switch (type) {
+        case 'LEAGUE':
+            return {
+                label: 'League',
+                className: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60',
+                icon: Trophy,
+            };
+        case 'CUP':
+            return {
+                label: 'Cup',
+                className: 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/60',
+                icon: Medal,
+            };
+        case 'SEASON_TOURNAMENT':
+            return {
+                label: 'Season Tournament',
+                className: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/60',
+                icon: Layers,
+            };
+        case 'RANKING_TOURNAMENT':
+            return {
+                label: 'Ranking Tournament',
+                className: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60',
+                icon: Trophy,
+            };
+        case 'FRIENDLY':
+        case 'INOFFICIAL':
+            return {
+                label: type === 'FRIENDLY' ? 'Friendly' : 'Inofficial',
+                className: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700',
+                icon: Swords,
+            };
+        case 'TOURNAMENT':
+        default:
+            return {
+                label: 'Tournament',
+                className: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/60',
+                icon: Swords,
+            };
+    }
+}
+
+function getStatusBadge(status: string) {
+    switch (status) {
+        case 'REGISTRATION_OPEN':
+            return {
+                label: 'Registration Open',
+                className: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40',
+            };
+        case 'IN_PROGRESS':
+            return {
+                label: 'In Progress',
+                className: 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/40',
+            };
+        case 'COMPLETED':
+            return {
+                label: 'Completed',
+                className: 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/40',
+            };
+        case 'DRAFT':
+        default:
+            return {
+                label: status || 'Draft',
+                className: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+            };
+    }
+}
+
 function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: CompetitionsOverviewViewProps) {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const { user } = useAuth();
     const { t } = useI18n();
-    const searchParams = useSearchParams();
+
     const queryType = (searchParams.get('type') || defaultType || '').toUpperCase();
 
     const [competitions, setCompetitions] = useState<any[]>([]);
     const [associations, setAssociations] = useState<any[]>([]);
+    const [seasons, setSeasons] = useState<any[]>([]);
     const [scopedAssoc, setScopedAssoc] = useState<any | null>(null);
     const [typeFilter, setTypeFilter] = useState<string>(queryType);
     const [statusFilter, setStatusFilter] = useState<string>('');
     const [assocFilter, setAssocFilter] = useState<string>(scopedAssociationId || '');
-    const [search, setSearch] = useState<string>('');
+    const [seasonFilter, setSeasonFilter] = useState<string>('CURRENT');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [loading, setLoading] = useState(true);
 
@@ -60,6 +148,12 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
             const effectiveAssoc = scopedAssociationId || assocFilter;
             if (effectiveAssoc) params.associationId = effectiveAssoc;
 
+            if (seasonFilter === 'CURRENT') {
+                params.isCurrentSeason = 'true';
+            } else if (seasonFilter && seasonFilter !== 'ALL') {
+                params.seasonName = seasonFilter;
+            }
+
             const data = await api.getCompetitions(params);
             setCompetitions(data || []);
         } catch (err) {
@@ -72,9 +166,14 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
     useEffect(() => {
         async function init() {
             try {
-                const assocData = await api.getAssociations();
-                const list = assocData.associations || [];
+                const [assocData, seasonsData] = await Promise.all([
+                    api.getAssociations().catch(() => ({ associations: [] })),
+                    api.getCompetitionSeasons({ associationId: scopedAssociationId || '' }).catch(() => []),
+                ]);
+                const list = assocData?.associations || [];
                 setAssociations(list);
+                setSeasons(seasonsData || []);
+
                 if (scopedAssociationId) {
                     const found = list.find((a: any) =>
                         a.id === scopedAssociationId ||
@@ -95,7 +194,7 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
 
     useEffect(() => {
         fetchCompetitions();
-    }, [typeFilter, statusFilter, assocFilter, scopedAssociationId]);
+    }, [typeFilter, statusFilter, assocFilter, seasonFilter, scopedAssociationId]);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -135,17 +234,200 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
             ['ADMIN', 'PRESIDENT', 'SECRETARY'].includes(r.role),
         );
 
-    const filteredComps = competitions.filter((c) => {
-        if (!search) return true;
-        return (
-            c.name.toLowerCase().includes(search.toLowerCase()) ||
-            c.location?.toLowerCase().includes(search.toLowerCase()) ||
-            c.association?.name?.toLowerCase().includes(search.toLowerCase())
-        );
-    });
+    const currentSeason = seasons.find((s) => s.isCurrent) || seasons[0];
+    const currentSeasonName = currentSeason?.name || '2026/27';
+
+    // DataTable Column Definitions
+    const columns = useMemo<ColumnDef<any>[]>(
+        () => [
+            {
+                id: 'competition',
+                accessorFn: (c) => `${c.name || ''} ${c.slug || ''} ${c.seriesSlug || ''} ${c.location || ''} ${c.season?.name || ''} ${c.association?.name || ''} ${c.association?.code || ''}`,
+                header: ({ column }) => (
+                    <DataTableColumnHeader column={column} title="Competition" />
+                ),
+                cell: ({ row }) => {
+                    const c = row.original;
+                    const compHref = `/competition/${c.seriesSlug || c.slug || c.id}`;
+                    const badge = getTypeBadge(c.type);
+                    const IconComponent = badge.icon;
+
+                    return (
+                        <div className="flex items-center gap-3 py-1">
+                            <Link href={compHref} className="group shrink-0">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/15 to-orange-500/15 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/20 group-hover:scale-105 group-hover:border-amber-500/50 transition shadow-2xs">
+                                    <IconComponent className="h-5 w-5" />
+                                </div>
+                            </Link>
+                            <div className="min-w-0">
+                                <div className="font-bold text-slate-900 dark:text-white leading-tight truncate">
+                                    <Link
+                                        href={compHref}
+                                        className="hover:text-amber-600 dark:hover:text-amber-400 transition hover:underline"
+                                    >
+                                        {c.name}
+                                    </Link>
+                                </div>
+                                <div className="text-[11px] text-slate-400 truncate mt-0.5 flex items-center gap-2">
+                                    {c.seriesSlug ? (
+                                        <span className="font-mono text-[10px] text-slate-500">
+                                            series: {c.seriesSlug}
+                                        </span>
+                                    ) : c.slug ? (
+                                        <span className="font-mono text-[10px] text-slate-500">
+                                            {c.slug}
+                                        </span>
+                                    ) : (
+                                        <span>{c.description || 'Official Federation Competition'}</span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'type',
+                accessorKey: 'type',
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Type" />,
+                cell: ({ row }) => {
+                    const type = row.original.type;
+                    const badge = getTypeBadge(type);
+                    return (
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border uppercase tracking-wider ${badge.className}`}>
+                            {badge.label}
+                        </span>
+                    );
+                },
+            },
+            {
+                id: 'season',
+                accessorFn: (c) => c.season?.name || '',
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Season" />,
+                cell: ({ row }) => {
+                    const season = row.original.season;
+                    if (!season?.name) {
+                        return <span className="text-xs text-slate-400 italic">—</span>;
+                    }
+                    return (
+                        <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-mono font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                            {season.isCurrent && (
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                            )}
+                            <span>{season.name}</span>
+                        </span>
+                    );
+                },
+            },
+            {
+                id: 'association',
+                accessorFn: (c) => c.association?.name || '',
+                header: ({ column }) => (
+                    <DataTableColumnHeader column={column} title="Federation / Association" />
+                ),
+                cell: ({ row }) => {
+                    const assoc = row.original.association;
+                    if (!assoc) {
+                        return <span className="text-xs text-slate-400 italic">Independent</span>;
+                    }
+                    return (
+                        <div className="flex items-center gap-1.5">
+                            <Shield className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                            <span className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate max-w-[180px]" title={assoc.name}>
+                                {assoc.name} {assoc.code ? `[${assoc.code}]` : ''}
+                            </span>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'dates',
+                accessorFn: (c) => c.startDate || '',
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Dates" />,
+                cell: ({ row }) => {
+                    const c = row.original;
+                    if (!c.startDate) {
+                        return <span className="text-xs text-slate-400 italic">—</span>;
+                    }
+                    return (
+                        <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 font-medium">
+                            <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            <span>
+                                {format(new Date(c.startDate), 'dd.MM.yyyy')}
+                                {c.endDate ? ` - ${format(new Date(c.endDate), 'dd.MM.yyyy')}` : ''}
+                            </span>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'location',
+                accessorKey: 'location',
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Location" />,
+                cell: ({ row }) => {
+                    const loc = row.original.location;
+                    if (!loc) {
+                        return <span className="text-xs text-slate-400 italic">—</span>;
+                    }
+                    return (
+                        <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 font-medium">
+                            <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            <span className="truncate max-w-[150px]" title={loc}>{loc}</span>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'teams',
+                accessorFn: (c) => c._count?.teams || 0,
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Teams" />,
+                cell: ({ row }) => (
+                    <div className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/40 font-mono">
+                        <Users className="h-3.5 w-3.5 text-amber-500" />
+                        <span>{row.original._count?.teams || 0}</span>
+                    </div>
+                ),
+            },
+            {
+                id: 'status',
+                accessorKey: 'status',
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+                cell: ({ row }) => {
+                    const status = row.original.status;
+                    const badge = getStatusBadge(status);
+                    return (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${badge.className}`}>
+                            {badge.label}
+                        </span>
+                    );
+                },
+            },
+            {
+                id: 'actions',
+                header: '',
+                cell: ({ row }) => {
+                    const comp = row.original;
+                    const compHref = `/competition/${comp.seriesSlug || comp.slug || comp.id}`;
+                    return (
+                        <div className="flex items-center justify-end">
+                            <Link
+                                href={compHref}
+                                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition group"
+                            >
+                                <span>Enter</span>
+                                <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                            </Link>
+                        </div>
+                    );
+                },
+            },
+        ],
+        [],
+    );
 
     return (
         <div className="space-y-6 pb-16">
+            {/* Header Hero Card */}
             <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-sm relative overflow-hidden">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 relative z-10">
                     <div className="space-y-1.5">
@@ -172,7 +454,7 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
                             {scopedAssoc
                                 ? `Leagues, cups, and seasonal events organized by ${scopedAssoc.name} [${scopedAssoc.code}].`
-                                : 'Multi-tier leagues, single elimination tournaments, and round-robin championships.'}
+                                : 'Multi-tier leagues, single elimination tournaments, cups, and round-robin championships.'}
                         </p>
                     </div>
 
@@ -203,136 +485,95 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                 </div>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-3">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Search competitions, locations..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 pl-10 pr-4 py-2.5 text-xs text-slate-900 dark:text-white shadow-xs focus:border-amber-500 focus:outline-none"
-                    />
-                </div>
-
-                <div className="flex items-center gap-2 overflow-x-auto">
-                    <select
-                        value={typeFilter}
-                        onChange={(e) => setTypeFilter(e.target.value)}
-                        className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                    >
-                        <option value="">All Types</option>
-                        <option value="LEAGUE">Leagues</option>
-                        <option value="TOURNAMENT">Tournaments</option>
-                        <option value="SEASON_TOURNAMENT">Season Tournaments</option>
-                    </select>
-
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
-                    >
-                        <option value="">All Statuses</option>
-                        <option value="DRAFT">Draft</option>
-                        <option value="PUBLISHED">Registration Open</option>
-                        <option value="IN_PROGRESS">Active / In Progress</option>
-                        <option value="COMPLETED">Completed</option>
-                    </select>
-
-                    {scopedAssociationId ? (
-                        <div className="flex items-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-900/40 px-3.5 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
-                            <Lock className="h-3.5 w-3.5 text-amber-500" />
-                            <span className="truncate max-w-[180px]">
-                                {scopedAssoc ? scopedAssoc.name : 'Current Sub-Association'}
-                            </span>
-                        </div>
-                    ) : (
+            {/* Main Interactive Data Table */}
+            <DataTable
+                columns={columns}
+                data={competitions}
+                loading={loading}
+                searchPlaceholder="Search competitions, venues, federations..."
+                emptyMessage={
+                    scopedAssociationId
+                        ? 'No competitions organized under this sub-association match your filters.'
+                        : 'No competitions found matching your search criteria.'
+                }
+                defaultPageSize={25}
+                pageSizeOptions={[10, 25, 50, 100]}
+                initialSorting={[{ id: 'competition', desc: false }]}
+                searchSlot={
+                    <div className="flex flex-wrap items-center gap-2">
+                        {/* Season Selector */}
                         <select
-                            value={assocFilter}
-                            onChange={(e) => setAssocFilter(e.target.value)}
-                            className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none shrink-0"
+                            value={seasonFilter}
+                            onChange={(e) => setSeasonFilter(e.target.value)}
+                            className="rounded-xl border border-amber-500/40 bg-amber-50/60 dark:bg-amber-950/40 px-3 py-2 text-xs font-bold text-amber-950 dark:text-amber-200 focus:border-amber-500 focus:outline-none cursor-pointer shadow-xs"
                         >
-                            <option value="">All Associations</option>
-                            {associations.map((a: any) => (
-                                <option key={a.id} value={a.id}>
-                                    {a.name} [{a.code}]
+                            <option value="CURRENT">
+                                Current Season ({currentSeasonName})
+                            </option>
+                            <option value="ALL">All Seasons</option>
+                            {seasons.map((s: any) => (
+                                <option key={s.id || s.name} value={s.name}>
+                                    Season {s.name}{s.isCurrent ? ' • Active' : ''}
                                 </option>
                             ))}
                         </select>
-                    )}
-                </div>
-            </div>
 
-            {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {[1, 2, 3, 4, 5, 6].map((n) => (
-                        <div key={n} className="h-44 rounded-3xl bg-slate-100 dark:bg-slate-800/40 animate-pulse" />
-                    ))}
-                </div>
-            ) : filteredComps.length === 0 ? (
-                <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-12 text-center space-y-3">
-                    <Trophy className="h-10 w-10 text-slate-400 mx-auto" />
-                    <h3 className="font-bold text-sm text-slate-900 dark:text-white">No competitions found</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-                        {scopedAssociationId
-                            ? 'No competitions organized under this sub-association match your filters.'
-                            : 'No competitions found matching your search criteria.'}
-                    </p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredComps.map((comp: any) => (
-                        <Link
-                            key={comp.id}
-                            href={`/competition/${comp.seriesSlug || comp.slug || comp.id}`}
-                            className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-xs hover:shadow-md hover:border-amber-500/50 transition flex flex-col justify-between space-y-4 group"
+                        {/* Type Filter */}
+                        <select
+                            value={typeFilter}
+                            onChange={(e) => setTypeFilter(e.target.value)}
+                            className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none shadow-xs"
                         >
-                            <div className="space-y-2.5">
-                                <div className="flex items-center justify-between gap-2">
-                                    <span className="rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-2.5 py-0.5 text-[10px] font-black uppercase text-amber-700 dark:text-amber-400">
-                                        {comp.type?.replace('_', ' ')}
-                                    </span>
-                                    <span className="text-[10px] font-bold text-slate-400">
-                                        {comp.status}
-                                    </span>
-                                </div>
+                            <option value="">All Types</option>
+                            <option value="LEAGUE">Leagues</option>
+                            <option value="CUP">Cups</option>
+                            <option value="TOURNAMENT">Tournaments</option>
+                            <option value="SEASON_TOURNAMENT">Season Tournaments</option>
+                            <option value="RANKING_TOURNAMENT">Ranking Tournaments</option>
+                            <option value="FRIENDLY">Friendlies</option>
+                        </select>
 
-                                <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight group-hover:text-amber-600 dark:group-hover:text-amber-400 transition">
-                                    {comp.name}
-                                </h3>
+                        {/* Status Filter */}
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none shadow-xs"
+                        >
+                            <option value="">All Statuses</option>
+                            <option value="DRAFT">Draft</option>
+                            <option value="REGISTRATION_OPEN">Registration Open</option>
+                            <option value="IN_PROGRESS">Active / In Progress</option>
+                            <option value="COMPLETED">Completed</option>
+                        </select>
 
-                                <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
-                                    {comp.association && (
-                                        <div className="flex items-center gap-1.5">
-                                            <Shield className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                                            <span className="truncate">{comp.association.name}</span>
-                                        </div>
-                                    )}
-                                    {comp.startDate && (
-                                        <div className="flex items-center gap-1.5 text-[11px]">
-                                            <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                                            <span>
-                                                {format(new Date(comp.startDate), 'dd.MM.yyyy')}
-                                                {comp.endDate ? ` - ${format(new Date(comp.endDate), 'dd.MM.yyyy')}` : ''}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
-                                <span className="font-semibold text-slate-500">
-                                    {comp._count?.teams || 0} Registered Teams
-                                </span>
-                                <span className="text-amber-600 dark:text-amber-400 font-bold group-hover:translate-x-0.5 transition flex items-center">
-                                    <span>Enter</span>
-                                    <ChevronRight className="h-3.5 w-3.5" />
+                        {/* Association Filter */}
+                        {scopedAssociationId ? (
+                            <div className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-900/40 px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                                <Lock className="h-3.5 w-3.5 text-amber-500" />
+                                <span className="truncate max-w-[180px]">
+                                    {scopedAssoc ? scopedAssoc.name : 'Current Sub-Association'}
                                 </span>
                             </div>
-                        </Link>
-                    ))}
-                </div>
-            )}
+                        ) : (
+                            <select
+                                value={assocFilter}
+                                onChange={(e) => setAssocFilter(e.target.value)}
+                                className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none shadow-xs shrink-0"
+                            >
+                                <option value="">All Associations</option>
+                                {associations.map((a: any) => (
+                                    <option key={a.id} value={a.id}>
+                                        {a.name} [{a.code}]
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                }
+                onRowClick={(comp) => {
+                    router.push(`/competition/${comp.seriesSlug || comp.slug || comp.id}`);
+                }}
+            />
 
             {/* Create Competition Modal */}
             <Modal
@@ -523,10 +764,9 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
     );
 }
 
-
 export function CompetitionsOverviewView(props: CompetitionsOverviewViewProps) {
     return (
-        <React.Suspense fallback={<div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" /></div>}>
+        <React.Suspense fallback={<div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" /></div>}>
             <CompetitionsOverviewViewContent {...props} />
         </React.Suspense>
     );

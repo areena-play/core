@@ -8,6 +8,11 @@ export class CompetitionsApi {
         return this.http.request(`/competitions${qs ? `?${qs}` : ''}`);
     }
 
+    getCompetitionSeasons(params: Record<string, string> = {}) {
+        const qs = new URLSearchParams(params).toString();
+        return this.http.request(`/competitions/seasons${qs ? `?${qs}` : ''}`);
+    }
+
     getCompetition(id: string) {
         return this.http.request(`/competitions/${id}`);
     }

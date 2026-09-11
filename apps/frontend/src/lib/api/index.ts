@@ -177,6 +177,7 @@ export class ApiClient extends HttpClient {
     deleteLocationReservation = (locationId: string, resId: string) => this.locations.deleteLocationReservation(locationId, resId);
 
     getCompetitions = (params?: Record<string, string>) => this.competitions.getCompetitions(params);
+    getCompetitionSeasons = (params?: Record<string, string>) => this.competitions.getCompetitionSeasons(params);
     getCompetition = (id: string) => this.competitions.getCompetition(id);
     getLiveEncounters = () => this.competitions.getLiveEncounters();
     createCompetition = (body: any) => this.competitions.createCompetition(body);
