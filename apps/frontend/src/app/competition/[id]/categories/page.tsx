@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
@@ -17,12 +17,13 @@ import {
     CheckCircle2,
     AlertCircle,
     Calendar,
-    Flame,
-    ArrowUpRight,
     MapPin,
     Shield,
+    Sparkles,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
+import { useMainView } from '@/lib/mainViewContext';
+import { LevelTierDefinition, ELO_TIERS_DATA, sortTiers } from '@areena/shared';
 
 export default function CompetitionCategoriesPage() {
     const params = useParams();
@@ -37,10 +38,54 @@ export default function CompetitionCategoriesPage() {
     const [usersList, setUsersList] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const { mainAssoc, associations } = useMainView();
+
+    const activeTiers = useMemo<LevelTierDefinition[]>(() => {
+        if (Array.isArray(competition?.association?.rules?.eloTiers) && competition.association.rules.eloTiers.length > 0) {
+            return sortTiers(competition.association.rules.eloTiers);
+        }
+        if (Array.isArray(mainAssoc?.rules?.eloTiers) && mainAssoc.rules.eloTiers.length > 0) {
+            return sortTiers(mainAssoc.rules.eloTiers);
+        }
+        const top = associations.find((a: any) => a.isTopLevel) || associations[0];
+        if (Array.isArray(top?.rules?.eloTiers) && top.rules.eloTiers.length > 0) {
+            return sortTiers(top.rules.eloTiers);
+        }
+        return sortTiers(ELO_TIERS_DATA);
+    }, [competition, mainAssoc, associations]);
+
+    const handleSelectMaxLevel = (levelCode: string) => {
+        if (!levelCode) {
+            setNewCat(prev => ({ ...prev, maxElo: '' }));
+            return;
+        }
+        const tier = activeTiers.find((t: LevelTierDefinition) => t.level === levelCode);
+        if (tier) {
+            setNewCat(prev => ({
+                ...prev,
+                maxElo: String(tier.maxElo === 3000 ? '' : tier.maxElo),
+            }));
+        }
+    };
+
+    const handleSelectMinLevel = (levelCode: string) => {
+        if (!levelCode) {
+            setNewCat(prev => ({ ...prev, minElo: '' }));
+            return;
+        }
+        const tier = activeTiers.find((t: LevelTierDefinition) => t.level === levelCode);
+        if (tier) {
+            setNewCat(prev => ({
+                ...prev,
+                minElo: String(tier.minElo),
+            }));
+        }
+    };
+
     const [activeCategoryId, setActiveCategoryId] = useState<string>('');
     const [showAddCatModal, setShowAddCatModal] = useState(false);
     const [showAddTeamModal, setShowAddTeamModal] = useState(false);
-    const [newCat, setNewCat] = useState({ name: '', teamSize: 1, minElo: '', maxElo: '', genderRestriction: 'ANY', roundsPerGroup: 1 });
+    const [newCat, setNewCat] = useState({ name: '', teamSize: 1, minElo: '', maxElo: '', genderRestriction: 'ANY', roundsPerGroup: 1, minLevel: '', maxLevel: '' });
     const [newTeam, setNewTeam] = useState({ name: '', clubId: '', playerUserIds: [] as string[] });
     const [groupCount, setGroupCount] = useState(2);
     const [generatingGroups, setGeneratingGroups] = useState(false);
@@ -89,7 +134,7 @@ export default function CompetitionCategoriesPage() {
                 roundsPerGroup: Number(newCat.roundsPerGroup),
             });
             setShowAddCatModal(false);
-            setNewCat({ name: '', teamSize: 1, minElo: '', maxElo: '', genderRestriction: 'ANY', roundsPerGroup: 1 });
+            setNewCat({ name: '', teamSize: 1, minElo: '', maxElo: '', genderRestriction: 'ANY', roundsPerGroup: 1, minLevel: '', maxLevel: '' });
             setActionMsg({ type: 'success', text: 'Category created successfully.' });
             fetchData();
             setTimeout(() => setActionMsg(null), 3000);
@@ -391,27 +436,86 @@ export default function CompetitionCategoriesPage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Min ELO (Optional)</label>
-                            <input
-                                type="number"
-                                placeholder="None"
-                                value={newCat.minElo}
-                                onChange={(e) => setNewCat({ ...newCat, minElo: e.target.value })}
-                                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-red-500 font-mono"
-                            />
+                    {/* Skill / Rank Level Restrictions */}
+                    <div className="space-y-3 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                                <span>Skill & Level Eligibility Limits</span>
+                            </label>
+                            <span className="text-[11px] text-slate-400">Optional</span>
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Max ELO (Optional)</label>
-                            <input
-                                type="number"
-                                placeholder="None"
-                                value={newCat.maxElo}
-                                onChange={(e) => setNewCat({ ...newCat, maxElo: e.target.value })}
-                                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-red-500 font-mono"
-                            />
+
+                        {/* Dropdown Pickers */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">Min Rank Level</label>
+                                <select
+                                    value={newCat.minLevel}
+                                    onChange={(e) => {
+                                        setNewCat({ ...newCat, minLevel: e.target.value });
+                                        handleSelectMinLevel(e.target.value);
+                                    }}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-white outline-none focus:border-red-500 font-medium"
+                                >
+                                    <option value="">-- No Minimum Level --</option>
+                                    {activeTiers.map((t: LevelTierDefinition) => (
+                                        <option key={t.level} value={t.level}>
+                                            Min {t.level} ({t.minElo}+ pts)
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">Max Rank Level</label>
+                                <select
+                                    value={newCat.maxLevel}
+                                    onChange={(e) => {
+                                        setNewCat({ ...newCat, maxLevel: e.target.value });
+                                        handleSelectMaxLevel(e.target.value);
+                                    }}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-white outline-none focus:border-red-500 font-medium"
+                                >
+                                    <option value="">-- No Maximum Level --</option>
+                                    {activeTiers.map((t: LevelTierDefinition) => (
+                                        <option key={t.level} value={t.level}>
+                                            Max {t.level} (≤ {t.maxElo === 3000 ? '∞' : t.maxElo} pts)
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
+
+                        {/* Elo Points Numeric Range */}
+                        <div className="grid grid-cols-2 gap-3 pt-1">
+                            <div className="space-y-1">
+                                <label className="block text-[11px] text-slate-500 dark:text-slate-400">Min ELO Points</label>
+                                <input
+                                    type="number"
+                                    placeholder="None"
+                                    value={newCat.minElo}
+                                    onChange={(e) => setNewCat({ ...newCat, minElo: e.target.value, minLevel: '' })}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-slate-900 dark:text-white outline-none focus:border-red-500 font-mono"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="block text-[11px] text-slate-500 dark:text-slate-400">Max ELO Points</label>
+                                <input
+                                    type="number"
+                                    placeholder="None"
+                                    value={newCat.maxElo}
+                                    onChange={(e) => setNewCat({ ...newCat, maxElo: e.target.value, maxLevel: '' })}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-slate-900 dark:text-white outline-none focus:border-red-500 font-mono"
+                                />
+                            </div>
+                        </div>
+
+                        {newCat.maxLevel && (
+                            <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                                Level constraint: Any athlete at rank level <strong>{newCat.maxLevel}</strong> or below is eligible.
+                            </p>
+                        )}
                     </div>
 
                     <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">

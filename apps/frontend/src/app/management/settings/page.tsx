@@ -35,10 +35,17 @@ import {
     HelpCircle,
     ExternalLink,
     Search,
+    Table as TableIcon,
+    ArrowDownUp,
+    RotateCcw,
+    ArrowUp,
+    ArrowDown,
+    ChevronUp,
+    ChevronDown,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AccessDenied } from '@/components/auth/AccessDenied';
-import { getAllCountryPhoneOptions, DEFAULT_PRIORITIZED_COUNTRIES } from '@areena/shared';
+import { getAllCountryPhoneOptions, DEFAULT_PRIORITIZED_COUNTRIES, LevelTierDefinition, ELO_TIERS_DATA } from '@areena/shared';
 import { FlagIcon } from '@/components/ui/FlagIcon';
 import { prompt, confirm } from '@/lib/dialog';
 
@@ -220,8 +227,8 @@ export default function AssociationSettingsPage() {
     const { t } = useI18n();
     const [topAssoc, setTopAssoc] = useState<any | null>(null);
 
-    // Active Navigation Tab: 7 Sections
-    const [activeTab, setActiveTab] = useState<'branding' | 'general' | 'sports' | 'age-series' | 'seasons' | 'licensing' | 'officials'>('branding');
+    // Active Navigation Tab: 8 Sections
+    const [activeTab, setActiveTab] = useState<'branding' | 'general' | 'sports' | 'age-series' | 'seasons' | 'licensing' | 'officials' | 'elo-table'>('branding');
 
     // ----------------------------------------------------
     // SECTION 1: Identity & Branding (Combined with Impressum)
@@ -299,6 +306,12 @@ export default function AssociationSettingsPage() {
     const [officials, setOfficials] = useState<OfficialItem[]>([]);
     const [officialsSearch, setOfficialsSearch] = useState('');
 
+    // ----------------------------------------------------
+    // SECTION 8: Official ELO Rating Tiers & Level Table
+    // ----------------------------------------------------
+    const [eloTiers, setEloTiers] = useState<LevelTierDefinition[]>(ELO_TIERS_DATA);
+    const [initialProvisionalRating, setInitialProvisionalRating] = useState<number>(1000);
+
     // General state
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -369,6 +382,15 @@ export default function AssociationSettingsPage() {
                 if (rules.refresherCourseValidityMonths !== undefined) setRefresherCourseValidityMonths(rules.refresherCourseValidityMonths);
                 if (rules.expiryWarningDays !== undefined) setExpiryWarningDays(rules.expiryWarningDays);
                 if (rules.refresherGracePeriodMonths !== undefined) setRefresherGracePeriodMonths(rules.refresherGracePeriodMonths);
+
+                if (Array.isArray(rules.eloTiers) && rules.eloTiers.length > 0) {
+                    setEloTiers(rules.eloTiers);
+                } else {
+                    setEloTiers(ELO_TIERS_DATA);
+                }
+                if (rules.initialProvisionalRating !== undefined) {
+                    setInitialProvisionalRating(rules.initialProvisionalRating);
+                }
 
                 // Load seasons & officials
                 const [seasonsData, officialsData] = await Promise.all([
@@ -467,6 +489,8 @@ export default function AssociationSettingsPage() {
                 refresherCourseValidityMonths: Number(refresherCourseValidityMonths),
                 expiryWarningDays: Number(expiryWarningDays),
                 refresherGracePeriodMonths: Number(refresherGracePeriodMonths),
+                eloTiers,
+                initialProvisionalRating: Number(initialProvisionalRating) || 1000,
             };
 
             await api.updateAssociationSettings(topAssoc.id, {
@@ -1119,6 +1143,219 @@ export default function AssociationSettingsPage() {
             .replace('{counter6}', pad(counter, 6));
     })();
 
+    // ----------------------------------------------------
+    // ELO Tiers & Rating Table Handlers
+    // ----------------------------------------------------
+    const handleOpenAddTierPrompt = async () => {
+        const res = await prompt({
+            title: 'Add ELO Rating Tier / Rank Level',
+            subtitle: 'Define a new skill classification tier and Elo range for the national rating system',
+            fields: [
+                {
+                    name: 'category',
+                    label: 'Category / Division Title *',
+                    type: 'text',
+                    required: true,
+                    placeholder: 'e.g. A - National Elite, B - Expert, C - Advanced Regional, D - Intermediate',
+                    defaultValue: 'C - Advanced Regional',
+                },
+                {
+                    name: 'level',
+                    label: 'Rank Level Code *',
+                    type: 'text',
+                    required: true,
+                    placeholder: 'e.g. C11, B16, A21, E1',
+                },
+                {
+                    name: 'minElo',
+                    label: 'Minimum Elo Rating *',
+                    type: 'number',
+                    required: true,
+                    min: 0,
+                    max: 5000,
+                    defaultValue: 1000,
+                },
+                {
+                    name: 'maxElo',
+                    label: 'Maximum Elo Rating *',
+                    type: 'number',
+                    required: true,
+                    min: 0,
+                    max: 5000,
+                    defaultValue: 1099,
+                },
+                {
+                    name: 'leagueEligibility',
+                    label: 'League Eligibility Benchmark',
+                    type: 'text',
+                    placeholder: 'e.g. 4th / 5th League, NLA, Open Days',
+                    defaultValue: 'Regional League',
+                },
+                {
+                    name: 'description',
+                    label: 'Description & Skill Profile',
+                    type: 'textarea',
+                    placeholder: 'Target skill profile, competitive qualifications, or description...',
+                    defaultValue: '',
+                },
+            ],
+            confirmText: 'Add Rank Level',
+            size: 'lg',
+        });
+
+        if (!res || !res.level?.trim() || res.minElo === undefined || res.maxElo === undefined) return;
+
+        const minElo = Number(res.minElo);
+        const maxElo = Number(res.maxElo);
+        const levelCode = res.level.trim().toUpperCase();
+
+        const newTier: LevelTierDefinition = {
+            id: `tier_${Date.now()}`,
+            order: eloTiers.length + 1,
+            category: res.category?.trim() || 'Custom Category',
+            level: levelCode,
+            minElo,
+            maxElo,
+            leagueEligibility: res.leagueEligibility?.trim() || 'Open Competition',
+            description: res.description?.trim() || 'Federation classified ranking tier',
+        };
+
+        setEloTiers(prev => {
+            const updated = [...prev.filter(t => t.level.toUpperCase() !== levelCode), newTier];
+            return updated.sort((a, b) => b.minElo - a.minElo).map((t, idx) => ({ ...t, order: idx + 1 }));
+        });
+    };
+
+    const handleOpenEditTierPrompt = async (tierToEdit: LevelTierDefinition) => {
+        const res = await prompt({
+            title: `Edit Rank Level ${tierToEdit.level}`,
+            subtitle: 'Update category classification, Elo range boundaries, or eligibility text',
+            fields: [
+                {
+                    name: 'category',
+                    label: 'Category / Division Title *',
+                    type: 'text',
+                    required: true,
+                    defaultValue: tierToEdit.category,
+                },
+                {
+                    name: 'level',
+                    label: 'Rank Level Code *',
+                    type: 'text',
+                    required: true,
+                    defaultValue: tierToEdit.level,
+                },
+                {
+                    name: 'minElo',
+                    label: 'Minimum Elo Rating *',
+                    type: 'number',
+                    required: true,
+                    min: 0,
+                    max: 5000,
+                    defaultValue: tierToEdit.minElo,
+                },
+                {
+                    name: 'maxElo',
+                    label: 'Maximum Elo Rating *',
+                    type: 'number',
+                    required: true,
+                    min: 0,
+                    max: 5000,
+                    defaultValue: tierToEdit.maxElo,
+                },
+                {
+                    name: 'leagueEligibility',
+                    label: 'League Eligibility Benchmark',
+                    type: 'text',
+                    defaultValue: tierToEdit.leagueEligibility || '',
+                },
+                {
+                    name: 'description',
+                    label: 'Description & Skill Profile',
+                    type: 'textarea',
+                    defaultValue: tierToEdit.description || '',
+                },
+            ],
+            confirmText: 'Save Rank Level',
+            size: 'lg',
+        });
+
+        if (!res || !res.level?.trim() || res.minElo === undefined || res.maxElo === undefined) return;
+
+        const minElo = Number(res.minElo);
+        const maxElo = Number(res.maxElo);
+        const levelCode = res.level.trim().toUpperCase();
+
+        const updatedTier: LevelTierDefinition = {
+            ...tierToEdit,
+            category: res.category?.trim() || tierToEdit.category,
+            level: levelCode,
+            minElo,
+            maxElo,
+            leagueEligibility: res.leagueEligibility?.trim() || '',
+            description: res.description?.trim() || '',
+        };
+
+        setEloTiers(prev => {
+            return prev.map(t => (t.id === tierToEdit.id || t.level === tierToEdit.level) ? updatedTier : t);
+        });
+    };
+
+    const handleMoveTierUp = (index: number) => {
+        if (index <= 0) return;
+        setEloTiers(prev => {
+            const next = [...prev];
+            const item = next[index];
+            next[index] = next[index - 1];
+            next[index - 1] = item;
+            return next.map((t, idx) => ({ ...t, order: idx + 1 }));
+        });
+    };
+
+    const handleMoveTierDown = (index: number) => {
+        if (index >= eloTiers.length - 1) return;
+        setEloTiers(prev => {
+            const next = [...prev];
+            const item = next[index];
+            next[index] = next[index + 1];
+            next[index + 1] = item;
+            return next.map((t, idx) => ({ ...t, order: idx + 1 }));
+        });
+    };
+
+    const handleSortTiersByElo = (descending: boolean = true) => {
+        setEloTiers(prev => {
+            const sorted = [...prev].sort((a, b) => descending ? b.minElo - a.minElo : a.minElo - b.minElo);
+            return sorted.map((t, idx) => ({ ...t, order: idx + 1 }));
+        });
+    };
+
+    const handleDeleteTier = async (tierToDelete: LevelTierDefinition) => {
+        const shouldDelete = await confirm({
+            title: `Delete Level ${tierToDelete.level}`,
+            message: `Are you sure you want to remove tier "${tierToDelete.level}" (${tierToDelete.minElo} - ${tierToDelete.maxElo === 3000 ? '∞' : tierToDelete.maxElo} Elo)?`,
+            confirmText: 'Delete Tier',
+            variant: 'danger',
+        });
+        if (!shouldDelete) return;
+
+        setEloTiers(prev => prev.filter(t => t.id !== tierToDelete.id && t.level !== tierToDelete.level).map((t, idx) => ({ ...t, order: idx + 1 })));
+    };
+
+    const handleResetTiersToDefault = async () => {
+        const shouldReset = await confirm({
+            title: 'Reset to Swiss Federation Defaults',
+            message: 'Are you sure you want to reset all Elo tiers back to the standard Swiss Table Tennis federation table (A20–A16, B15–B11, C10–C6, D5–D1)? Any custom tiers will be replaced.',
+            confirmText: 'Reset Defaults',
+            variant: 'danger',
+        });
+        if (!shouldReset) return;
+
+        setEloTiers(ELO_TIERS_DATA);
+        setSuccessMsg('ELO tiers reset to official federation defaults. Remember to click "Save All Settings".');
+        setTimeout(() => setSuccessMsg(''), 4000);
+    };
+
     if (authLoading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
@@ -1305,6 +1542,23 @@ export default function AssociationSettingsPage() {
                     <span>Officials</span>
                     <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                         {officials.length}
+                    </span>
+                </button>
+
+                {/* 8. ELO & Level Table */}
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('elo-table')}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition ${
+                        activeTab === 'elo-table'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                >
+                    <TableIcon className="h-4 w-4" />
+                    <span>ELO & Level Table</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        {eloTiers.length}
                     </span>
                 </button>
             </div>
@@ -2663,6 +2917,244 @@ export default function AssociationSettingsPage() {
                                 );
                             })}
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ======================================================== */}
+            {/* SECTION 8: ELO RATING TIERS & LEVEL TABLE                */}
+            {/* ======================================================== */}
+            {activeTab === 'elo-table' && (
+                <div className="space-y-6">
+                    {/* Header & Actions Card */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="space-y-1">
+                                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    <TableIcon className="h-5 w-5 text-amber-500" />
+                                    <span>Official ELO Rating Tiers & Level Classification Table</span>
+                                </h2>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    Configure the national federation's official Elo point thresholds, rank level designations (A20–D1), and league eligibility rules. All sub-associations and clubs adhere to this central classification.
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => handleSortTiersByElo(true)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700/80 transition"
+                                    title="Order tiers by rating (Elite A20 down to D1)"
+                                >
+                                    <ArrowDownUp className="h-3.5 w-3.5 text-slate-500" />
+                                    <span>Sort High → Low</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleSortTiersByElo(false)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700/80 transition"
+                                    title="Order tiers by rating (Entry D1 up to Elite A20)"
+                                >
+                                    <ArrowDownUp className="h-3.5 w-3.5 text-slate-500" />
+                                    <span>Sort Low → High</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleResetTiersToDefault}
+                                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700/80 transition"
+                                >
+                                    <RotateCcw className="h-3.5 w-3.5 text-slate-500" />
+                                    <span>Reset Defaults</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleOpenAddTierPrompt}
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition shadow-xs"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    <span>Add Rank Level</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* General Rating Engine Settings */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Standard Match Rating K-Factor (Sensitivity)
+                                </label>
+                                <input
+                                    type="number"
+                                    min="10"
+                                    max="64"
+                                    value={eloKFactor}
+                                    onChange={(e) => setEloKFactor(Number(e.target.value))}
+                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2 text-xs font-mono text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                                <p className="text-[11px] text-slate-400 mt-1">
+                                    Default K=32. Higher values cause greater point exchanges per match.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Initial Baseline Provisional Rating (Points)
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="2500"
+                                    value={initialProvisionalRating}
+                                    onChange={(e) => setInitialProvisionalRating(Number(e.target.value))}
+                                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2 text-xs font-mono text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                                />
+                                <p className="text-[11px] text-slate-400 mt-1">
+                                    Assigned to newly registered athletes before participating in sanctioned matches (default: 1000 pts).
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* ELO Tiers Table */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between text-xs text-slate-500">
+                                <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                    Configured Skill Classification Tiers ({eloTiers.length} Levels)
+                                </span>
+                                <span className="text-[11px] text-slate-400">
+                                    Order determines tournament eligibility hierarchy (1 = Top Rank / Highest Skill)
+                                </span>
+                            </div>
+
+                            <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+                                <table className="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/50 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                            <th className="py-3 px-3 w-12 text-center">Rank</th>
+                                            <th className="py-3 px-4">Category / Tier</th>
+                                            <th className="py-3 px-4">Rank Level</th>
+                                            <th className="py-3 px-4">Elo Point Range</th>
+                                            <th className="py-3 px-4">League Eligibility</th>
+                                            <th className="py-3 px-4">Description & Skill Profile</th>
+                                            <th className="py-3 px-4 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium text-slate-700 dark:text-slate-300">
+                                        {eloTiers.map((tier, index) => {
+                                            const isTopCategory = tier.category.startsWith('A');
+                                            const isBCategory = tier.category.startsWith('B');
+                                            const isCCategory = tier.category.startsWith('C');
+                                            const badgeStyle = isTopCategory
+                                                ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30'
+                                                : isBCategory
+                                                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                                                : isCCategory
+                                                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30'
+                                                : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
+
+                                            return (
+                                                <tr
+                                                    key={tier.id || tier.level}
+                                                    className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors"
+                                                >
+                                                    {/* Order Rank Column */}
+                                                    <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                                                        <span className="inline-flex items-center justify-center font-mono font-bold text-[11px] text-slate-400 dark:text-slate-500">
+                                                            #{tier.order ?? index + 1}
+                                                        </span>
+                                                    </td>
+
+                                                    {/* Category Column */}
+                                                    <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                                                        {tier.category}
+                                                    </td>
+
+                                                    {/* Level Code Column */}
+                                                    <td className="py-3.5 px-4 whitespace-nowrap">
+                                                        <span
+                                                            className={`inline-block px-2.5 py-0.5 rounded-md font-mono font-bold text-xs border ${badgeStyle}`}
+                                                        >
+                                                            {tier.level}
+                                                        </span>
+                                                    </td>
+
+                                                    {/* Elo Range Column */}
+                                                    <td className="py-3.5 px-4 whitespace-nowrap font-mono font-semibold text-slate-700 dark:text-slate-300">
+                                                        {tier.minElo} – {tier.maxElo === 3000 ? '∞' : tier.maxElo} pts
+                                                    </td>
+
+                                                    {/* League Eligibility Column */}
+                                                    <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                                        {tier.leagueEligibility || '—'}
+                                                    </td>
+
+                                                    {/* Description Column */}
+                                                    <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 max-w-xs">
+                                                        <span className="line-clamp-2">{tier.description || '—'}</span>
+                                                    </td>
+
+                                                    {/* Actions Column */}
+                                                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            {/* Move Up */}
+                                                            <button
+                                                                type="button"
+                                                                disabled={index === 0}
+                                                                onClick={() => handleMoveTierUp(index)}
+                                                                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                                                title="Move Rank Level Up"
+                                                            >
+                                                                <ChevronUp className="h-3.5 w-3.5" />
+                                                            </button>
+
+                                                            {/* Move Down */}
+                                                            <button
+                                                                type="button"
+                                                                disabled={index === eloTiers.length - 1}
+                                                                onClick={() => handleMoveTierDown(index)}
+                                                                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                                                title="Move Rank Level Down"
+                                                            >
+                                                                <ChevronDown className="h-3.5 w-3.5" />
+                                                            </button>
+
+                                                            {/* Edit */}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleOpenEditTierPrompt(tier)}
+                                                                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:text-white transition ml-1"
+                                                                title="Edit Rank Level"
+                                                            >
+                                                                <Edit3 className="h-3.5 w-3.5" />
+                                                            </button>
+
+                                                            {/* Delete */}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDeleteTier(tier)}
+                                                                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 hover:border-red-200 dark:hover:border-red-900 transition"
+                                                                title="Delete Tier"
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Central Governance Notice */}
+                    <div className="rounded-3xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20 p-6 sm:p-8 shadow-xs space-y-2">
+                        <div className="flex items-center gap-2 text-amber-800 dark:text-amber-400 font-bold text-sm">
+                            <Shield className="h-4 w-4" />
+                            <span>Federation-Wide Rating Governance</span>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                            Changes saved here immediately apply to the public <Link href="/utilities/level-table" className="text-amber-600 dark:text-amber-400 underline font-semibold hover:opacity-80">Level & Skill Table</Link>, player profile skill badges, license eligibility checks, and scheduled monthly rating jobs across all regional sub-associations and clubs.
+                        </p>
                     </div>
                 </div>
             )}

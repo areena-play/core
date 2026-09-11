@@ -9,6 +9,29 @@ import { redisPub } from '../config/redis';
 
 export class RatingService {
     /**
+     * Resolves official configured ELO rating tiers from the national association rules.
+     */
+    static async getEffectiveTiers(associationId?: string | null, tx: any = prisma) {
+        try {
+            let assoc: any = null;
+            if (associationId) {
+                assoc = await tx.association.findUnique({ where: { id: associationId } });
+            }
+            if (!assoc || !assoc.isTopLevel) {
+                assoc = await tx.association.findFirst({
+                    where: { isTopLevel: true },
+                    orderBy: { createdAt: 'asc' },
+                });
+            }
+            const rules = (assoc?.rules as any) || {};
+            if (Array.isArray(rules.eloTiers) && rules.eloTiers.length > 0) {
+                return rules.eloTiers;
+            }
+        } catch {}
+        return undefined;
+    }
+
+    /**
      * Retrieves or creates a baseline initial snapshot for a player if none exists.
      */
     static async getOrCreateInitialSnapshot(
@@ -27,7 +50,8 @@ export class RatingService {
 
         const user = await tx.user.findUnique({ where: { id: userId } });
         const baseElo = user?.eloPoints ?? 1000;
-        const level = getLevelFromElo(baseElo);
+        const tiers = await this.getEffectiveTiers(associationId, tx);
+        const level = getLevelFromElo(baseElo, tiers);
 
         const initialSnapshot = await tx.ratingSnapshotHistory.create({
             data: {
@@ -166,8 +190,9 @@ export class RatingService {
                 data: { effectiveTo: now },
             });
 
-            const newHomeLevel = getLevelFromElo(exchange.newEloA);
-            const newAwayLevel = getLevelFromElo(exchange.newEloB);
+            const tiers = await this.getEffectiveTiers(competition.associationId, tx);
+            const newHomeLevel = getLevelFromElo(exchange.newEloA, tiers);
+            const newAwayLevel = getLevelFromElo(exchange.newEloB, tiers);
 
             const homePostSnapshot = await tx.ratingSnapshotHistory.create({
                 data: {
@@ -285,6 +310,8 @@ export class RatingService {
                 let currentMaleRank = 1;
                 let currentFemaleRank = 1;
 
+                const tiers = await this.getEffectiveTiers(associationId, tx);
+
                 for (let i = 0; i < users.length; i++) {
                     const u = users[i];
                     const rankOverall = currentOverallRank++;
@@ -296,7 +323,7 @@ export class RatingService {
                         rankGender = currentFemaleRank++;
                     }
 
-                    const level = getLevelFromElo(u.eloPoints);
+                    const level = getLevelFromElo(u.eloPoints, tiers);
 
                     // Close previous open snapshot
                     await tx.ratingSnapshotHistory.updateMany({
@@ -363,9 +390,10 @@ export class RatingService {
 
                 const now = new Date();
                 let evaluatedCount = 0;
+                const tiers = await this.getEffectiveTiers(associationId, tx);
 
                 for (const u of users) {
-                    const newLevel = getLevelFromElo(u.eloPoints);
+                    const newLevel = getLevelFromElo(u.eloPoints, tiers);
 
                     if (u.currentLevel !== newLevel) {
                         await tx.ratingSnapshotHistory.create({
