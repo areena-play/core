@@ -23,7 +23,7 @@ import {
     generateSearchVariants,
     formatPhoneNumber,
 } from '@areena/shared';
-import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { authenticateToken, optionalAuth, AuthRequest } from '../middleware/auth';
 import { AuditService } from '../services/audit.service';
 import { EmailService } from '../services/email.service';
 import { PrivacyService } from '../services/privacy.service';
@@ -1195,9 +1195,9 @@ router.get('/users', authenticateToken, async (req: AuthRequest, res: Response, 
 
 /**
  * GET /auth/users/:identifier
- * Public/authenticated view of a person profile by UUID or license ID.
+ * Public/authenticated view of a person profile by UUID or license ID with management permissions guard.
  */
-router.get('/users/:identifier', async (req, res, next) => {
+router.get('/users/:identifier', optionalAuth, async (req: AuthRequest, res: Response, next) => {
     try {
         const { identifier } = req.params;
         if (!identifier) {
@@ -1217,15 +1217,21 @@ router.get('/users/:identifier', async (req, res, next) => {
                 firstName: true,
                 lastName: true,
                 email: true,
+                phone: true,
+                street: true,
+                postalCode: true,
                 city: true,
                 country: true,
                 licenseId: true,
                 eloPoints: true,
+                currentLevel: true,
                 rank: true,
                 avatarUrl: true,
                 birthDate: true,
                 gender: true,
+                accountStatus: true,
                 createdAt: true,
+                updatedAt: true,
                 isPubliclyHidden: true,
                 displayNameChoice: true,
                 hideEloRanking: true,
@@ -1234,6 +1240,7 @@ router.get('/users/:identifier', async (req, res, next) => {
                     select: {
                         id: true,
                         role: true,
+                        createdAt: true,
                         association: {
                             select: {
                                 id: true,
@@ -1249,6 +1256,7 @@ router.get('/users/:identifier', async (req, res, next) => {
                     select: {
                         id: true,
                         role: true,
+                        createdAt: true,
                         club: {
                             select: {
                                 id: true,
@@ -1259,17 +1267,68 @@ router.get('/users/:identifier', async (req, res, next) => {
                         },
                     },
                 },
+                teamMemberships: {
+                    select: {
+                        id: true,
+                        role: true,
+                        createdAt: true,
+                        team: {
+                            select: {
+                                id: true,
+                                name: true,
+                                clubId: true,
+                                club: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        code: true,
+                                        slug: true,
+                                    },
+                                },
+                                registrations: {
+                                    select: {
+                                        category: {
+                                            select: {
+                                                id: true,
+                                                name: true,
+                                                competition: {
+                                                    select: {
+                                                        id: true,
+                                                        name: true,
+                                                        slug: true,
+                                                        type: true,
+                                                        season: {
+                                                            select: {
+                                                                id: true,
+                                                                name: true,
+                                                            },
+                                                        },
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
                 licenses: {
                     select: {
                         id: true,
                         type: true,
                         status: true,
+                        validFrom: true,
                         validUntil: true,
+                        scope: true,
+                        isSecondaryClubLicense: true,
+                        createdAt: true,
                         club: {
                             select: {
                                 id: true,
                                 name: true,
                                 code: true,
+                                slug: true,
                             },
                         },
                         association: {
@@ -1277,6 +1336,7 @@ router.get('/users/:identifier', async (req, res, next) => {
                                 id: true,
                                 name: true,
                                 code: true,
+                                slug: true,
                             },
                         },
                         season: {
@@ -1286,6 +1346,7 @@ router.get('/users/:identifier', async (req, res, next) => {
                             },
                         },
                     },
+                    orderBy: { createdAt: 'desc' },
                 },
                 courseAttendances: {
                     select: {
@@ -1310,8 +1371,292 @@ router.get('/users/:identifier', async (req, res, next) => {
             return res.status(404).json({ error: 'Person not found' });
         }
 
-        const sanitized = PrivacyService.sanitizePlayerProfile(user);
-        res.json(sanitized);
+        // Determine if viewer has management rights for this person
+        const viewer = req.user;
+        const isSelf = viewer ? viewer.id === user.id : false;
+        const isSuperAdmin = viewer?.isSuperAdmin || false;
+
+        let isClubManager = false;
+        let isAssociationManager = false;
+        let isGuardianManager = false;
+
+        if (viewer && !isSelf && !isSuperAdmin) {
+            // Check if viewer is official in any club connected to user
+            const userClubIds = new Set<string>();
+            user.clubRoles.forEach((cr: any) => cr.club?.id && userClubIds.add(cr.club.id));
+            user.licenses.forEach((lic: any) => lic.club?.id && userClubIds.add(lic.club.id));
+            user.teamMemberships.forEach((tm: any) => tm.team?.clubId && userClubIds.add(tm.team.clubId));
+
+            const viewerClubRoles = viewer.clubRoles || [];
+            isClubManager = viewerClubRoles.some((vcr: any) =>
+                userClubIds.has(vcr.clubId) &&
+                ['ADMIN', 'PRESIDENT', 'SECRETARY', 'TREASURER', 'COACH', 'TECHNICAL_DIRECTOR', 'JUNIOR_COACH', 'OFFICIAL'].includes(vcr.role)
+            );
+
+            // Check if viewer is official in any association connected to user
+            const userAssocIds = new Set<string>();
+            user.associationRoles.forEach((ar: any) => ar.association?.id && userAssocIds.add(ar.association.id));
+            user.licenses.forEach((lic: any) => lic.association?.id && userAssocIds.add(lic.association.id));
+
+            const viewerAssocRoles = viewer.associationRoles || [];
+            isAssociationManager = viewerAssocRoles.some((varr: any) =>
+                userAssocIds.has(varr.associationId) &&
+                ['ADMIN', 'PRESIDENT', 'SECRETARY', 'OFFICIAL', 'HEAD_REFEREE', 'DIRECTOR'].includes(varr.role)
+            );
+
+            // Check if viewer has a management relationship with this user
+            const relationship = await (prisma as any).userRelationship.findFirst({
+                where: {
+                    managerUserId: viewer.id,
+                    managedUserId: user.id,
+                    permission: { in: ['FULL_MANAGEMENT', 'TOURNAMENT_ONLY'] },
+                },
+            });
+            if (relationship) {
+                isGuardianManager = true;
+            }
+        }
+
+        const canManage = isSelf || isSuperAdmin || isClubManager || isAssociationManager || isGuardianManager;
+
+        // Privacy sanitization
+        const sanitized = PrivacyService.sanitizePlayerProfile(user, {
+            viewerUserId: viewer?.id,
+            isSuperAdmin,
+            canManage,
+        });
+
+        // Filter licenses & roles if not manager/self:
+        // Non-managers only see approved/active licenses and active affiliations
+        if (!canManage) {
+            sanitized.licenses = sanitized.licenses?.filter((l: any) => l.status === 'APPROVED') || [];
+        }
+
+        res.json({
+            ...sanitized,
+            canManage,
+            isSelf,
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
+/**
+ * GET /auth/users/:identifier/stats
+ * Statistics, match history, and Elo timeline for a person.
+ */
+router.get('/users/:identifier/stats', optionalAuth, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const { identifier } = req.params;
+        if (!identifier) {
+            return res.status(400).json({ error: 'User identifier is required' });
+        }
+
+        const user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { id: identifier },
+                    { licenseId: identifier },
+                ],
+            },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                licenseId: true,
+                eloPoints: true,
+                currentLevel: true,
+                rank: true,
+                hideEloRanking: true,
+            },
+        });
+
+        if (!user) {
+            return res.status(404).json({ error: 'Person not found' });
+        }
+
+        // Fetch completed matches where user participated
+        const matches = await prisma.match.findMany({
+            where: {
+                OR: [
+                    { homePlayer1Id: user.id },
+                    { homePlayer2Id: user.id },
+                    { awayPlayer1Id: user.id },
+                    { awayPlayer2Id: user.id },
+                    { participants: { some: { userId: user.id } } },
+                ],
+                status: 'FINISHED',
+            },
+            include: {
+                encounter: {
+                    include: {
+                        category: {
+                            include: {
+                                competition: {
+                                    include: {
+                                        season: true,
+                                    },
+                                },
+                            },
+                        },
+                        homeTeam: {
+                            include: {
+                                club: {
+                                    select: { id: true, name: true, code: true },
+                                },
+                            },
+                        },
+                        awayTeam: {
+                            include: {
+                                club: {
+                                    select: { id: true, name: true, code: true },
+                                },
+                            },
+                        },
+                    },
+                },
+                homePlayer1: {
+                    select: { id: true, firstName: true, lastName: true, licenseId: true, eloPoints: true, avatarUrl: true },
+                },
+                homePlayer2: {
+                    select: { id: true, firstName: true, lastName: true, licenseId: true, eloPoints: true, avatarUrl: true },
+                },
+                awayPlayer1: {
+                    select: { id: true, firstName: true, lastName: true, licenseId: true, eloPoints: true, avatarUrl: true },
+                },
+                awayPlayer2: {
+                    select: { id: true, firstName: true, lastName: true, licenseId: true, eloPoints: true, avatarUrl: true },
+                },
+                participants: {
+                    include: {
+                        ratingSnapshot: true,
+                    },
+                },
+            },
+            orderBy: {
+                encounter: {
+                    scheduledAt: 'desc',
+                },
+            },
+            take: 100,
+        });
+
+        // Fetch Elo snapshots history
+        const eloHistory = await prisma.ratingSnapshotHistory.findMany({
+            where: { userId: user.id },
+            orderBy: { effectiveFrom: 'desc' },
+            include: {
+                association: {
+                    select: { id: true, name: true, shortName: true, code: true },
+                },
+            },
+            take: 50,
+        });
+
+        // Aggregate statistics
+        let wins = 0;
+        let losses = 0;
+        let setsWon = 0;
+        let setsLost = 0;
+        let singlesWins = 0;
+        let singlesLosses = 0;
+        let doublesWins = 0;
+        let doublesLosses = 0;
+
+        const formattedMatches = matches.map((m) => {
+            const isHome = m.homePlayer1Id === user.id || m.homePlayer2Id === user.id;
+            const isWinner = (isHome && m.winner === 'HOME') || (!isHome && m.winner === 'AWAY');
+            const isDraw = m.winner === 'DRAW';
+
+            if (isWinner) {
+                wins++;
+                if (m.matchType === 'SINGLE') singlesWins++;
+                else doublesWins++;
+            } else if (!isDraw && m.winner !== 'PENDING') {
+                losses++;
+                if (m.matchType === 'SINGLE') singlesLosses++;
+                else doublesLosses++;
+            }
+
+            const mySets = isHome ? m.homeWonSets : m.awayWonSets;
+            const oppSets = isHome ? m.awayWonSets : m.homeWonSets;
+            setsWon += mySets;
+            setsLost += oppSets;
+
+            const opponents = isHome
+                ? [m.awayPlayer1, m.awayPlayer2].filter(Boolean)
+                : [m.homePlayer1, m.homePlayer2].filter(Boolean);
+
+            const partners = isHome
+                ? [m.homePlayer1, m.homePlayer2].filter((p) => p && p.id !== user.id)
+                : [m.awayPlayer1, m.awayPlayer2].filter((p) => p && p.id !== user.id);
+
+            const myTeam = isHome ? m.encounter?.homeTeam : m.encounter?.awayTeam;
+            const oppTeam = isHome ? m.encounter?.awayTeam : m.encounter?.homeTeam;
+
+            return {
+                id: m.id,
+                matchType: m.matchType,
+                date: m.encounter?.scheduledAt || m.createdAt,
+                competitionName: m.encounter?.category?.competition?.name || 'League / Tournament',
+                competitionType: m.encounter?.category?.competition?.type || 'LEAGUE',
+                categoryName: m.encounter?.category?.name || 'Category',
+                seasonName: m.encounter?.category?.competition?.season?.name || '',
+                isHome,
+                result: isWinner ? 'WIN' : isDraw ? 'DRAW' : 'LOSS',
+                scoreSets: `${mySets}:${oppSets}`,
+                setsDetail: m.sets,
+                opponents,
+                partners,
+                myTeam: myTeam ? { id: myTeam.id, name: myTeam.name, club: (myTeam as any).club } : null,
+                oppTeam: oppTeam ? { id: oppTeam.id, name: oppTeam.name, club: (oppTeam as any).club } : null,
+            };
+        });
+
+        const totalMatches = wins + losses;
+        const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
+        const totalSets = setsWon + setsLost;
+        const setWinRate = totalSets > 0 ? Math.round((setsWon / totalSets) * 100) : 0;
+
+        const allEloValues = [
+            user.eloPoints,
+            ...eloHistory.map((h) => Math.round(h.elo)),
+        ].filter((n) => typeof n === 'number' && !isNaN(n));
+
+        const highestElo = allEloValues.length > 0 ? Math.max(...allEloValues) : user.eloPoints;
+        const lowestElo = allEloValues.length > 0 ? Math.min(...allEloValues) : user.eloPoints;
+        const recentForm = formattedMatches.slice(0, 5).map((m) => m.result);
+
+        res.json({
+            stats: {
+                totalMatches,
+                wins,
+                losses,
+                winRate,
+                setsWon,
+                setsLost,
+                setWinRate,
+                singles: {
+                    played: singlesWins + singlesLosses,
+                    wins: singlesWins,
+                    losses: singlesLosses,
+                },
+                doubles: {
+                    played: doublesWins + doublesLosses,
+                    wins: doublesWins,
+                    losses: doublesLosses,
+                },
+                currentElo: user.eloPoints,
+                currentLevel: user.currentLevel,
+                highestElo,
+                lowestElo,
+                rank: user.rank,
+                recentForm,
+            },
+            matches: formattedMatches,
+            eloHistory,
+        });
     } catch (err) {
         next(err);
     }

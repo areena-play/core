@@ -77,6 +77,10 @@ export class AuthApi {
         return this.http.request(`/auth/users/${encodeURIComponent(identifier)}`);
     }
 
+    getPersonStats(identifier: string) {
+        return this.http.request<any>(`/auth/users/${encodeURIComponent(identifier)}/stats`);
+    }
+
     globalSearch(query: string) {
         return this.http.request<{ results: any[] }>(`/search/global?q=${encodeURIComponent(query)}`);
     }

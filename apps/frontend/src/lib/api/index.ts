@@ -105,6 +105,7 @@ export class ApiClient extends HttpClient {
     changePassword = (body: { currentPassword: string; newPassword: string }) => this.auth.changePassword(body);
     getUsers = (params?: string | { q?: string; associationId?: string; role?: string; page?: number; limit?: number }) => this.auth.getUsers(params);
     getPerson = (identifier: string) => this.auth.getPerson(identifier);
+    getPersonStats = (identifier: string) => this.auth.getPersonStats(identifier);
     globalSearch = (query: string) => this.auth.globalSearch(query);
 
     getAdminUsers = (params?: Record<string, any>) => this.users.getAdminUsers(params);

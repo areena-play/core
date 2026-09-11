@@ -6,6 +6,7 @@ export interface PrivacyContext {
     isSuperAdmin?: boolean;
     isFederationMember?: boolean;
     isTournamentAdmin?: boolean;
+    canManage?: boolean;
 }
 
 export class PrivacyService {
@@ -51,7 +52,7 @@ export class PrivacyService {
             return { allowed: true };
         }
 
-        if (ctx.isSuperAdmin) {
+        if (ctx.isSuperAdmin || ctx.canManage) {
             return { allowed: true };
         }
 
@@ -85,9 +86,9 @@ export class PrivacyService {
     public static sanitizePlayerProfile(player: any, ctx: PrivacyContext = {}): any {
         if (!player) return null;
 
-        // 1. Unmasked for self, super-admins, or tournament organizers/referees
+        // 1. Unmasked for self, super-admins, tournament organizers/referees, or authorized managers
         const isSelf = ctx.viewerUserId && ctx.viewerUserId === player.id;
-        if (isSelf || ctx.isSuperAdmin || ctx.isTournamentAdmin) {
+        if (isSelf || ctx.isSuperAdmin || ctx.isTournamentAdmin || ctx.canManage) {
             return player;
         }
 
