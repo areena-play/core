@@ -318,15 +318,15 @@ export function MainViewProvider({ children }: { children: React.ReactNode }) {
             return effectiveEntityMeta?.title;
         }
         if (activeView === 'admin') {
-            return 'System Administration';
+            return 'Administration';
         }
-        return 'Sports Federation';
+        return '';
     }, [activeView, entityId, effectiveEntityMeta, mainAssoc]);
 
     const headerBadge = useMemo(() => {
         if (activeView === 'association') {
             if (entityId && entityId !== 'main') {
-                return effectiveEntityMeta?.badge || 'SUB_ASSOCIATION';
+                return effectiveEntityMeta?.badge || 'SUB-ASSOCIATION';
             }
             return mainAssoc?.level || 'NATIONAL';
         }
@@ -337,7 +337,7 @@ export function MainViewProvider({ children }: { children: React.ReactNode }) {
             return effectiveEntityMeta?.badge || 'TOURNAMENT';
         }
         if (activeView === 'admin') {
-            return 'SYSTEM_ROOT';
+            return 'SYSTEM';
         }
         return effectiveEntityMeta?.badge || 'FEDERATION';
     }, [activeView, entityId, effectiveEntityMeta, mainAssoc]);
