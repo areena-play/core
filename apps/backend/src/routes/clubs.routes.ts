@@ -273,6 +273,103 @@ router.get('/:id/members', async (req, res, next) => {
     }
 });
 
+// GET /clubs/:id/teams - All club teams across competitions (League, Cup, Tournaments) with season filter
+router.get('/:id/teams', async (req, res, next) => {
+    try {
+        const club = await resolveClub(req.params.id);
+        if (!club) {
+            return res.status(404).json({ error: 'Club not found' });
+        }
+
+        const { seasonId, type } = req.query;
+
+        // Fetch all seasons
+        const seasons = await prisma.season.findMany({
+            orderBy: [{ isCurrent: 'desc' }, { startDate: 'desc' }],
+        });
+
+        const currentSeason = seasons.find((s) => s.isCurrent) || seasons[0];
+
+        // Query teams belonging to this club
+        const teams = await prisma.team.findMany({
+            where: {
+                clubId: club.id,
+                ...(seasonId && seasonId !== 'ALL'
+                    ? {
+                          registrations: {
+                              some: {
+                                  category: {
+                                      competition: {
+                                          seasonId: String(seasonId),
+                                      },
+                                  },
+                              },
+                          },
+                      }
+                    : {}),
+            },
+            include: {
+                members: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                                email: true,
+                                licenseId: true,
+                                eloPoints: true,
+                                avatarUrl: true,
+                                currentLevel: true,
+                            },
+                        },
+                    },
+                    orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
+                },
+                registrations: {
+                    include: {
+                        category: {
+                            include: {
+                                competition: {
+                                    include: {
+                                        season: true,
+                                        association: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                standings: {
+                    include: {
+                        group: true,
+                    },
+                },
+            },
+            orderBy: { name: 'asc' },
+        });
+
+        // Filter by competition type if requested
+        const filteredTeams =
+            type && type !== 'ALL'
+                ? teams.filter((t) =>
+                      t.registrations.some(
+                          (r) => r.category?.competition?.type === String(type).toUpperCase()
+                      )
+                  )
+                : teams;
+
+        res.json({
+            club: { id: club.id, name: club.name, code: club.code, slug: club.slug },
+            teams: filteredTeams,
+            seasons,
+            currentSeason,
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
 // GET /clubs/:id/events - Club encounters, fixtures, and calendar events
 router.get('/:id/events', async (req, res, next) => {
     try {

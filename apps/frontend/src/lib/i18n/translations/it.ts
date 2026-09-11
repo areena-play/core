@@ -124,7 +124,7 @@ export const it: TranslationDictionary = {
         contacts: 'Contatti & Sedi',
         members: 'Tesserati Registrati',
         events: 'Eventi & Incontri',
-        teams: 'Squadre Iscritte',
+        teams: 'Squadre',
         calendar: 'Calendario del Club',
         navOperations: 'Operazioni Club',
         licensingHub: 'Hub Licenze',

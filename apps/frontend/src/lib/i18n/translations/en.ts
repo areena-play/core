@@ -122,7 +122,7 @@ export const en = {
         contacts: 'Contacts & Venues',
         members: 'Registered Members',
         events: 'Events & Fixtures',
-        teams: 'Registered League Teams',
+        teams: 'Teams',
         calendar: 'Club Events & Calendar',
         navOperations: 'Club Operations',
         licensingHub: 'Licensing Hub',

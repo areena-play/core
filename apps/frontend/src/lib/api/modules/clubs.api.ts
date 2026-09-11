@@ -19,6 +19,14 @@ export class ClubsApi {
         return this.http.request(`/clubs/${idOrSlug}/members`);
     }
 
+    getClubTeams(idOrSlug: string, params?: { seasonId?: string; type?: string }) {
+        const query = new URLSearchParams();
+        if (params?.seasonId) query.set('seasonId', params.seasonId);
+        if (params?.type) query.set('type', params.type);
+        const qs = query.toString();
+        return this.http.request(`/clubs/${idOrSlug}/teams${qs ? `?${qs}` : ''}`);
+    }
+
     getClubEvents(idOrSlug: string) {
         return this.http.request(`/clubs/${idOrSlug}/events`);
     }

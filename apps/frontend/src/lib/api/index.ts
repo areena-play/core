@@ -139,6 +139,7 @@ export class ApiClient extends HttpClient {
     createClub = (body: any) => this.clubs.createClub(body);
     getClubContacts = (idOrSlug: string) => this.clubs.getClubContacts(idOrSlug);
     getClubMembers = (idOrSlug: string) => this.clubs.getClubMembers(idOrSlug);
+    getClubTeams = (idOrSlug: string, params?: { seasonId?: string; type?: string }) => this.clubs.getClubTeams(idOrSlug, params);
     getClubEvents = (idOrSlug: string) => this.clubs.getClubEvents(idOrSlug);
     getClubLicensing = (idOrSlug: string) => this.clubs.getClubLicensing(idOrSlug);
     applyClubLicenseOnBehalf = (idOrSlug: string, data: { userId: string; type: string; validUntil?: string; notes?: string }) => this.clubs.applyClubLicenseOnBehalf(idOrSlug, data);

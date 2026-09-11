@@ -290,6 +290,12 @@ export function getCommonNavSections({
                         icon: Users,
                     },
                     {
+                        id: 'club-teams',
+                        label: t('clubWorkspace.teams') || 'Teams',
+                        href: `/club/${entityId}/teams`,
+                        icon: Trophy,
+                    },
+                    {
                         id: 'club-events',
                         label: t('clubWorkspace.events') || 'Events & Fixtures',
                         href: `/club/${entityId}/events`,

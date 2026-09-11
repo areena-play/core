@@ -124,7 +124,7 @@ export const fr: TranslationDictionary = {
         contacts: 'Contacts & Salles',
         members: 'Membres Inscrits',
         events: 'Événements & Rencontres',
-        teams: 'Équipes de Championnat',
+        teams: 'Équipes',
         calendar: 'Calendrier du Club',
         navOperations: 'Opérations du Club',
         licensingHub: 'Pôle Licences',

@@ -197,40 +197,52 @@ export default function SingleClubOverviewPage() {
 
             {/* Quick Metrics */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between">
+                <Link
+                    href={`/club/${clubIdentifier}/members`}
+                    className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between hover:border-red-300 dark:hover:border-red-900 transition group"
+                >
                     <div>
-                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Members</div>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider group-hover:text-red-600 transition">Members</div>
                         <div className="text-2xl font-black text-slate-900 dark:text-white">{members.length}</div>
                     </div>
                     <Users className="w-7 h-7 text-red-500" />
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between">
+                </Link>
+                <Link
+                    href={`/club/${clubIdentifier}/teams`}
+                    className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between hover:border-blue-300 dark:hover:border-blue-900 transition group"
+                >
                     <div>
-                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Teams</div>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider group-hover:text-blue-600 transition">Teams</div>
                         <div className="text-2xl font-black text-blue-600 dark:text-blue-400">{teamsCount}</div>
                     </div>
                     <Trophy className="w-7 h-7 text-blue-500" />
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between">
+                </Link>
+                <Link
+                    href={`/club/${clubIdentifier}/contacts`}
+                    className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between hover:border-amber-300 dark:hover:border-amber-900 transition group"
+                >
                     <div>
-                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Officials</div>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider group-hover:text-amber-600 transition">Officials</div>
                         <div className="text-2xl font-black text-amber-600 dark:text-amber-400">{officialsCount}</div>
                     </div>
                     <UserCheck className="w-7 h-7 text-amber-500" />
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between">
+                </Link>
+                <Link
+                    href={`/club/${clubIdentifier}/contacts`}
+                    className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between hover:border-emerald-300 dark:hover:border-emerald-900 transition group"
+                >
                     <div>
-                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sports Halls</div>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider group-hover:text-emerald-600 transition">Sports Halls</div>
                         <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{venuesCount}</div>
                     </div>
                     <MapPin className="w-7 h-7 text-emerald-500" />
-                </div>
+                </Link>
             </div>
 
             {/* Quick Navigation Cards */}
             <div className="space-y-4">
                 <h2 className="text-lg font-black text-slate-900 dark:text-white">Club Sections & Sites</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <Link
                         href={`/club/${clubIdentifier}/contacts`}
                         className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-red-300 dark:hover:border-red-900 transition group space-y-3"
@@ -272,18 +284,38 @@ export default function SingleClubOverviewPage() {
                     </Link>
 
                     <Link
+                        href={`/club/${clubIdentifier}/teams`}
+                        className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-purple-300 dark:hover:border-purple-900 transition group space-y-3"
+                    >
+                        <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-600 flex items-center justify-center font-bold">
+                            <Trophy className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-purple-600 transition">
+                                    Club Teams
+                                </h3>
+                                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-purple-600 transition" />
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                League, cup & tournament squads, rosters, and standings.
+                            </p>
+                        </div>
+                    </Link>
+
+                    <Link
                         href={`/club/${clubIdentifier}/events`}
-                        className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-red-300 dark:hover:border-red-900 transition group space-y-3"
+                        className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-amber-300 dark:hover:border-amber-900 transition group space-y-3"
                     >
                         <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-600 flex items-center justify-center font-bold">
                             <Calendar className="w-5 h-5" />
                         </div>
                         <div>
                             <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-red-600 transition">
+                                <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-amber-600 transition">
                                     Events & League Fixtures
                                 </h3>
-                                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-red-600 transition" />
+                                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-600 transition" />
                             </div>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                                 League matches, schedules, scores, and calendar events.
