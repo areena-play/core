@@ -78,7 +78,9 @@ export default function SubAssociationPage() {
                     id: found.id,
                     title: found.name,
                     code: found.code,
+                    slug: found.slug,
                     badge: found.level,
+                    logoUrl: found.logoUrl || null,
                     subtitle: `Regional Sub-Association [${found.code}] • Multi-Parent DAG Member`,
                 });
 

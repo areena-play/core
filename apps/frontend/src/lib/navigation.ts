@@ -400,9 +400,9 @@ export function getCommonNavSections({
     const currentAssoc =
         associations?.find(
             (a: any) =>
-                a.id === currentAssocId ||
-                a.slug === currentAssocId ||
-                a.code?.toLowerCase() === currentAssocId.toLowerCase()
+                a.id?.toLowerCase() === currentAssocId?.toLowerCase() ||
+                a.slug?.toLowerCase() === currentAssocId?.toLowerCase() ||
+                a.code?.toLowerCase() === currentAssocId?.toLowerCase()
         ) || (isSubAssoc ? null : mainAssoc);
 
     // Resolve all descendant sub-associations (recursively, not just direct)

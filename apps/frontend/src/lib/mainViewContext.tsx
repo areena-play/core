@@ -11,6 +11,8 @@ export interface EntityMeta {
     id: string;
     title: string;
     code?: string;
+    slug?: string;
+    logoUrl?: string | null;
     subtitle?: string;
     badge?: string;
     parentAssociationId?: string;
@@ -226,21 +228,135 @@ export function MainViewProvider({ children }: { children: React.ReactNode }) {
         return parseContextFromUrl(pathname);
     }, [pathname, isContextAgnosticRoute, clientContext]);
 
-    // Reset entityMeta when returning to main association view or navigating to a different entity
+    const isEntityMetaMatching = useCallback((meta: EntityMeta | null, targetId: string | null): boolean => {
+        if (!meta || !targetId) return false;
+        const target = targetId.toLowerCase();
+        return (
+            meta.id.toLowerCase() === target ||
+            (meta.code ? meta.code.toLowerCase() === target : false) ||
+            (meta.slug ? meta.slug.toLowerCase() === target : false)
+        );
+    }, []);
+
+    // Automatically resolve & synchronize entityMeta based on activeView & entityId
     useEffect(() => {
-        if (!isContextAgnosticRoute) {
-            if (activeView === 'association' && entityId === 'main') {
+        if (isContextAgnosticRoute) return;
+
+        // 1. National Association View (/ or /competitions, etc.)
+        if (activeView === 'association' && (!entityId || entityId === 'main')) {
+            if (entityMeta !== null) {
                 setEntityMetaState(null);
-            } else if (
-                entityMeta &&
-                entityId &&
-                entityMeta.id !== entityId &&
-                entityMeta.code?.toLowerCase() !== entityId.toLowerCase()
-            ) {
+            }
+            return;
+        }
+
+        // 2. Sub-Association View (/association/[id]/...)
+        if (activeView === 'association' && entityId && entityId !== 'main') {
+            if (isEntityMetaMatching(entityMeta, entityId)) {
+                return;
+            }
+
+            // Check if already in loaded associations list
+            const found = associations.find((a: any) =>
+                a.id?.toLowerCase() === entityId.toLowerCase() ||
+                a.slug?.toLowerCase() === entityId.toLowerCase() ||
+                a.code?.toLowerCase() === entityId.toLowerCase()
+            );
+
+            if (found) {
+                setEntityMetaState({
+                    id: found.id,
+                    title: found.name,
+                    code: found.code,
+                    slug: found.slug,
+                    badge: found.level || 'REGIONAL',
+                    logoUrl: found.logoUrl || null,
+                    subtitle: `Regional Sub-Association [${found.code || ''}]`,
+                    parentAssociationId: found.parentHierarchies?.[0]?.parentId || found.parentHierarchies?.[0]?.parent?.id,
+                    parentAssociationName: found.parentHierarchies?.[0]?.parent?.name,
+                });
+            } else {
+                let isMounted = true;
+                api.getAssociation(entityId)
+                    .then((assoc: any) => {
+                        if (!isMounted || !assoc?.id) return;
+                        setEntityMetaState({
+                            id: assoc.id,
+                            title: assoc.name,
+                            code: assoc.code,
+                            slug: assoc.slug,
+                            badge: assoc.level || 'REGIONAL',
+                            logoUrl: assoc.logoUrl || null,
+                            subtitle: `Regional Sub-Association [${assoc.code || ''}]`,
+                            parentAssociationId: assoc.parentHierarchies?.[0]?.parentId || assoc.parentHierarchies?.[0]?.parent?.id,
+                            parentAssociationName: assoc.parentHierarchies?.[0]?.parent?.name,
+                        });
+                    })
+                    .catch(() => {});
+                return () => {
+                    isMounted = false;
+                };
+            }
+            return;
+        }
+
+        // 3. Club View (/club/[id]/...)
+        if (activeView === 'club' && entityId) {
+            if (isEntityMetaMatching(entityMeta, entityId)) {
+                return;
+            }
+
+            let isMounted = true;
+            api.getClub(entityId)
+                .then((club: any) => {
+                    if (!isMounted || !club?.id) return;
+                    setEntityMetaState({
+                        id: club.id,
+                        title: club.name,
+                        code: club.code,
+                        slug: club.slug,
+                        badge: 'CLUB',
+                        logoUrl: club.logoUrl || null,
+                        subtitle: club.city ? `${club.city} • Sports Club` : 'Sports Club',
+                    });
+                })
+                .catch(() => {});
+            return () => {
+                isMounted = false;
+            };
+        }
+
+        // 4. Tournament / Competition View (/competition/[id]/...)
+        if (activeView === 'tournament' && entityId) {
+            if (isEntityMetaMatching(entityMeta, entityId)) {
+                return;
+            }
+
+            let isMounted = true;
+            api.getCompetition(entityId)
+                .then((comp: any) => {
+                    if (!isMounted || !comp?.id) return;
+                    setEntityMetaState({
+                        id: comp.id,
+                        title: comp.name,
+                        code: comp.type,
+                        badge: comp.type || 'TOURNAMENT',
+                        subtitle: comp.description || 'Competition',
+                    });
+                })
+                .catch(() => {});
+            return () => {
+                isMounted = false;
+            };
+        }
+
+        // 5. System Administration View (/admin/...)
+        if (activeView === 'admin') {
+            if (entityMeta !== null) {
                 setEntityMetaState(null);
             }
         }
-    }, [pathname, activeView, entityId, isContextAgnosticRoute]);
+    }, [activeView, entityId, associations, isContextAgnosticRoute, entityMeta, isEntityMetaMatching]);
 
     // Store active context when navigating entity pages
     useEffect(() => {
@@ -306,27 +422,41 @@ export function MainViewProvider({ children }: { children: React.ReactNode }) {
 
     const headerTitle = useMemo(() => {
         if (activeView === 'association') {
-            if (entityId && entityId !== 'main' && effectiveEntityMeta?.title) {
-                return effectiveEntityMeta.title;
+            if (entityId && entityId !== 'main') {
+                if (effectiveEntityMeta?.title) return effectiveEntityMeta.title;
+                const assoc = associations.find((a: any) =>
+                    a.id?.toLowerCase() === entityId.toLowerCase() ||
+                    a.slug?.toLowerCase() === entityId.toLowerCase() ||
+                    a.code?.toLowerCase() === entityId.toLowerCase()
+                );
+                if (assoc?.name) return assoc.name;
+                return entityId.toUpperCase();
             }
-            return mainAssoc?.name;
+            return mainAssoc?.name || 'Swiss Table Tennis Federation';
         }
         if (activeView === 'club') {
-            return effectiveEntityMeta?.title;
+            return effectiveEntityMeta?.title || 'Sports Club';
         }
         if (activeView === 'tournament') {
-            return effectiveEntityMeta?.title;
+            return effectiveEntityMeta?.title || 'Tournament & Competition';
         }
         if (activeView === 'admin') {
             return 'Administration';
         }
         return '';
-    }, [activeView, entityId, effectiveEntityMeta, mainAssoc]);
+    }, [activeView, entityId, effectiveEntityMeta, mainAssoc, associations]);
 
     const headerBadge = useMemo(() => {
         if (activeView === 'association') {
             if (entityId && entityId !== 'main') {
-                return effectiveEntityMeta?.badge || 'SUB-ASSOCIATION';
+                if (effectiveEntityMeta?.badge) return effectiveEntityMeta.badge;
+                const assoc = associations.find((a: any) =>
+                    a.id?.toLowerCase() === entityId.toLowerCase() ||
+                    a.slug?.toLowerCase() === entityId.toLowerCase() ||
+                    a.code?.toLowerCase() === entityId.toLowerCase()
+                );
+                if (assoc?.level) return assoc.level;
+                return 'REGIONAL';
             }
             return mainAssoc?.level || 'NATIONAL';
         }
@@ -340,14 +470,26 @@ export function MainViewProvider({ children }: { children: React.ReactNode }) {
             return 'SYSTEM';
         }
         return effectiveEntityMeta?.badge || 'FEDERATION';
-    }, [activeView, entityId, effectiveEntityMeta, mainAssoc]);
+    }, [activeView, entityId, effectiveEntityMeta, mainAssoc, associations]);
 
     const headerLogoUrl = useMemo(() => {
-        if (activeView === 'association' && (!entityId || entityId === 'main')) {
-            return mainAssoc?.logoUrl || null;
+        if (activeView === 'association') {
+            if (!entityId || entityId === 'main') {
+                return mainAssoc?.logoUrl || null;
+            }
+            if (effectiveEntityMeta?.logoUrl !== undefined) return effectiveEntityMeta.logoUrl;
+            const assoc = associations.find((a: any) =>
+                a.id?.toLowerCase() === entityId.toLowerCase() ||
+                a.slug?.toLowerCase() === entityId.toLowerCase() ||
+                a.code?.toLowerCase() === entityId.toLowerCase()
+            );
+            return assoc?.logoUrl || null;
+        }
+        if (activeView === 'club') {
+            return effectiveEntityMeta?.logoUrl || null;
         }
         return null;
-    }, [activeView, entityId, mainAssoc]);
+    }, [activeView, entityId, effectiveEntityMeta, mainAssoc, associations]);
 
     return (
         <MainViewContext.Provider
