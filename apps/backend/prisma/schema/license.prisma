@@ -57,6 +57,14 @@ model License {
   tournament        Competition?       @relation("TournamentLicenses", fields: [tournamentId], references: [id], onDelete: SetNull)
   courseAttendances CourseAttendance[]
   matchParticipants MatchParticipant[]
+
+  @@index([userId])
+  @@index([clubId])
+  @@index([associationId])
+  @@index([seasonId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
 }
 
 model RefresherCourse {

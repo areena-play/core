@@ -59,6 +59,7 @@ export const en = {
         superAdminSection: 'Super Admin',
         adminDashboard: 'Admin Dashboard',
         systemSettings: 'System Settings',
+        clickttMigration: 'ClickTT Migration',
         apiKeys: 'API Keys & OAuth',
         locations: 'Locations',
     },

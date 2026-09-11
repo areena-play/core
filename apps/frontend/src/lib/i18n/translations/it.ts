@@ -61,6 +61,7 @@ export const it: TranslationDictionary = {
         superAdminSection: 'Super Admin',
         adminDashboard: 'Cruscotto Admin',
         systemSettings: 'Impostazioni di sistema',
+        clickttMigration: 'Migrazione ClickTT',
         apiKeys: 'Chiavi API & OAuth',
         locations: 'Impianti',
     },

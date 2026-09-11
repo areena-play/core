@@ -57,31 +57,30 @@ export default function ManagementDashboardPage() {
 
     const loadDashboardData = async () => {
         try {
-            const [usersRes, clubsRes, licensesRes, invoicesRes, auditRes] = await Promise.allSettled([
-                api.getUsers(''),
+            const [usersRes, clubsRes, licenseStatsRes, pendingLicensesRes, invoicesRes, auditRes] = await Promise.allSettled([
+                api.getUsers({ page: 1, limit: 1 }),
                 api.getClubs(),
-                api.getLicenses(),
+                api.getLicenseStats(),
+                api.getLicenses({ status: 'PENDING_CLUB,PENDING_ASSOCIATION', limit: 25 }),
                 api.getInvoices().catch(() => []),
                 api.getAuditLogs({ limit: '5' }).catch(() => ({ logs: [] })),
             ]);
 
-            const userList = usersRes.status === 'fulfilled' ? (Array.isArray(usersRes.value) ? usersRes.value : usersRes.value?.users || []) : [];
-            const userCount = userList.length || (usersRes.status === 'fulfilled' ? usersRes.value?.pagination?.total || 0 : 0);
+            const userCount = usersRes.status === 'fulfilled'
+                ? (usersRes.value?.totalUnfiltered || usersRes.value?.total || (Array.isArray(usersRes.value) ? usersRes.value.length : 0))
+                : 0;
             const clubCount = clubsRes.status === 'fulfilled' ? (Array.isArray(clubsRes.value) ? clubsRes.value.length : 0) : 0;
-            const licenses = licensesRes.status === 'fulfilled' ? (Array.isArray(licensesRes.value) ? licensesRes.value : []) : [];
+            const licenseStats = licenseStatsRes.status === 'fulfilled' ? licenseStatsRes.value : null;
+            const pending = pendingLicensesRes.status === 'fulfilled' ? (Array.isArray(pendingLicensesRes.value) ? pendingLicensesRes.value : []) : [];
             const invoices = invoicesRes.status === 'fulfilled' ? (Array.isArray(invoicesRes.value) ? invoicesRes.value : []) : [];
             const auditLogs = auditRes.status === 'fulfilled' ? (auditRes.value?.logs || auditRes.value || []) : [];
-
-            const pending = licenses.filter(
-                (l: any) => l.status === 'PENDING_CLUB' || l.status === 'PENDING_ASSOCIATION',
-            );
 
             setPendingLicenses(pending);
             setStats({
                 userCount,
                 clubCount,
-                licenseCount: licenses.length,
-                pendingApprovals: pending.length,
+                licenseCount: licenseStats?.total ?? pending.length,
+                pendingApprovals: licenseStats?.pending ?? pending.length,
                 invoiceCount: invoices.length,
             });
             setRecentLogs(Array.isArray(auditLogs) ? auditLogs.slice(0, 5) : []);
@@ -208,7 +207,7 @@ export default function ManagementDashboardPage() {
     return (
         <div className="space-y-8 pb-16">
             {/* Header Banner */}
-            <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 text-white p-6 sm:p-8 shadow-xl relative overflow-hidden">
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 text-white p-6 sm:p-8 shadow-xl relative overflow-hidden flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                 <div className="relative z-10 space-y-2 max-w-3xl">
                     <div className="inline-flex items-center gap-2 rounded-full bg-red-500/20 border border-red-500/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-red-400">
                         <Shield className="h-3.5 w-3.5" />

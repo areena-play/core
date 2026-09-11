@@ -36,6 +36,7 @@ import {
     Mic,
     Key,
     MapPin,
+    Database,
 } from 'lucide-react';
 
 export interface SubNavItem {
@@ -102,6 +103,12 @@ export function getCommonNavSections({
                         label: t('nav.systemSettings') || 'System Settings',
                         href: '/admin/settings',
                         icon: Settings,
+                    },
+                    {
+                        id: 'clicktt-migration',
+                        label: t('nav.clickttMigration') || 'ClickTT Migration',
+                        href: '/admin/clicktt',
+                        icon: Database,
                     },
                 ],
             },

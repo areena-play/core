@@ -8,10 +8,53 @@ import { AuditService } from '../services/audit.service';
 
 const router = Router();
 
+// GET /licenses/stats - Aggregated counts and pending status breakdown
+router.get('/stats', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const { associationId, clubId } = req.query;
+        const where: any = {
+            ...(associationId ? { associationId: String(associationId) } : {}),
+            ...(clubId ? { clubId: String(clubId) } : {}),
+        };
+
+        const [total, pendingClub, pendingAssociation, approved, rejected] = await Promise.all([
+            prisma.license.count({ where }),
+            prisma.license.count({ where: { ...where, status: 'PENDING_CLUB' } }),
+            prisma.license.count({ where: { ...where, status: 'PENDING_ASSOCIATION' } }),
+            prisma.license.count({ where: { ...where, status: 'APPROVED' } }),
+            prisma.license.count({ where: { ...where, status: 'REJECTED' } }),
+        ]);
+
+        res.json({
+            total,
+            pending: pendingClub + pendingAssociation,
+            pendingClub,
+            pendingAssociation,
+            approved,
+            rejected,
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
 // GET /licenses - List licenses with filters
 router.get('/', authenticateToken, async (req: AuthRequest, res: Response, next) => {
     try {
-        const { userId, clubId, associationId, type, status } = req.query;
+        const { userId, clubId, associationId, type, status, limit, page } = req.query;
+
+        const take = limit
+            ? String(limit).toLowerCase() === 'all'
+                ? 1000
+                : Math.min(Math.max(1, parseInt(String(limit), 10) || 100), 500)
+            : 100;
+        const skip = page ? (Math.max(1, parseInt(String(page), 10) || 1) - 1) * take : undefined;
+
+        const statusFilter = status
+            ? String(status).includes(',')
+                ? { in: String(status).split(',').map((s) => s.trim()) as any }
+                : (status as any)
+            : undefined;
 
         const licenses = await prisma.license.findMany({
             where: {
@@ -19,8 +62,10 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response, next)
                 ...(clubId ? { clubId: String(clubId) } : {}),
                 ...(associationId ? { associationId: String(associationId) } : {}),
                 ...(type ? { type: type as any } : {}),
-                ...(status ? { status: status as any } : {}),
+                ...(statusFilter ? { status: statusFilter } : {}),
             },
+            take,
+            skip,
             include: {
                 user: {
                     select: { id: true, firstName: true, lastName: true, email: true, licenseId: true, country: true },

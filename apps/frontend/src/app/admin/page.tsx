@@ -89,6 +89,13 @@ export default function AdminDashboardPage() {
                         </p>
                     </div>
                     <div className="flex items-center gap-2 self-start sm:self-auto">
+                        <Link
+                            href="/admin/clicktt"
+                            className="inline-flex items-center gap-2 rounded-xl bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 px-3.5 py-2 text-xs font-bold text-white transition shadow"
+                        >
+                            <Database className="h-3.5 w-3.5 text-red-400" />
+                            <span>ClickTT Import</span>
+                        </Link>
                         <button
                             type="button"
                             onClick={() => {
@@ -267,7 +274,7 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Super Admin Module Shortcuts */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Link
                     href="/admin/settings"
                     className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-sm hover:shadow-md hover:border-red-500/50 transition group"
@@ -301,6 +308,24 @@ export default function AdminDashboardPage() {
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                         Manage all platform users, promote/demote Super Administrators, and reset accounts.
+                    </p>
+                </Link>
+
+                <Link
+                    href="/admin/clicktt"
+                    className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-sm hover:shadow-md hover:border-amber-500/50 transition group"
+                >
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 group-hover:scale-105 transition">
+                            <Database className="h-5 w-5" />
+                        </div>
+                        <ArrowUpRight className="h-4 w-4 text-slate-400 group-hover:text-amber-500 transition" />
+                    </div>
+                    <h3 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition">
+                        ClickTT Data Migration
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        Import associations, real clubs, and player rosters directly from ClickTT scraper dumps.
                     </p>
                 </Link>
 

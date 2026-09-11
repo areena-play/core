@@ -30,6 +30,10 @@ model Club {
   supportSubjects   SupportSubject[]
   locations         LocationClub[]
   unitReservations  LocationUnitReservation[]
+
+  @@index([name])
+  @@index([city])
+  @@index([createdAt])
 }
 
 model ClubAssociation {
@@ -42,6 +46,8 @@ model ClubAssociation {
   association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
 
   @@unique([clubId, associationId])
+  @@index([associationId])
+  @@index([clubId])
 }
 
 model UserClubRole {
@@ -55,4 +61,6 @@ model UserClubRole {
   club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
 
   @@unique([userId, clubId, role])
+  @@index([clubId])
+  @@index([userId])
 }

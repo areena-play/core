@@ -4,6 +4,7 @@ import { SystemService } from '../services/system.service';
 import { AuditService } from '../services/audit.service';
 import { DatabaseBackupService } from '../services/databaseBackup.service';
 import { CronSchedulerService } from '../services/cronScheduler.service';
+import { ClickTTImportService } from '../services/clickttImport.service';
 
 const router = Router();
 
@@ -422,6 +423,59 @@ router.delete('/cronjobs/:name', async (req: AuthRequest, res: Response) => {
     } catch (err: any) {
         console.error(`Admin Cronjob Delete Error (${req.params.name}):`, err);
         res.status(500).json({ error: err.message || 'Failed to delete cronjob' });
+    }
+});
+
+/**
+ * GET /api/admin/import/clicktt/status
+ * Check availability of local ClickTT scraped data files
+ */
+router.get('/import/clicktt/status', async (req: AuthRequest, res: Response) => {
+    try {
+        const customPath = req.query.path as string | undefined;
+        const status = ClickTTImportService.checkDataset(customPath);
+        res.json(status);
+    } catch (err: any) {
+        console.error('ClickTT Status Check Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to check ClickTT dataset status' });
+    }
+});
+
+/**
+ * POST /api/admin/import/clicktt
+ * Trigger ClickTT import into Areena database
+ */
+router.post('/import/clicktt', async (req: AuthRequest, res: Response) => {
+    try {
+        const { dataPath, dryRun, batchSize, importLicenses } = req.body || {};
+
+        const result = await ClickTTImportService.importClickTTData({
+            dataPath,
+            dryRun: Boolean(dryRun),
+            batchSize: batchSize ? parseInt(batchSize, 10) : undefined,
+            importLicenses: importLicenses !== false,
+        });
+
+        await AuditService.record({
+            req,
+            action: dryRun ? 'CLICKTT_IMPORT_DRY_RUN' : 'CLICKTT_IMPORT_EXECUTE',
+            entityType: 'ClickTTImport',
+            entityId: 'global',
+            description: `Admin ${req.user?.email} executed ClickTT data import (dryRun: ${dryRun})`,
+            metadata: {
+                dryRun,
+                clubsProcessed: result.clubsProcessed,
+                playersProcessed: result.playersProcessed,
+                tcardPlayersProcessed: result.tcardPlayersProcessed,
+                licensesCreated: result.licensesCreated,
+                durationMs: result.durationMs,
+            },
+        });
+
+        res.json(result);
+    } catch (err: any) {
+        console.error('ClickTT Import Execution Error:', err);
+        res.status(500).json({ error: err.message || 'ClickTT import failed' });
     }
 });
 

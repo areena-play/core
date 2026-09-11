@@ -63,6 +63,8 @@ model UserAssociationRole {
   association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
 
   @@unique([userId, associationId, role])
+  @@index([associationId])
+  @@index([userId])
 }
 
 model Season {

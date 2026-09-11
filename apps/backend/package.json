@@ -10,7 +10,8 @@
         "prisma:migrate": "prisma migrate dev --schema=prisma/schema",
         "prisma:push": "prisma db push --schema=prisma/schema",
         "prisma:update": "prisma db push --schema=prisma/schema && prisma generate --schema=prisma/schema",
-        "prisma:seed": "ts-node -r dotenv/config src/seed.ts"
+        "prisma:seed": "ts-node -r dotenv/config src/seed.ts",
+        "import:clicktt": "ts-node -r dotenv/config src/scripts/importClickTT.ts"
     },
     "dependencies": {
         "@areena/shared": "*",

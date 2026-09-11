@@ -138,7 +138,8 @@ export class ApiClient extends HttpClient {
     getClub = (id: string) => this.clubs.getClub(id);
     createClub = (body: any) => this.clubs.createClub(body);
 
-    getLicenses = (params?: Record<string, string>) => this.licenses.getLicenses(params);
+    getLicenses = (params?: Record<string, string | number>) => this.licenses.getLicenses(params);
+    getLicenseStats = (params?: Record<string, string>) => this.licenses.getLicenseStats(params);
     applyLicense = (body: any) => this.licenses.applyLicense(body);
     approveLicense = (licenseId: string, body: any) => this.licenses.approveLicense(licenseId, body);
     updateUserLicenseId = (userId: string, licenseId: string) => this.licenses.updateUserLicenseId(userId, licenseId);
@@ -244,6 +245,8 @@ export class ApiClient extends HttpClient {
     updateRateLimitSettings = (body: { enabled?: boolean; capacity?: number; refillRatePerSec?: number; blockAnonymousBots?: boolean }) => this.admin.updateRateLimitSettings(body);
     exportDatabase = () => this.admin.exportDatabase();
     importDatabase = (dumpData: any) => this.admin.importDatabase(dumpData);
+    getClickTTStatus = (path?: string) => this.admin.getClickTTStatus(path);
+    importClickTT = (options?: { dataPath?: string; dryRun?: boolean; batchSize?: number; importLicenses?: boolean }) => this.admin.importClickTT(options);
 }
 
 export const api = new ApiClient();

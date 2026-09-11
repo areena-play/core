@@ -84,6 +84,11 @@ model User {
 
   ratingSnapshots     RatingSnapshotHistory[]
   matchParticipations MatchParticipant[]
+
+  @@index([lastName, firstName])
+  @@index([accountStatus])
+  @@index([createdAt])
+  @@index([isSuperAdmin])
 }
 
 model OAuthClient {

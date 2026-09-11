@@ -60,34 +60,36 @@ export default function ManagementDashboardPage() {
 
     const loadDashboardData = async () => {
         try {
-            const licenseParams: Record<string, string> = {};
+            const licenseParams: Record<string, string> = {
+                status: 'PENDING_CLUB,PENDING_ASSOCIATION',
+                limit: '25',
+            };
             if (assocId) licenseParams.associationId = assocId;
 
-            const [usersRes, clubsRes, licensesRes, invoicesRes, auditRes] = await Promise.allSettled([
-                api.getUsers(''),
+            const [usersRes, clubsRes, licenseStatsRes, pendingLicensesRes, invoicesRes, auditRes] = await Promise.allSettled([
+                api.getUsers(assocId ? { page: 1, limit: 1, associationId: assocId } : { page: 1, limit: 1 }),
                 api.getClubs(),
+                api.getLicenseStats(assocId ? { associationId: assocId } : {}),
                 api.getLicenses(licenseParams),
                 api.getInvoices().catch(() => []),
                 api.getAuditLogs({ limit: '5' }).catch(() => ({ logs: [] })),
             ]);
 
-            const userList = usersRes.status === 'fulfilled' ? (Array.isArray(usersRes.value) ? usersRes.value : usersRes.value?.users || []) : [];
-            const userCount = userList.length || (usersRes.status === 'fulfilled' ? usersRes.value?.pagination?.total || 0 : 0);
+            const userCount = usersRes.status === 'fulfilled'
+                ? (usersRes.value?.totalUnfiltered || usersRes.value?.total || (Array.isArray(usersRes.value) ? usersRes.value.length : 0))
+                : 0;
             const clubCount = clubsRes.status === 'fulfilled' ? (Array.isArray(clubsRes.value) ? clubsRes.value.length : 0) : 0;
-            const licenses = licensesRes.status === 'fulfilled' ? (Array.isArray(licensesRes.value) ? licensesRes.value : []) : [];
+            const licenseStats = licenseStatsRes.status === 'fulfilled' ? licenseStatsRes.value : null;
+            const pending = pendingLicensesRes.status === 'fulfilled' ? (Array.isArray(pendingLicensesRes.value) ? pendingLicensesRes.value : []) : [];
             const invoices = invoicesRes.status === 'fulfilled' ? (Array.isArray(invoicesRes.value) ? invoicesRes.value : []) : [];
             const auditLogs = auditRes.status === 'fulfilled' ? (auditRes.value?.logs || auditRes.value || []) : [];
-
-            const pending = licenses.filter(
-                (l: any) => l.status === 'PENDING_CLUB' || l.status === 'PENDING_ASSOCIATION',
-            );
 
             setPendingLicenses(pending);
             setStats({
                 userCount,
                 clubCount,
-                licenseCount: licenses.length,
-                pendingApprovals: pending.length,
+                licenseCount: licenseStats?.total ?? pending.length,
+                pendingApprovals: licenseStats?.pending ?? pending.length,
                 invoiceCount: invoices.length,
             });
             setRecentLogs(Array.isArray(auditLogs) ? auditLogs.slice(0, 5) : []);

@@ -3,9 +3,20 @@ import { HttpClient } from '../client';
 export class LicensesApi {
     constructor(private http: HttpClient) {}
 
-    getLicenses(params: Record<string, string> = {}) {
+    getLicenses(params: Record<string, string | number> = {}) {
+        const qs = new URLSearchParams();
+        Object.entries(params).forEach(([k, v]) => {
+            if (v !== undefined && v !== null && v !== '') {
+                qs.set(k, String(v));
+            }
+        });
+        const query = qs.toString();
+        return this.http.request(`/licenses${query ? `?${query}` : ''}`);
+    }
+
+    getLicenseStats(params: Record<string, string> = {}) {
         const qs = new URLSearchParams(params).toString();
-        return this.http.request(`/licenses${qs ? `?${qs}` : ''}`);
+        return this.http.request<any>(`/licenses/stats${qs ? `?${qs}` : ''}`);
     }
 
     applyLicense(body: any) {

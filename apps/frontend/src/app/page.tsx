@@ -50,24 +50,21 @@ export default function DashboardPage() {
     const [clubs, setClubs] = useState<any[]>([]);
     const [competitions, setCompetitions] = useState<any[]>([]);
     const [liveEncounters, setLiveEncounters] = useState<any[]>([]);
-    const [licenses, setLicenses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     const logoSrc = resolvedTheme === 'dark' ? '/areena-logo-dark.png' : '/areena-logo.png';
 
     const fetchData = async () => {
         try {
-            const [clubsRes, compRes, liveRes, licRes] = await Promise.allSettled([
+            const [clubsRes, compRes, liveRes] = await Promise.allSettled([
                 api.getClubs(),
                 api.getCompetitions(),
                 api.getLiveEncounters(),
-                api.getLicenses(),
             ]);
 
             if (clubsRes.status === 'fulfilled') setClubs(clubsRes.value || []);
             if (compRes.status === 'fulfilled') setCompetitions(compRes.value || []);
             if (liveRes.status === 'fulfilled') setLiveEncounters(liveRes.value || []);
-            if (licRes.status === 'fulfilled') setLicenses(licRes.value || []);
         } catch (err) {
             console.error('Failed to load home page data:', err);
         } finally {
@@ -622,7 +619,7 @@ export default function DashboardPage() {
                                 <span>•</span>
                                 <span>Clubs: <strong>{clubs.length}</strong></span>
                                 <span>•</span>
-                                <span>Licenses: <strong>{licenses.length}</strong></span>
+                                <span>Regions: <strong>{regionalAssocs.length}</strong></span>
                             </div>
                         </div>
 

@@ -23,6 +23,7 @@
         "prisma:seed": "npm run prisma:seed --workspace=@areena/backend",
         "demo:seed": "npm run prisma:seed --workspace=@areena/backend",
         "demo:reset": "npm run prisma:seed --workspace=@areena/backend",
+        "import:clicktt": "npm run import:clicktt --workspace=@areena/backend",
         "version:sync": "node scripts/sync-versions.js",
         "version:patch": "node scripts/bump-version.js patch",
         "version:minor": "node scripts/bump-version.js minor",
