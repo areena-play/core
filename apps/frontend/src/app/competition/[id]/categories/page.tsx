@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
@@ -13,20 +13,21 @@ import {
     Plus,
     Users,
     Trophy,
-    Play,
+    Flame,
+    Check,
     CheckCircle2,
     AlertCircle,
-    Calendar,
-    MapPin,
-    Shield,
     Sparkles,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
+import { DataTable, DataTableColumnHeader, ColumnDef } from '@/components/ui/DataTable';
 import { useMainView } from '@/lib/mainViewContext';
 import { LevelTierDefinition, ELO_TIERS_DATA, sortTiers } from '@areena/shared';
+import { getCategorySlug } from '@/lib/slug';
 
 export default function CompetitionCategoriesPage() {
     const params = useParams();
+    const router = useRouter();
     const competitionId = params.id as string;
     const { user } = useAuth();
     const isSuperAdmin = user?.isSuperAdmin;
@@ -34,11 +35,21 @@ export default function CompetitionCategoriesPage() {
 
     const [competition, setCompetition] = useState<any | null>(null);
     const [roles, setRoles] = useState<any[]>([]);
-    const [clubs, setClubs] = useState<any[]>([]);
-    const [usersList, setUsersList] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showAddCatModal, setShowAddCatModal] = useState(false);
+    const [newCat, setNewCat] = useState({
+        name: '',
+        teamSize: 1,
+        minElo: '',
+        maxElo: '',
+        genderRestriction: 'ANY',
+        roundsPerGroup: 1,
+        minLevel: '',
+        maxLevel: '',
+    });
+    const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    const { mainAssoc, associations } = useMainView();
+    const { mainAssoc, associations, setEntityMeta } = useMainView();
 
     const activeTiers = useMemo<LevelTierDefinition[]>(() => {
         if (Array.isArray(competition?.association?.rules?.eloTiers) && competition.association.rules.eloTiers.length > 0) {
@@ -56,12 +67,12 @@ export default function CompetitionCategoriesPage() {
 
     const handleSelectMaxLevel = (levelCode: string) => {
         if (!levelCode) {
-            setNewCat(prev => ({ ...prev, maxElo: '' }));
+            setNewCat((prev) => ({ ...prev, maxElo: '' }));
             return;
         }
         const tier = activeTiers.find((t: LevelTierDefinition) => t.level === levelCode);
         if (tier) {
-            setNewCat(prev => ({
+            setNewCat((prev) => ({
                 ...prev,
                 maxElo: String(tier.maxElo === 3000 ? '' : tier.maxElo),
             }));
@@ -70,42 +81,34 @@ export default function CompetitionCategoriesPage() {
 
     const handleSelectMinLevel = (levelCode: string) => {
         if (!levelCode) {
-            setNewCat(prev => ({ ...prev, minElo: '' }));
+            setNewCat((prev) => ({ ...prev, minElo: '' }));
             return;
         }
         const tier = activeTiers.find((t: LevelTierDefinition) => t.level === levelCode);
         if (tier) {
-            setNewCat(prev => ({
+            setNewCat((prev) => ({
                 ...prev,
                 minElo: String(tier.minElo),
             }));
         }
     };
 
-    const [activeCategoryId, setActiveCategoryId] = useState<string>('');
-    const [showAddCatModal, setShowAddCatModal] = useState(false);
-    const [showAddTeamModal, setShowAddTeamModal] = useState(false);
-    const [newCat, setNewCat] = useState({ name: '', teamSize: 1, minElo: '', maxElo: '', genderRestriction: 'ANY', roundsPerGroup: 1, minLevel: '', maxLevel: '' });
-    const [newTeam, setNewTeam] = useState({ name: '', clubId: '', playerUserIds: [] as string[] });
-    const [groupCount, setGroupCount] = useState(2);
-    const [generatingGroups, setGeneratingGroups] = useState(false);
-    const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
     const fetchData = async () => {
         try {
-            const [comp, r, c, u] = await Promise.all([
+            const [comp, r] = await Promise.all([
                 api.getCompetition(competitionId),
                 api.getCompetitionRoles(competitionId).catch(() => []),
-                api.getClubs().catch(() => ({ clubs: [] })),
-                api.getUsers ? api.getUsers().catch(() => []) : Promise.resolve([]),
             ]);
             setCompetition(comp);
             setRoles(r || []);
-            setClubs(Array.isArray(c) ? c : c?.clubs || []);
-            setUsersList(Array.isArray(u) ? u : u?.users || []);
-            if (comp.categories && comp.categories.length > 0 && !activeCategoryId) {
-                setActiveCategoryId(comp.categories[0].id);
-            }
+            setEntityMeta({
+                id: comp.id,
+                title: comp.name,
+                code: comp.seriesSlug || comp.slug || 'COMP',
+                badge: comp.type,
+                subtitle: `${comp.type} • ${comp.association?.name || 'Federation'}`,
+                categories: comp.categories || [],
+            });
         } catch (err: any) {
             setActionMsg({ type: 'error', text: err.message || 'Failed to load categories' });
         } finally {
@@ -114,7 +117,9 @@ export default function CompetitionCategoriesPage() {
     };
 
     useEffect(() => {
-        fetchData();
+        if (competitionId) {
+            fetchData();
+        }
     }, [competitionId]);
 
     const isAssocAdmin = user?.associationRoles?.some(
@@ -134,7 +139,16 @@ export default function CompetitionCategoriesPage() {
                 roundsPerGroup: Number(newCat.roundsPerGroup),
             });
             setShowAddCatModal(false);
-            setNewCat({ name: '', teamSize: 1, minElo: '', maxElo: '', genderRestriction: 'ANY', roundsPerGroup: 1, minLevel: '', maxLevel: '' });
+            setNewCat({
+                name: '',
+                teamSize: 1,
+                minElo: '',
+                maxElo: '',
+                genderRestriction: 'ANY',
+                roundsPerGroup: 1,
+                minLevel: '',
+                maxLevel: '',
+            });
             setActionMsg({ type: 'success', text: 'Category created successfully.' });
             fetchData();
             setTimeout(() => setActionMsg(null), 3000);
@@ -143,35 +157,179 @@ export default function CompetitionCategoriesPage() {
         }
     };
 
-    const handleRegisterTeam = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!activeCategoryId) return;
-        try {
-            await api.createCategoryTeam(activeCategoryId, newTeam);
-            setShowAddTeamModal(false);
-            setNewTeam({ name: '', clubId: '', playerUserIds: [] });
-            setActionMsg({ type: 'success', text: 'Team registered successfully.' });
-            fetchData();
-            setTimeout(() => setActionMsg(null), 3000);
-        } catch (err: any) {
-            setActionMsg({ type: 'error', text: err.message || 'Failed to register team' });
-        }
-    };
+    const categoryColumns = useMemo<ColumnDef<any>[]>(
+        () => [
+            {
+                accessorKey: 'name',
+                header: ({ column }: { column: any }) => (
+                    <DataTableColumnHeader column={column} title={t('tournamentWorkspace.categories') || 'Category / Division'} />
+                ),
+                cell: ({ row }: { row: any }) => {
+                    const cat = row.original;
+                    const genderBadge =
+                        cat.genderRestriction === 'MALE_ONLY'
+                            ? { label: 'Men', bg: 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 border-blue-200 dark:border-blue-800/50' }
+                            : cat.genderRestriction === 'FEMALE_ONLY'
+                              ? { label: 'Women', bg: 'bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-400 border-pink-200 dark:border-pink-800/50' }
+                              : cat.genderRestriction === 'MIXED'
+                                ? { label: 'Mixed', bg: 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-400 border-purple-200 dark:border-purple-800/50' }
+                                : { label: 'Open', bg: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700' };
 
-    const handleGenerateGroups = async () => {
-        if (!activeCategoryId) return;
-        setGeneratingGroups(true);
-        try {
-            await api.generateCategoryGroups(activeCategoryId, { groupCount });
-            setActionMsg({ type: 'success', text: 'Round-robin groups and encounters generated successfully!' });
-            fetchData();
-            setTimeout(() => setActionMsg(null), 3000);
-        } catch (err: any) {
-            setActionMsg({ type: 'error', text: err.message || 'Failed to generate groups' });
-        } finally {
-            setGeneratingGroups(false);
-        }
-    };
+                    return (
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0">
+                                <Layers className="h-4 w-4" />
+                            </div>
+                            <div className="space-y-0.5 min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                                        {cat.name}
+                                    </span>
+                                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase border ${genderBadge.bg}`}>
+                                        {genderBadge.label}
+                                    </span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 truncate">
+                                    {cat.roundsPerGroup > 1 ? `${cat.roundsPerGroup} rounds per group` : '1 round-robin round'}
+                                </p>
+                            </div>
+                        </div>
+                    );
+                },
+            },
+            {
+                accessorKey: 'teamSize',
+                header: ({ column }: { column: any }) => <DataTableColumnHeader column={column} title="Type" />,
+                cell: ({ row }: { row: any }) => {
+                    const size = row.original.teamSize || 1;
+                    return (
+                        <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                            {size === 1 ? 'Singles (1v1)' : size === 2 ? 'Doubles (2v2)' : `Team (${size}p)`}
+                        </span>
+                    );
+                },
+            },
+            {
+                id: 'eloRange',
+                header: ({ column }: { column: any }) => <DataTableColumnHeader column={column} title="Rating / Level" />,
+                accessorFn: (row: any) => `${row.minElo ?? 0}-${row.maxElo ?? 9999}`,
+                cell: ({ row }: { row: any }) => {
+                    const { minElo, maxElo } = row.original;
+                    if (minElo && maxElo) {
+                        return (
+                            <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                {minElo} – {maxElo} ELO
+                            </span>
+                        );
+                    }
+                    if (maxElo) {
+                        return (
+                            <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                ≤ {maxElo} ELO
+                            </span>
+                        );
+                    }
+                    if (minElo) {
+                        return (
+                            <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                ≥ {minElo} ELO
+                            </span>
+                        );
+                    }
+                    return <span className="text-xs text-slate-400">Open (All ELO)</span>;
+                },
+            },
+            {
+                id: 'teamsCount',
+                header: ({ column }: { column: any }) => <DataTableColumnHeader column={column} title="Registered Squads" />,
+                accessorFn: (row: any) => row.teams?.length || 0,
+                cell: ({ row }: { row: any }) => {
+                    const count = row.original.teams?.length || 0;
+                    return (
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            <Users className="h-3.5 w-3.5 text-blue-500" />
+                            <span>{count} {count === 1 ? 'entry' : 'entries'}</span>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'groupsCount',
+                header: ({ column }: { column: any }) => <DataTableColumnHeader column={column} title="Draw / Groups" />,
+                accessorFn: (row: any) => row.groups?.length || 0,
+                cell: ({ row }: { row: any }) => {
+                    const count = row.original.groups?.length || 0;
+                    return count > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                            <Check className="h-3 w-3" /> {count} {count === 1 ? 'Group' : 'Groups'}
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs text-slate-400 bg-slate-100 dark:bg-slate-800">
+                            Draw Pending
+                        </span>
+                    );
+                },
+            },
+            {
+                id: 'progress',
+                header: ({ column }: { column: any }) => <DataTableColumnHeader column={column} title="Matches Progress" />,
+                accessorFn: (row: any) => row.encounters?.length || 0,
+                cell: ({ row }: { row: any }) => {
+                    const encounters = row.original.encounters || [];
+                    const total = encounters.length;
+                    const finished = encounters.filter((e: any) => e.status === 'FINISHED').length;
+                    const live = encounters.filter((e: any) => e.status === 'LIVE').length;
+
+                    if (total === 0) {
+                        return <span className="text-xs text-slate-400">No matches scheduled</span>;
+                    }
+
+                    const pct = Math.round((finished / total) * 100);
+
+                    return (
+                        <div className="space-y-1 w-32">
+                            <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                    {finished}/{total} played
+                                </span>
+                                {live > 0 && (
+                                    <span className="text-red-500 font-bold flex items-center gap-0.5 animate-pulse">
+                                        <Flame className="h-3 w-3" /> {live} live
+                                    </span>
+                                )}
+                            </div>
+                            <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                <div
+                                    className={`h-full transition-all ${pct === 100 ? 'bg-emerald-500' : 'bg-red-500'}`}
+                                    style={{ width: `${pct}%` }}
+                                />
+                            </div>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'actions',
+                header: () => <span className="sr-only">Actions</span>,
+                cell: ({ row }: { row: any }) => {
+                    const cat = row.original;
+                    const slug = getCategorySlug(cat);
+                    return (
+                        <div className="flex justify-end">
+                            <Link
+                                href={`/competition/${competitionId}/category/${slug}`}
+                                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+                            >
+                                <span>Open</span>
+                                <ChevronRight className="h-3.5 w-3.5" />
+                            </Link>
+                        </div>
+                    );
+                },
+            },
+        ],
+        [competitionId, t]
+    );
 
     if (loading) {
         return (
@@ -181,7 +339,14 @@ export default function CompetitionCategoriesPage() {
         );
     }
 
-    const activeCategory = competition?.categories?.find((c: any) => c.id === activeCategoryId) || competition?.categories?.[0];
+    const categories = competition?.categories || [];
+    const totalTeams = categories.reduce((sum: number, c: any) => sum + (c.teams?.length || 0), 0);
+    const totalGroups = categories.reduce((sum: number, c: any) => sum + (c.groups?.length || 0), 0);
+    const totalEncounters = categories.reduce((sum: number, c: any) => sum + (c.encounters?.length || 0), 0);
+    const finishedEncounters = categories.reduce(
+        (sum: number, c: any) => sum + (c.encounters?.filter((e: any) => e.status === 'FINISHED').length || 0),
+        0
+    );
 
     return (
         <div className="space-y-6 md:space-y-8 pb-16">
@@ -191,16 +356,16 @@ export default function CompetitionCategoriesPage() {
                     <div className="space-y-1">
                         <div className="flex items-center gap-2">
                             <span className="rounded px-2.5 py-0.5 text-xs font-bold uppercase border bg-red-100 text-red-800 border-red-200 dark:bg-red-950/60 dark:text-red-400 dark:border-red-800/50">
-                                Divisions & Draws
+                                Categories Overview
                             </span>
-                            <span className="font-mono text-xs text-slate-400">{competition?.categories?.length || 0} Categories</span>
+                            <span className="font-mono text-xs text-slate-400">{categories.length} Divisions</span>
                         </div>
                         <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
                             <Layers className="h-6 w-6 text-red-500" />
-                            <span>Categories, Teams & Draws</span>
+                            <span>Tournament Categories & Divisions</span>
                         </h1>
                         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                            Create tournament divisions, register participant squads, and generate round-robin groups
+                            Overview of all divisions, registered team rosters, round-robin pools, and fixtures progress
                         </p>
                     </div>
 
@@ -240,156 +405,81 @@ export default function CompetitionCategoriesPage() {
                 </div>
             )}
 
-            {/* Category Selector Tabs */}
-            {competition?.categories && competition.categories.length > 0 ? (
-                <div className="space-y-6">
-                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                        {competition.categories.map((c: any) => (
-                            <button
-                                key={c.id}
-                                onClick={() => setActiveCategoryId(c.id)}
-                                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition ${
-                                    activeCategoryId === c.id
-                                        ? 'bg-red-600 text-white shadow-sm'
-                                        : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60'
-                                }`}
-                            >
-                                {c.name} ({c.teams?.length || 0} teams)
-                            </button>
-                        ))}
-                    </div>
-
-                    {activeCategory && (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            {/* Teams Roster in this category */}
-                            <div className="lg:col-span-1 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 shadow-sm space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                        <Users className="h-4 w-4 text-red-500" />
-                                        <span>Registered Teams ({activeCategory.teams?.length || 0})</span>
-                                    </h3>
-                                    {canManage && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowAddTeamModal(true)}
-                                            className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-100 transition"
-                                            title="Register Team"
-                                        >
-                                            <Plus className="h-4 w-4" />
-                                        </button>
-                                    )}
-                                </div>
-
-                                <div className="space-y-2">
-                                    {(!activeCategory.teams || activeCategory.teams.length === 0) ? (
-                                        <div className="p-4 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
-                                            No teams registered in this category yet.
-                                        </div>
-                                    ) : (
-                                        activeCategory.teams.map((t: any) => (
-                                            <div key={t.id} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-1">
-                                                <div className="font-bold text-xs text-slate-900 dark:text-white flex items-center justify-between">
-                                                    <span>{t.name}</span>
-                                                    <span className="font-mono text-[10px] text-slate-400">{t.club?.code || 'IND'}</span>
-                                                </div>
-                                                <div className="text-[11px] text-slate-500">
-                                                    {t.members?.map((m: any) => `${m.user?.firstName || ''} ${m.user?.lastName || ''}`).join(', ') || 'No members'}
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-
-                                {canManage && (
-                                    <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
-                                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Draw / Group Generator</h4>
-                                        <div className="flex items-center gap-2">
-                                            <select
-                                                value={groupCount}
-                                                onChange={(e) => setGroupCount(Number(e.target.value))}
-                                                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-slate-900 dark:text-white outline-none focus:border-red-500"
-                                            >
-                                                <option value={1}>1 Group (Single Round-Robin)</option>
-                                                <option value={2}>2 Groups (Group A & B)</option>
-                                                <option value={4}>4 Groups (A, B, C, D)</option>
-                                                <option value={8}>8 Groups</option>
-                                            </select>
-                                            <button
-                                                type="button"
-                                                disabled={generatingGroups || (activeCategory.teams?.length || 0) < 2}
-                                                onClick={handleGenerateGroups}
-                                                className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold text-xs shadow-xs shrink-0 transition"
-                                            >
-                                                {generatingGroups ? 'Generating...' : 'Generate'}
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Groups & Encounters in this category */}
-                            <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 shadow-sm space-y-4">
-                                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                    <Trophy className="h-4 w-4 text-red-500" />
-                                    <span>Draws & Encounters</span>
-                                </h3>
-
-                                {(!activeCategory.encounters || activeCategory.encounters.length === 0) ? (
-                                    <div className="p-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
-                                        <p>No encounters generated yet for this category.</p>
-                                        <p className="text-[11px] text-slate-500">Register at least 2 teams and use the Group Generator to create match fixtures.</p>
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {activeCategory.encounters.map((enc: any) => (
-                                            <Link
-                                                key={enc.id}
-                                                href={`/competition/${competitionId}/encounter/${enc.id}`}
-                                                className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 hover:border-red-500/50 transition space-y-2 block group"
-                                            >
-                                                <div className="flex items-center justify-between text-[11px]">
-                                                    <span className="font-mono text-slate-400">Round {enc.round || 1} • {enc.location || 'Hall'}</span>
-                                                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
-                                                        enc.status === 'LIVE' ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                                                    }`}>
-                                                        {enc.status}
-                                                    </span>
-                                                </div>
-                                                <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center justify-between">
-                                                    <span>{enc.homeTeam?.name || 'TBD'}</span>
-                                                    <span className="font-mono text-sm text-red-600 dark:text-red-400">{enc.homeScore ?? 0} : {enc.awayScore ?? 0}</span>
-                                                    <span>{enc.awayTeam?.name || 'TBD'}</span>
-                                                </div>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+            {/* Quick KPI Stat Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 shadow-sm space-y-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Divisions</span>
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-500/10 text-red-500">
+                            <Layers className="h-4 w-4" />
                         </div>
-                    )}
+                    </div>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white">
+                        {categories.length}
+                    </div>
+                    <p className="text-[11px] text-slate-500">Active competition categories</p>
                 </div>
-            ) : (
-                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-8 text-center text-slate-500 space-y-3">
-                    <Layers className="mx-auto h-8 w-8 text-slate-400" />
-                    <p className="text-xs font-medium">No competition categories created yet.</p>
-                    {canManage && (
-                        <button
-                            type="button"
-                            onClick={() => setShowAddCatModal(true)}
-                            className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-xs font-bold text-white shadow-xs"
-                        >
-                            <Plus className="h-4 w-4" /> Create First Category
-                        </button>
-                    )}
+
+                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 shadow-sm space-y-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Registered Squads</span>
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
+                            <Users className="h-4 w-4" />
+                        </div>
+                    </div>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white">
+                        {totalTeams}
+                    </div>
+                    <p className="text-[11px] text-slate-500">Total participant entries</p>
                 </div>
-            )}
+
+                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 shadow-sm space-y-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Round-Robin Pools</span>
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
+                            <Trophy className="h-4 w-4" />
+                        </div>
+                    </div>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white">
+                        {totalGroups}
+                    </div>
+                    <p className="text-[11px] text-slate-500">Generated draw groups</p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 shadow-sm space-y-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Fixtures Progress</span>
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
+                            <Flame className="h-4 w-4" />
+                        </div>
+                    </div>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white">
+                        {finishedEncounters}/{totalEncounters}
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                        {totalEncounters > 0 ? `${Math.round((finishedEncounters / totalEncounters) * 100)}% completed` : 'No fixtures generated'}
+                    </p>
+                </div>
+            </div>
+
+            {/* Categories DataTable */}
+            <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 sm:p-6 shadow-sm space-y-4">
+                <DataTable
+                    columns={categoryColumns}
+                    data={categories}
+                    searchPlaceholder="Filter categories by division name, format, or rating..."
+                    emptyMessage="No categories created yet for this tournament. Click 'Add Category' to create your first division."
+                    defaultPageSize={10}
+                    onRowClick={(row: any) => router.push(`/competition/${competitionId}/category/${getCategorySlug(row)}`)}
+                />
+            </div>
 
             {/* Add Category Modal */}
             <Modal
                 isOpen={showAddCatModal}
                 onClose={() => setShowAddCatModal(false)}
                 title="Create Competition Category"
-                subtitle="Define group format, team size, and rating thresholds"
+                subtitle="Define division format, team size, and rating thresholds"
                 icon={<Layers className="h-5 w-5 text-red-500" />}
                 size="md"
             >
@@ -531,62 +621,6 @@ export default function CompetitionCategoriesPage() {
                             className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white shadow-xs"
                         >
                             Create Category
-                        </button>
-                    </div>
-                </form>
-            </Modal>
-
-            {/* Add Team Modal */}
-            <Modal
-                isOpen={showAddTeamModal}
-                onClose={() => setShowAddTeamModal(false)}
-                title="Register Team in Category"
-                subtitle="Assign participant or club team to this category"
-                icon={<Users className="h-5 w-5 text-red-500" />}
-                size="md"
-            >
-                <form onSubmit={handleRegisterTeam} className="space-y-4">
-                    <div className="space-y-1.5">
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Team / Participant Name</label>
-                        <input
-                            type="text"
-                            required
-                            placeholder="e.g. Zurich Alpha or Player Full Name"
-                            value={newTeam.name}
-                            onChange={(e) => setNewTeam({ ...newTeam, name: e.target.value })}
-                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-red-500"
-                        />
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Club Affiliation</label>
-                        <select
-                            value={newTeam.clubId}
-                            onChange={(e) => setNewTeam({ ...newTeam, clubId: e.target.value })}
-                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-red-500"
-                        >
-                            <option value="">-- Independent / No Club --</option>
-                            {clubs.map((c: any) => (
-                                <option key={c.id} value={c.id}>
-                                    {c.name} ({c.code})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                        <button
-                            type="button"
-                            onClick={() => setShowAddTeamModal(false)}
-                            className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white shadow-xs"
-                        >
-                            Register Team
                         </button>
                     </div>
                 </form>

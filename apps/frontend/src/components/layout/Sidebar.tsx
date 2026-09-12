@@ -85,6 +85,7 @@ function SidebarContent() {
         user,
         mainAssoc,
         associations,
+        categories: entityMeta?.categories || [],
     });
 
     // Precise active navigation resolver
@@ -92,7 +93,7 @@ function SidebarContent() {
         if (!targetHref) return false;
         const [targetPath, targetQuery] = targetHref.split('?');
 
-        // 1. If targetHref has query params (e.g. ?type=league or ?role=player)
+        // 1. If targetHref has query params (e.g. ?type=league or ?role=player or ?category=123)
         if (targetQuery) {
             if (pathname !== targetPath) return false;
             const targetParams = new URLSearchParams(targetQuery);
@@ -105,10 +106,10 @@ function SidebarContent() {
         }
 
         // 2. If targetHref has NO query params:
-        // Exact pathname match ONLY. When specific query params are present (type or role),
+        // Exact pathname match ONLY. When specific query params are present (type, role, or category),
         // do not keep the bare parent overview item highlighted.
         if (pathname === targetPath) {
-            if (searchParams.has('type') || searchParams.has('role')) {
+            if (searchParams.has('type') || searchParams.has('role') || searchParams.has('category')) {
                 return false;
             }
             return true;

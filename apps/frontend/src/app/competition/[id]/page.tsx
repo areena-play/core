@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
@@ -40,6 +40,8 @@ import { format } from 'date-fns';
 import { LiveTicker } from '@/components/layout/LiveTicker';
 import { generateTournamentInvitationPdf } from '@/lib/pdfInvitation';
 import { JsonLd, generateCompetitionJsonLd } from '@/components/seo/JsonLd';
+import { DataTable, DataTableColumnHeader, ColumnDef } from '@/components/ui/DataTable';
+import { getCategorySlug } from '@/lib/slug';
 
 export default function CompetitionDashboardPage() {
     const params = useParams();
@@ -68,6 +70,7 @@ export default function CompetitionDashboardPage() {
                 code: comp.seriesSlug || comp.slug || 'COMP',
                 badge: comp.type,
                 subtitle: `${comp.type} • ${comp.association?.name || 'Federation'}`,
+                categories: comp.categories || [],
             });
 
             const [rolesData, playersData, calloutsData, statsData] = await Promise.all([
@@ -128,6 +131,178 @@ export default function CompetitionDashboardPage() {
             setActionMsg({ type: 'error', text: err.message || 'Backup failed' });
         }
     };
+
+    const categoryColumns = useMemo<ColumnDef<any>[]>(
+        () => [
+            {
+                accessorKey: 'name',
+                header: ({ column }: { column: any }) => <DataTableColumnHeader column={column} title={t('tournamentWorkspace.categories') || 'Category / Division'} />,
+                cell: ({ row }: { row: any }) => {
+                    const cat = row.original;
+                    const genderBadge =
+                        cat.genderRestriction === 'MALE_ONLY'
+                            ? { label: 'Men', bg: 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 border-blue-200 dark:border-blue-800/50' }
+                            : cat.genderRestriction === 'FEMALE_ONLY'
+                              ? { label: 'Women', bg: 'bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-400 border-pink-200 dark:border-pink-800/50' }
+                              : cat.genderRestriction === 'MIXED'
+                                ? { label: 'Mixed', bg: 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-400 border-purple-200 dark:border-purple-800/50' }
+                                : { label: 'Open', bg: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700' };
+
+                    return (
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0">
+                                <Layers className="h-4 w-4" />
+                            </div>
+                            <div className="space-y-0.5 min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                                        {cat.name}
+                                    </span>
+                                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase border ${genderBadge.bg}`}>
+                                        {genderBadge.label}
+                                    </span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 truncate">
+                                    {cat.roundsPerGroup > 1 ? `${cat.roundsPerGroup} rounds per group` : '1 round-robin round'}
+                                </p>
+                            </div>
+                        </div>
+                    );
+                },
+            },
+            {
+                accessorKey: 'teamSize',
+                header: ({ column }: { column: any }) => <DataTableColumnHeader column={column} title="Type" />,
+                cell: ({ row }: { row: any }) => {
+                    const size = row.original.teamSize || 1;
+                    return (
+                        <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                            {size === 1 ? 'Singles (1v1)' : size === 2 ? 'Doubles (2v2)' : `Team (${size}p)`}
+                        </span>
+                    );
+                },
+            },
+            {
+                id: 'eloRange',
+                header: ({ column }: { column: any }) => <DataTableColumnHeader column={column} title="Rating / Level" />,
+                accessorFn: (row: any) => `${row.minElo ?? 0}-${row.maxElo ?? 9999}`,
+                cell: ({ row }: { row: any }) => {
+                    const { minElo, maxElo } = row.original;
+                    if (minElo && maxElo) {
+                        return (
+                            <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                {minElo} – {maxElo} ELO
+                            </span>
+                        );
+                    }
+                    if (maxElo) {
+                        return (
+                            <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                ≤ {maxElo} ELO
+                            </span>
+                        );
+                    }
+                    if (minElo) {
+                        return (
+                            <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                ≥ {minElo} ELO
+                            </span>
+                        );
+                    }
+                    return <span className="text-xs text-slate-400">Open (All ELO)</span>;
+                },
+            },
+            {
+                id: 'teamsCount',
+                header: ({ column }: { column: any }) => <DataTableColumnHeader column={column} title="Registered Squads" />,
+                accessorFn: (row: any) => row.teams?.length || 0,
+                cell: ({ row }: { row: any }) => {
+                    const count = row.original.teams?.length || 0;
+                    return (
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            <Users className="h-3.5 w-3.5 text-blue-500" />
+                            <span>{count} {count === 1 ? 'entry' : 'entries'}</span>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'groupsCount',
+                header: ({ column }: { column: any }) => <DataTableColumnHeader column={column} title="Draw / Groups" />,
+                accessorFn: (row: any) => row.groups?.length || 0,
+                cell: ({ row }: { row: any }) => {
+                    const count = row.original.groups?.length || 0;
+                    return count > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                            <Check className="h-3 w-3" /> {count} {count === 1 ? 'Group' : 'Groups'}
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs text-slate-400 bg-slate-100 dark:bg-slate-800">
+                            Draw Pending
+                        </span>
+                    );
+                },
+            },
+            {
+                id: 'progress',
+                header: ({ column }: { column: any }) => <DataTableColumnHeader column={column} title="Matches Progress" />,
+                accessorFn: (row: any) => row.encounters?.length || 0,
+                cell: ({ row }: { row: any }) => {
+                    const encounters = row.original.encounters || [];
+                    const total = encounters.length;
+                    const finished = encounters.filter((e: any) => e.status === 'FINISHED').length;
+                    const live = encounters.filter((e: any) => e.status === 'LIVE').length;
+
+                    if (total === 0) {
+                        return <span className="text-xs text-slate-400">No matches scheduled</span>;
+                    }
+
+                    const pct = Math.round((finished / total) * 100);
+
+                    return (
+                        <div className="space-y-1 w-32">
+                            <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                    {finished}/{total} played
+                                </span>
+                                {live > 0 && (
+                                    <span className="text-red-500 font-bold flex items-center gap-0.5 animate-pulse">
+                                        <Flame className="h-3 w-3" /> {live} live
+                                    </span>
+                                )}
+                            </div>
+                            <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                <div
+                                    className={`h-full transition-all ${pct === 100 ? 'bg-emerald-500' : 'bg-red-500'}`}
+                                    style={{ width: `${pct}%` }}
+                                />
+                            </div>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'actions',
+                header: () => <span className="sr-only">Actions</span>,
+                cell: ({ row }: { row: any }) => {
+                    const cat = row.original;
+                    const slug = getCategorySlug(cat);
+                    return (
+                        <div className="flex justify-end">
+                            <Link
+                                href={`/competition/${competitionId}/category/${slug}`}
+                                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+                            >
+                                <span>Open</span>
+                                <ChevronRight className="h-3.5 w-3.5" />
+                            </Link>
+                        </div>
+                    );
+                },
+            },
+        ],
+        [competitionId, t]
+    );
 
     if (loading) {
         return (
@@ -395,6 +570,49 @@ export default function CompetitionDashboardPage() {
                     </div>
                 </div>
             )}
+
+            {/* Category Overview DataTable */}
+            <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 sm:p-6 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0">
+                            <Layers className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                                    {t('tournamentWorkspace.categoriesOverview') || 'Categories Overview'}
+                                </h2>
+                                <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-bold text-slate-600 dark:text-slate-400">
+                                    {competition.categories?.length || 0}
+                                </span>
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Competitive divisions, athlete squads, round-robin pools, and fixtures progress
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <Link
+                            href={`/competition/${competitionId}/categories`}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-xs transition"
+                        >
+                            <span>Manage Draws & Teams</span>
+                            <ArrowUpRight className="h-3.5 w-3.5 text-slate-400" />
+                        </Link>
+                    </div>
+                </div>
+
+                <DataTable
+                    columns={categoryColumns}
+                    data={competition.categories || []}
+                    searchPlaceholder="Filter categories by name, format, or ELO rating..."
+                    emptyMessage="No categories found for this tournament. Click 'Manage Draws & Teams' to create your first division."
+                    defaultPageSize={10}
+                    onRowClick={(row: any) => router.push(`/competition/${competitionId}/category/${getCategorySlug(row)}`)}
+                />
+            </div>
 
             {/* 12-Module Workspace Launchpad Grid */}
             <div className="space-y-4">

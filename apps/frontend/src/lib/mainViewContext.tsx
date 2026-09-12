@@ -17,6 +17,7 @@ export interface EntityMeta {
     badge?: string;
     parentAssociationId?: string;
     parentAssociationName?: string;
+    categories?: any[];
 }
 
 export interface MainViewMeta {
@@ -342,6 +343,7 @@ export function MainViewProvider({ children }: { children: React.ReactNode }) {
                         code: comp.type,
                         badge: comp.type || 'TOURNAMENT',
                         subtitle: comp.description || 'Competition',
+                        categories: comp.categories || [],
                     });
                 })
                 .catch(() => {});

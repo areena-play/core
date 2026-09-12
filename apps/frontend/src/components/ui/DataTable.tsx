@@ -16,6 +16,8 @@ import {
     PaginationState,
     OnChangeFn,
 } from '@tanstack/react-table';
+
+export type { ColumnDef };
 import {
     ChevronLeft,
     ChevronRight,

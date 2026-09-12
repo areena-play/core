@@ -134,6 +134,7 @@ export function Navbar() {
         user,
         mainAssoc,
         associations,
+        categories: entityMeta?.categories || [],
     });
 
     const supportHref = useMemo(() => {

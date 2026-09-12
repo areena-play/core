@@ -38,6 +38,7 @@ import {
     MapPin,
     Database,
 } from 'lucide-react';
+import { getCategorySlug } from '@/lib/slug';
 
 export interface SubNavItem {
     id: string;
@@ -69,6 +70,7 @@ export interface GetNavSectionsParams {
     user: any;
     mainAssoc: any;
     associations: any[];
+    categories?: any[];
 }
 
 export function getCommonNavSections({
@@ -79,6 +81,7 @@ export function getCommonNavSections({
     user,
     mainAssoc,
     associations,
+    categories,
 }: GetNavSectionsParams): NavSection[] {
     const isAssocAdmin =
         user?.isSuperAdmin ||
@@ -110,34 +113,35 @@ export function getCommonNavSections({
                         href: '/admin/clicktt',
                         icon: Database,
                     },
-                ],
-            },
-            {
-                sectionTitle: 'Global Governance',
-                items: [
-                    {
-                        id: 'admin-users',
-                        label: t('nav.users') || 'Global Users & Roles',
-                        href: '/admin/users',
-                        icon: Users,
-                    },
                     {
                         id: 'admin-api-keys',
-                        label: t('nav.apiKeys') || 'API Keys & OAuth',
+                        label: t('nav.apiKeys') || 'API Keys & Developers',
                         href: '/admin/api-keys',
+                        icon: Code2,
+                    },
+                    {
+                        id: 'admin-webhooks',
+                        label: t('nav.webhooks') || 'Outbound Webhooks',
+                        href: '/admin/webhooks',
+                        icon: Network,
+                    },
+                    {
+                        id: 'admin-oauth-clients',
+                        label: t('nav.oauthClients') || 'OAuth2 / OIDC Clients',
+                        href: '/admin/oauth',
                         icon: Key,
                     },
                     {
-                        id: 'admin-audit-logs',
-                        label: t('nav.auditLogs') || 'Audit & Security Trail',
-                        href: '/admin/audit-logs',
-                        icon: Activity,
+                        id: 'admin-notices',
+                        label: t('nav.adminNotices') || 'Notices & Broadcasts',
+                        href: '/admin/notices',
+                        icon: Megaphone,
                     },
                     {
-                        id: 'admin-communications',
-                        label: t('nav.communications') || 'Communications & Notices',
-                        href: '/admin/communications',
-                        icon: Mail,
+                        id: 'admin-audit-logs',
+                        label: t('nav.auditLogs') || 'Audit Trail & Compliance',
+                        href: '/admin/audit',
+                        icon: Activity,
                     },
                 ],
             },
@@ -159,13 +163,13 @@ export function getCommonNavSections({
                 ],
             },
             {
-                sectionTitle: t('tournamentWorkspace.navConfiguration') || 'Configuration',
+                sectionTitle: t('tournamentWorkspace.navConfiguration'),
                 items: [
                     {
                         id: 'tournament-settings',
                         label: t('tournamentWorkspace.settings'),
                         href: `/competition/${entityId}/settings`,
-                        icon: Settings,
+                        icon: Sliders,
                     },
                     {
                         id: 'tournament-access',
@@ -195,6 +199,16 @@ export function getCommonNavSections({
                         label: t('tournamentWorkspace.categoriesOverview'),
                         href: `/competition/${entityId}/categories`,
                         icon: Layers,
+                        children: categories && categories.length > 0
+                            ? categories.map((cat: any) => {
+                                  const slug = getCategorySlug(cat);
+                                  return {
+                                      id: `tournament-category-${cat.id}`,
+                                      label: cat.name,
+                                      href: `/competition/${entityId}/category/${slug}`,
+                                  };
+                              })
+                            : undefined,
                     },
                 ],
             },
