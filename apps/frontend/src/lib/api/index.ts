@@ -273,7 +273,16 @@ export class ApiClient extends HttpClient {
     exportDatabase = () => this.admin.exportDatabase();
     importDatabase = (dumpData: any) => this.admin.importDatabase(dumpData);
     getClickTTStatus = (path?: string) => this.admin.getClickTTStatus(path);
-    importClickTT = (options?: { dataPath?: string; dryRun?: boolean; batchSize?: number; importLicenses?: boolean }) => this.admin.importClickTT(options);
+    importClickTT = (options?: {
+        dataPath?: string;
+        dryRun?: boolean;
+        batchSize?: number;
+        importLicenses?: boolean;
+        importEncounters?: boolean;
+        importMatches?: boolean;
+        maxMeetings?: number;
+        seasonsFilter?: string[];
+    }) => this.admin.importClickTT(options);
 }
 
 export const api = new ApiClient();

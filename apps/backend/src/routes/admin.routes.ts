@@ -552,13 +552,26 @@ router.get('/import/clicktt/status', async (req: AuthRequest, res: Response) => 
  */
 router.post('/import/clicktt', async (req: AuthRequest, res: Response) => {
     try {
-        const { dataPath, dryRun, batchSize, importLicenses } = req.body || {};
+        const {
+            dataPath,
+            dryRun,
+            batchSize,
+            importLicenses,
+            importEncounters,
+            importMatches,
+            maxMeetings,
+            seasonsFilter,
+        } = req.body || {};
 
         const result = await ClickTTImportService.importClickTTData({
             dataPath,
             dryRun: Boolean(dryRun),
             batchSize: batchSize ? parseInt(batchSize, 10) : undefined,
             importLicenses: importLicenses !== false,
+            importEncounters: importEncounters !== false,
+            importMatches: importMatches !== false,
+            maxMeetings: maxMeetings ? parseInt(maxMeetings, 10) : undefined,
+            seasonsFilter: Array.isArray(seasonsFilter) ? seasonsFilter : undefined,
         });
 
         await AuditService.record({
@@ -577,6 +590,8 @@ router.post('/import/clicktt', async (req: AuthRequest, res: Response) => {
                 playersProcessed: result.playersProcessed,
                 tcardPlayersProcessed: result.tcardPlayersProcessed,
                 licensesCreated: result.licensesCreated,
+                encountersProcessed: result.encountersProcessed,
+                matchesProcessed: result.matchesProcessed,
                 durationMs: result.durationMs,
             },
         });

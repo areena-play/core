@@ -80,7 +80,16 @@ export class AdminApi {
         return this.http.request(`/admin/import/clicktt/status${path ? `?path=${encodeURIComponent(path)}` : ''}`);
     }
 
-    importClickTT(options: { dataPath?: string; dryRun?: boolean; batchSize?: number; importLicenses?: boolean } = {}) {
+    importClickTT(options: {
+        dataPath?: string;
+        dryRun?: boolean;
+        batchSize?: number;
+        importLicenses?: boolean;
+        importEncounters?: boolean;
+        importMatches?: boolean;
+        maxMeetings?: number;
+        seasonsFilter?: string[];
+    } = {}) {
         return this.http.request('/admin/import/clicktt', {
             method: 'POST',
             body: JSON.stringify(options),

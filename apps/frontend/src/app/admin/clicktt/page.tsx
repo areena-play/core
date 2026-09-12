@@ -26,6 +26,8 @@ import {
     ArrowRight,
     Terminal,
     Sparkles,
+    Swords,
+    Target,
 } from 'lucide-react';
 import { AccessDenied } from '@/components/auth/AccessDenied';
 
@@ -36,6 +38,10 @@ export default function AdminClickTTPage() {
     const [dataPath, setDataPath] = useState('C:\\Users\\DominicSonderegger\\Workspace\\clicktt-scraper\\clicktt_data');
     const [dryRun, setDryRun] = useState(false);
     const [importLicenses, setImportLicenses] = useState(true);
+    const [importEncounters, setImportEncounters] = useState(true);
+    const [importMatches, setImportMatches] = useState(true);
+    const [maxMeetings, setMaxMeetings] = useState<string>('');
+    const [seasonsFilter, setSeasonsFilter] = useState<string>('');
 
     const [datasetStatus, setDatasetStatus] = useState<any>(null);
     const [checkingStatus, setCheckingStatus] = useState(false);
@@ -74,15 +80,24 @@ export default function AdminClickTTPage() {
         ]);
 
         try {
+            const parsedMaxMeetings = maxMeetings.trim() ? parseInt(maxMeetings.trim(), 10) : undefined;
+            const parsedSeasons = seasonsFilter.trim()
+                ? seasonsFilter.split(',').map((s) => s.trim()).filter(Boolean)
+                : undefined;
+
             const res = await api.importClickTT({
                 dataPath,
                 dryRun,
                 importLicenses,
+                importEncounters,
+                importMatches,
+                maxMeetings: parsedMaxMeetings,
+                seasonsFilter: parsedSeasons,
             });
             setResult(res);
             setLogs((prev) => [
                 `[${new Date().toLocaleTimeString()}] ✓ Migration successfully finished in ${(res.durationMs / 1000).toFixed(2)}s.`,
-                `[${new Date().toLocaleTimeString()}] Summary: ${res.associationsProcessed} Associations, ${res.seasonsProcessed || 0} Seasons, ${res.clubsProcessed} Real Clubs, ${res.competitionsProcessed || 0} Competitions, ${res.categoriesProcessed || 0} Categories, ${res.playersProcessed} Athletes, ${res.licensesCreated} Licenses.`,
+                `[${new Date().toLocaleTimeString()}] Summary: ${res.associationsProcessed} Associations, ${res.seasonsProcessed || 0} Seasons, ${res.clubsProcessed} Real Clubs, ${res.competitionsProcessed || 0} Competitions, ${res.categoriesProcessed || 0} Categories, ${res.playersProcessed} Athletes, ${res.licensesCreated} Licenses, ${res.encountersProcessed || 0} Encounters, ${res.matchesProcessed || 0} Matches.`,
                 ...prev,
             ]);
         } catch (err: any) {
@@ -200,7 +215,7 @@ export default function AdminClickTTPage() {
                                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                                     Discovered JSON Datasets
                                 </span>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                     <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800">
                                         <div className="flex items-center gap-2 min-w-0">
                                             {datasetStatus.files?.clubs ? (
@@ -231,6 +246,17 @@ export default function AdminClickTTPage() {
                                                 <FolderX className="w-4 h-4 text-slate-400 shrink-0" />
                                             )}
                                             <span className="font-mono text-xs truncate">player_portraits.json</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            {datasetStatus.files?.meetings ? (
+                                                <FolderCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                                            ) : (
+                                                <FolderX className="w-4 h-4 text-slate-400 shrink-0" />
+                                            )}
+                                            <span className="font-mono text-xs truncate">meetings.json</span>
                                         </div>
                                     </div>
                                 </div>
@@ -281,13 +307,81 @@ export default function AdminClickTTPage() {
                                     </p>
                                 </div>
                             </label>
+
+                            <label className="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition">
+                                <input
+                                    type="checkbox"
+                                    checked={importEncounters}
+                                    disabled={importing}
+                                    onChange={(e) => setImportEncounters(e.target.checked)}
+                                    className="rounded border-slate-300 text-red-600 focus:ring-red-500 mt-1 h-4 w-4"
+                                />
+                                <div className="space-y-0.5">
+                                    <div className="font-bold text-xs text-slate-900 dark:text-white">
+                                        Import Encounters (Meetings)
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                        Imports team meetings, fixture schedules, locations, rounds, and final encounter scores.
+                                    </p>
+                                </div>
+                            </label>
+
+                            <label className="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition">
+                                <input
+                                    type="checkbox"
+                                    checked={importMatches}
+                                    disabled={importing || !importEncounters}
+                                    onChange={(e) => setImportMatches(e.target.checked)}
+                                    className="rounded border-slate-300 text-red-600 focus:ring-red-500 mt-1 h-4 w-4"
+                                />
+                                <div className="space-y-0.5">
+                                    <div className="font-bold text-xs text-slate-900 dark:text-white">
+                                        Import Individual Match Results
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                        Extracts singles and doubles matches, individual participant lineups, and full set scores.
+                                    </p>
+                                </div>
+                            </label>
+                        </div>
+
+                        {/* Additional Filters */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                    Limit Meetings Count (Optional)
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={maxMeetings}
+                                    onChange={(e) => setMaxMeetings(e.target.value)}
+                                    placeholder="e.g. 50 (leave blank for all)"
+                                    disabled={importing}
+                                    className="w-full rounded-xl border border-slate-300 bg-slate-50 dark:bg-slate-950 dark:border-slate-800 px-3 py-2 text-xs font-mono text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                    Seasons Filter (Optional)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={seasonsFilter}
+                                    onChange={(e) => setSeasonsFilter(e.target.value)}
+                                    placeholder="e.g. 23/24, 24/25 (comma separated)"
+                                    disabled={importing}
+                                    className="w-full rounded-xl border border-slate-300 bg-slate-50 dark:bg-slate-950 dark:border-slate-800 px-3 py-2 text-xs font-mono text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
+                                />
+                            </div>
                         </div>
 
                         <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
                             <span className="text-xs text-slate-500 dark:text-slate-400">
                                 {datasetStatus?.available ? (
                                     <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1.5">
-                                        <CheckCircle2 className="h-4 w-4" /> Ready to process ~12,500 player profiles
+                                        <CheckCircle2 className="h-4 w-4" /> Ready to process datasets
                                     </span>
                                 ) : (
                                     <span className="text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1.5">
@@ -355,7 +449,7 @@ export default function AdminClickTTPage() {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="h-1.5 w-1.5 rounded-full bg-red-500 mt-1.5 shrink-0" />
-                                <span>High-resolution player portraits &amp; profile avatars</span>
+                                <span>Encounters &amp; individual match scores (singles &amp; doubles)</span>
                             </li>
                         </ul>
                     </div>
@@ -377,11 +471,11 @@ export default function AdminClickTTPage() {
                         </span>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-3">
                         <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
                             <div className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
                                 <Building2 className="w-3.5 h-3.5 text-purple-500" />
-                                Associations
+                                Assoc.
                             </div>
                             <div className="text-xl font-mono font-black text-slate-900 dark:text-white mt-1">
                                 {result.associationsProcessed}
@@ -414,12 +508,12 @@ export default function AdminClickTTPage() {
                         <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
                             <div className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
                                 <Award className="w-3.5 h-3.5 text-amber-500" />
-                                Competitions
+                                Comps
                             </div>
                             <div className="text-xl font-mono font-black text-slate-900 dark:text-white mt-1">
                                 {result.competitionsProcessed || 0}
                             </div>
-                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">Leagues &amp; Cups</span>
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">Leagues</span>
                         </div>
 
                         <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
@@ -441,7 +535,7 @@ export default function AdminClickTTPage() {
                             <div className="text-xl font-mono font-black text-slate-900 dark:text-white mt-1">
                                 {result.playersProcessed}
                             </div>
-                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Active Roster</span>
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Active</span>
                         </div>
 
                         <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
@@ -453,6 +547,28 @@ export default function AdminClickTTPage() {
                                 {result.licensesCreated}
                             </div>
                             <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-bold">Passports</span>
+                        </div>
+
+                        <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
+                            <div className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
+                                <Swords className="w-3.5 h-3.5 text-rose-500" />
+                                Encounters
+                            </div>
+                            <div className="text-xl font-mono font-black text-slate-900 dark:text-white mt-1">
+                                {result.encountersProcessed || 0}
+                            </div>
+                            <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold">Meetings</span>
+                        </div>
+
+                        <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
+                            <div className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
+                                <Target className="w-3.5 h-3.5 text-amber-500" />
+                                Matches
+                            </div>
+                            <div className="text-xl font-mono font-black text-slate-900 dark:text-white mt-1">
+                                {result.matchesProcessed || 0}
+                            </div>
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">Sets &amp; Scores</span>
                         </div>
                     </div>
 

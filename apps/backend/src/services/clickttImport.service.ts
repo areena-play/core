@@ -11,6 +11,10 @@ import {
     CompetitionType,
     CompetitionStatus,
     GenderRestriction,
+    EncounterStatus,
+    MatchType,
+    MatchWinner,
+    ParticipantSide,
 } from '@prisma/client';
 
 export interface ClickTTImportOptions {
@@ -20,6 +24,10 @@ export interface ClickTTImportOptions {
     importLicenses?: boolean;
     importCompetitions?: boolean;
     importSeasons?: boolean;
+    importEncounters?: boolean;
+    importMatches?: boolean;
+    maxMeetings?: number;
+    seasonsFilter?: string[];
     onProgress?: (progress: {
         stage: string;
         current: number;
@@ -41,6 +49,8 @@ export interface ClickTTImportResult {
     playersProcessed: number;
     tcardPlayersProcessed: number;
     licensesCreated: number;
+    encountersProcessed: number;
+    matchesProcessed: number;
     errors: string[];
 }
 
@@ -149,6 +159,7 @@ export class ClickTTImportService {
             seasons: fs.existsSync(path.join(dir, 'seasons.json')),
             championships: fs.existsSync(path.join(dir, 'championships.json')),
             groups: fs.existsSync(path.join(dir, 'groups.json')),
+            meetings: fs.existsSync(path.join(dir, 'meetings.json')),
             tournaments:
                 fs.existsSync(path.join(dir, 'tournaments_list.json')) ||
                 fs.existsSync(path.join(dir, 'tournaments.json')),
@@ -156,7 +167,7 @@ export class ClickTTImportService {
         };
 
         return {
-            available: files.clubs || files.players || files.full || files.seasons || files.championships,
+            available: files.clubs || files.players || files.full || files.seasons || files.championships || files.meetings,
             path: dir,
             files,
         };
@@ -247,6 +258,10 @@ export class ClickTTImportService {
         const importLicenses = options.importLicenses !== false;
         const importSeasons = options.importSeasons !== false;
         const importCompetitions = options.importCompetitions !== false;
+        const importEncounters = options.importEncounters !== false;
+        const importMatches = options.importMatches !== false;
+        const maxMeetings = options.maxMeetings;
+        const seasonsFilter = options.seasonsFilter;
         const errors: string[] = [];
 
         console.log(`\n======================================================`);
@@ -267,6 +282,7 @@ export class ClickTTImportService {
         let rawChampionshipsBySeason: Record<string, any[]> = {};
         let rawTournaments: any[] = [];
         let rawGroups: any[] = [];
+        let rawMeetings: any[] = [];
         const portraitsByLicence = new Map<string, any>();
         const portraitsByPersonId = new Map<string, any>();
 
@@ -380,6 +396,19 @@ export class ClickTTImportService {
             } catch (err: any) {
                 console.warn(`⚠️ Warning: Failed to parse tournaments.json: ${err.message}`);
                 errors.push(`Tournaments parse error: ${err.message}`);
+            }
+        }
+
+        // Load Meetings (Encounters & Match Results)
+        const meetingsFile = path.join(dataDir, 'meetings.json');
+        if (fs.existsSync(meetingsFile)) {
+            try {
+                const parsed = JSON.parse(fs.readFileSync(meetingsFile, 'utf8'));
+                rawMeetings = Array.isArray(parsed) ? parsed : parsed.meetings || [];
+                console.log(`✅ Loaded ${rawMeetings.length} meetings/encounters from meetings.json`);
+            } catch (err: any) {
+                console.warn(`⚠️ Warning: Failed to parse meetings.json: ${err.message}`);
+                errors.push(`Meetings parse error: ${err.message}`);
             }
         }
 
@@ -822,6 +851,16 @@ export class ClickTTImportService {
         let competitionsProcessed = 0;
         let categoriesProcessed = 0;
 
+        const competitionByNickname = new Map<string, any>();
+        const competitionBySlug = new Map<string, any>();
+        const categoryMap = new Map<string, any>();
+        const categoryByGroupMap = new Map<string, any>();
+        const groupMap = new Map<string, any>();
+        const teamMap = new Map<string, any>();
+        const userMapByLicenseId = new Map<string, string>();
+        const userMapByPersonId = new Map<string, string>();
+        const userMapByName = new Map<string, string>();
+
         if (importCompetitions) {
             console.log('\n🏆 Ingesting Championships, Leagues, Cups, and Tournaments...');
             options.onProgress?.({
@@ -936,6 +975,8 @@ export class ClickTTImportService {
                                 },
                             });
                             competitionsProcessed++;
+                            competitionBySlug.set(compSlug, compRecord);
+                            if (nickname) competitionByNickname.set(nickname, compRecord);
 
                             // Ingest Categories from linked groups in groups.json
                             const matchingGroups = groupsByChmpNickname.get(nickname) || [];
@@ -954,7 +995,10 @@ export class ClickTTImportService {
                                     ? GenderRestriction.MALE_ONLY
                                     : GenderRestriction.ANY;
 
-                                await prisma.category.create({
+                                const existingCat = await prisma.category.findFirst({
+                                    where: { competitionId: compRecord.id, name: catName },
+                                });
+                                const catRecord = existingCat || (await prisma.category.create({
                                     data: {
                                         competitionId: compRecord.id,
                                         name: catName,
@@ -962,8 +1006,12 @@ export class ClickTTImportService {
                                         genderRestriction,
                                         roundsPerGroup: compType === CompetitionType.LEAGUE ? 2 : 1,
                                     },
-                                });
-                                categoriesProcessed++;
+                                }));
+                                if (!existingCat) categoriesProcessed++;
+                                categoryMap.set(`${compRecord.id}:${catName.toLowerCase()}`, catRecord);
+                                if (nickname) {
+                                    categoryByGroupMap.set(`${nickname}:${catName.toLowerCase()}`, catRecord);
+                                }
                             }
                         } catch (err: any) {
                             errors.push(`Championship ${rawName} (${compSlug}): ${err.message}`);
@@ -977,6 +1025,9 @@ export class ClickTTImportService {
                             if (catName) distinctCategories.add(catName);
                         }
                         categoriesProcessed += distinctCategories.size;
+                        const mockComp = { id: `mock-comp-${compSlug}`, slug: compSlug, name: rawName };
+                        competitionBySlug.set(compSlug, mockComp);
+                        if (nickname) competitionByNickname.set(nickname, mockComp);
                     }
                 }
             }
@@ -1068,6 +1119,8 @@ export class ClickTTImportService {
                             },
                         });
                         competitionsProcessed++;
+                        competitionBySlug.set(compSlug, compRecord);
+                        if (tourId) competitionByNickname.set(tourId, compRecord);
 
                         // Ingest Categories from competitionAbbr
                         const compAbbr = Array.isArray(t.competitionAbbr) ? t.competitionAbbr : [];
@@ -1091,7 +1144,10 @@ export class ClickTTImportService {
                             const minElo = cat.fedRankFrom ? parseInt(cat.fedRankFrom, 10) : null;
                             const maxElo = cat.fedRankTo ? parseInt(cat.fedRankTo, 10) : null;
 
-                            await prisma.category.create({
+                            const existingCat = await prisma.category.findFirst({
+                                where: { competitionId: compRecord.id, name: catName },
+                            });
+                            const catRecord = existingCat || (await prisma.category.create({
                                 data: {
                                     competitionId: compRecord.id,
                                     name: catName,
@@ -1101,8 +1157,9 @@ export class ClickTTImportService {
                                     genderRestriction,
                                     roundsPerGroup: 1,
                                 },
-                            });
-                            categoriesProcessed++;
+                            }));
+                            if (!existingCat) categoriesProcessed++;
+                            categoryMap.set(`${compRecord.id}:${catName.toLowerCase()}`, catRecord);
                         }
                     } catch (err: any) {
                         errors.push(`Tournament ${tourName} (${compSlug}): ${err.message}`);
@@ -1111,6 +1168,9 @@ export class ClickTTImportService {
                     competitionsProcessed++;
                     const compAbbr = Array.isArray(t.competitionAbbr) ? t.competitionAbbr : [];
                     categoriesProcessed += compAbbr.length;
+                    const mockComp = { id: `mock-comp-${compSlug}`, slug: compSlug, name: tourName };
+                    competitionBySlug.set(compSlug, mockComp);
+                    if (tourId) competitionByNickname.set(tourId, mockComp);
                 }
             }
 
@@ -1239,6 +1299,10 @@ export class ClickTTImportService {
                             }
                         }
 
+                        if (licenceNr) userMapByLicenseId.set(licenceNr, userRecord.id);
+                        if (personId) userMapByPersonId.set(personId, userRecord.id);
+                        userMapByName.set(`${firstname.toLowerCase()}:${lastname.toLowerCase()}`, userRecord.id);
+
                         playersProcessed++;
                         if (isTCardPlayer) {
                             tcardPlayersProcessed++;
@@ -1305,6 +1369,10 @@ export class ClickTTImportService {
                     }
                 } else {
                     playersProcessed++;
+                    const mockId = `mock-user-${licenceNr || personId || `${firstname}-${lastname}`}`;
+                    if (licenceNr) userMapByLicenseId.set(licenceNr, mockId);
+                    if (personId) userMapByPersonId.set(personId, mockId);
+                    userMapByName.set(`${firstname.toLowerCase()}:${lastname.toLowerCase()}`, mockId);
                     if (isTCardPlayer) tcardPlayersProcessed++;
                     if (importLicenses) licensesCreated++;
                 }
@@ -1320,6 +1388,439 @@ export class ClickTTImportService {
             console.log(`  ⏳ Imported ${currentCount}/${rawPlayers.length} players...`);
         }
 
+        // ---------------------------------------------------------------------
+        // STAGE 6: Ingest Meetings (Encounters) & Matches
+        // ---------------------------------------------------------------------
+        let encountersProcessed = 0;
+        let matchesProcessed = 0;
+
+        const resolvePlayer = async (pObj: any): Promise<string | null> => {
+            if (!pObj) return null;
+            const lic = pObj.playerId
+                ? String(pObj.playerId).trim()
+                : pObj.licenceNr
+                ? String(pObj.licenceNr).trim()
+                : null;
+            const personId = pObj.personId ? String(pObj.personId).trim() : null;
+            const fn = (pObj.firstname || pObj.firstName || '').trim();
+            const ln = (pObj.lastname || pObj.lastName || '').trim();
+
+            if (lic && userMapByLicenseId.has(lic)) return userMapByLicenseId.get(lic)!;
+            if (personId && userMapByPersonId.has(personId)) return userMapByPersonId.get(personId)!;
+            const nameKey = `${fn.toLowerCase()}:${ln.toLowerCase()}`;
+            if (userMapByName.has(nameKey)) return userMapByName.get(nameKey)!;
+
+            if (!dryRun && (fn || ln || lic)) {
+                try {
+                    let user: any = null;
+                    if (lic) {
+                        user = await prisma.user.findFirst({ where: { licenseId: lic } });
+                    }
+                    if (!user && fn && ln) {
+                        user = await prisma.user.findFirst({ where: { firstName: fn, lastName: ln } });
+                    }
+                    if (!user) {
+                        user = await prisma.user.create({
+                            data: {
+                                firstName: fn || 'Unknown',
+                                lastName: ln || 'Athlete',
+                                licenseId: lic || undefined,
+                                accountStatus: UserAccountStatus.MANAGED,
+                                canLogin: false,
+                            },
+                        });
+                    }
+                    if (lic) userMapByLicenseId.set(lic, user.id);
+                    if (personId) userMapByPersonId.set(personId, user.id);
+                    userMapByName.set(nameKey, user.id);
+                    return user.id;
+                } catch {
+                    return null;
+                }
+            } else if (dryRun && (fn || ln || lic)) {
+                const mockId = `mock-user-${lic || personId || nameKey}`;
+                if (lic) userMapByLicenseId.set(lic, mockId);
+                if (personId) userMapByPersonId.set(personId, mockId);
+                userMapByName.set(nameKey, mockId);
+                return mockId;
+            }
+            return null;
+        };
+
+        if (importEncounters && rawMeetings.length > 0) {
+            console.log(`\n🏓 Ingesting Meetings (Encounters) & Match Results...`);
+            options.onProgress?.({
+                stage: 'ENCOUNTERS',
+                current: 0,
+                total: rawMeetings.length,
+                message: 'Processing meetings and match encounters...',
+            });
+
+            // Filter meetings by season if seasonsFilter provided
+            let meetingsToProcess = rawMeetings;
+            if (Array.isArray(seasonsFilter) && seasonsFilter.length > 0) {
+                const filterSet = new Set(seasonsFilter.map((s) => s.trim().toLowerCase()));
+                meetingsToProcess = rawMeetings.filter((m) => {
+                    const sn = (
+                        m.seasonNickname ||
+                        m.meetingSummary?.seasonNickname ||
+                        m.details?.seasonNickname ||
+                        ''
+                    )
+                        .trim()
+                        .toLowerCase();
+                    return filterSet.has(sn);
+                });
+                console.log(`🔍 Filtered to ${meetingsToProcess.length} meetings for seasons: ${seasonsFilter.join(', ')}`);
+            }
+
+            if (typeof maxMeetings === 'number' && maxMeetings > 0) {
+                meetingsToProcess = meetingsToProcess.slice(0, maxMeetings);
+                console.log(`⏱️ Limiting import to first ${meetingsToProcess.length} meetings (maxMeetings flag).`);
+            }
+
+            for (let i = 0; i < meetingsToProcess.length; i++) {
+                const m = meetingsToProcess[i];
+                const summary = m.meetingSummary || {};
+                const details = m.details || {};
+                const seasonNick = m.seasonNickname || summary.seasonNickname || details.seasonNickname || '';
+                const chmpNick = m.championshipNickname || summary.championshipNickname || details.championshipNickname || '';
+                const groupName = (
+                    m.groupName ||
+                    summary.groupName ||
+                    details.groupName ||
+                    summary.leagueNickname ||
+                    'Main Division'
+                )
+                    .replace(/\s*--\s*$/, '')
+                    .trim();
+                const groupId = m.groupId || summary.groupId || details.groupId || '';
+
+                // 1. Resolve Competition
+                let comp = chmpNick ? competitionByNickname.get(chmpNick) : null;
+                if (!comp && !dryRun) {
+                    const region = summary.championshipRegion || details.fedNickname || 'CH';
+                    const assocCode = ClickTTImportService.resolveAssocCode(region || chmpNick);
+                    const assoc = assocByCode.get(assocCode) || nationalAssoc;
+                    const season = resolveSeason(assoc.id, seasonNick);
+                    const compSlug = ClickTTImportService.slugify(chmpNick || `championship-${seasonNick || 'default'}`);
+
+                    comp = await prisma.competition.upsert({
+                        where: { slug: compSlug },
+                        update: {},
+                        create: {
+                            name: chmpNick || `Championship ${seasonNick}`,
+                            slug: compSlug,
+                            type: CompetitionType.LEAGUE,
+                            associationId: assoc.id,
+                            seasonId: season?.id || null,
+                            startDate: season?.startDate || new Date('2026-08-01T00:00:00.000Z'),
+                            endDate: season?.endDate || new Date('2027-06-30T23:59:59.000Z'),
+                            status: CompetitionStatus.COMPLETED,
+                            isOfficial: true,
+                            countsForElo: true,
+                        },
+                    });
+                    if (chmpNick) competitionByNickname.set(chmpNick, comp);
+                }
+
+                if (!comp && dryRun) {
+                    comp = { id: `mock-comp-${chmpNick}`, name: chmpNick };
+                }
+
+                // 2. Resolve Category (Division)
+                let category: any = null;
+                if (comp) {
+                    const catKey = `${comp.id}:${groupName.toLowerCase()}`;
+                    if (categoryMap.has(catKey)) {
+                        category = categoryMap.get(catKey);
+                    } else if (chmpNick && categoryByGroupMap.has(`${chmpNick}:${groupName.toLowerCase()}`)) {
+                        category = categoryByGroupMap.get(`${chmpNick}:${groupName.toLowerCase()}`);
+                    } else if (groupId && categoryByGroupMap.has(groupId)) {
+                        category = categoryByGroupMap.get(groupId);
+                    } else if (!dryRun) {
+                        const isFemale = /\b(damen|dames|femmes|women|girls)\b/i.test(groupName);
+                        const isMale = /\b(herren|hommes|messieurs|men|boys)\b/i.test(groupName);
+                        const genderRestriction = isFemale
+                            ? GenderRestriction.FEMALE_ONLY
+                            : isMale
+                            ? GenderRestriction.MALE_ONLY
+                            : GenderRestriction.ANY;
+
+                        category = await prisma.category.create({
+                            data: {
+                                competitionId: comp.id,
+                                name: groupName,
+                                teamSize: 3,
+                                genderRestriction,
+                                roundsPerGroup: 2,
+                            },
+                        });
+                        categoriesProcessed++;
+                        categoryMap.set(catKey, category);
+                        if (chmpNick) categoryByGroupMap.set(`${chmpNick}:${groupName.toLowerCase()}`, category);
+                    } else {
+                        category = { id: `mock-cat-${groupName}`, name: groupName, competitionId: comp.id };
+                    }
+                }
+
+                // 3. Resolve CompetitionGroup
+                let compGroup: any = null;
+                if (category && !dryRun) {
+                    const groupKey = `${category.id}:${groupName.toLowerCase()}`;
+                    if (groupMap.has(groupKey)) {
+                        compGroup = groupMap.get(groupKey);
+                    } else {
+                        compGroup = await prisma.competitionGroup.findFirst({
+                            where: { categoryId: category.id, name: groupName },
+                        });
+                        if (!compGroup) {
+                            compGroup = await prisma.competitionGroup.create({
+                                data: {
+                                    categoryId: category.id,
+                                    name: groupName,
+                                },
+                            });
+                        }
+                        groupMap.set(groupKey, compGroup);
+                    }
+                }
+
+                // 4. Resolve Home & Guest Teams
+                const teamHomeName = (details.teamHome || summary.teamHome || 'Home Team').trim();
+                const teamGuestName = (details.teamGuest || summary.teamGuest || 'Guest Team').trim();
+                const homeClubNr = String(details.teamHomeClubNr || summary.teamHomeClubNr || '').trim();
+                const guestClubNr = String(details.teamGuestClubNr || summary.teamGuestClubNr || '').trim();
+                const homeClub = homeClubNr ? clubMapByNr.get(homeClubNr) : null;
+                const guestClub = guestClubNr ? clubMapByNr.get(guestClubNr) : null;
+
+                const resolveTeam = async (name: string, club: any): Promise<any> => {
+                    const teamKey = `${club?.id || 'noclub'}:${name.toLowerCase()}`;
+                    if (teamMap.has(teamKey)) return teamMap.get(teamKey);
+                    if (!dryRun) {
+                        let t = await prisma.team.findFirst({
+                            where: { name, clubId: club?.id || null },
+                        });
+                        if (!t) {
+                            t = await prisma.team.create({
+                                data: {
+                                    name,
+                                    clubId: club?.id || null,
+                                },
+                            });
+                        }
+                        if (category) {
+                            await prisma.teamCategoryRegistration.upsert({
+                                where: {
+                                    teamId_categoryId: {
+                                        teamId: t.id,
+                                        categoryId: category.id,
+                                    },
+                                },
+                                update: {},
+                                create: {
+                                    teamId: t.id,
+                                    categoryId: category.id,
+                                },
+                            });
+                        }
+                        teamMap.set(teamKey, t);
+                        return t;
+                    } else {
+                        const mock = { id: `mock-team-${name}`, name, clubId: club?.id || null };
+                        teamMap.set(teamKey, mock);
+                        return mock;
+                    }
+                };
+
+                let homeTeam: any = null;
+                let awayTeam: any = null;
+                try {
+                    homeTeam = await resolveTeam(teamHomeName, homeClub);
+                    awayTeam = await resolveTeam(teamGuestName, guestClub);
+                } catch (err: any) {
+                    errors.push(`Error resolving teams for meeting #${details.meetingId || i}: ${err.message}`);
+                }
+
+                // 5. Ingest Encounter
+                const scheduledRaw =
+                    details.scheduled ||
+                    summary.scheduled ||
+                    details.originalDate ||
+                    summary.originalDate ||
+                    details.startDate;
+                const scheduledAt = scheduledRaw ? new Date(scheduledRaw) : comp?.startDate || new Date();
+                const location = details.courtHallName || summary.courtHallName || summary.location || null;
+                const roundRaw = details.meetingNumber || summary.meetingNumber || details.roundNameTypeSort || 1;
+                const round = typeof roundRaw === 'number' ? roundRaw : parseInt(roundRaw, 10) || 1;
+                const homeScore = details.matchesHome ?? summary.matchesHome ?? 0;
+                const awayScore = details.matchesGuest ?? summary.matchesGuest ?? 0;
+                const isCompleted =
+                    details.isCompleted === true ||
+                    summary.isCompleted === true ||
+                    summary.meetingState === 'finished' ||
+                    details.isConfirmed === true;
+                const encStatus = isCompleted ? EncounterStatus.FINISHED : EncounterStatus.SCHEDULED;
+
+                let encounterRecord: any = null;
+                if (!dryRun && category && homeTeam && awayTeam) {
+                    try {
+                        encounterRecord = await prisma.encounter.create({
+                            data: {
+                                categoryId: category.id,
+                                groupId: compGroup?.id || null,
+                                round,
+                                scheduledAt,
+                                location,
+                                homeTeamId: homeTeam.id,
+                                awayTeamId: awayTeam.id,
+                                homeScore,
+                                awayScore,
+                                status: encStatus,
+                            },
+                        });
+                        encountersProcessed++;
+                    } catch (err: any) {
+                        errors.push(`Encounter #${details.meetingId || i} create failed: ${err.message}`);
+                    }
+                } else {
+                    encountersProcessed++;
+                }
+
+                // 6. Ingest Matches
+                const rawMatches = details.match || [];
+                if (importMatches && Array.isArray(rawMatches) && rawMatches.length > 0) {
+                    for (let mIdx = 0; mIdx < rawMatches.length; mIdx++) {
+                        const matchItem = rawMatches[mIdx];
+                        const isDouble = matchItem.gameType === 'double' || Boolean(matchItem.mmPlayer12);
+                        const matchType = isDouble ? MatchType.DOUBLE : MatchType.SINGLE;
+                        const matchLabel =
+                            matchItem.matchName === '${doppel}'
+                                ? 'Doppel'
+                                : matchItem.matchName || `Match ${mIdx + 1}`;
+
+                        const hp1Id = await resolvePlayer(matchItem.mmPlayer11);
+                        const hp2Id = isDouble ? await resolvePlayer(matchItem.mmPlayer12) : null;
+                        const ap1Id = await resolvePlayer(matchItem.mmPlayer21);
+                        const ap2Id = isDouble ? await resolvePlayer(matchItem.mmPlayer22) : null;
+
+                        // Extract Sets
+                        const setsArray: Array<{ setNumber: number; homeScore: number; awayScore: number }> = [];
+                        for (let s = 1; s <= 7; s++) {
+                            const h = matchItem[`set${s}Home`];
+                            const g = matchItem[`set${s}Guest`];
+                            if (
+                                h !== undefined &&
+                                g !== undefined &&
+                                (h > 0 || g > 0 || s <= Math.max(matchItem.setsHome || 0, matchItem.setsGuest || 0))
+                            ) {
+                                setsArray.push({ setNumber: s, homeScore: Number(h) || 0, awayScore: Number(g) || 0 });
+                            }
+                        }
+
+                        const homeWonSets = matchItem.setsHome ?? 0;
+                        const awayWonSets = matchItem.setsGuest ?? 0;
+                        const winner =
+                            (matchItem.matchesHome || 0) > (matchItem.matchesGuest || 0)
+                                ? MatchWinner.HOME
+                                : (matchItem.matchesGuest || 0) > (matchItem.matchesHome || 0)
+                                ? MatchWinner.AWAY
+                                : MatchWinner.DRAW;
+                        const mStatus =
+                            matchItem.matchesHome > 0 ||
+                            matchItem.matchesGuest > 0 ||
+                            matchItem.setsHome > 0 ||
+                            matchItem.setsGuest > 0
+                                ? EncounterStatus.FINISHED
+                                : EncounterStatus.SCHEDULED;
+
+                        if (!dryRun && encounterRecord) {
+                            try {
+                                const matchRecord = await prisma.match.create({
+                                    data: {
+                                        encounterId: encounterRecord.id,
+                                        orderIndex: mIdx,
+                                        matchType,
+                                        label: matchLabel,
+                                        homePlayer1Id: hp1Id,
+                                        homePlayer2Id: hp2Id,
+                                        awayPlayer1Id: ap1Id,
+                                        awayPlayer2Id: ap2Id,
+                                        sets: setsArray,
+                                        homeWonSets,
+                                        awayWonSets,
+                                        winner,
+                                        status: mStatus,
+                                    },
+                                });
+                                matchesProcessed++;
+
+                                // Create Match Participants
+                                const participants: any[] = [];
+                                if (hp1Id)
+                                    participants.push({
+                                        matchId: matchRecord.id,
+                                        userId: hp1Id,
+                                        side: ParticipantSide.HOME_1,
+                                        teamId: homeTeam?.id || null,
+                                        clubIdAtTime: homeClub?.id || null,
+                                    });
+                                if (hp2Id)
+                                    participants.push({
+                                        matchId: matchRecord.id,
+                                        userId: hp2Id,
+                                        side: ParticipantSide.HOME_2,
+                                        teamId: homeTeam?.id || null,
+                                        clubIdAtTime: homeClub?.id || null,
+                                    });
+                                if (ap1Id)
+                                    participants.push({
+                                        matchId: matchRecord.id,
+                                        userId: ap1Id,
+                                        side: ParticipantSide.AWAY_1,
+                                        teamId: awayTeam?.id || null,
+                                        clubIdAtTime: guestClub?.id || null,
+                                    });
+                                if (ap2Id)
+                                    participants.push({
+                                        matchId: matchRecord.id,
+                                        userId: ap2Id,
+                                        side: ParticipantSide.AWAY_2,
+                                        teamId: awayTeam?.id || null,
+                                        clubIdAtTime: guestClub?.id || null,
+                                    });
+
+                                if (participants.length > 0) {
+                                    await prisma.matchParticipant.createMany({
+                                        data: participants,
+                                    });
+                                }
+                            } catch (err: any) {
+                                errors.push(`Match create in encounter #${encounterRecord.id}: ${err.message}`);
+                            }
+                        } else {
+                            matchesProcessed++;
+                        }
+                    }
+                }
+
+                if ((i + 1) % 100 === 0 || i === meetingsToProcess.length - 1) {
+                    options.onProgress?.({
+                        stage: 'ENCOUNTERS',
+                        current: i + 1,
+                        total: meetingsToProcess.length,
+                        message: `Processed ${i + 1}/${meetingsToProcess.length} meetings (${encountersProcessed} encounters, ${matchesProcessed} match results)...`,
+                    });
+                    console.log(
+                        `  ⏳ Imported ${i + 1}/${meetingsToProcess.length} meetings (${encountersProcessed} encounters, ${matchesProcessed} matches)...`
+                    );
+                }
+            }
+            console.log(
+                `✅ Ingested ${encountersProcessed} Encounters and ${matchesProcessed} Matches with individual set scores.`
+            );
+        }
+
         const durationMs = Date.now() - startTime;
 
         console.log(`\n======================================================`);
@@ -1333,6 +1834,8 @@ export class ClickTTImportService {
         console.log(`   - Players/Users Imported: ${playersProcessed}`);
         console.log(`   - T-Card Players (Direct Federation): ${tcardPlayersProcessed}`);
         console.log(`   - Licenses Issued: ${licensesCreated}`);
+        console.log(`   - Encounters (Meetings) Ingested: ${encountersProcessed}`);
+        console.log(`   - Match Fixtures & Sets Ingested: ${matchesProcessed}`);
         console.log(`   - Errors encountered: ${errors.length}`);
         console.log(`======================================================\n`);
 
@@ -1349,6 +1852,8 @@ export class ClickTTImportService {
             playersProcessed,
             tcardPlayersProcessed,
             licensesCreated,
+            encountersProcessed,
+            matchesProcessed,
             errors,
         };
     }
