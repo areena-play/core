@@ -14,6 +14,7 @@ import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
 import { normalizePhoneNumber } from '@areena/shared';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { PasswordInput } from '@/components/ui/PasswordInput';
+import { DuplicatePersonModal } from '@/components/auth/DuplicatePersonModal';
 
 function RegisterForm() {
     const router = useRouter();
@@ -35,6 +36,7 @@ function RegisterForm() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
+    const [birthDate, setBirthDate] = useState('');
     const [phone, setPhone] = useState('');
     const [street, setStreet] = useState('');
     const [postalCode, setPostalCode] = useState('');
@@ -46,18 +48,15 @@ function RegisterForm() {
     const [errorMsg, setErrorMsg] = useState('');
     const [registeredPendingEmail, setRegisteredPendingEmail] = useState<string | null>(null);
 
+    // Duplicate detection states
+    const [duplicateMatches, setDuplicateMatches] = useState<any[]>([]);
+    const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+
     const logoSrc = resolvedTheme === 'dark' ? '/areena-logo-dark.png' : '/areena-logo.png';
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setErrorMsg('');
-
-        if (password !== confirmPassword) {
-            setErrorMsg('Passwords do not match. Please re-enter your password.');
-            return;
-        }
-
+    const doRegister = async () => {
         setLoading(true);
+        setErrorMsg('');
 
         try {
             const normalizedPhone = normalizePhoneNumber(phone);
@@ -71,6 +70,7 @@ function RegisterForm() {
                 postalCode,
                 city,
                 country,
+                birthDate: birthDate || null,
                 gender: gender || null,
             });
 
@@ -84,6 +84,40 @@ function RegisterForm() {
             setErrorMsg(err.message || 'Registration failed.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setErrorMsg('');
+
+        if (password !== confirmPassword) {
+            setErrorMsg('Passwords do not match. Please re-enter your password.');
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            // Check for similar / duplicate profiles first
+            const dupRes = await api.checkDuplicate({
+                firstName,
+                lastName,
+                birthDate: birthDate || null,
+                email: email || null,
+            });
+
+            if (dupRes && dupRes.hasDuplicates && dupRes.matches.length > 0) {
+                setDuplicateMatches(dupRes.matches);
+                setShowDuplicateModal(true);
+                setLoading(false);
+                return;
+            }
+
+            await doRegister();
+        } catch (err: any) {
+            // If duplicate check failed, proceed with registration attempt
+            await doRegister();
         }
     };
 
@@ -258,20 +292,33 @@ function RegisterForm() {
                             />
                         </div>
 
-                        <div>
-                            <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                {t('profile.gender')}
-                            </label>
-                            <select
-                                value={gender}
-                                onChange={(e) => setGender(e.target.value)}
-                                className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
-                            >
-                                <option value="">{t('profile.genderAny') || 'Not Specified'}</option>
-                                <option value="MALE">{t('profile.genderMale') || 'Male'}</option>
-                                <option value="FEMALE">{t('profile.genderFemale') || 'Female'}</option>
-                                <option value="OTHER">{t('profile.genderOther') || 'Other / Diverse'}</option>
-                            </select>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                    {t('profile.birthDate')}
+                                </label>
+                                <input
+                                    type="date"
+                                    value={birthDate}
+                                    onChange={(e) => setBirthDate(e.target.value)}
+                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                    {t('profile.gender')}
+                                </label>
+                                <select
+                                    value={gender}
+                                    onChange={(e) => setGender(e.target.value)}
+                                    className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                >
+                                    <option value="">{t('profile.genderAny') || 'Not Specified'}</option>
+                                    <option value="MALE">{t('profile.genderMale') || 'Male'}</option>
+                                    <option value="FEMALE">{t('profile.genderFemale') || 'Female'}</option>
+                                    <option value="OTHER">{t('profile.genderOther') || 'Other / Diverse'}</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div>
@@ -353,6 +400,15 @@ function RegisterForm() {
                     </Link>
                 </div>
             </div>
+
+            {/* Duplicate Person Warning / Claim Modal */}
+            <DuplicatePersonModal
+                isOpen={showDuplicateModal}
+                matches={duplicateMatches}
+                onClose={() => setShowDuplicateModal(false)}
+                onProceedAnyway={doRegister}
+                mode="registration"
+            />
         </div>
     );
 }

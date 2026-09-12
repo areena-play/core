@@ -125,6 +125,70 @@ export default function AdminUsersPage() {
 
     const [actionBanner, setActionBanner] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+    // Duplicate detection and merge state
+    const [activeTab, setActiveTab] = useState<'directory' | 'duplicates'>('directory');
+    const [duplicateClusters, setDuplicateClusters] = useState<any[]>([]);
+    const [scanningDuplicates, setScanningDuplicates] = useState(false);
+    const [hasScannedDuplicates, setHasScannedDuplicates] = useState(false);
+
+    const [mergeCluster, setMergeCluster] = useState<any | null>(null);
+    const [primaryUserId, setPrimaryUserId] = useState<string>('');
+    const [duplicateUserId, setDuplicateUserId] = useState<string>('');
+    const [keepDuplicateEmail, setKeepDuplicateEmail] = useState(true);
+    const [merging, setMerging] = useState(false);
+
+    const loadDuplicates = async () => {
+        setScanningDuplicates(true);
+        try {
+            const res = await api.getDuplicateUsers();
+            setDuplicateClusters(res.clusters || []);
+            setHasScannedDuplicates(true);
+        } catch (err: any) {
+            setActionBanner({ type: 'error', text: err.message || 'Failed to scan for duplicate accounts' });
+        } finally {
+            setScanningDuplicates(false);
+        }
+    };
+
+    const handleOpenMerge = (cluster: any) => {
+        setMergeCluster(cluster);
+        if (cluster.users && cluster.users.length >= 2) {
+            // Default primary to the one with an active login or license
+            const u1 = cluster.users[0];
+            const u2 = cluster.users[1];
+            if (!u1.canLogin && u2.canLogin) {
+                setPrimaryUserId(u2.id);
+                setDuplicateUserId(u1.id);
+            } else {
+                setPrimaryUserId(u1.id);
+                setDuplicateUserId(u2.id);
+            }
+        }
+    };
+
+    const handleExecuteMerge = async () => {
+        if (!primaryUserId || !duplicateUserId) return;
+        setMerging(true);
+        try {
+            await api.mergeDuplicateUsers({
+                primaryUserId,
+                duplicateUserId,
+                keepDuplicateEmailIfUnset: keepDuplicateEmail,
+            });
+            setActionBanner({
+                type: 'success',
+                text: t('duplicates.mergeSuccess') || 'User accounts successfully merged.',
+            });
+            setMergeCluster(null);
+            loadDuplicates();
+            loadUsers();
+        } catch (err: any) {
+            setActionBanner({ type: 'error', text: err.message || 'Failed to merge user accounts.' });
+        } finally {
+            setMerging(false);
+        }
+    };
+
     const isAuthorized =
         currentUser?.isSuperAdmin ||
         currentUser?.associationRoles?.some((r: any) =>
@@ -348,51 +412,101 @@ export default function AdminUsersPage() {
                 </div>
             )}
 
-            {/* Top Statistics Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-4 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 shadow-sm space-y-1">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                        Total Registered
+            {/* View Navigation Tabs */}
+            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('directory')}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+                        activeTab === 'directory'
+                            ? 'bg-red-600 text-white shadow-sm'
+                            : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                >
+                    <Users className="w-4 h-4" />
+                    <span>{t('duplicates.tabDirectory') || 'User Directory'}</span>
+                    <span
+                        className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                            activeTab === 'directory'
+                                ? 'bg-white/20 text-white'
+                                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                        }`}
+                    >
+                        {total}
                     </span>
-                    <div className="text-2xl font-black text-slate-900 dark:text-white">
-                        {stats.totalUsers}
-                    </div>
-                </div>
+                </button>
 
-                <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 dark:bg-red-950/20 shadow-sm space-y-1">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-red-500 dark:text-red-400 flex items-center gap-1">
-                        <Shield className="w-3 h-3" />
-                        Super Admins
-                    </span>
-                    <div className="text-2xl font-black text-red-600 dark:text-red-400">
-                        {stats.superAdmins}
-                    </div>
-                </div>
-
-                <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-950/20 shadow-sm space-y-1">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3" />
-                        Verified Emails
-                    </span>
-                    <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-                        {stats.verifiedUsers}
-                    </div>
-                </div>
-
-                <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 dark:bg-amber-950/20 shadow-sm space-y-1">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        Pending Verification
-                    </span>
-                    <div className="text-2xl font-black text-amber-600 dark:text-amber-400">
-                        {stats.unverifiedUsers}
-                    </div>
-                </div>
+                <button
+                    type="button"
+                    onClick={() => {
+                        setActiveTab('duplicates');
+                        if (!hasScannedDuplicates) {
+                            loadDuplicates();
+                        }
+                    }}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+                        activeTab === 'duplicates'
+                            ? 'bg-red-600 text-white shadow-sm'
+                            : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                >
+                    <AlertTriangle className="w-4 h-4" />
+                    <span>{t('duplicates.tabDuplicates') || 'Possible Duplicates'}</span>
+                    {duplicateClusters.length > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500 text-white font-bold animate-pulse">
+                            {duplicateClusters.length}
+                        </span>
+                    )}
+                </button>
             </div>
 
-            {/* Users Interactive DataTable */}
-            <DataTable
-                columns={[
+            {activeTab === 'directory' && (
+                <>
+                    {/* Top Statistics Bar */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="p-4 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 shadow-sm space-y-1">
+                            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                Total Registered
+                            </span>
+                            <div className="text-2xl font-black text-slate-900 dark:text-white">
+                                {stats.totalUsers}
+                            </div>
+                        </div>
+
+                        <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 dark:bg-red-950/20 shadow-sm space-y-1">
+                            <span className="text-[11px] font-semibold uppercase tracking-wider text-red-500 dark:text-red-400 flex items-center gap-1">
+                                <Shield className="w-3 h-3" />
+                                Super Admins
+                            </span>
+                            <div className="text-2xl font-black text-red-600 dark:text-red-400">
+                                {stats.superAdmins}
+                            </div>
+                        </div>
+
+                        <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-950/20 shadow-sm space-y-1">
+                            <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                <ShieldCheck className="w-3 h-3" />
+                                Verified Emails
+                            </span>
+                            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                                {stats.verifiedUsers}
+                            </div>
+                        </div>
+
+                        <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 dark:bg-amber-950/20 shadow-sm space-y-1">
+                            <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                Pending Verification
+                            </span>
+                            <div className="text-2xl font-black text-amber-600 dark:text-amber-400">
+                                {stats.unverifiedUsers}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Users Interactive DataTable */}
+                    <DataTable
+                        columns={[
                     {
                         id: 'name',
                         accessorFn: (u) => `${u.firstName || ''} ${u.lastName || ''} ${u.email || ''}`,
@@ -722,6 +836,235 @@ export default function AdminUsersPage() {
                 }}
                 emptyMessage="No registered users match your search criteria."
             />
+        </>
+    )}
+
+            {/* ========================================================================= */}
+            {/* View: Possible Duplicate Accounts Scanner */}
+            {/* ========================================================================= */}
+            {activeTab === 'duplicates' && (
+                <div className="space-y-6">
+                    {/* Duplicate Scanner Header Card */}
+                    <div className="p-6 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/90 shadow-sm space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div className="space-y-1">
+                                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                                    <span>{t('duplicates.title') || 'Possible Duplicate Accounts'}</span>
+                                </h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-2xl">
+                                    {t('duplicates.subtitle') ||
+                                        'Detect, review, and merge potential duplicate athlete and official accounts across the system.'}
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={loadDuplicates}
+                                disabled={scanningDuplicates}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md shadow-red-600/20 disabled:opacity-50 transition shrink-0"
+                            >
+                                <RefreshCw className={`w-3.5 h-3.5 ${scanningDuplicates ? 'animate-spin' : ''}`} />
+                                <span>
+                                    {scanningDuplicates
+                                        ? t('duplicates.scanning') || 'Scanning Database...'
+                                        : t('duplicates.scanButton') || 'Scan for Duplicates'}
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Results or Empty State */}
+                    {scanningDuplicates ? (
+                        <div className="p-12 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/80 text-center space-y-3">
+                            <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                            <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                                {t('duplicates.scanning') || 'Analyzing user database and computing similarity scores...'}
+                            </p>
+                        </div>
+                    ) : hasScannedDuplicates && duplicateClusters.length === 0 ? (
+                        <div className="p-12 rounded-2xl border border-emerald-200 bg-emerald-50/50 dark:border-emerald-800/40 dark:bg-emerald-950/20 text-center space-y-3">
+                            <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto">
+                                <CheckCircle2 className="w-6 h-6" />
+                            </div>
+                            <h4 className="text-sm font-bold text-emerald-900 dark:text-emerald-200">
+                                {t('duplicates.noDuplicatesFound') || 'No duplicate user accounts detected across the system.'}
+                            </h4>
+                            <p className="text-xs text-emerald-700/80 dark:text-emerald-300/70 max-w-md mx-auto">
+                                All athlete profiles, dates of birth, and licensing records are unique.
+                            </p>
+                        </div>
+                    ) : !hasScannedDuplicates ? (
+                        <div className="p-12 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 text-center space-y-3">
+                            <AlertTriangle className="w-8 h-8 text-slate-400 mx-auto" />
+                            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                {t('duplicates.scanButton') || 'Scan for Duplicates'}
+                            </h4>
+                            <p className="text-xs text-slate-500 max-w-md mx-auto">
+                                Click the scan button to run fuzzy matching across all users based on first name, last name, and date of birth.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={loadDuplicates}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition"
+                            >
+                                <Search className="w-3.5 h-3.5" />
+                                <span>{t('duplicates.scanButton') || 'Scan for Duplicates'}</span>
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
+                                <span className="font-semibold">
+                                    {t('duplicates.duplicatesFoundCount', { count: duplicateClusters.length }) ||
+                                        `${duplicateClusters.length} potential duplicate clusters found.`}
+                                </span>
+                            </div>
+
+                            {duplicateClusters.map((cluster) => {
+                                const u1 = cluster.users[0];
+                                const u2 = cluster.users[1];
+
+                                return (
+                                    <div
+                                        key={cluster.clusterId}
+                                        className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4"
+                                    >
+                                        {/* Cluster header */}
+                                        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span
+                                                    className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                                        cluster.confidence === 'HIGH'
+                                                            ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 border border-red-200 dark:border-red-900'
+                                                            : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200 dark:border-amber-900'
+                                                    }`}
+                                                >
+                                                    {cluster.similarity}% {t('duplicates.similarityMatch') || 'Match'} (
+                                                    {cluster.confidence === 'HIGH'
+                                                        ? t('duplicates.highConfidence') || 'High Confidence'
+                                                        : t('duplicates.mediumConfidence') || 'Medium Confidence'}
+                                                    )
+                                                </span>
+
+                                                {cluster.reasons?.map((r: any, idx: number) => (
+                                                    <span
+                                                        key={idx}
+                                                        className="px-2 py-0.5 rounded text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                                                    >
+                                                        {r.description}
+                                                    </span>
+                                                ))}
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleOpenMerge(cluster)}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-xs"
+                                                >
+                                                    <Sparkles className="w-3.5 h-3.5" />
+                                                    <span>{t('duplicates.confirmMerge') || 'Merge Accounts'}</span>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Side by side comparison */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {[u1, u2].map((u, idx) => {
+                                                if (!u) return null;
+                                                const clubName =
+                                                    u.licenses?.[0]?.club?.name ||
+                                                    u.clubRoles?.[0]?.club?.name ||
+                                                    '—';
+
+                                                return (
+                                                    <div
+                                                        key={u.id || idx}
+                                                        className={`p-4 rounded-xl border ${
+                                                            idx === 0
+                                                                ? 'border-blue-200 dark:border-blue-900/60 bg-blue-50/20 dark:bg-blue-950/10'
+                                                                : 'border-purple-200 dark:border-purple-900/60 bg-purple-50/20 dark:bg-purple-950/10'
+                                                        } space-y-3`}
+                                                    >
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div>
+                                                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                                                    {idx === 0 ? 'Candidate Profile A' : 'Candidate Profile B'}
+                                                                </span>
+                                                                <h4 className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">
+                                                                    {u.firstName} {u.lastName}
+                                                                </h4>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-1">
+                                                                {u.canLogin ? (
+                                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                                                                        {t('duplicates.activeAccount') || 'Active Account'}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                                                                        {t('duplicates.unclaimedProfile') || 'Unclaimed'}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                                            <div>
+                                                                <span className="text-[10px] text-slate-400 block">{t('common.email') || 'Email'}</span>
+                                                                <span className="font-medium text-slate-800 dark:text-slate-200 truncate block">
+                                                                    {u.email || '—'}
+                                                                </span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-[10px] text-slate-400 block">{t('profile.birthDate') || 'DOB'}</span>
+                                                                <span className="font-medium text-slate-800 dark:text-slate-200">
+                                                                    {u.birthDate ? new Date(u.birthDate).toLocaleDateString() : '—'}
+                                                                </span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-[10px] text-slate-400 block">{t('clubs.club') || 'Club'}</span>
+                                                                <span className="font-medium text-slate-800 dark:text-slate-200 truncate block">
+                                                                    {clubName}
+                                                                </span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-[10px] text-slate-400 block">{t('profile.licenseNumber') || 'License'} / ELO</span>
+                                                                <span className="font-medium text-slate-800 dark:text-slate-200">
+                                                                    {u.licenseId || '—'} ({u.eloPoints || 1000})
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                                                            <Link
+                                                                href={`/profile/${u.id}`}
+                                                                target="_blank"
+                                                                className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                                            >
+                                                                <span>View Profile</span>
+                                                                <ExternalLink className="w-3 h-3" />
+                                                            </Link>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setDeleteUser(u)}
+                                                                className="text-red-500 hover:text-red-700 text-xs font-medium"
+                                                            >
+                                                                {t('duplicates.deleteDuplicate') || 'Delete'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* ========================================================================= */}
             {/* Modal: Reset User Password */}
@@ -866,6 +1209,157 @@ export default function AdminUsersPage() {
                         </button>
                     </div>
                 </div>
+            </Modal>
+
+            {/* ========================================================================= */}
+            {/* Modal: Merge Accounts Confirmation */}
+            {/* ========================================================================= */}
+            <Modal
+                isOpen={Boolean(mergeCluster)}
+                onClose={() => setMergeCluster(null)}
+                title={t('duplicates.mergeModalTitle') || 'Merge User Accounts'}
+                subtitle={
+                    t('duplicates.mergeModalSubtitle') ||
+                    'Consolidate licenses, memberships, and records into one unified account.'
+                }
+                icon={<Sparkles className="w-5 h-5 text-red-500" />}
+                size="lg"
+            >
+                {mergeCluster && mergeCluster.users && mergeCluster.users.length >= 2 && (
+                    <div className="space-y-4 text-xs">
+                        <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 space-y-1">
+                            <p className="font-bold flex items-center gap-1.5">
+                                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                                <span>{t('duplicates.mergeWarning') || 'Important Notice'}</span>
+                            </p>
+                            <p className="text-[11px] leading-relaxed opacity-90">
+                                {t('duplicates.mergeWarning') ||
+                                    'All tournament registrations, licenses, club affiliations, and match history from the duplicate account will be migrated to the primary account. The duplicate account will then be permanently deleted.'}
+                            </p>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="font-bold text-slate-800 dark:text-slate-200 block">
+                                {t('duplicates.selectPrimary') || 'Select which account to keep as the primary profile:'}
+                            </label>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {mergeCluster.users.map((u: any) => {
+                                    const isSelected = primaryUserId === u.id;
+                                    const clubName =
+                                        u.licenses?.[0]?.club?.name ||
+                                        u.clubRoles?.[0]?.club?.name ||
+                                        '—';
+
+                                    return (
+                                        <div
+                                            key={u.id}
+                                            onClick={() => {
+                                                setPrimaryUserId(u.id);
+                                                const other = mergeCluster.users.find((o: any) => o.id !== u.id);
+                                                if (other) setDuplicateUserId(other.id);
+                                            }}
+                                            className={`p-3.5 rounded-xl border cursor-pointer transition ${
+                                                isSelected
+                                                    ? 'border-red-600 bg-red-500/5 dark:bg-red-950/30 shadow-xs ring-2 ring-red-600/30'
+                                                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-bold text-slate-900 dark:text-white">
+                                                    {u.firstName} {u.lastName}
+                                                </span>
+                                                <input
+                                                    type="radio"
+                                                    name="primaryUserSelection"
+                                                    checked={isSelected}
+                                                    onChange={() => {}}
+                                                    className="text-red-600 focus:ring-red-500"
+                                                />
+                                            </div>
+                                            <div className="mt-1 space-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                                                <p>
+                                                    Email:{' '}
+                                                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                                                        {u.email || 'None'}
+                                                    </span>
+                                                </p>
+                                                <p>
+                                                    DOB:{' '}
+                                                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                                                        {u.birthDate
+                                                            ? new Date(u.birthDate).toLocaleDateString()
+                                                            : '—'}
+                                                    </span>
+                                                </p>
+                                                <p>
+                                                    Club:{' '}
+                                                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                                                        {clubName}
+                                                    </span>
+                                                </p>
+                                                <p>
+                                                    Status:{' '}
+                                                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                                                        {u.canLogin ? 'Active Login' : 'Unclaimed Profile'}
+                                                    </span>
+                                                </p>
+                                            </div>
+                                            <div className="mt-2">
+                                                <span
+                                                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                        isSelected
+                                                            ? 'bg-red-600 text-white'
+                                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                                                    }`}
+                                                >
+                                                    {isSelected
+                                                        ? t('duplicates.primaryAccount') || 'Primary (Keep)'
+                                                        : t('duplicates.duplicateAccount') || 'Duplicate (Delete)'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="pt-2">
+                            <label className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300">
+                                <input
+                                    type="checkbox"
+                                    checked={keepDuplicateEmail}
+                                    onChange={(e) => setKeepDuplicateEmail(e.target.checked)}
+                                    className="rounded border-slate-300 text-red-600 focus:ring-red-500"
+                                />
+                                <span>
+                                    {t('duplicates.keepDuplicateEmail') ||
+                                        'Transfer email address to primary profile if primary has none'}
+                                </span>
+                            </label>
+                        </div>
+
+                        <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setMergeCluster(null)}
+                                className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                            >
+                                {t('common.cancel') || 'Cancel'}
+                            </button>
+                            <button
+                                type="button"
+                                disabled={merging || !primaryUserId || !duplicateUserId}
+                                onClick={handleExecuteMerge}
+                                className="px-4 py-1.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-50 transition shadow"
+                            >
+                                {merging
+                                    ? t('duplicates.merging') || 'Merging...'
+                                    : t('duplicates.confirmMerge') || 'Confirm & Merge Accounts'}
+                            </button>
+                        </div>
+                    </div>
+                )}
             </Modal>
         </div>
     );

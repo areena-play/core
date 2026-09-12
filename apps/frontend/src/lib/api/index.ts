@@ -91,6 +91,7 @@ export class ApiClient extends HttpClient {
 
     login = (body: any) => this.auth.login(body);
     register = (body: any) => this.auth.register(body);
+    checkDuplicate = (body: { firstName: string; lastName: string; birthDate?: string | null; email?: string | null; licenseId?: string | null; excludeUserId?: string }) => this.auth.checkDuplicate(body);
     claimProfile = (body: any) => this.auth.claimProfile(body);
     claimWithToken = (body: any) => this.auth.claimWithToken(body);
     verifyEmail = (token: string) => this.auth.verifyEmail(token);
@@ -116,6 +117,8 @@ export class ApiClient extends HttpClient {
     adminToggleSuperAdmin = (id: string) => this.users.adminToggleSuperAdmin(id);
     adminSendVerification = (id: string) => this.users.adminSendVerification(id);
     adminDeleteUser = (id: string) => this.users.adminDeleteUser(id);
+    getDuplicateUsers = () => this.users.getDuplicateUsers();
+    mergeDuplicateUsers = (body: { primaryUserId: string; duplicateUserId: string; keepDuplicateEmailIfUnset?: boolean }) => this.users.mergeDuplicateUsers(body);
 
     getTopAssociation = () => this.associations.getTopAssociation();
     getAssociations = () => this.associations.getAssociations();

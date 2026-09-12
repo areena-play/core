@@ -14,6 +14,7 @@ import {
     Phone,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18nContext';
+import { DuplicatePersonModal } from '@/components/auth/DuplicatePersonModal';
 
 interface ClubQuickAddPlayerModalProps {
     isOpen: boolean;
@@ -40,10 +41,13 @@ export function ClubQuickAddPlayerModal({
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+    // Duplicate detection states
+    const [duplicateMatches, setDuplicateMatches] = useState<any[]>([]);
+    const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+
     if (!isOpen) return null;
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const doAddPlayer = async () => {
         setSubmitting(true);
         setError(null);
         setSuccessMessage(null);
@@ -79,6 +83,30 @@ export function ClubQuickAddPlayerModal({
             triggerHaptic('warning');
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+
+        try {
+            // Check for similar / duplicate profiles first
+            const dupRes = await api.checkDuplicate({
+                firstName,
+                lastName,
+                birthDate: birthDate || null,
+            });
+
+            if (dupRes && dupRes.hasDuplicates && dupRes.matches.length > 0) {
+                setDuplicateMatches(dupRes.matches);
+                setShowDuplicateModal(true);
+                return;
+            }
+
+            await doAddPlayer();
+        } catch (err) {
+            await doAddPlayer();
         }
     };
 
@@ -216,6 +244,15 @@ export function ClubQuickAddPlayerModal({
                     </div>
                 </form>
             </div>
+
+            {/* Duplicate Person Warning / Claim Modal */}
+            <DuplicatePersonModal
+                isOpen={showDuplicateModal}
+                matches={duplicateMatches}
+                onClose={() => setShowDuplicateModal(false)}
+                onProceedAnyway={doAddPlayer}
+                mode="club_add"
+            />
         </div>
     );
 }

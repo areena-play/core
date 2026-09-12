@@ -7,6 +7,7 @@ import { validate } from '../middleware/validate';
 import {
     adminUpdateUserSchema,
     adminResetPasswordSchema,
+    mergeDuplicateUsersSchema,
     AuditCategory,
     parseSearchTokens,
     generateSearchVariants,
@@ -14,6 +15,7 @@ import {
 } from '@areena/shared';
 import { AuditService } from '../services/audit.service';
 import { EmailService } from '../services/email.service';
+import { DuplicateDetectionService } from '../services/duplicateDetection.service';
 
 const router = Router();
 
@@ -188,6 +190,41 @@ router.get('/admin/list', async (req: AuthRequest, res: Response, next) => {
                 unverifiedUsers,
             },
         });
+    } catch (err) {
+        next(err);
+    }
+});
+
+/**
+ * GET /users/admin/duplicates
+ * Scan and return potential duplicate user clusters across the system.
+ */
+router.get('/admin/duplicates', async (req: AuthRequest, res: Response, next) => {
+    try {
+        const clusters = await DuplicateDetectionService.scanAllDuplicates();
+        res.json({
+            count: clusters.length,
+            clusters,
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
+/**
+ * POST /users/admin/duplicates/merge
+ * Merge a duplicate user account into a primary user account.
+ */
+router.post('/admin/duplicates/merge', validate(mergeDuplicateUsersSchema), async (req: AuthRequest, res: Response, next) => {
+    try {
+        const { primaryUserId, duplicateUserId, keepDuplicateEmailIfUnset } = req.body;
+        const result = await DuplicateDetectionService.mergeDuplicateUsers(
+            req,
+            primaryUserId,
+            duplicateUserId,
+            keepDuplicateEmailIfUnset ?? true
+        );
+        res.json(result);
     } catch (err) {
         next(err);
     }

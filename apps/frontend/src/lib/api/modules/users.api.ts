@@ -38,5 +38,16 @@ export class UsersApi {
     adminDeleteUser(id: string) {
         return this.http.request(`/users/admin/${id}`, { method: 'DELETE' });
     }
+
+    getDuplicateUsers() {
+        return this.http.request<{ count: number; clusters: any[] }>('/users/admin/duplicates');
+    }
+
+    mergeDuplicateUsers(body: { primaryUserId: string; duplicateUserId: string; keepDuplicateEmailIfUnset?: boolean }) {
+        return this.http.request('/users/admin/duplicates/merge', {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
 }
 

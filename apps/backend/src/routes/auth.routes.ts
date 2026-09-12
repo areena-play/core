@@ -18,6 +18,7 @@ import {
     changePasswordSchema,
     claimProfileByLicenseSchema,
     claimProfileByTokenSchema,
+    checkDuplicateUserSchema,
     AuditCategory,
     parseSearchTokens,
     generateSearchVariants,
@@ -27,6 +28,7 @@ import { authenticateToken, optionalAuth, AuthRequest } from '../middleware/auth
 import { AuditService } from '../services/audit.service';
 import { EmailService } from '../services/email.service';
 import { PrivacyService } from '../services/privacy.service';
+import { DuplicateDetectionService } from '../services/duplicateDetection.service';
 
 const router = Router();
 
@@ -36,6 +38,24 @@ export function isEmailVerificationRequired(): boolean {
     const isDemo = config.isDemo;
     return isProd && !isDemo;
 }
+
+// POST /auth/check-duplicate
+router.post('/check-duplicate', validate(checkDuplicateUserSchema), async (req, res, next) => {
+    try {
+        const { firstName, lastName, birthDate, email, licenseId, excludeUserId } = req.body;
+        const result = await DuplicateDetectionService.findSimilarUsers({
+            firstName,
+            lastName,
+            birthDate,
+            email,
+            licenseId,
+            excludeUserId,
+        });
+        res.json(result);
+    } catch (err) {
+        next(err);
+    }
+});
 
 // POST /auth/register
 router.post('/register', validate(registerSchema), async (req, res, next) => {

@@ -159,3 +159,21 @@ export const claimProfileByTokenSchema = z.object({
 export type ClaimProfileByLicenseInput = z.infer<typeof claimProfileByLicenseSchema>;
 export type ClaimProfileByTokenInput = z.infer<typeof claimProfileByTokenSchema>;
 
+export const checkDuplicateUserSchema = z.object({
+    firstName: z.string().min(1, 'First name is required'),
+    lastName: z.string().min(1, 'Last name is required'),
+    birthDate: z.string().optional().nullable(),
+    email: z.string().optional().nullable(),
+    licenseId: z.string().optional().nullable(),
+    excludeUserId: z.string().optional(),
+});
+
+export const mergeDuplicateUsersSchema = z.object({
+    primaryUserId: z.string().min(1, 'Primary user ID is required'),
+    duplicateUserId: z.string().min(1, 'Duplicate user ID is required'),
+    keepDuplicateEmailIfUnset: z.boolean().optional(),
+});
+
+export type CheckDuplicateUserInput = z.infer<typeof checkDuplicateUserSchema>;
+export type MergeDuplicateUsersInput = z.infer<typeof mergeDuplicateUsersSchema>;
+

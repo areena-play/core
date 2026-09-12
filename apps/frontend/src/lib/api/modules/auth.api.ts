@@ -11,6 +11,13 @@ export class AuthApi {
         return this.http.request('/auth/register', { method: 'POST', body: JSON.stringify(body) });
     }
 
+    checkDuplicate(body: { firstName: string; lastName: string; birthDate?: string | null; email?: string | null; licenseId?: string | null; excludeUserId?: string }) {
+        return this.http.request<{ hasDuplicates: boolean; matches: any[] }>('/auth/check-duplicate', {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
+
     claimProfile(body: any) {
         return this.http.request('/auth/claim-profile', { method: 'POST', body: JSON.stringify(body) });
     }
