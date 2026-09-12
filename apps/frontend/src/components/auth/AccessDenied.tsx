@@ -16,9 +16,9 @@ interface AccessDeniedProps {
 }
 
 export function AccessDenied({
-    title = 'Access Restricted',
+    title,
     description,
-    requiredRole = 'Association Administrator or Super Administrator',
+    requiredRole,
     returnHref = '/',
     loading: externalLoading,
 }: AccessDeniedProps) {
@@ -26,6 +26,9 @@ export function AccessDenied({
     const { t } = useI18n();
     const pathname = usePathname();
     const router = useRouter();
+
+    const resolvedTitle = title || t('accessDenied.title', {}, 'Access Denied');
+    const resolvedRole = requiredRole || t('userMenu.roleAssocAdmin', {}, 'Association Administrator');
 
     const isAnonymous = !user;
     const loginHref = pathname && pathname !== '/auth/login' ? `/auth/login?redirect=${encodeURIComponent(pathname)}` : '/auth/login';
@@ -70,14 +73,14 @@ export function AccessDenied({
                 <div className="space-y-2">
                     <div className="inline-flex items-center gap-1.5 rounded-full bg-red-600/10 dark:bg-red-600/20 px-3 py-1 text-[11px] font-bold text-red-600 dark:text-red-400 border border-red-500/20 dark:border-red-500/30 uppercase tracking-wider">
                         <KeyRound className="h-3 w-3" />
-                        <span>Insufficient Privileges</span>
+                        <span>{t('accessDenied.insufficientPrivileges', {}, 'Insufficient Privileges')}</span>
                     </div>
                     <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                        {title}
+                        {resolvedTitle}
                     </h1>
                     <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
                         {description ||
-                            `This workspace is restricted to authorized personnel (${requiredRole}). Your current account does not have sufficient access rights.`}
+                            t('accessDenied.description', {}, 'You do not have permission to access this workspace or management portal.')}
                     </p>
                 </div>
 
@@ -94,19 +97,19 @@ export function AccessDenied({
                             <div className="text-[11px] text-slate-500 dark:text-slate-400">
                                 {user
                                     ? user.isSuperAdmin
-                                        ? 'Super Administrator'
+                                        ? t('userMenu.roleSuperAdmin', {}, 'Super Administrator')
                                         : user.associationRoles && user.associationRoles.length > 0
                                         ? `${user.associationRoles.map((r) => r.role).join(', ')} (Assoc)`
                                         : user.clubRoles && user.clubRoles.length > 0
                                         ? `${user.clubRoles.map((r) => r.role).join(', ')} (Club)`
-                                        : 'Regular Licensed Member'
+                                        : t('userMenu.rolePlayer', {}, 'Active Athlete')
                                     : 'Not Authenticated'}
                             </div>
                         </div>
                     </div>
 
                     <span className="rounded-lg bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-400 border border-red-200 dark:border-red-800/40 px-2 py-0.5 text-[10px] font-bold uppercase flex-shrink-0">
-                        {isAnonymous ? 'Sign In Required' : 'Access Denied'}
+                        {isAnonymous ? t('auth.signInRequired', {}, 'Sign In Required') : t('accessDenied.title', {}, 'Access Denied')}
                     </span>
                 </div>
 
@@ -117,7 +120,7 @@ export function AccessDenied({
                         className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
                     >
                         <ArrowLeft className="h-4 w-4" />
-                        <span>Return to Overview</span>
+                        <span>{t('accessDenied.returnOverview', {}, 'Return to Overview')}</span>
                     </Link>
 
                     {isAnonymous ? (
@@ -126,7 +129,7 @@ export function AccessDenied({
                             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-xs font-semibold text-white shadow hover:bg-red-700 transition"
                         >
                             <LogIn className="h-4 w-4" />
-                            <span>Sign In with Admin Account</span>
+                            <span>{t('accessDenied.signInAdmin', {}, 'Sign In with Admin Account')}</span>
                         </Link>
                     ) : (
                         <button
@@ -135,7 +138,7 @@ export function AccessDenied({
                             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
                         >
                             <LogIn className="h-4 w-4" />
-                            <span>Switch Account</span>
+                            <span>{t('accessDenied.switchAccount', {}, 'Switch Account')}</span>
                         </button>
                     )}
                 </div>

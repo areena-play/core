@@ -23,6 +23,7 @@ import {
     Megaphone,
     Settings,
 } from 'lucide-react';
+import { useI18n } from '@/lib/i18nContext';
 
 interface GlobalSearchResult {
     type: 'person' | 'club' | 'competition' | 'association' | 'page';
@@ -43,10 +44,11 @@ interface GlobalSearchBarProps {
 
 export function GlobalSearchBar({
     className = '',
-    placeholder = 'Search people, clubs, competitions, tools...',
+    placeholder,
     onSelect,
     compact = false,
 }: GlobalSearchBarProps) {
+    const { t } = useI18n();
     const router = useRouter();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<GlobalSearchResult[]>([]);
@@ -311,7 +313,7 @@ export function GlobalSearchBar({
                                 }}
                                 className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
                             >
-                                <span>View all results on dedicated Search Page</span>
+                                <span>{t('uiExtras.viewAllResultsOnSearch')}</span>
                                 <ArrowRight className="h-3.5 w-3.5" />
                             </button>
                         </div>

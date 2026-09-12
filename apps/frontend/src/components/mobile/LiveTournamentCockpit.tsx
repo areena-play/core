@@ -12,6 +12,7 @@ import {
 import { triggerHaptic } from '@/lib/pwa/useHaptics';
 import { PushNotificationCard } from '@/components/pwa/PushNotificationCard';
 import { SupervisedSquadCockpit } from '@/components/mobile/SupervisedSquadCockpit';
+import { useI18n } from '@/lib/i18nContext';
 
 export interface LiveMatchItem {
     id: string;
@@ -39,12 +40,13 @@ export interface LiveTournamentCockpitProps {
 }
 
 export function LiveTournamentCockpit({
-    tournamentId = 'tourn_demo_1',
-    tournamentName = 'Swiss Open Table Tennis Championships 2026',
-    locationName = 'Sporthalle Wankdorf, Bern',
+    tournamentId = 't_1',
+    tournamentName = 'National Championship 2026',
+    locationName = 'Main Arena Halle A',
     onOpenScorepadForMatch,
     embedded = false,
 }: LiveTournamentCockpitProps) {
+    const { t } = useI18n();
     const [selectedTab, setSelectedTab] = useState<'my' | 'squad' | 'live' | 'schedule'>('my');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
@@ -159,7 +161,7 @@ export function LiveTournamentCockpit({
                         onClick={handleRefresh}
                         disabled={isRefreshing}
                         className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all"
-                        title="Refresh tournament feed"
+                        title={t('uiExtras.refreshTournamentFeed')}
                     >
                         <RefreshCw className={`h-3.5 w-3.5 text-slate-300 ${isRefreshing ? 'animate-spin text-red-400' : ''}`} />
                     </button>
@@ -266,7 +268,7 @@ export function LiveTournamentCockpit({
                                     <div>
                                         <div className="font-bold text-sm text-slate-900 dark:text-white flex items-center space-x-1.5">
                                             <span>{myMatch.p1Name}</span>
-                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950/80 text-red-600 dark:text-red-400 font-bold">YOU</span>
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950/80 text-red-600 dark:text-red-400 font-bold">{t('uiExtras.you')}</span>
                                         </div>
                                         <div className="text-xs text-slate-500 dark:text-slate-400">{myMatch.p1Club}</div>
                                     </div>
@@ -299,7 +301,7 @@ export function LiveTournamentCockpit({
                                                 key={idx}
                                                 className={`h-7 w-7 flex items-center justify-center rounded-lg text-xs font-bold ${
                                                     score > myMatch.p1Score[idx]
-                                                        ? 'bg-red-600 text-white'
+                                                        ? 'bg-blue-600 text-white'
                                                         : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                                                 }`}
                                             >
@@ -310,8 +312,8 @@ export function LiveTournamentCockpit({
                                 </div>
                             </div>
 
-                            {/* Action Row */}
-                            <div className="pt-2 flex flex-col sm:flex-row gap-2">
+                            {/* Action Buttons */}
+                            <div className="flex space-x-2 pt-1">
                                 <button
                                     onClick={() => {
                                         triggerHaptic('medium');
@@ -334,14 +336,14 @@ export function LiveTournamentCockpit({
                                     className="flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-2xl bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-sm shadow-md shadow-red-600/30 transition-all"
                                 >
                                     <Zap className="h-4 w-4 fill-white" />
-                                    <span>Open Live Referee Scorecard</span>
+                                    <span>{t('uiExtras.openScorecard')}</span>
                                 </button>
                             </div>
                         </div>
                     ) : (
                         <div className="text-center py-10 px-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
                             <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto mb-2" />
-                            <h3 className="font-bold text-slate-800 dark:text-white text-base">No Assigned Match Right Now</h3>
+                            <h3 className="font-bold text-slate-800 dark:text-white text-base">{t('uiExtras.noAssignedMatch')}</h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto mt-1">
                                 You are not currently assigned to a live table. You will receive an alert as soon as your next match is called.
                             </p>
@@ -390,7 +392,7 @@ export function LiveTournamentCockpit({
                                         }}
                                         className="text-xs font-bold text-red-600 dark:text-red-400 hover:underline flex items-center space-x-1"
                                     >
-                                        <span>Scorepad</span>
+                                        <span>{t('uiExtras.scorepad')}</span>
                                         <ChevronRight className="h-3 w-3" />
                                     </button>
                                 </div>

@@ -3,10 +3,12 @@
 import React, { useState } from 'react';
 import { usePwaInstall } from '@/lib/pwa/usePwaInstall';
 import { useMainView } from '@/lib/mainViewContext';
+import { useI18n } from '@/lib/i18nContext';
 import { Download, X, CheckCircle2, Smartphone } from 'lucide-react';
 import { triggerHaptic } from '@/lib/pwa/useHaptics';
 
 export function PwaManager() {
+    const { t } = useI18n();
     const { isInstallable, isInstalled, installApp } = usePwaInstall();
     const { mainAssoc } = useMainView();
     const [dismissed, setDismissed] = useState(false);
@@ -37,8 +39,8 @@ export function PwaManager() {
                         <Smartphone className="h-5 w-5" />
                     </div>
                     <div>
-                        <div className="font-bold text-slate-900 dark:text-white">Install {appDisplayName}</div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400">Offline mode, haptics & live alerts</div>
+                        <div className="font-bold text-slate-900 dark:text-white">{t('uiExtras.install')} {appDisplayName}</div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400">{t('uiExtras.offlineMode')}</div>
                     </div>
                 </div>
 
@@ -49,7 +51,7 @@ export function PwaManager() {
                         className="rounded-lg bg-red-600 hover:bg-red-700 px-3 py-1.5 font-bold text-white shadow-sm transition active:scale-95 disabled:opacity-50 flex items-center gap-1"
                     >
                         <Download className="h-3.5 w-3.5" />
-                        <span>Install</span>
+                        <span>{t('uiExtras.install')}</span>
                     </button>
                     <button
                         onClick={() => {

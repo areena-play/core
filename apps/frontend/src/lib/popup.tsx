@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Move } from 'lucide-react';
+import { useI18n } from '@/lib/i18nContext';
 
 /* -------------------------------------------------------------------------- */
 /*                                    TYPES                                   */
@@ -45,7 +46,7 @@ export interface PopupOptions {
     width?: number | string;
 
     /**
-     * Initial height in pixels or CSS string. Default: 'auto'.
+     * Initial height in pixels or CSS string. If omitted, fits content.
      */
     height?: number | string;
 
@@ -55,12 +56,12 @@ export interface PopupOptions {
     defaultPosition?: { x: number; y: number };
 
     /**
-     * Whether the window can be moved by dragging its header. Default: true.
+     * Whether the window can be dragged by its header. Default: true.
      */
     draggable?: boolean;
 
     /**
-     * Callback fired when popup is closed.
+     * Callback invoked when the window is closed.
      */
     onClose?: () => void;
 }
@@ -78,90 +79,114 @@ interface ActivePopupState extends PopupOptions {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                           GLOBAL STATE & LISTENERS                         */
+/*                           GLOBAL STATE EVENT BUS                           */
 /* -------------------------------------------------------------------------- */
 
-let popupCounter = 1;
-let highestZIndex = 5000;
+type Listener = (popups: ActivePopupState[]) => void;
+
 let activePopups: ActivePopupState[] = [];
-const listeners = new Set<(popups: ActivePopupState[]) => void>();
+let listeners: Set<Listener> = new Set();
+let baseZIndex = 10000;
 
 function notify() {
     listeners.forEach((fn) => fn([...activePopups]));
 }
 
-/* -------------------------------------------------------------------------- */
-/*                                PUBLIC UTILITY                              */
-/* -------------------------------------------------------------------------- */
+function calculateNextCascadePosition(width = 440, height = 360): { x: number; y: number } {
+    if (typeof window === 'undefined') return { x: 40, y: 40 };
 
-/**
- * Open a dynamic, movable floating popup window.
- */
-export function popup(options: PopupOptions): PopupInstance {
-    const id = options.id || `popup_${popupCounter++}`;
-    highestZIndex += 1;
-
-    // Default centered position with slight cascade offset
-    const offset = (activePopups.length % 6) * 24;
-    const defaultX =
-        typeof window !== 'undefined'
-            ? Math.max(20, Math.floor(window.innerWidth / 2 - 220) + offset)
-            : 100 + offset;
-    const defaultY =
-        typeof window !== 'undefined'
-            ? Math.max(40, Math.floor(window.innerHeight / 2 - 220) + offset)
-            : 100 + offset;
-
-    const existingIndex = activePopups.findIndex((p) => p.id === id);
-
-    const newState: ActivePopupState = {
-        ...options,
-        id,
-        position: options.defaultPosition || (existingIndex >= 0 ? activePopups[existingIndex].position : { x: defaultX, y: defaultY }),
-        zIndex: highestZIndex,
-    };
-
-    if (existingIndex >= 0) {
-        activePopups[existingIndex] = newState;
-    } else {
-        activePopups.push(newState);
-    }
-
-    notify();
+    const offset = (activePopups.length % 8) * 32;
+    const initialX = Math.max(20, Math.floor((window.innerWidth - width) / 2) + offset);
+    const initialY = Math.max(40, Math.floor((window.innerHeight - height) / 3) + offset);
 
     return {
-        id,
-        close: () => popup.close(id),
-        focus: () => popup.focus(id),
+        x: Math.min(initialX, window.innerWidth - 100),
+        y: Math.min(initialY, window.innerHeight - 100),
     };
 }
 
-popup.close = function close(id: string) {
-    const found = activePopups.find((p) => p.id === id);
-    if (found) {
-        found.onClose?.();
+export const popup = {
+    /**
+     * Opens a new draggable floating window popup.
+     */
+    open(options: PopupOptions): string {
+        const id = options.id || `popup_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        baseZIndex += 1;
+
+        const existingIndex = activePopups.findIndex((p) => p.id === id);
+        if (existingIndex >= 0) {
+            // Bring existing window to front and update options
+            activePopups[existingIndex] = {
+                ...activePopups[existingIndex],
+                ...options,
+                id,
+                zIndex: baseZIndex,
+            };
+        } else {
+            const widthNum = typeof options.width === 'number' ? options.width : 440;
+            const heightNum = typeof options.height === 'number' ? options.height : 360;
+            const position = calculateNextCascadePosition(widthNum, heightNum);
+
+            activePopups.push({
+                ...options,
+                id,
+                position,
+                zIndex: baseZIndex,
+            });
+        }
+
+        notify();
+        return id;
+    },
+
+    /**
+     * Closes a specific popup by ID.
+     */
+    close(id: string) {
+        const target = activePopups.find((p) => p.id === id);
+        if (target?.onClose) {
+            try {
+                target.onClose();
+            } catch (e) {
+                console.error('Error in popup onClose callback:', e);
+            }
+        }
         activePopups = activePopups.filter((p) => p.id !== id);
         notify();
-    }
-};
+    },
 
-popup.closeAll = function closeAll() {
-    activePopups.forEach((p) => p.onClose?.());
-    activePopups = [];
-    notify();
-};
-
-popup.focus = function focus(id: string) {
-    const p = activePopups.find((item) => item.id === id);
-    if (p) {
-        highestZIndex += 1;
-        p.zIndex = highestZIndex;
+    /**
+     * Closes all open popup windows.
+     */
+    closeAll() {
+        activePopups.forEach((p) => {
+            if (p.onClose) {
+                try {
+                    p.onClose();
+                } catch (e) {
+                    console.error('Error in popup onClose callback:', e);
+                }
+            }
+        });
+        activePopups = [];
         notify();
-    }
+    },
+
+    /**
+     * Brings a popup to the front of the stacking order.
+     */
+    focus(id: string) {
+        const target = activePopups.find((p) => p.id === id);
+        if (target) {
+            baseZIndex += 1;
+            target.zIndex = baseZIndex;
+            notify();
+        }
+    },
 };
 
 /* -------------------------------------------------------------------------- */
-/*                            DRAGGABLE POPUP ITEM                            */
+/*                            POPUP WINDOW COMPONENT                          */
 /* -------------------------------------------------------------------------- */
 
 function DraggablePopupWindow({
@@ -173,6 +198,7 @@ function DraggablePopupWindow({
     onClose: () => void;
     onFocus: () => void;
 }) {
+    const { t } = useI18n();
     const windowRef = useRef<HTMLDivElement>(null);
     const posRef = useRef<{ x: number; y: number }>(item.position);
     const handlePointerDown = (e: React.PointerEvent) => {
@@ -287,7 +313,7 @@ function DraggablePopupWindow({
                         type="button"
                         onClick={onClose}
                         className="p-1.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/50 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition active:scale-95"
-                        title="Close Window"
+                        title={t('uiExtras.closeWindow')}
                         aria-label="Close"
                     >
                         <X className="w-4 h-4" />

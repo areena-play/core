@@ -41,7 +41,7 @@ export function PhoneInput({
     prioritizedCountries,
 }: PhoneInputProps) {
     const { mainAssoc } = useMainView();
-    const { locale } = useI18n();
+    const { locale, t } = useI18n();
 
     const [selectedCountry, setSelectedCountry] = useState<CountryCode>(defaultCountry);
     const [nationalNumber, setNationalNumber] = useState<string>('');
@@ -219,7 +219,7 @@ export function PhoneInput({
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="Search country or code..."
+                                    placeholder={t('uiExtras.searchCountryCode')}
                                     className="w-full h-7 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 pl-8 pr-7 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-red-500 focus:outline-none"
                                 />
                                 {searchQuery && (

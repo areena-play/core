@@ -83,7 +83,7 @@ export default function CompetitionResultsPage() {
                     </Link>
                     <div>
                         <div className="flex items-center gap-2 text-xs font-semibold text-orange-400 uppercase tracking-wider">
-                            <span>Competition Workspace</span>
+                            <span>{t('uiExtras.competitionWorkspace')}</span>
                             <span>•</span>
                             <span>{competition?.name}</span>
                         </div>

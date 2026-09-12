@@ -444,7 +444,7 @@ function SupportPageContent() {
                         <button
                             onClick={() => setAdminModalOpen(true)}
                             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 transition shadow-xs shrink-0"
-                            title="Manage FAQs & Subjects"
+                            title={t('uiExtras.manageFaqs')}
                         >
                             <Settings className="h-3.5 w-3.5 text-red-500" />
                             <span className="hidden sm:inline">{t('support.admin.manageFaqs')}</span>
@@ -512,7 +512,7 @@ function SupportPageContent() {
 
                     {/* FAQ Items List */}
                     {loadingFaqs ? (
-                        <div className="py-16 text-center text-xs text-slate-400">Loading FAQs...</div>
+                        <div className="py-16 text-center text-xs text-slate-400">{t('uiExtras.loadingFaqs')}</div>
                     ) : filteredFaqs.length === 0 ? (
                         <div className="rounded-2xl border border-dashed border-slate-200 p-10 text-center dark:border-slate-800">
                             <HelpCircle className="mx-auto h-8 w-8 text-slate-400 mb-2" />
@@ -681,7 +681,7 @@ function SupportPageContent() {
                                             required
                                             value={customSubjectTitle}
                                             onChange={(e) => setCustomSubjectTitle(e.target.value)}
-                                            placeholder="Enter brief topic description..."
+                                            placeholder={t('uiExtras.enterTopicDescription')}
                                             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white shadow-xs focus:border-red-500 focus:outline-none"
                                         />
                                     </div>

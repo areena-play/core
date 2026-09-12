@@ -75,17 +75,17 @@ export function AssociationsOverviewView({ scopedAssociationId }: AssociationsOv
                             {scopedAssociationId ? (
                                 <>
                                     <Lock className="h-3.5 w-3.5 text-red-500" />
-                                    <span>Sub-Association Hierarchy DAG</span>
+                                    <span>{t('uiExtras.subAssocHierarchyDag')}</span>
                                 </>
                             ) : (
                                 <>
                                     <Network className="h-3.5 w-3.5 text-red-500" />
-                                    <span>National Federation Hierarchy</span>
+                                    <span>{t('uiExtras.nationalFederationHierarchy')}</span>
                                 </>
                             )}
                         </div>
                         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                            {scopedAssoc ? `${scopedAssoc.name} • Sub-Associations` : t('nav.associationsOverview')}
+                            {scopedAssoc ? `${scopedAssoc.name} • ${t('nav.subAssociations')}` : t('nav.associationsOverview')}
                         </h1>
                         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                             {scopedAssoc
@@ -99,7 +99,7 @@ export function AssociationsOverviewView({ scopedAssociationId }: AssociationsOv
                             href="/associations"
                             className="inline-flex items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 transition"
                         >
-                            <span>National Hierarchy</span>
+                            <span>{t('uiExtras.nationalHierarchy')}</span>
                             <ExternalLink className="h-3.5 w-3.5" />
                         </Link>
                     )}
@@ -135,7 +135,7 @@ export function AssociationsOverviewView({ scopedAssociationId }: AssociationsOv
                                     {sub.name}
                                 </h4>
                                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-red-600 dark:text-red-400 font-bold">
-                                    <span>Enter Sub-Association Portal</span>
+                                    <span>{t('uiExtras.enterSubAssocPortal')}</span>
                                     <ChevronRight className="h-3.5 w-3.5" />
                                 </div>
                             </Link>

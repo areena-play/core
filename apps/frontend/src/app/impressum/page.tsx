@@ -124,7 +124,7 @@ export default function ImpressumPage() {
                         className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
                     >
                         <BookOpen className="h-3.5 w-3.5" />
-                        <span>User Manual</span>
+                        <span>{t('nav.userManual')}</span>
                     </Link>
                     <Link
                         href="/data-protection"
@@ -249,7 +249,7 @@ export default function ImpressumPage() {
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                     <div className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
                         <Code2 className="h-4 w-4 text-red-500" />
-                        <span>Software Stack & Open Source Libraries</span>
+                        <span>{t('uiExtras.softwareStack')}</span>
                     </div>
                     <span className="text-[11px] font-mono text-slate-400 font-bold">
                         AREENA Stack v{process.env.NEXT_PUBLIC_APP_VERSION}
@@ -278,7 +278,7 @@ export default function ImpressumPage() {
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                     <div className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
                         <History className="h-4 w-4 text-red-500" />
-                        <span>Changelog & Minor Version Updates</span>
+                        <span>{t('uiExtras.changelogUpdates')}</span>
                     </div>
                     <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
                         Current: v{process.env.NEXT_PUBLIC_APP_VERSION}

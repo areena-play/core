@@ -15,7 +15,7 @@ import { NoticeType } from '@areena/shared';
 import { getLocalizedValue } from '@/lib/i18nHelper';
 
 export function AdminNoticeModal() {
-    const { locale } = useI18n();
+    const { locale, t } = useI18n();
     const { modalNotices, closeForSession, dismissPermanently } = useAdminNotices();
 
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -104,32 +104,38 @@ export function AdminNoticeModal() {
                       : 'System Administrator Notice';
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-            {/* Modal Dialog Box */}
+        <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-notice-title"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+        >
             <div
-                className={`relative max-w-xl w-full rounded-2xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 ${borderClass}`}
+                className={`relative w-full max-w-xl max-h-[85vh] flex flex-col rounded-3xl border bg-slate-900 shadow-2xl overflow-hidden transition-all duration-300 animate-in zoom-in-95 ${borderClass}`}
             >
-                {/* Header */}
-                <div className="p-5 md:p-6 border-b border-slate-800/80 flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                {/* Header with notice type badge and title */}
+                <div className="p-5 md:p-6 border-b border-slate-800 flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3.5 min-w-0">
                         <div className="mt-0.5 p-2 rounded-xl bg-slate-800/80 border border-slate-700/60 shrink-0">
                             {icon}
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                                <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${headerBadge}`}>
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span
+                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${headerBadge} border`}
+                                >
                                     {currentNotice.type}
                                 </span>
                                 <span className="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700 font-medium">
                                     {targetLabel}
                                 </span>
-                                {currentNotice.association && (
-                                    <span className="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700">
-                                        {currentNotice.association.shortName || currentNotice.association.name}
+                                {modalNotices.length > 1 && (
+                                    <span className="text-[11px] font-semibold text-slate-400">
+                                        Announcement {currentIndex + 1} of {modalNotices.length}
                                     </span>
                                 )}
                             </div>
-                            <h3 className="text-lg md:text-xl font-bold text-white tracking-tight leading-snug">
+                            <h3 id="admin-notice-title" className="text-lg md:text-xl font-bold text-white tracking-tight leading-snug">
                                 {getLocalizedValue(currentNotice.titleI18n, currentNotice.title, locale)}
                             </h3>
                         </div>
@@ -138,7 +144,7 @@ export function AdminNoticeModal() {
                     {/* Temporary Close (X) button */}
                     <button
                         onClick={handleTemporaryClose}
-                        title="Close for now (will appear again on next visit)"
+                        title={t('uiExtras.closeForNow')}
                         aria-label="Close"
                         className="p-2 rounded-xl text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 transition-all active:scale-95 shrink-0"
                     >
@@ -164,13 +170,13 @@ export function AdminNoticeModal() {
                                     className="w-4 h-4 rounded text-red-600 bg-slate-800 border-slate-700 focus:ring-red-500 cursor-pointer"
                                 />
                                 <span className="text-xs font-semibold text-slate-300 group-hover:text-white transition-colors">
-                                    Don&apos;t show this message again
+                                    {t('uiExtras.dontShowAgain')}
                                 </span>
                             </label>
                         ) : (
                             <div className="flex items-center gap-1.5 text-xs text-amber-400/90 font-medium">
                                 <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                                <span>Permanent notice (will show on future visits)</span>
+                                <span>{t('uiExtras.permanentNotice')}</span>
                             </div>
                         )}
                     </div>

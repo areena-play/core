@@ -100,9 +100,9 @@ export default function EncounterScoresheetPage() {
         return (
             <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/50 p-8 text-center text-slate-700 dark:text-slate-300">
                 <AlertCircle className="mx-auto h-12 w-12 text-rose-500 mb-3" />
-                <h2 className="text-xl font-bold">Encounter Not Found</h2>
+                <h2 className="text-xl font-bold">{t('uiExtras.encounterNotFound')}</h2>
                 <Link href={`/competition/${competitionId}/results`} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-sm">
-                    Back to Results
+                    {t('uiExtras.allResults')}
                 </Link>
             </div>
         );
@@ -136,7 +136,7 @@ export default function EncounterScoresheetPage() {
                         className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-xs transition"
                     >
                         <ArrowLeft className="h-3.5 w-3.5" />
-                        <span>All Results</span>
+                        <span>{t('uiExtras.allResults')}</span>
                     </Link>
                 </div>
             </div>
@@ -163,7 +163,7 @@ export default function EncounterScoresheetPage() {
 
                     <div className="space-y-2">
                         {(!encounter.matches || encounter.matches.length === 0) ? (
-                            <div className="p-4 text-center text-xs text-slate-400">No individual matches created for this encounter.</div>
+                            <div className="p-4 text-center text-xs text-slate-400">{t('uiExtras.noIndividualMatches')}</div>
                         ) : (
                             encounter.matches.map((m: any, idx: number) => (
                                 <button
@@ -202,7 +202,7 @@ export default function EncounterScoresheetPage() {
 
                         {/* Set by set inputs */}
                         <div className="space-y-3">
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">Set Scores (Points)</label>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">{t('uiExtras.setScoresPoints')}</label>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 {sets.map((s, idx) => (
                                     <div key={idx} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-2">
@@ -271,7 +271,7 @@ export default function EncounterScoresheetPage() {
                                     className="h-4 w-4 rounded accent-red-600"
                                 />
                                 <div>
-                                    <span className="text-xs font-bold text-slate-900 dark:text-white block">Mark Match as Completed</span>
+                                    <span className="text-xs font-bold text-slate-900 dark:text-white block">{t('uiExtras.markMatchCompleted')}</span>
                                     <span className="text-[11px] text-slate-500">Computes winner and updates ELO points (if competition counts for ELO).</span>
                                 </div>
                             </label>

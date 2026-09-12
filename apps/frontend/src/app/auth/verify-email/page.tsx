@@ -124,7 +124,7 @@ function VerifyEmailContent() {
                                     href="/"
                                     className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 py-2.5 font-semibold text-white hover:bg-red-700 shadow transition"
                                 >
-                                    <span>Continue to AREENA Workspace</span>
+                                    <span>{t('authExtras.continueToWorkspace')}</span>
                                     <ArrowRight className="w-4 h-4" />
                                 </Link>
                             </div>
@@ -191,7 +191,7 @@ function VerifyEmailContent() {
                                         ) : (
                                             <Mail className="w-4 h-4" />
                                         )}
-                                        <span>Send Verification Link</span>
+                                        <span>{t('authExtras.sendVerificationLink')}</span>
                                     </button>
                                 </form>
                             </div>
@@ -258,7 +258,7 @@ function VerifyEmailContent() {
                                         ) : (
                                             <Mail className="w-4 h-4" />
                                         )}
-                                        <span>Resend Verification Email</span>
+                                        <span>{t('authExtras.resendVerificationEmail')}</span>
                                     </button>
                                 </form>
                             </div>
@@ -267,7 +267,7 @@ function VerifyEmailContent() {
 
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
                         <Link href="/auth/login" className="text-red-600 dark:text-red-400 font-semibold hover:underline">
-                            Back to Sign In
+                            {t('auth.backToSignIn')}
                         </Link>
                         <span className="flex items-center gap-1">
                             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />

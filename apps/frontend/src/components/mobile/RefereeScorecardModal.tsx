@@ -15,6 +15,7 @@ import {
     Maximize2,
     Sparkles,
 } from 'lucide-react';
+import { useI18n } from '@/lib/i18nContext';
 
 interface PointHistoryItem {
     player: 1 | 2;
@@ -48,12 +49,13 @@ export function RefereeScorecardModal({
     matchId,
     player1Name = 'Player 1',
     player2Name = 'Player 2',
-    matchCategory = "Men's Singles",
+    matchCategory = 'Open Singles',
     unitName = 'Table 1',
     pointsToWinSet = 11,
-    bestOfSets = 3,
+    bestOfSets = 5,
     onScoreSubmitted,
 }: RefereeScorecardModalProps) {
+    const { t } = useI18n();
     const haptics = useHaptics();
 
     // Live Game State
@@ -262,7 +264,7 @@ export function RefereeScorecardModal({
                         className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold disabled:opacity-30 transition"
                     >
                         <RotateCcw className="h-3.5 w-3.5" />
-                        <span>Undo</span>
+                        <span>{t('uiExtras.undo')}</span>
                     </button>
 
                     <button
@@ -381,7 +383,7 @@ export function RefereeScorecardModal({
                     className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 font-bold text-slate-200 transition"
                 >
                     <RefreshCw className="h-4 w-4" />
-                    <span>Switch Sides</span>
+                    <span>{t('uiExtras.switchSides')}</span>
                 </button>
             </div>
 

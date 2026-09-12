@@ -563,8 +563,8 @@ function LoginForm() {
                             </div>
 
                             <div className="text-[10px] text-slate-500 flex items-center justify-between pt-2 border-t border-slate-800/60">
-                                <span>⏰ Database auto-resets every day at 02:00 AM CET</span>
-                                <span className="text-slate-400 font-mono">AREENA Demo Engine</span>
+                                <span>{t('authExtras.autoResetNotice')}</span>
+                                <span className="text-slate-400 font-mono">{t('authExtras.demoEngine')}</span>
                             </div>
                         </div>
                     )}

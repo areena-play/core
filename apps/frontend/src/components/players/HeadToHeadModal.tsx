@@ -14,6 +14,7 @@ import {
     Calendar,
 } from 'lucide-react';
 import { triggerHaptic } from '@/lib/pwa/useHaptics';
+import { useI18n } from '@/lib/i18nContext';
 
 export interface PlayerSummary {
     id: string;
@@ -46,6 +47,7 @@ export function HeadToHeadModal({
     initialPlayer1,
     initialPlayer2,
 }: HeadToHeadModalProps) {
+    const { t } = useI18n();
     const [p1, setP1] = useState<PlayerSummary>(
         initialPlayer1 || {
             id: 'u_1',
@@ -185,15 +187,15 @@ export function HeadToHeadModal({
                         </h4>
                         <div className="grid grid-cols-3 gap-2 text-center text-xs">
                             <div className="font-bold text-slate-900 dark:text-white">{p1.elo}</div>
-                            <div className="text-slate-500">Current Rating</div>
+                            <div className="text-slate-500">{t('uiExtras.currentRating')}</div>
                             <div className="font-bold text-slate-900 dark:text-white">{p2.elo}</div>
 
                             <div className="font-bold text-emerald-600 dark:text-emerald-400">{p1.winRate}%</div>
-                            <div className="text-slate-500">Season Win Rate</div>
+                            <div className="text-slate-500">{t('uiExtras.seasonWinRate')}</div>
                             <div className="font-bold text-emerald-600 dark:text-emerald-400">{p2.winRate}%</div>
 
                             <div className="font-bold text-slate-900 dark:text-white">{p1.elo > p2.elo ? `+${p1.elo - p2.elo}` : '0'}</div>
-                            <div className="text-slate-500">Rating Advantage</div>
+                            <div className="text-slate-500">{t('uiExtras.ratingAdvantage')}</div>
                             <div className="font-bold text-slate-900 dark:text-white">{p2.elo > p1.elo ? `+${p2.elo - p1.elo}` : '0'}</div>
                         </div>
                     </div>
@@ -202,7 +204,7 @@ export function HeadToHeadModal({
                     <div className="space-y-2">
                         <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center space-x-1.5">
                             <Trophy className="h-3.5 w-3.5 text-amber-500" />
-                            <span>Past Match Records</span>
+                            <span>{t('uiExtras.pastMatchRecords')}</span>
                         </h4>
                         <div className="space-y-2">
                             {pastMatches.map((m) => (

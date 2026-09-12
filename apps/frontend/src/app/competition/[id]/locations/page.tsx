@@ -63,11 +63,11 @@ export default function CompetitionLocationsPage() {
                             <span className="rounded px-2.5 py-0.5 text-xs font-bold uppercase border bg-red-100 text-red-800 border-red-200 dark:bg-red-950/60 dark:text-red-400 dark:border-red-800/50">
                                 Venue Facilities
                             </span>
-                            <span className="font-mono text-xs text-slate-400">Courts & Table Units</span>
+                            <span className="font-mono text-xs text-slate-400">{t('uiExtras.courtsAndUnits')}</span>
                         </div>
                         <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
                             <MapPin className="h-6 w-6 text-red-500" />
-                            <span>Locations & Table Allocation</span>
+                            <span>{t('uiExtras.locationsAndAllocation')}</span>
                         </h1>
                         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                             Tournament facility venues, court maps, and active playing table assignment
@@ -79,7 +79,7 @@ export default function CompetitionLocationsPage() {
                         className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-xs transition"
                     >
                         <ArrowLeft className="h-3.5 w-3.5" />
-                        <span>Dashboard</span>
+                        <span>{t('nav.dashboard')}</span>
                     </Link>
                 </div>
             </div>
@@ -103,7 +103,7 @@ export default function CompetitionLocationsPage() {
                 <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                         <Building2 className="h-4 w-4 text-red-500" />
-                        <span>Designated Venue Facility</span>
+                        <span>{t('uiExtras.designatedVenue')}</span>
                     </h3>
                     <span className="rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 text-xs font-bold border border-emerald-200 dark:border-emerald-800/40">
                         Active Location
@@ -125,7 +125,7 @@ export default function CompetitionLocationsPage() {
                 <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                         <LayoutGrid className="h-4 w-4 text-red-500" />
-                        <span>Playing Tables & Unit Grid</span>
+                        <span>{t('uiExtras.playingTablesGrid')}</span>
                     </h3>
                 </div>
 

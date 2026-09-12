@@ -30,70 +30,72 @@ interface CompetitionsOverviewViewProps {
     defaultType?: string;
 }
 
-function getTypeBadge(type: string) {
+function getTypeBadge(type: string, t: any) {
     switch (type) {
         case 'LEAGUE':
             return {
-                label: 'League',
+                label: t('competitionsOverview.typeLeague', {}, 'League'),
                 className: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60',
                 icon: Trophy,
             };
         case 'CUP':
             return {
-                label: 'Cup',
+                label: t('competitionsOverview.typeCup', {}, 'Cup'),
                 className: 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/60',
                 icon: Medal,
             };
         case 'SEASON_TOURNAMENT':
             return {
-                label: 'Season Tournament',
+                label: t('competitionsOverview.typeSeasonTournament', {}, 'Season Tournament'),
                 className: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/60',
                 icon: Layers,
             };
         case 'RANKING_TOURNAMENT':
             return {
-                label: 'Ranking Tournament',
+                label: t('competitionsOverview.typeRankingTournament', {}, 'Ranking Tournament'),
                 className: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60',
                 icon: Trophy,
             };
         case 'FRIENDLY':
         case 'INOFFICIAL':
             return {
-                label: type === 'FRIENDLY' ? 'Friendly' : 'Inofficial',
+                label: type === 'FRIENDLY'
+                    ? t('competitionsOverview.typeFriendly', {}, 'Friendly')
+                    : t('competitionsOverview.typeInofficial', {}, 'Inofficial'),
                 className: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700',
                 icon: Swords,
             };
         case 'TOURNAMENT':
         default:
             return {
-                label: 'Tournament',
+                label: t('competitionsOverview.typeTournament', {}, 'Tournament'),
                 className: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/60',
                 icon: Swords,
             };
     }
 }
 
-function getStatusBadge(status: string) {
+function getStatusBadge(status: string, t: any) {
     switch (status) {
         case 'REGISTRATION_OPEN':
             return {
-                label: 'Registration Open',
+                label: t('competitionsOverview.statusRegistrationOpen', {}, 'Registration Open'),
                 className: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40',
             };
         case 'IN_PROGRESS':
             return {
-                label: 'In Progress',
+                label: t('competitionsOverview.statusInProgress', {}, 'In Progress'),
                 className: 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/40',
             };
         case 'COMPLETED':
             return {
-                label: 'Completed',
+                label: t('competitionsOverview.statusCompleted', {}, 'Completed'),
                 className: 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/40',
             };
         case 'DRAFT':
         default:
             return {
-                label: status || 'Draft',
+                label: status === 'DRAFT' ? t('competitionsOverview.statusDraft', {}, 'Draft') : (status || t('competitionsOverview.statusDraft', {}, 'Draft')),
                 className: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
             };
     }
@@ -244,12 +246,12 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                 id: 'competition',
                 accessorFn: (c) => `${c.name || ''} ${c.slug || ''} ${c.seriesSlug || ''} ${c.location || ''} ${c.season?.name || ''} ${c.association?.name || ''} ${c.association?.code || ''}`,
                 header: ({ column }) => (
-                    <DataTableColumnHeader column={column} title="Competition" />
+                    <DataTableColumnHeader column={column} title={t('competitionsOverview.colCompetition', {}, 'Competition')} />
                 ),
                 cell: ({ row }) => {
                     const c = row.original;
                     const compHref = `/competition/${c.seriesSlug || c.slug || c.id}`;
-                    const badge = getTypeBadge(c.type);
+                    const badge = getTypeBadge(c.type, t);
                     const IconComponent = badge.icon;
 
                     return (
@@ -278,7 +280,7 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                                             {c.slug}
                                         </span>
                                     ) : (
-                                        <span>{c.description || 'Official Federation Competition'}</span>
+                                        <span>{c.description || t('competitionsOverview.officialFederationComp', {}, 'Official Federation Competition')}</span>
                                     )}
                                 </div>
                             </div>
@@ -289,10 +291,10 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
             {
                 id: 'type',
                 accessorKey: 'type',
-                header: ({ column }) => <DataTableColumnHeader column={column} title="Type" />,
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('competitionsOverview.colType', {}, 'Type')} />,
                 cell: ({ row }) => {
                     const type = row.original.type;
-                    const badge = getTypeBadge(type);
+                    const badge = getTypeBadge(type, t);
                     return (
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border uppercase tracking-wider ${badge.className}`}>
                             {badge.label}
@@ -303,7 +305,7 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
             {
                 id: 'season',
                 accessorFn: (c) => c.season?.name || '',
-                header: ({ column }) => <DataTableColumnHeader column={column} title="Season" />,
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('competitionsOverview.colSeason', {}, 'Season')} />,
                 cell: ({ row }) => {
                     const season = row.original.season;
                     if (!season?.name) {
@@ -323,12 +325,12 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                 id: 'association',
                 accessorFn: (c) => c.association?.name || '',
                 header: ({ column }) => (
-                    <DataTableColumnHeader column={column} title="Federation / Association" />
+                    <DataTableColumnHeader column={column} title={t('competitionsOverview.colFederation', {}, 'Federation / Association')} />
                 ),
                 cell: ({ row }) => {
                     const assoc = row.original.association;
                     if (!assoc) {
-                        return <span className="text-xs text-slate-400 italic">Independent</span>;
+                        return <span className="text-xs text-slate-400 italic">—</span>;
                     }
                     return (
                         <div className="flex items-center gap-1.5">
@@ -343,7 +345,7 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
             {
                 id: 'dates',
                 accessorFn: (c) => c.startDate || '',
-                header: ({ column }) => <DataTableColumnHeader column={column} title="Dates" />,
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('competitionsOverview.colDates', {}, 'Dates')} />,
                 cell: ({ row }) => {
                     const c = row.original;
                     if (!c.startDate) {
@@ -363,7 +365,7 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
             {
                 id: 'location',
                 accessorKey: 'location',
-                header: ({ column }) => <DataTableColumnHeader column={column} title="Location" />,
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('competitionsOverview.colLocation', {}, 'Location')} />,
                 cell: ({ row }) => {
                     const loc = row.original.location;
                     if (!loc) {
@@ -380,7 +382,7 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
             {
                 id: 'teams',
                 accessorFn: (c) => c._count?.teams || 0,
-                header: ({ column }) => <DataTableColumnHeader column={column} title="Teams" />,
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('competitionsOverview.colTeams', {}, 'Teams')} />,
                 cell: ({ row }) => (
                     <div className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/40 font-mono">
                         <Users className="h-3.5 w-3.5 text-amber-500" />
@@ -391,10 +393,10 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
             {
                 id: 'status',
                 accessorKey: 'status',
-                header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('competitionsOverview.colStatus', {}, 'Status')} />,
                 cell: ({ row }) => {
                     const status = row.original.status;
-                    const badge = getStatusBadge(status);
+                    const badge = getStatusBadge(status, t);
                     return (
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${badge.className}`}>
                             {badge.label}
@@ -414,7 +416,7 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                                 href={compHref}
                                 className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition group"
                             >
-                                <span>Enter</span>
+                                <span>{t('competitionsOverview.enter', {}, 'Enter')}</span>
                                 <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
                             </Link>
                         </div>
@@ -422,7 +424,7 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                 },
             },
         ],
-        [],
+        [t],
     );
 
     return (
@@ -435,26 +437,26 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                             {scopedAssociationId ? (
                                 <>
                                     <Lock className="h-3.5 w-3.5 text-amber-500" />
-                                    <span>Sub-Association Competitions</span>
+                                    <span>{t('competitionsOverview.heroSubAssoc', {}, 'Sub-Association Competitions')}</span>
                                 </>
                             ) : (
                                 <>
                                     <Trophy className="h-3.5 w-3.5 text-amber-500" />
-                                    <span>Federation Competition Engine</span>
+                                    <span>{t('competitionsOverview.heroFederation', {}, 'Federation Competition Engine')}</span>
                                 </>
                             )}
                         </div>
                         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                             {scopedAssoc
-                                ? `${scopedAssoc.name} • ${defaultType === 'TOURNAMENT' ? 'Tournaments' : 'Competitions'}`
+                                ? `${scopedAssoc.name} • ${defaultType === 'TOURNAMENT' ? t('competitionsOverview.tournamentsOverview', {}, 'Tournaments') : t('competitionsOverview.competitionsOverview', {}, 'Competitions')}`
                                 : defaultType === 'TOURNAMENT'
-                                ? 'Tournaments Overview'
+                                ? t('competitionsOverview.tournamentsOverview', {}, 'Tournaments Overview')
                                 : t('nav.competitions')}
                         </h1>
                         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
                             {scopedAssoc
-                                ? `Leagues, cups, and seasonal events organized by ${scopedAssoc.name} [${scopedAssoc.code}].`
-                                : 'Multi-tier leagues, single elimination tournaments, cups, and round-robin championships.'}
+                                ? t('competitionsOverview.subAssocDesc', { name: scopedAssoc.name, code: scopedAssoc.code }, `Leagues, cups, and seasonal events organized by ${scopedAssoc.name} [${scopedAssoc.code}].`)
+                                : t('competitionsOverview.federationDesc', {}, 'Multi-tier leagues, single elimination tournaments, cups, and round-robin championships.')}
                         </p>
                     </div>
 
@@ -464,7 +466,7 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                                 href={defaultType === 'TOURNAMENT' ? '/competitions' : '/competitions'}
                                 className="inline-flex items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 transition"
                             >
-                                <span>All Competitions</span>
+                                <span>{t('competitionsOverview.allCompetitions', {}, 'All Competitions')}</span>
                                 <ExternalLink className="h-3.5 w-3.5" />
                             </Link>
                         )}
@@ -478,7 +480,7 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                                 className="inline-flex items-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition"
                             >
                                 <Plus className="h-4 w-4" />
-                                <span>New Competition</span>
+                                <span>{t('competitionsOverview.newCompetition', {}, 'New Competition')}</span>
                             </button>
                         )}
                     </div>
@@ -490,11 +492,11 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                 columns={columns}
                 data={competitions}
                 loading={loading}
-                searchPlaceholder="Search competitions, venues, federations..."
+                searchPlaceholder={t('competitionsOverview.searchPlaceholder', {}, 'Search competitions, venues, federations...')}
                 emptyMessage={
                     scopedAssociationId
-                        ? 'No competitions organized under this sub-association match your filters.'
-                        : 'No competitions found matching your search criteria.'
+                        ? t('competitionsOverview.noCompetitionsScoped', {}, 'No competitions organized under this sub-association match your filters.')
+                        : t('competitionsOverview.noCompetitionsGeneral', {}, 'No competitions found matching your search criteria.')
                 }
                 defaultPageSize={25}
                 pageSizeOptions={[10, 25, 50, 100]}
@@ -508,12 +510,12 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                             className="rounded-xl border border-amber-500/40 bg-amber-50/60 dark:bg-amber-950/40 px-3 py-2 text-xs font-bold text-amber-950 dark:text-amber-200 focus:border-amber-500 focus:outline-none cursor-pointer shadow-xs"
                         >
                             <option value="CURRENT">
-                                Current Season ({currentSeasonName})
+                                {t('competitionsOverview.currentSeason', { name: currentSeasonName }, `Current Season (${currentSeasonName})`)}
                             </option>
-                            <option value="ALL">All Seasons</option>
+                            <option value="ALL">{t('competitionsOverview.allSeasons', {}, 'All Seasons')}</option>
                             {seasons.map((s: any) => (
                                 <option key={s.id || s.name} value={s.name}>
-                                    Season {s.name}{s.isCurrent ? ' • Active' : ''}
+                                    {t('competitionsOverview.seasonOption', { name: s.name }, `Season ${s.name}`)}{s.isCurrent ? ` • ${t('competitionsOverview.seasonActive', {}, 'Active')}` : ''}
                                 </option>
                             ))}
                         </select>
@@ -524,13 +526,13 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                             onChange={(e) => setTypeFilter(e.target.value)}
                             className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none shadow-xs"
                         >
-                            <option value="">All Types</option>
-                            <option value="LEAGUE">Leagues</option>
-                            <option value="CUP">Cups</option>
-                            <option value="TOURNAMENT">Tournaments</option>
-                            <option value="SEASON_TOURNAMENT">Season Tournaments</option>
-                            <option value="RANKING_TOURNAMENT">Ranking Tournaments</option>
-                            <option value="FRIENDLY">Friendlies</option>
+                            <option value="">{t('competitionsOverview.allTypes', {}, 'All Types')}</option>
+                            <option value="LEAGUE">{t('competitionsOverview.typeLeague', {}, 'Leagues')}</option>
+                            <option value="CUP">{t('competitionsOverview.typeCup', {}, 'Cups')}</option>
+                            <option value="TOURNAMENT">{t('competitionsOverview.typeTournament', {}, 'Tournaments')}</option>
+                            <option value="SEASON_TOURNAMENT">{t('competitionsOverview.typeSeasonTournament', {}, 'Season Tournaments')}</option>
+                            <option value="RANKING_TOURNAMENT">{t('competitionsOverview.typeRankingTournament', {}, 'Ranking Tournaments')}</option>
+                            <option value="FRIENDLY">{t('competitionsOverview.typeFriendly', {}, 'Friendlies')}</option>
                         </select>
 
                         {/* Status Filter */}
@@ -539,11 +541,11 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                             onChange={(e) => setStatusFilter(e.target.value)}
                             className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none shadow-xs"
                         >
-                            <option value="">All Statuses</option>
-                            <option value="DRAFT">Draft</option>
-                            <option value="REGISTRATION_OPEN">Registration Open</option>
-                            <option value="IN_PROGRESS">Active / In Progress</option>
-                            <option value="COMPLETED">Completed</option>
+                            <option value="">{t('competitionsOverview.allStatuses', {}, 'All Statuses')}</option>
+                            <option value="DRAFT">{t('competitionsOverview.statusDraft', {}, 'Draft')}</option>
+                            <option value="REGISTRATION_OPEN">{t('competitionsOverview.statusRegistrationOpen', {}, 'Registration Open')}</option>
+                            <option value="IN_PROGRESS">{t('competitionsOverview.statusInProgress', {}, 'Active / In Progress')}</option>
+                            <option value="COMPLETED">{t('competitionsOverview.statusCompleted', {}, 'Completed')}</option>
                         </select>
 
                         {/* Association Filter */}
@@ -551,7 +553,7 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                             <div className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-900/40 px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
                                 <Lock className="h-3.5 w-3.5 text-amber-500" />
                                 <span className="truncate max-w-[180px]">
-                                    {scopedAssoc ? scopedAssoc.name : 'Current Sub-Association'}
+                                    {scopedAssoc ? scopedAssoc.name : t('competitionsOverview.currentSubAssoc', {}, 'Current Sub-Association')}
                                 </span>
                             </div>
                         ) : (
@@ -560,7 +562,7 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                                 onChange={(e) => setAssocFilter(e.target.value)}
                                 className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none shadow-xs shrink-0"
                             >
-                                <option value="">All Associations</option>
+                                <option value="">{t('competitionsOverview.allAssociations', {}, 'All Associations')}</option>
                                 {associations.map((a: any) => (
                                     <option key={a.id} value={a.id}>
                                         {a.name} [{a.code}]
@@ -579,8 +581,8 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
             <Modal
                 isOpen={showCreateModal}
                 onClose={() => setShowCreateModal(false)}
-                title="Create New Competition"
-                subtitle="Configure tournament details, format, schedule, and hosting federation"
+                title={t('competitionsOverview.createModalTitle', {}, 'Create New Competition')}
+                subtitle={t('competitionsOverview.createModalSubtitle', {}, 'Configure tournament details, format, schedule, and hosting federation')}
                 icon={<Trophy className="h-5 w-5 text-amber-500" />}
                 size="lg"
             >
@@ -593,12 +595,12 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                 <form onSubmit={handleCreate} className="space-y-4 text-xs">
                     <div>
                         <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                            Competition Title *
+                            {t('competitionsOverview.formTitle', {}, 'Competition Title *')}
                         </label>
                         <input
                             type="text"
                             required
-                            placeholder="e.g. Zurich Regional Cup 2026"
+                            placeholder={t('competitionsOverview.formTitlePlaceholder', {}, 'e.g. Zurich Regional Cup 2026')}
                             value={formName}
                             onChange={(e) => setFormName(e.target.value)}
                             className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
@@ -608,11 +610,11 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                Custom URL Slug (Optional)
+                                {t('competitionsOverview.formSlug', {}, 'Custom URL Slug (Optional)')}
                             </label>
                             <input
                                 type="text"
-                                placeholder="e.g. zurich-cup-2026"
+                                placeholder={t('competitionsOverview.formSlugPlaceholder', {}, 'e.g. zurich-cup-2026')}
                                 value={formSlug}
                                 onChange={(e) => setFormSlug(e.target.value)}
                                 className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
@@ -620,11 +622,11 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                         </div>
                         <div>
                             <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                Recurring Series Key (Optional)
+                                {t('competitionsOverview.formSeries', {}, 'Recurring Series Key (Optional)')}
                             </label>
                             <input
                                 type="text"
-                                placeholder="e.g. zurich-cup"
+                                placeholder={t('competitionsOverview.formSeriesPlaceholder', {}, 'e.g. zurich-cup')}
                                 value={formSeriesSlug}
                                 onChange={(e) => setFormSeriesSlug(e.target.value)}
                                 className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
@@ -635,30 +637,30 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                Format Type *
+                                {t('competitionsOverview.formType', {}, 'Format Type *')}
                             </label>
                             <select
                                 value={formType}
                                 onChange={(e) => setFormType(e.target.value)}
                                 className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none font-medium"
                             >
-                                <option value="LEAGUE">League Championship</option>
-                                <option value="TOURNAMENT">Single/Double Tournament</option>
-                                <option value="SEASON_TOURNAMENT">Full-Season Tournament</option>
-                                <option value="CUP">Cup Competition</option>
-                                <option value="INOFFICIAL">Inofficial / Friendly (No ELO)</option>
+                                <option value="LEAGUE">{t('competitionsOverview.typeLeague', {}, 'League Championship')}</option>
+                                <option value="TOURNAMENT">{t('competitionsOverview.typeTournament', {}, 'Single/Double Tournament')}</option>
+                                <option value="SEASON_TOURNAMENT">{t('competitionsOverview.typeSeasonTournament', {}, 'Full-Season Tournament')}</option>
+                                <option value="CUP">{t('competitionsOverview.typeCup', {}, 'Cup Competition')}</option>
+                                <option value="INOFFICIAL">{t('competitionsOverview.typeInofficial', {}, 'Inofficial / Friendly (No ELO)')}</option>
                             </select>
                         </div>
 
                         <div>
                             <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                Hosting Association *
+                                {t('competitionsOverview.formHostingAssoc', {}, 'Hosting Association *')}
                             </label>
                             {scopedAssociationId ? (
                                 <input
                                     type="text"
                                     disabled
-                                    value={scopedAssoc ? scopedAssoc.name : 'Current Sub-Association'}
+                                    value={scopedAssoc ? scopedAssoc.name : t('competitionsOverview.currentSubAssoc', {}, 'Current Sub-Association')}
                                     className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-500"
                                 />
                             ) : (
@@ -680,7 +682,7 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                Start Date *
+                                {t('competitionsOverview.formStartDate', {}, 'Start Date *')}
                             </label>
                             <input
                                 type="date"
@@ -692,7 +694,7 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                         </div>
                         <div>
                             <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                End Date
+                                {t('competitionsOverview.formEndDate', {}, 'End Date')}
                             </label>
                             <input
                                 type="date"
@@ -705,11 +707,11 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
 
                     <div>
                         <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                            Primary Venue / City
+                            {t('competitionsOverview.formVenue', {}, 'Primary Venue / City')}
                         </label>
                         <input
                             type="text"
-                            placeholder="e.g. Saalsporthalle, Zurich"
+                            placeholder={t('competitionsOverview.formVenuePlaceholder', {}, 'e.g. Saalsporthalle, Zurich')}
                             value={formLocation}
                             onChange={(e) => setFormLocation(e.target.value)}
                             className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
@@ -719,7 +721,7 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                Entry Fee (CHF)
+                                {t('competitionsOverview.formEntryFee', {}, 'Entry Fee (CHF)')}
                             </label>
                             <input
                                 type="number"
@@ -737,7 +739,7 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                                     onChange={(e) => setFormCountsForElo(e.target.checked)}
                                     className="rounded text-amber-500"
                                 />
-                                Count towards ELO Ratings
+                                {t('competitionsOverview.formCountElo', {}, 'Count towards ELO Ratings')}
                             </label>
                         </div>
                     </div>
@@ -748,14 +750,14 @@ function CompetitionsOverviewViewContent({ scopedAssociationId, defaultType }: C
                             onClick={() => setShowCreateModal(false)}
                             className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
                         >
-                            Cancel
+                            {t('common.cancel', {}, 'Cancel')}
                         </button>
                         <button
                             type="submit"
                             disabled={creating}
                             className="rounded-xl bg-amber-600 hover:bg-amber-700 px-5 py-2 text-xs font-bold text-white shadow-xs transition disabled:opacity-50"
                         >
-                            {creating ? 'Creating...' : 'Create Competition'}
+                            {creating ? t('competitionsOverview.creating', {}, 'Creating...') : t('competitionsOverview.createBtn', {}, 'Create Competition')}
                         </button>
                     </div>
                 </form>

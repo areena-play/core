@@ -57,7 +57,7 @@ function ResetPasswordForm() {
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-red-600 mx-auto">
                     <AlertCircle className="h-6 w-6" />
                 </div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Invalid Reset Link</h2>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('authExtras.invalidResetLink')}</h2>
                 <p className="text-xs text-slate-500">
                     This password reset link is invalid or missing. Please request a new password reset from the login page.
                 </p>

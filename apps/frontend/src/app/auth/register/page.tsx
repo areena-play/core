@@ -117,7 +117,7 @@ function RegisterForm() {
                                 href="/auth/login"
                                 className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 py-2.5 font-semibold text-white hover:bg-red-700 shadow transition"
                             >
-                                <span>Go to Sign In</span>
+                                <span>{t('auth.backToSignIn')}</span>
                             </Link>
                         </div>
                     </div>

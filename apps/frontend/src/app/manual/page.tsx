@@ -328,7 +328,7 @@ export default function UserManualPage() {
                     <div className="space-y-2 max-w-2xl">
                         <div className="inline-flex items-center gap-2 rounded-full bg-red-500/10 border border-red-500/20 px-3 py-1 text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400">
                             <BookOpen className="h-3.5 w-3.5" />
-                            <span>AREENA Comprehensive User Manual</span>
+                            <span>{t('uiExtras.comprehensiveUserManual')}</span>
                         </div>
                         <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                             Platform User Guide & Role Manual
@@ -424,7 +424,7 @@ export default function UserManualPage() {
                         <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                         <input
                             type="text"
-                            placeholder="Search instructions..."
+                            placeholder={t('uiExtras.searchInstructions')}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-950 py-2 pl-9 pr-3 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-red-500 focus:outline-none"
@@ -481,7 +481,7 @@ export default function UserManualPage() {
                                 <div className="mt-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 p-4 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
                                     <Sparkles className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
                                     <div>
-                                        <strong className="font-semibold">Pro Tip: </strong>
+                                        <strong className="font-semibold">{t('uiExtras.proTip')} </strong>
                                         <span>{sec.tips}</span>
                                     </div>
                                 </div>
@@ -507,7 +507,7 @@ export default function UserManualPage() {
                             href="/support"
                             className="rounded-xl bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 text-xs font-bold shadow transition flex items-center gap-1.5"
                         >
-                            <span>Support & Help Desk</span>
+                            <span>{t('uiExtras.supportHelpDesk')}</span>
                             <ArrowRight className="h-3.5 w-3.5" />
                         </Link>
                     </div>

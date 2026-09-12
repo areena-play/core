@@ -23,10 +23,10 @@ export default function NotFoundPage() {
 
             <div className="space-y-2">
                 <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                    Page Not Found
+                    {t('uiExtras.pageNotFound')}
                 </h1>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
-                    The requested page does not exist, has been removed, or is currently undergoing maintenance.
+                    {t('uiExtras.pageNotFoundDesc')}
                 </p>
             </div>
 
@@ -37,14 +37,14 @@ export default function NotFoundPage() {
                     className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-xs transition"
                 >
                     <ArrowLeft className="h-4 w-4" />
-                    <span>Go Back</span>
+                    <span>{t('uiExtras.goBack')}</span>
                 </button>
                 <Link
                     href="/"
                     className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 text-xs font-bold shadow-sm transition"
                 >
                     <Home className="h-4 w-4" />
-                    <span>Return to Home</span>
+                    <span>{t('uiExtras.returnToHome')}</span>
                 </Link>
             </div>
         </div>

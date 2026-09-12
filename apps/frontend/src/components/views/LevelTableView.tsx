@@ -46,7 +46,7 @@ export function LevelTableView({ scopedAssociationId }: LevelTableViewProps) {
         () => [
             {
                 accessorKey: 'category',
-                header: ({ column }) => <DataTableColumnHeader column={column} title="Category / Tier" />,
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('uiExtras.categoryTier')} />,
                 cell: ({ row }) => (
                     <span className="font-bold text-slate-900 dark:text-white">
                         {row.original.category}
@@ -55,7 +55,7 @@ export function LevelTableView({ scopedAssociationId }: LevelTableViewProps) {
             },
             {
                 accessorKey: 'level',
-                header: ({ column }) => <DataTableColumnHeader column={column} title="Rank Level" />,
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('uiExtras.rankLevel')} />,
                 cell: ({ row }) => {
                     const isTop = row.original.category?.startsWith('A');
                     const isB = row.original.category?.startsWith('B');
@@ -78,7 +78,7 @@ export function LevelTableView({ scopedAssociationId }: LevelTableViewProps) {
             {
                 id: 'minElo',
                 accessorKey: 'minElo',
-                header: ({ column }) => <DataTableColumnHeader column={column} title="Elo Range" />,
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('uiExtras.eloRange')} />,
                 cell: ({ row }) => (
                     <span className="font-mono text-slate-700 dark:text-slate-300 font-semibold">
                         {row.original.minElo} – {row.original.maxElo === 3000 ? '∞' : row.original.maxElo} pts
@@ -87,7 +87,7 @@ export function LevelTableView({ scopedAssociationId }: LevelTableViewProps) {
             },
             {
                 accessorKey: 'description',
-                header: ({ column }) => <DataTableColumnHeader column={column} title="Description & Skill Profile" />,
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('uiExtras.descriptionSkillProfile')} />,
                 cell: ({ row }) => (
                     <span className="text-slate-600 dark:text-slate-400">
                         {row.original.description || '—'}
@@ -96,7 +96,7 @@ export function LevelTableView({ scopedAssociationId }: LevelTableViewProps) {
             },
             {
                 accessorKey: 'leagueEligibility',
-                header: ({ column }) => <DataTableColumnHeader column={column} title="League Eligibility" />,
+                header: ({ column }) => <DataTableColumnHeader column={column} title={t('uiExtras.leagueEligibility')} />,
                 cell: ({ row }) => (
                     <span className="inline-flex items-center gap-1.5 text-slate-800 dark:text-slate-200 font-medium">
                         <Trophy className="h-3.5 w-3.5 text-amber-500 shrink-0" />
@@ -105,7 +105,7 @@ export function LevelTableView({ scopedAssociationId }: LevelTableViewProps) {
                 ),
             },
         ],
-        []
+        [t]
     );
 
     return (
@@ -115,7 +115,7 @@ export function LevelTableView({ scopedAssociationId }: LevelTableViewProps) {
                 <div>
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                         <TableIcon className="h-6 w-6 text-red-500" />
-                        <span>Official Level & Elo Matrix</span>
+                        <span>{t('nav.levelTable')}</span>
                     </h1>
                     <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                         {mainAssoc?.name || 'Swiss Table Tennis'} unified ranking categories, rating thresholds, and competition eligibility.
@@ -128,7 +128,7 @@ export function LevelTableView({ scopedAssociationId }: LevelTableViewProps) {
                         className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-700 transition shadow"
                     >
                         <Calculator className="h-4 w-4" />
-                        <span>Elo Calculator</span>
+                        <span>{t('nav.eloCalculator')}</span>
                     </Link>
                 </div>
             </div>

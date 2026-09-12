@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 
 import { parseSearchTokens, matchesSearchQuery } from '@areena/shared';
+import { useI18n } from '@/lib/i18nContext';
 
 /**
  * Standard global search filter that inspects primitive values and custom text representations.
@@ -145,6 +146,8 @@ export function DataTable<TData, TValue = any>({
     pageSize: controlledPageSize,
     onPaginationChange,
 }: DataTableProps<TData, TValue>) {
+    const { t } = useI18n();
+
     const [sorting, setSorting] = useState<SortingState>(initialSorting);
     const [globalFilter, setGlobalFilter] = useState<string>('');
     const [uncontrolledPagination, setUncontrolledPagination] = useState<PaginationState>({
@@ -210,6 +213,9 @@ export function DataTable<TData, TValue = any>({
     const startRow = totalFiltered === 0 ? 0 : activePageIndex * activePageSize + 1;
     const endRow = Math.min((activePageIndex + 1) * activePageSize, totalFiltered);
 
+    const resolvedSearchPlaceholder = searchPlaceholder || t('dataTable.searchPlaceholder', {}, 'Search...');
+    const resolvedEmptyMessage = emptyMessage || t('dataTable.noResults', {}, 'No records found.');
+
     return (
         <div className={`space-y-3.5 ${className}`}>
             {/* Top Toolbar: Search & Action Slots */}
@@ -222,8 +228,8 @@ export function DataTable<TData, TValue = any>({
                                 type="text"
                                 value={globalFilter ?? ''}
                                 onChange={(e) => setGlobalFilter(e.target.value)}
-                                placeholder={searchPlaceholder}
-                                className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 pl-9 pr-8 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-red-500 focus:outline-none transition shadow-sm"
+                                placeholder={resolvedSearchPlaceholder}
+                                className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 pl-9 pr-8 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none transition shadow-sm"
                             />
                             {globalFilter && (
                                 <button
@@ -244,8 +250,8 @@ export function DataTable<TData, TValue = any>({
             <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 shadow-sm overflow-hidden backdrop-blur-sm relative">
                 {/* Subtle top progress bar when loading with existing data */}
                 {loading && rows.length > 0 && (
-                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-red-500/20 overflow-hidden z-20">
-                        <div className="h-full bg-red-600 animate-pulse w-full" />
+                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-amber-500/20 overflow-hidden z-20">
+                        <div className="h-full bg-amber-600 animate-pulse w-full" />
                     </div>
                 )}
 
@@ -304,9 +310,9 @@ export function DataTable<TData, TValue = any>({
                                         colSpan={columns.length}
                                         className="px-4 py-12 text-center text-slate-400 dark:text-slate-500"
                                     >
-                                        <div className="flex flex-col items-center justify-center gap-2">
-                                            <Search className="w-8 h-8 opacity-30 stroke-1" />
-                                            <p>{emptyMessage}</p>
+                                        <div className="flex flex-col items-center justify-center gap-1.5">
+                                            <Search className="w-5 h-5 text-slate-300 dark:text-slate-600 mb-1" />
+                                            <p className="font-medium text-xs text-slate-600 dark:text-slate-400">{resolvedEmptyMessage}</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -320,12 +326,10 @@ export function DataTable<TData, TValue = any>({
                     {/* Item Count Information */}
                     <div className="flex items-center gap-4 flex-wrap">
                         <span>
-                            Showing <strong className="text-slate-900 dark:text-white">{startRow}</strong> to{' '}
-                            <strong className="text-slate-900 dark:text-white">{endRow}</strong> of{' '}
-                            <strong className="text-slate-900 dark:text-white">{totalFiltered}</strong> entries
+                            {t('dataTable.showing', { start: startRow, end: endRow, total: totalFiltered }, `Showing ${startRow} to ${endRow} of ${totalFiltered}`)}
                             {isFiltered && totalRaw > totalFiltered && (
                                 <span className="text-slate-400 ml-1">
-                                    (filtered from <strong className="text-slate-600 dark:text-slate-300 font-semibold">{totalRaw}</strong> total)
+                                    ({totalRaw} total)
                                 </span>
                             )}
                         </span>
@@ -333,13 +337,13 @@ export function DataTable<TData, TValue = any>({
                         {/* Page Size Selector */}
                         {pageSizeOptions.length > 1 && (
                             <div className="flex items-center gap-1.5">
-                                <span>Rows:</span>
+                                <span>{t('dataTable.rows', {}, 'Rows:')}</span>
                                 <select
                                     value={currentSize}
                                     onChange={(e) => {
                                         table.setPageSize(Number(e.target.value));
                                     }}
-                                    className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 py-1 text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
+                                    className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2 py-1 text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
                                 >
                                     {pageSizeOptions.map((size) => (
                                         <option key={size} value={size}>
@@ -358,7 +362,7 @@ export function DataTable<TData, TValue = any>({
                             onClick={() => table.setPageIndex(0)}
                             disabled={!table.getCanPreviousPage()}
                             className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                            title="First Page"
+                            title={t('dataTable.firstPage', {}, 'First Page')}
                         >
                             <ChevronsLeft className="w-3.5 h-3.5" />
                         </button>
@@ -367,14 +371,13 @@ export function DataTable<TData, TValue = any>({
                             onClick={() => table.previousPage()}
                             disabled={!table.getCanPreviousPage()}
                             className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                            title="Previous Page"
+                            title={t('dataTable.previousPage', {}, 'Previous Page')}
                         >
                             <ChevronLeft className="w-3.5 h-3.5" />
                         </button>
 
                         <span className="px-2 font-medium text-slate-700 dark:text-slate-300">
-                            Page <strong className="text-slate-900 dark:text-white">{pageCount === 0 ? 0 : currentPage}</strong> of{' '}
-                            <strong className="text-slate-900 dark:text-white">{pageCount}</strong>
+                            {t('dataTable.pageOf', { current: pageCount === 0 ? 0 : currentPage, total: pageCount }, `Page ${pageCount === 0 ? 0 : currentPage} of ${pageCount}`)}
                         </span>
 
                         <button
@@ -382,7 +385,7 @@ export function DataTable<TData, TValue = any>({
                             onClick={() => table.nextPage()}
                             disabled={!table.getCanNextPage()}
                             className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                            title="Next Page"
+                            title={t('dataTable.nextPage', {}, 'Next Page')}
                         >
                             <ChevronRight className="w-3.5 h-3.5" />
                         </button>
@@ -391,7 +394,7 @@ export function DataTable<TData, TValue = any>({
                             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
                             disabled={!table.getCanNextPage()}
                             className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                            title="Last Page"
+                            title={t('dataTable.lastPage', {}, 'Last Page')}
                         >
                             <ChevronsRight className="w-3.5 h-3.5" />
                         </button>

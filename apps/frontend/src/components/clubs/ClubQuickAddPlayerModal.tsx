@@ -13,6 +13,7 @@ import {
     Calendar,
     Phone,
 } from 'lucide-react';
+import { useI18n } from '@/lib/i18nContext';
 
 interface ClubQuickAddPlayerModalProps {
     isOpen: boolean;
@@ -29,6 +30,7 @@ export function ClubQuickAddPlayerModal({
     clubName = 'Club',
     onPlayerAdded,
 }: ClubQuickAddPlayerModalProps) {
+    const { t } = useI18n();
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [birthDate, setBirthDate] = useState('');
@@ -128,27 +130,27 @@ export function ClubQuickAddPlayerModal({
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                                First Name *
+                                {t('auth.firstName')} *
                             </label>
                             <input
                                 type="text"
                                 required
                                 value={firstName}
                                 onChange={(e) => setFirstName(e.target.value)}
-                                placeholder="e.g. Leo"
+                                placeholder="Leo"
                                 className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                             />
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                                Last Name *
+                                {t('auth.lastName')} *
                             </label>
                             <input
                                 type="text"
                                 required
                                 value={lastName}
                                 onChange={(e) => setLastName(e.target.value)}
-                                placeholder="e.g. Sonderegger"
+                                placeholder="Sonderegger"
                                 className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                             />
                         </div>
@@ -157,7 +159,7 @@ export function ClubQuickAddPlayerModal({
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                                Birth Date
+                                {t('auth.birthDate')}
                             </label>
                             <input
                                 type="date"
@@ -168,23 +170,23 @@ export function ClubQuickAddPlayerModal({
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                                Gender
+                                {t('auth.gender')}
                             </label>
                             <select
                                 value={gender}
                                 onChange={(e: any) => setGender(e.target.value)}
                                 className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                             >
-                                <option value="MALE">Male</option>
-                                <option value="FEMALE">Female</option>
-                                <option value="OTHER">Other</option>
+                                <option value="MALE">{t('uiExtras.male')}</option>
+                                <option value="FEMALE">{t('uiExtras.female')}</option>
+                                <option value="OTHER">{t('uiExtras.other')}</option>
                             </select>
                         </div>
                     </div>
 
                     <div>
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                            Guardian / Emergency Phone
+                            {t('auth.phone')}
                         </label>
                         <input
                             type="tel"
@@ -201,7 +203,7 @@ export function ClubQuickAddPlayerModal({
                             onClick={() => onClose()}
                             className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                         >
-                            Cancel
+                            {t('common.cancel')}
                         </button>
                         <button
                             type="submit"
@@ -209,7 +211,7 @@ export function ClubQuickAddPlayerModal({
                             className="px-5 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/30 flex items-center space-x-1.5"
                         >
                             {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                            <span>Enroll Player</span>
+                            <span>{t('common.save')}</span>
                         </button>
                     </div>
                 </form>

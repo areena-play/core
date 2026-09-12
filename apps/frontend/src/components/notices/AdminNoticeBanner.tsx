@@ -17,7 +17,7 @@ import { AdminNoticeDto, NoticeType } from '@areena/shared';
 import { getLocalizedValue } from '@/lib/i18nHelper';
 
 export function AdminNoticeBanner() {
-    const { locale } = useI18n();
+    const { locale, t } = useI18n();
     const { bannerNotices, closeForSession, dismissPermanently } = useAdminNotices();
     const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
     const [dismissingId, setDismissingId] = useState<string | null>(null);
@@ -103,10 +103,10 @@ export function AdminNoticeBanner() {
                                         disabled={dismissingId === notice.id}
                                         onClick={() => handleDismiss(notice.id)}
                                         className="hidden md:flex items-center gap-1 px-2 py-1 rounded hover:bg-white/10 text-slate-300 hover:text-white transition text-[11px] disabled:opacity-50"
-                                        title="Don't show this announcement again"
+                                        title={t('uiExtras.dontShowAgain')}
                                     >
                                         <EyeOff className="w-3 h-3" />
-                                        <span>Don't show again</span>
+                                        <span>{t('uiExtras.dontShowAgain')}</span>
                                     </button>
                                 )}
 
@@ -114,7 +114,7 @@ export function AdminNoticeBanner() {
                                     type="button"
                                     onClick={() => closeForSession(notice.id)}
                                     className="p-1 rounded-md hover:bg-white/10 text-slate-400 hover:text-white transition"
-                                    title="Close for this session"
+                                    title={t('uiExtras.closeForSession')}
                                     aria-label="Close"
                                 >
                                     <X className="w-3.5 h-3.5" />

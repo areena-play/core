@@ -93,10 +93,10 @@ export function UtilitiesOverviewView({ scopedAssociationId }: UtilitiesOverview
                     <div className="space-y-2 max-w-2xl">
                         <div className="inline-flex items-center gap-2 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 px-3 py-1 text-[11px] font-bold uppercase border border-red-500/20">
                             <SlidersHorizontal className="h-3.5 w-3.5" />
-                            <span>Federation Toolset</span>
+                            <span>{t('uiExtras.federationToolset')}</span>
                         </div>
                         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                            Platform Utilities & Calculation Tools
+                            {t('nav.utilitiesSection')}
                         </h1>
                         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                             Official rating simulation engines, ranking classification matrix, developer APIs, documentation, and federation support services.
@@ -109,14 +109,14 @@ export function UtilitiesOverviewView({ scopedAssociationId }: UtilitiesOverview
                             className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 text-xs font-bold shadow-sm transition"
                         >
                             <Calculator className="h-4 w-4" />
-                            <span>Elo Calculator</span>
+                            <span>{t('nav.eloCalculator')}</span>
                         </Link>
                         <Link
                             href={`${prefix}/utilities/level-table`}
                             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                         >
                             <TableIcon className="h-4 w-4" />
-                            <span>Rank Matrix</span>
+                            <span>{t('nav.levelTable')}</span>
                         </Link>
                     </div>
                 </div>
@@ -186,7 +186,7 @@ export function UtilitiesOverviewView({ scopedAssociationId }: UtilitiesOverview
                         href={`${prefix}/utilities/elo-calculator`}
                         className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 dark:text-red-400 hover:underline whitespace-nowrap"
                     >
-                        <span>Simulate Match Delta</span>
+                        <span>{t('uiExtras.simulateMatchDelta')}</span>
                         <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                 </div>
