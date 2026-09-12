@@ -60,13 +60,15 @@ router.post('/check-duplicate', validate(checkDuplicateUserSchema), async (req, 
 // POST /auth/register
 router.post('/register', validate(registerSchema), async (req, res, next) => {
     try {
-        const { email, password, firstName, lastName, phone, street, postalCode, city, country, birthDate, gender } =
+        const { email, password, firstName, lastName, phone, street, postalCode, city, country, birthDate, gender, playingGender } =
             req.body;
 
         const existing = await prisma.user.findUnique({ where: { email } });
         if (existing) {
             return res.status(400).json({ error: 'A user with this email already exists' });
         }
+
+        const effectivePlayingGender = playingGender || (gender === 'FEMALE' ? 'FEMALE' : 'MALE');
 
         const passwordHash = await bcrypt.hash(password, 10);
         const requiresVerification = isEmailVerificationRequired();
@@ -88,6 +90,7 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
                 country: country || 'Switzerland',
                 birthDate: birthDate ? new Date(birthDate) : null,
                 gender: gender || null,
+                playingGender: effectivePlayingGender,
                 emailVerified: !requiresVerification,
                 emailVerificationToken: verificationToken,
                 emailVerificationExpires: verificationExpires,
@@ -117,6 +120,8 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
                 email: user.email,
                 country: user.country,
                 city: user.city,
+                gender: user.gender,
+                playingGender: user.playingGender,
                 emailVerified: user.emailVerified,
             },
         });
@@ -136,6 +141,7 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
                 country: user.country,
                 birthDate: user.birthDate,
                 gender: user.gender,
+                playingGender: user.playingGender,
                 licenseId: user.licenseId,
                 eloPoints: user.eloPoints,
                 rank: user.rank,
@@ -976,6 +982,7 @@ router.get('/profile-overview', authenticateToken, async (req: AuthRequest, res:
                 country: user.country,
                 birthDate: user.birthDate,
                 gender: user.gender,
+                playingGender: user.playingGender,
                 licenseId: user.licenseId,
                 eloPoints: user.eloPoints,
                 rank: user.rank,
@@ -1023,6 +1030,25 @@ router.put(
                 hideEloRanking,
                 hideContactInfo,
             } = req.body;
+
+            const currentUser = await prisma.user.findUnique({ where: { id: req.user!.id } });
+            if (!currentUser) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            // If actual gender is being updated, ensure it does not conflict with locked playingGender
+            if (gender) {
+                if (gender === 'MALE' && currentUser.playingGender === 'FEMALE') {
+                    return res.status(400).json({
+                        error: 'Your actual gender cannot be set to Male while your official playing category is Female. Please contact the national association manager to adjust your playing category.',
+                    });
+                }
+                if (gender === 'FEMALE' && currentUser.playingGender === 'MALE') {
+                    return res.status(400).json({
+                        error: 'Your actual gender cannot be set to Female while your official playing category is Male. Please contact the national association manager to adjust your playing category.',
+                    });
+                }
+            }
 
             const updated = await prisma.user.update({
                 where: { id: req.user!.id },

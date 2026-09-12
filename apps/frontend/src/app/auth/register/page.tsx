@@ -43,6 +43,7 @@ function RegisterForm() {
     const [city, setCity] = useState('');
     const [country, setCountry] = useState('Switzerland');
     const [gender, setGender] = useState('');
+    const [playingGender, setPlayingGender] = useState<'MALE' | 'FEMALE'>('MALE');
 
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
@@ -53,6 +54,15 @@ function RegisterForm() {
     const [showDuplicateModal, setShowDuplicateModal] = useState(false);
 
     const logoSrc = resolvedTheme === 'dark' ? '/areena-logo-dark.png' : '/areena-logo.png';
+
+    const handleGenderChange = (val: string) => {
+        setGender(val);
+        if (val === 'MALE') {
+            setPlayingGender('MALE');
+        } else if (val === 'FEMALE') {
+            setPlayingGender('FEMALE');
+        }
+    };
 
     const doRegister = async () => {
         setLoading(true);
@@ -72,6 +82,7 @@ function RegisterForm() {
                 country,
                 birthDate: birthDate || null,
                 gender: gender || null,
+                playingGender,
             });
 
             if (res.requiresVerification) {
@@ -306,11 +317,11 @@ function RegisterForm() {
                             </div>
                             <div>
                                 <label className="font-semibold text-slate-700 dark:text-slate-300">
-                                    {t('profile.gender')}
+                                    {t('profile.actualGender') || 'Actual Gender'}
                                 </label>
                                 <select
                                     value={gender}
-                                    onChange={(e) => setGender(e.target.value)}
+                                    onChange={(e) => handleGenderChange(e.target.value)}
                                     className="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
                                 >
                                     <option value="">{t('profile.genderAny') || 'Not Specified'}</option>
@@ -319,6 +330,34 @@ function RegisterForm() {
                                     <option value="OTHER">{t('profile.genderOther') || 'Other / Diverse'}</option>
                                 </select>
                             </div>
+                        </div>
+
+                        <div>
+                            <div className="flex items-center justify-between">
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                    {t('profile.playingGender') || 'Playing Category / Gender'} *
+                                </label>
+                                {(gender === 'MALE' || gender === 'FEMALE') && (
+                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                                        {t('profile.autoLockedByGender') || 'Locked to match actual gender'}
+                                    </span>
+                                )}
+                            </div>
+                            <select
+                                required
+                                value={playingGender}
+                                disabled={gender === 'MALE' || gender === 'FEMALE'}
+                                onChange={(e) => setPlayingGender(e.target.value as 'MALE' | 'FEMALE')}
+                                className={`mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none ${
+                                    gender === 'MALE' || gender === 'FEMALE' ? 'opacity-75 bg-slate-100 dark:bg-slate-900/60 cursor-not-allowed' : ''
+                                }`}
+                            >
+                                <option value="MALE">{t('profile.playingGenderMale') || 'Male (Men / Open Category)'}</option>
+                                <option value="FEMALE">{t('profile.playingGenderFemale') || 'Female (Women Category)'}</option>
+                            </select>
+                            <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                                {t('profile.playingGenderDesc') || 'Defines whether you compete with male or female players in official competitions.'}
+                            </p>
                         </div>
 
                         <div>

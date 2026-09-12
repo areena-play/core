@@ -12,6 +12,8 @@ model RatingSnapshotHistory {
   associationId     String?
   elo               Float
   level             String              @default("D1")
+  gender            Gender              @default(MALE)
+  playingGender     Gender              @default(MALE)
   rankOverall       Int?
   rankGender        Int?
   rankAgeCategory   Int?

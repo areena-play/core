@@ -128,6 +128,7 @@ router.get('/admin/list', async (req: AuthRequest, res: Response, next) => {
                     country: true,
                     birthDate: true,
                     gender: true,
+                    playingGender: true,
                     licenseId: true,
                     eloPoints: true,
                     rank: true,
@@ -291,6 +292,7 @@ router.put('/admin/:id', validate(adminUpdateUserSchema), async (req: AuthReques
             country,
             birthDate,
             gender,
+            playingGender,
             isSuperAdmin,
             emailVerified,
             eloPoints,
@@ -300,6 +302,27 @@ router.put('/admin/:id', validate(adminUpdateUserSchema), async (req: AuthReques
         const existingUser = await prisma.user.findUnique({ where: { id } });
         if (!existingUser) {
             return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Check playingGender changes: must be Super Admin or Main Association Manager
+        if (playingGender && playingGender !== existingUser.playingGender) {
+            const isSuper = req.user?.isSuperAdmin;
+            let isMainAssocManager = false;
+            if (!isSuper) {
+                const topLevelRole = await prisma.userAssociationRole.findFirst({
+                    where: {
+                        userId: req.user!.id,
+                        association: { isTopLevel: true },
+                    },
+                });
+                isMainAssocManager = Boolean(topLevelRole);
+            }
+
+            if (!isSuper && !isMainAssocManager) {
+                return res.status(403).json({
+                    error: 'Only a Super Administrator or Main Association Manager can change a user’s playing gender.',
+                });
+            }
         }
 
         // If email is changing, verify it is not already taken
@@ -340,6 +363,7 @@ router.put('/admin/:id', validate(adminUpdateUserSchema), async (req: AuthReques
                 ...(country !== undefined ? { country } : {}),
                 ...(birthDate !== undefined ? { birthDate: birthDate ? new Date(birthDate) : null } : {}),
                 ...(gender !== undefined ? { gender } : {}),
+                ...(playingGender !== undefined ? { playingGender } : {}),
                 ...(isSuperAdmin !== undefined ? { isSuperAdmin } : {}),
                 ...(emailVerified !== undefined ? { emailVerified } : {}),
                 ...(eloPoints !== undefined ? { eloPoints } : {}),
@@ -357,6 +381,7 @@ router.put('/admin/:id', validate(adminUpdateUserSchema), async (req: AuthReques
                 country: true,
                 birthDate: true,
                 gender: true,
+                playingGender: true,
                 licenseId: true,
                 eloPoints: true,
                 rank: true,

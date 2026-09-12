@@ -703,19 +703,41 @@ function ProfilePageContent() {
                             </div>
                             <div>
                                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                    {t('profile.gender')}
+                                    {t('profile.actualGender') || 'Actual Gender'}
                                 </label>
                                 <select
                                     value={gender}
                                     onChange={(e) => setGender(e.target.value)}
                                     className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none font-medium"
                                 >
-                                    <option value="">{t('profile.genderAny')}</option>
-                                    <option value="MALE">{t('profile.genderMale')}</option>
-                                    <option value="FEMALE">{t('profile.genderFemale')}</option>
-                                    <option value="OTHER">{t('profile.genderOther')}</option>
+                                    <option value="">{t('profile.genderAny') || 'Not Specified'}</option>
+                                    <option value="MALE">{t('profile.genderMale') || 'Male'}</option>
+                                    <option value="FEMALE">{t('profile.genderFemale') || 'Female'}</option>
+                                    <option value="OTHER">{t('profile.genderOther') || 'Other / Diverse'}</option>
                                 </select>
                             </div>
+                        </div>
+
+                        <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                                <label className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                    <Shield className="w-3.5 h-3.5 text-amber-500" />
+                                    <span>{t('profile.playingGender') || 'Official Playing Category / Gender'}</span>
+                                </label>
+                                <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                                    user.playingGender === 'FEMALE'
+                                        ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                                        : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                                }`}>
+                                    {user.playingGender === 'FEMALE'
+                                        ? (t('profile.playingGenderFemale') || 'Female (Women Category)')
+                                        : (t('profile.playingGenderMale') || 'Male (Men / Open Category)')}
+                                </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                {t('profile.playingGenderLockedNotice') ||
+                                    'Your playing category is locked for official competition ratings. Changes cannot be made directly and must be approved by the main national association manager.'}
+                            </p>
                         </div>
 
                         <div>

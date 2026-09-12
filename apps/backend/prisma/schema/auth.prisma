@@ -27,6 +27,7 @@ model User {
   country      String            @default("Switzerland")
   birthDate    DateTime?
   gender       Gender?
+  playingGender Gender           @default(MALE)
   licenseId    String?           @unique
   eloPoints    Int               @default(1000)
   currentLevel String            @default("D1")

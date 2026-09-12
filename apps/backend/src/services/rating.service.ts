@@ -52,6 +52,7 @@ export class RatingService {
         const baseElo = user?.eloPoints ?? 1000;
         const tiers = await this.getEffectiveTiers(associationId, tx);
         const level = getLevelFromElo(baseElo, tiers);
+        const effectiveGender = user?.playingGender || (user?.gender === 'FEMALE' ? 'FEMALE' : 'MALE');
 
         const initialSnapshot = await tx.ratingSnapshotHistory.create({
             data: {
@@ -59,6 +60,8 @@ export class RatingService {
                 associationId: associationId || null,
                 elo: baseElo,
                 level,
+                gender: effectiveGender,
+                playingGender: effectiveGender,
                 triggerReason: RatingTriggerReason.INITIAL_PROVISIONAL,
                 effectiveFrom: user?.createdAt || new Date(),
             },
@@ -194,12 +197,21 @@ export class RatingService {
             const newHomeLevel = getLevelFromElo(exchange.newEloA, tiers);
             const newAwayLevel = getLevelFromElo(exchange.newEloB, tiers);
 
+            const [homeUser, awayUser] = await Promise.all([
+                tx.user.findUnique({ where: { id: homeUserId }, select: { gender: true, playingGender: true } }),
+                tx.user.findUnique({ where: { id: awayUserId }, select: { gender: true, playingGender: true } }),
+            ]);
+            const homePGender = homeUser?.playingGender || (homeUser?.gender === 'FEMALE' ? 'FEMALE' : 'MALE');
+            const awayPGender = awayUser?.playingGender || (awayUser?.gender === 'FEMALE' ? 'FEMALE' : 'MALE');
+
             const homePostSnapshot = await tx.ratingSnapshotHistory.create({
                 data: {
                     userId: homeUserId,
                     associationId: competition.associationId,
                     elo: exchange.newEloA,
                     level: newHomeLevel,
+                    gender: homePGender,
+                    playingGender: homePGender,
                     effectiveFrom: now,
                     triggerReason: RatingTriggerReason.MATCH_EVENT,
                     metadata: {
@@ -216,6 +228,8 @@ export class RatingService {
                     associationId: competition.associationId,
                     elo: exchange.newEloB,
                     level: newAwayLevel,
+                    gender: awayPGender,
+                    playingGender: awayPGender,
                     effectiveFrom: now,
                     triggerReason: RatingTriggerReason.MATCH_EVENT,
                     metadata: {
@@ -316,10 +330,11 @@ export class RatingService {
                     const u = users[i];
                     const rankOverall = currentOverallRank++;
                     let rankGender: number | null = null;
+                    const pGender = u.playingGender || (u.gender === 'FEMALE' ? 'FEMALE' : 'MALE');
 
-                    if (u.gender === 'MALE') {
+                    if (pGender === 'MALE') {
                         rankGender = currentMaleRank++;
-                    } else if (u.gender === 'FEMALE') {
+                    } else if (pGender === 'FEMALE') {
                         rankGender = currentFemaleRank++;
                     }
 
@@ -341,6 +356,8 @@ export class RatingService {
                             associationId,
                             elo: u.eloPoints,
                             level,
+                            gender: pGender,
+                            playingGender: pGender,
                             rankOverall,
                             rankGender,
                             triggerReason: RatingTriggerReason.MONTHLY_SCHEDULE,
@@ -394,6 +411,7 @@ export class RatingService {
 
                 for (const u of users) {
                     const newLevel = getLevelFromElo(u.eloPoints, tiers);
+                    const pGender = u.playingGender || (u.gender === 'FEMALE' ? 'FEMALE' : 'MALE');
 
                     if (u.currentLevel !== newLevel) {
                         await tx.ratingSnapshotHistory.create({
@@ -402,6 +420,8 @@ export class RatingService {
                                 associationId,
                                 elo: u.eloPoints,
                                 level: newLevel,
+                                gender: pGender,
+                                playingGender: pGender,
                                 rankOverall: u.rank,
                                 triggerReason: RatingTriggerReason.BI_ANNUAL_LEVEL,
                                 effectiveFrom: now,

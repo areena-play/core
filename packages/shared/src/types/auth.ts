@@ -18,6 +18,7 @@ export interface UserProfile {
     country: string;
     birthDate?: string | null;
     gender?: Gender | null;
+    playingGender?: Gender;
     licenseId?: string | null;
     eloPoints: number;
     rank?: number | null;

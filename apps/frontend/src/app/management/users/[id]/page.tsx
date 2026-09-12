@@ -56,6 +56,7 @@ interface UserDetailData {
     country?: string | null;
     birthDate?: string | null;
     gender?: string | null;
+    playingGender?: string | null;
     licenseId?: string | null;
     eloPoints: number;
     rank?: number | null;
@@ -183,6 +184,7 @@ function UserDetailContent() {
                 country: data.country || 'Switzerland',
                 birthDate: data.birthDate ? data.birthDate.split('T')[0] : '',
                 gender: data.gender || '',
+                playingGender: data.playingGender || (data.gender === 'FEMALE' ? 'FEMALE' : 'MALE'),
                 licenseId: data.licenseId || '',
                 eloPoints: data.eloPoints || 1000,
                 emailVerified: data.emailVerified ?? false,
@@ -224,6 +226,7 @@ function UserDetailContent() {
                 phone: normalizedPhone || formData.phone,
                 birthDate: formData.birthDate ? formData.birthDate : null,
                 gender: formData.gender ? formData.gender : null,
+                playingGender: formData.playingGender || (formData.gender === 'FEMALE' ? 'FEMALE' : 'MALE'),
                 licenseId: formData.licenseId ? formData.licenseId : null,
                 eloPoints: parseInt(formData.eloPoints, 10) || 1000,
             };
@@ -648,7 +651,7 @@ function UserDetailContent() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
                                 <label className="font-semibold text-slate-700 dark:text-slate-300">
                                     National License ID
@@ -673,7 +676,7 @@ function UserDetailContent() {
                             </div>
 
                             <div>
-                                <label className="font-semibold text-slate-700 dark:text-slate-300">Gender</label>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">Actual Gender</label>
                                 <select
                                     value={formData.gender || ''}
                                     onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
@@ -682,7 +685,21 @@ function UserDetailContent() {
                                     <option value="">Not Specified</option>
                                     <option value="MALE">Male</option>
                                     <option value="FEMALE">Female</option>
-                                    <option value="OTHER">Other</option>
+                                    <option value="OTHER">Other / Diverse</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                    Playing Gender <span className="text-[10px] text-amber-600 dark:text-amber-400 font-normal">(Official Category)</span>
+                                </label>
+                                <select
+                                    value={formData.playingGender || 'MALE'}
+                                    onChange={(e) => setFormData({ ...formData, playingGender: e.target.value })}
+                                    className="mt-1 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-red-500 focus:outline-none"
+                                >
+                                    <option value="MALE">Male (Men / Open Category)</option>
+                                    <option value="FEMALE">Female (Women Category)</option>
                                 </select>
                             </div>
                         </div>

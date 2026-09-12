@@ -37,19 +37,36 @@ export const strongPasswordSchema = z
     .regex(/[0-9]/, 'Password must contain at least one number')
     .regex(/[^a-zA-Z0-9]/, 'Password must contain at least one special character');
 
-export const registerSchema = z.object({
-    email: z.string().email(),
-    password: strongPasswordSchema,
-    firstName: z.string().min(1),
-    lastName: z.string().min(1),
-    phone: phoneSchema,
-    street: z.string().min(2),
-    postalCode: z.string().min(2),
-    city: z.string().min(1),
-    country: z.string().default('Switzerland'),
-    birthDate: z.string().optional().nullable(),
-    gender: z.nativeEnum(Gender).optional().nullable(),
-});
+export const registerSchema = z
+    .object({
+        email: z.string().email(),
+        password: strongPasswordSchema,
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
+        phone: phoneSchema,
+        street: z.string().min(2),
+        postalCode: z.string().min(2),
+        city: z.string().min(1),
+        country: z.string().default('Switzerland'),
+        birthDate: z.string().optional().nullable(),
+        gender: z.nativeEnum(Gender).optional().nullable(),
+        playingGender: z.enum(['MALE', 'FEMALE']).default('MALE'),
+    })
+    .refine(
+        (data) => {
+            if (data.gender === Gender.MALE && data.playingGender !== 'MALE') {
+                return false;
+            }
+            if (data.gender === Gender.FEMALE && data.playingGender !== 'FEMALE') {
+                return false;
+            }
+            return true;
+        },
+        {
+            message: 'Playing gender must align with actual gender (Male must play as Male, Female must play as Female).',
+            path: ['playingGender'],
+        }
+    );
 
 export const changePasswordSchema = z.object({
     currentPassword: z.string().min(1, 'Current password is required'),
@@ -96,6 +113,7 @@ export const adminUpdateUserSchema = z.object({
     country: z.string().optional(),
     birthDate: z.string().optional().nullable(),
     gender: z.nativeEnum(Gender).optional().nullable(),
+    playingGender: z.enum(['MALE', 'FEMALE']).optional(),
     isSuperAdmin: z.boolean().optional(),
     emailVerified: z.boolean().optional(),
     eloPoints: z.number().int().min(0).optional(),
