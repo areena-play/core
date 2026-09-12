@@ -46,6 +46,25 @@ export class AdminApi {
         });
     }
 
+    updateStripeSettings(body: {
+        secretKey?: string;
+        publishableKey?: string;
+        webhookSecret?: string;
+        proMonthlyPriceId?: string;
+        proYearlyPriceId?: string;
+    }) {
+        return this.http.request('/admin/settings/stripe', {
+            method: 'PUT',
+            body: JSON.stringify(body),
+        });
+    }
+
+    testStripeSettings() {
+        return this.http.request('/admin/settings/stripe/test', {
+            method: 'POST',
+        });
+    }
+
     exportDatabase() {
         return this.http.request('/admin/database/export');
     }

@@ -18,6 +18,7 @@ import { AdminApi } from './modules/admin.api';
 import { PushApi } from './modules/push.api';
 import { RelationshipsApi } from './modules/relationships.api';
 import { SearchApi } from './modules/search.api';
+import { BillingApi } from './modules/billing.api';
 
 export * from './client';
 export * from './modules/system.api';
@@ -39,6 +40,7 @@ export * from './modules/admin.api';
 export * from './modules/push.api';
 export * from './modules/relationships.api';
 export * from './modules/search.api';
+export * from './modules/billing.api';
 
 export class ApiClient extends HttpClient {
     public readonly system: SystemApi;
@@ -60,6 +62,7 @@ export class ApiClient extends HttpClient {
     public readonly push: PushApi;
     public readonly relationships: RelationshipsApi;
     public readonly search: SearchApi;
+    public readonly billing: BillingApi;
 
     constructor() {
         super();
@@ -82,6 +85,7 @@ export class ApiClient extends HttpClient {
         this.push = new PushApi(this);
         this.relationships = new RelationshipsApi(this);
         this.search = new SearchApi(this);
+        this.billing = new BillingApi(this);
     }
 
     // Direct proxy convenience methods for unified access & 100% backward compatibility
@@ -264,6 +268,8 @@ export class ApiClient extends HttpClient {
     updateSmtpSettings = (body: { host?: string; port?: number; user?: string; pass?: string; secure?: boolean; from?: string }) => this.admin.updateSmtpSettings(body);
     testSmtpSettings = (toEmail: string) => this.admin.testSmtpSettings(toEmail);
     updateRateLimitSettings = (body: { enabled?: boolean; capacity?: number; refillRatePerSec?: number; blockAnonymousBots?: boolean }) => this.admin.updateRateLimitSettings(body);
+    updateStripeSettings = (body: { secretKey?: string; publishableKey?: string; webhookSecret?: string; proMonthlyPriceId?: string; proYearlyPriceId?: string }) => this.admin.updateStripeSettings(body);
+    testStripeSettings = () => this.admin.testStripeSettings();
     exportDatabase = () => this.admin.exportDatabase();
     importDatabase = (dumpData: any) => this.admin.importDatabase(dumpData);
     getClickTTStatus = (path?: string) => this.admin.getClickTTStatus(path);

@@ -26,6 +26,13 @@ export interface User {
     associationRoles?: Array<{ associationId: string; role: string }>;
     clubRoles?: Array<{ clubId: string; role: string }>;
     licenses?: any[];
+    stripeCustomerId?: string | null;
+    stripeSubscriptionId?: string | null;
+    subscriptionStatus?: 'INACTIVE' | 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | null;
+    subscriptionPlan?: string | null;
+    subscriptionCurrentPeriodEnd?: string | null;
+    subscriptionCancelAtPeriodEnd?: boolean;
+    isPro?: boolean;
 }
 
 export interface AuthContextType {

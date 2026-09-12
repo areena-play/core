@@ -32,10 +32,11 @@ router.get('/dashboard', async (req: AuthRequest, res: Response) => {
  */
 router.get('/settings', async (req: AuthRequest, res: Response) => {
     try {
-        const [mailgunConfig, smtpConfig, rateLimitConfig] = await Promise.all([
+        const [mailgunConfig, smtpConfig, rateLimitConfig, stripeConfig] = await Promise.all([
             SystemService.getMailgunConfig(),
             SystemService.getSmtpConfig(),
             SystemService.getRateLimitConfig(),
+            SystemService.getStripeConfig(),
         ]);
 
         const maskedApiKey = mailgunConfig.apiKey
@@ -44,7 +45,29 @@ router.get('/settings', async (req: AuthRequest, res: Response) => {
                 : '••••••••'
             : '';
 
+        const maskedStripeSecret = stripeConfig.secretKey
+            ? stripeConfig.secretKey.length > 12
+                ? `${stripeConfig.secretKey.substring(0, 7)}••••••••${stripeConfig.secretKey.slice(-4)}`
+                : '••••••••'
+            : '';
+
+        const maskedStripeWebhook = stripeConfig.webhookSecret
+            ? stripeConfig.webhookSecret.length > 10
+                ? `${stripeConfig.webhookSecret.substring(0, 6)}••••••••${stripeConfig.webhookSecret.slice(-4)}`
+                : '••••••••'
+            : '';
+
         res.json({
+            stripe: {
+                publishableKey: stripeConfig.publishableKey,
+                hasSecretKey: stripeConfig.hasSecretKey,
+                secretKeyMasked: maskedStripeSecret,
+                hasWebhookSecret: stripeConfig.hasWebhookSecret,
+                webhookSecretMasked: maskedStripeWebhook,
+                proMonthlyPriceId: stripeConfig.proMonthlyPriceId,
+                proYearlyPriceId: stripeConfig.proYearlyPriceId,
+                isConfigured: stripeConfig.isConfigured,
+            },
             mailgun: {
                 apiKey: maskedApiKey,
                 hasApiKey: Boolean(mailgunConfig.apiKey),
@@ -274,6 +297,87 @@ router.post('/settings/smtp/test', async (req: AuthRequest, res: Response) => {
     } catch (err: any) {
         console.error('Test SMTP Error:', err);
         res.status(500).json({ error: err.message || 'Failed to send SMTP test email' });
+    }
+});
+
+/**
+ * PUT /api/admin/settings/stripe
+ * Update Stripe API credentials & Price IDs in Database
+ */
+router.put('/settings/stripe', async (req: AuthRequest, res: Response) => {
+    try {
+        const { secretKey, publishableKey, webhookSecret, proMonthlyPriceId, proYearlyPriceId } = req.body;
+
+        const updated = await SystemService.updateStripeConfig(
+            {
+                secretKey,
+                publishableKey,
+                webhookSecret,
+                proMonthlyPriceId,
+                proYearlyPriceId,
+            },
+            req.user?.id
+        );
+
+        await AuditService.record({
+            req,
+            action: 'UPDATE_SYSTEM_SETTING',
+            entityType: 'SystemSetting',
+            entityId: 'STRIPE_CONFIG',
+            description: `Updated Stripe settings (Configured: ${updated.isConfigured}, Monthly Price ID: ${updated.proMonthlyPriceId || 'Default'}, Annual Price ID: ${updated.proYearlyPriceId || 'Default'})`,
+            metadata: {
+                hasSecretKey: updated.hasSecretKey,
+                hasWebhookSecret: updated.hasWebhookSecret,
+                publishableKey: updated.publishableKey,
+                proMonthlyPriceId: updated.proMonthlyPriceId,
+                proYearlyPriceId: updated.proYearlyPriceId,
+            },
+        });
+
+        res.json({
+            message: 'Stripe settings updated successfully',
+            stripe: {
+                publishableKey: updated.publishableKey,
+                hasSecretKey: updated.hasSecretKey,
+                hasWebhookSecret: updated.hasWebhookSecret,
+                proMonthlyPriceId: updated.proMonthlyPriceId,
+                proYearlyPriceId: updated.proYearlyPriceId,
+                isConfigured: updated.isConfigured,
+            },
+        });
+    } catch (err: any) {
+        console.error('Update Stripe Settings Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to update Stripe settings' });
+    }
+});
+
+/**
+ * POST /api/admin/settings/stripe/test
+ * Validate and test live Stripe API credentials
+ */
+router.post('/settings/stripe/test', async (req: AuthRequest, res: Response) => {
+    try {
+        const result = await SystemService.testStripeConnection();
+        if (!result.success) {
+            return res.status(400).json({ error: result.error });
+        }
+
+        await AuditService.record({
+            req,
+            action: 'TEST_STRIPE_CONNECTION',
+            entityType: 'SystemSetting',
+            entityId: 'STRIPE_TEST',
+            description: `Tested Stripe API connection: SUCCESS (Livemode: ${result.livemode}, Currency: ${result.defaultCurrency})`,
+            metadata: result,
+        });
+
+        res.json({
+            message: `Stripe API connection verified successfully (${result.livemode ? 'Live Mode' : 'Test Mode'}, Currency: ${result.defaultCurrency})`,
+            ...result,
+        });
+    } catch (err: any) {
+        console.error('Test Stripe Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to test Stripe connection' });
     }
 });
 

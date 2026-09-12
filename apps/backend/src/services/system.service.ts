@@ -2,6 +2,7 @@ import { prisma } from '../config/prisma';
 import FormData from 'form-data';
 import Mailgun from 'mailgun.js';
 import nodemailer, { Transporter } from 'nodemailer';
+import Stripe from 'stripe';
 
 export interface MailgunConfig {
     apiKey: string;
@@ -28,6 +29,17 @@ export interface RateLimitConfig {
     capacity: number;
     refillRatePerSec: number;
     blockAnonymousBots: boolean;
+}
+
+export interface StripeConfig {
+    secretKey: string;
+    publishableKey: string;
+    webhookSecret: string;
+    proMonthlyPriceId: string;
+    proYearlyPriceId: string;
+    isConfigured: boolean;
+    hasSecretKey: boolean;
+    hasWebhookSecret: boolean;
 }
 
 export function formatEmailSender(
@@ -425,6 +437,7 @@ export class SystemService {
             recentLogs,
             mailgunConfig,
             smtpConfig,
+            stripeConfig,
         ] = await Promise.all([
             prisma.user.count(),
             prisma.user.count({ where: { isSuperAdmin: true } }),
@@ -440,6 +453,7 @@ export class SystemService {
             }),
             this.getMailgunConfig(),
             this.getSmtpConfig(),
+            this.getStripeConfig(),
         ]);
 
         return {
@@ -465,6 +479,11 @@ export class SystemService {
             services: {
                 database: { status: 'healthy', provider: 'PostgreSQL' },
                 redis: { status: 'healthy' },
+                stripe: {
+                    status: stripeConfig.isConfigured ? 'configured' : 'not_configured',
+                    hasSecretKey: stripeConfig.hasSecretKey,
+                    publishableKey: stripeConfig.publishableKey || null,
+                },
                 mailgun: {
                     status: mailgunConfig.isConfigured ? 'configured' : 'not_configured',
                     domain: mailgunConfig.domain || null,
@@ -484,5 +503,96 @@ export class SystemService {
             },
             recentLogs,
         };
+    }
+
+    // -------------------------------------------------------------------------
+    // STRIPE CONFIGURATION
+    // -------------------------------------------------------------------------
+
+    private static stripeConfigCache: StripeConfig | null = null;
+
+    public static async getStripeConfig(): Promise<StripeConfig> {
+        if (this.stripeConfigCache) {
+            return this.stripeConfigCache;
+        }
+
+        const [secretKey, publishableKey, webhookSecret, proMonthlyPriceId, proYearlyPriceId] =
+            await Promise.all([
+                this.getSetting('STRIPE_SECRET_KEY'),
+                this.getSetting('STRIPE_PUBLISHABLE_KEY'),
+                this.getSetting('STRIPE_WEBHOOK_SECRET'),
+                this.getSetting('STRIPE_PRO_MONTHLY_PRICE_ID'),
+                this.getSetting('STRIPE_PRO_YEARLY_PRICE_ID'),
+            ]);
+
+        const sk = (secretKey || '').trim();
+        const pk = (publishableKey || '').trim();
+        const wh = (webhookSecret || '').trim();
+
+        this.stripeConfigCache = {
+            secretKey: sk,
+            publishableKey: pk,
+            webhookSecret: wh,
+            proMonthlyPriceId: (proMonthlyPriceId || '').trim(),
+            proYearlyPriceId: (proYearlyPriceId || '').trim(),
+            isConfigured: Boolean(sk && pk),
+            hasSecretKey: Boolean(sk),
+            hasWebhookSecret: Boolean(wh),
+        };
+
+        return this.stripeConfigCache;
+    }
+
+    public static async updateStripeConfig(
+        data: {
+            secretKey?: string;
+            publishableKey?: string;
+            webhookSecret?: string;
+            proMonthlyPriceId?: string;
+            proYearlyPriceId?: string;
+        },
+        updatedBy?: string
+    ): Promise<StripeConfig> {
+        if (data.secretKey !== undefined && data.secretKey.trim() !== '') {
+            await this.setSetting('STRIPE_SECRET_KEY', data.secretKey.trim(), 'Stripe Secret API Key (Live / Test)', true, updatedBy);
+        }
+        if (data.publishableKey !== undefined) {
+            await this.setSetting('STRIPE_PUBLISHABLE_KEY', data.publishableKey.trim(), 'Stripe Publishable Key', false, updatedBy);
+        }
+        if (data.webhookSecret !== undefined && data.webhookSecret.trim() !== '') {
+            await this.setSetting('STRIPE_WEBHOOK_SECRET', data.webhookSecret.trim(), 'Stripe Webhook Signing Secret', true, updatedBy);
+        }
+        if (data.proMonthlyPriceId !== undefined) {
+            await this.setSetting('STRIPE_PRO_MONTHLY_PRICE_ID', data.proMonthlyPriceId.trim(), 'Stripe Monthly Pro Plan Price ID', false, updatedBy);
+        }
+        if (data.proYearlyPriceId !== undefined) {
+            await this.setSetting('STRIPE_PRO_YEARLY_PRICE_ID', data.proYearlyPriceId.trim(), 'Stripe Annual Pro Plan Price ID', false, updatedBy);
+        }
+
+        this.stripeConfigCache = null;
+        return this.getStripeConfig();
+    }
+
+    public static async testStripeConnection(): Promise<{ success: boolean; accountId?: string; defaultCurrency?: string; livemode?: boolean; error?: string }> {
+        const config = await this.getStripeConfig();
+        if (!config.secretKey) {
+            return { success: false, error: 'Stripe Secret Key is not configured.' };
+        }
+
+        try {
+            const stripe = new Stripe(config.secretKey, { apiVersion: '2024-11-20.acacia' as any });
+            const balance = await stripe.balance.retrieve();
+            const primaryCurrency = balance.available?.[0]?.currency?.toUpperCase() || 'CHF';
+            return {
+                success: true,
+                livemode: balance.livemode,
+                defaultCurrency: primaryCurrency,
+            };
+        } catch (err: any) {
+            return {
+                success: false,
+                error: err.message || 'Failed to authenticate with Stripe API.',
+            };
+        }
     }
 }

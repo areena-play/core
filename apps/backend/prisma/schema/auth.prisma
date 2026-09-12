@@ -4,6 +4,14 @@ enum OAuthClientStatus {
   REVOKED
 }
 
+enum SubscriptionStatus {
+  INACTIVE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
 enum UserAccountStatus {
   MANAGED
   INVITED
@@ -47,6 +55,15 @@ model User {
   pendingEmailToken        String?   @unique
   pendingEmailExpires      DateTime?
   tokenVersion             Int       @default(0)
+  
+  // Stripe & Pro Subscription
+  stripeCustomerId             String?             @unique
+  stripeSubscriptionId         String?             @unique
+  subscriptionStatus           SubscriptionStatus  @default(INACTIVE)
+  subscriptionPlan             String?
+  subscriptionCurrentPeriodEnd DateTime?
+  subscriptionCancelAtPeriodEnd Boolean            @default(false)
+  
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 

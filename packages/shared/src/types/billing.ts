@@ -90,3 +90,31 @@ export interface BexioConfigDto {
     lastSyncAt?: string | null;
 }
 
+export type ProPlanInterval = 'MONTHLY' | 'YEARLY';
+
+export interface CreateCheckoutSessionRequest {
+    interval: ProPlanInterval;
+    successUrl?: string;
+    cancelUrl?: string;
+}
+
+export interface CheckoutSessionResponse {
+    url: string;
+    sessionId?: string;
+    isMock?: boolean;
+}
+
+export interface CustomerPortalResponse {
+    url: string;
+    isMock?: boolean;
+}
+
+export interface SubscriptionDetailsResponse {
+    isPro: boolean;
+    status: string;
+    plan?: string | null;
+    currentPeriodEnd?: string | null;
+    cancelAtPeriodEnd?: boolean;
+    customerId?: string | null;
+}
+

@@ -30,6 +30,7 @@ import searchRoutes from './routes/search.routes';
 import pushRoutes from './routes/push.routes';
 import relationshipRoutes from './routes/relationships.routes';
 import { ratingsRouter } from './routes/ratings.routes';
+import billingRoutes from './routes/billing.routes';
 import { startDemoScheduler } from './services/demoScheduler.service';
 import { CronSchedulerService } from './services/cronScheduler.service';
 import { RatingSchedulerService } from './services/ratingScheduler.service';
@@ -42,7 +43,14 @@ app.set('trust proxy', true);
 // Middlewares
 app.use(prismaCacheContext);
 app.use(cors({ origin: '*', credentials: true }));
-app.use(express.json({ limit: '50mb' }));
+app.use(
+    express.json({
+        limit: '50mb',
+        verify: (req: any, _res, buf) => {
+            req.rawBody = buf;
+        },
+    })
+);
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Prevent stale HTTP caching for all dynamic API responses
@@ -106,6 +114,7 @@ v1Router.use('/search', searchRoutes);
 v1Router.use('/push', pushRoutes);
 v1Router.use('/relationships', relationshipRoutes);
 v1Router.use('/ratings', ratingsRouter);
+v1Router.use('/billing', billingRoutes);
 
 // 404 Catch-All Handler for unmatched v1 routes
 v1Router.use((req, res) => {

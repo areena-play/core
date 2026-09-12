@@ -54,11 +54,14 @@ import {
 import { format } from 'date-fns';
 import { AccessDenied } from '@/components/auth/AccessDenied';
 import { PasswordRequirements, checkPasswordRequirements } from '@/components/auth/PasswordRequirements';
+import { ProBadge } from '@/components/common/ProBadge';
+import { usePro } from '@/hooks/usePro';
 
-type ProfileTab = 'personal' | 'preferences' | 'licenses' | 'competitions' | 'courses' | 'admin-access';
+type ProfileTab = 'personal' | 'preferences' | 'subscription' | 'licenses' | 'competitions' | 'courses' | 'admin-access';
 
 function ProfilePageContent() {
     const { user, refreshUser } = useAuth();
+    const { isPro, plan: proPlan, periodEnd: proPeriodEnd, cancelAtPeriodEnd: proCancelAtPeriodEnd, openPortal, upgrade: upgradeToPro, loading: proLoading } = usePro();
     const { theme, setTheme } = useTheme();
     const { locale, setLocale, t, locales, supportedLocales } = useI18n();
     const searchParams = useSearchParams();
@@ -159,7 +162,7 @@ function ProfilePageContent() {
 
     // Synchronize tab with URL Query parameter or fallback Hash
     useEffect(() => {
-        const validTabs: ProfileTab[] = ['personal', 'preferences', 'licenses', 'competitions', 'courses', 'admin-access'];
+        const validTabs: ProfileTab[] = ['personal', 'preferences', 'subscription', 'licenses', 'competitions', 'courses', 'admin-access'];
         const tabParam = searchParams.get('tab') as ProfileTab;
         const applyParam = searchParams.get('apply');
         const actionParam = searchParams.get('action');
@@ -452,6 +455,13 @@ function ProfilePageContent() {
                                 <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
                                     {user.eloPoints} Elo Points {user.rank ? `• Rank #${user.rank}` : ''}
                                 </span>
+                                {isPro ? (
+                                    <ProBadge size="sm" />
+                                ) : (
+                                    <Link href="/pro/pricing" className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-400/30 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 transition-colors">
+                                        <span>⭐ Get Pro</span>
+                                    </Link>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -504,6 +514,24 @@ function ProfilePageContent() {
                 >
                     <Sliders className="h-4 w-4" />
                     <span>{t('profile.tabs.preferences')}</span>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => handleTabChange('subscription')}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition ${
+                        activeTab === 'subscription'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                >
+                    <Sparkles className="h-4 w-4 text-amber-500" />
+                    <span>{t('profile.tabs.subscription') || 'Areena Pro'}</span>
+                    {isPro ? (
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-white">
+                            PRO
+                        </span>
+                    ) : null}
                 </button>
 
                 <button
@@ -1138,7 +1166,187 @@ function ProfilePageContent() {
                 </div>
             )}
 
-            {/* 3. LICENSES TAB */}
+            {/* 3. SUBSCRIPTION & BILLING TAB */}
+            {activeTab === 'subscription' && (
+                <div className="space-y-6">
+                    {/* Header Card */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="space-y-1">
+                                <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                    <Sparkles className="h-5 w-5 text-amber-500" />
+                                    <span>{t('profile.subscriptionTitle') || 'Areena Pro & Membership'}</span>
+                                    {isPro && <ProBadge size="sm" />}
+                                </h2>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    {t('profile.subscriptionDesc') || 'Manage your competitive athlete subscription, payment methods, and billing invoices.'}
+                                </p>
+                            </div>
+
+                            {isPro ? (
+                                <button
+                                    type="button"
+                                    onClick={() => openPortal()}
+                                    disabled={proLoading}
+                                    className="inline-flex items-center gap-2 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 text-xs font-bold shadow-xs transition shrink-0 disabled:opacity-50"
+                                >
+                                    <ExternalLink className="h-4 w-4" />
+                                    <span>{proLoading ? t('common.loading') : t('profile.manageBilling') || 'Manage in Stripe Portal'}</span>
+                                </button>
+                            ) : (
+                                <Link
+                                    href="/pro/pricing"
+                                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white px-5 py-2.5 text-xs font-bold shadow-md transition shrink-0"
+                                >
+                                    <Crown className="h-4 w-4" />
+                                    <span>{t('profile.upgradeToPro') || 'Upgrade to Pro'}</span>
+                                </Link>
+                            )}
+                        </div>
+
+                        {/* Status Overview Card */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+                            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800">
+                                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                                    Current Tier
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-base font-black text-slate-900 dark:text-white">
+                                        {isPro ? 'Areena Pro' : 'Free Tier'}
+                                    </span>
+                                    {isPro ? (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                                            Active
+                                        </span>
+                                    ) : (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                            Standard
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800">
+                                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                                    Billing Cycle
+                                </span>
+                                <span className="text-base font-bold text-slate-900 dark:text-white">
+                                    {isPro
+                                        ? proPlan === 'PRO_YEARLY'
+                                            ? 'Annual (CHF 89/yr)'
+                                            : 'Monthly (CHF 9.90/mo)'
+                                        : 'Free (No recurring charge)'}
+                                </span>
+                            </div>
+
+                            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800">
+                                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                                    {isPro ? (proCancelAtPeriodEnd ? 'Access Expires' : 'Next Renewal') : 'Status'}
+                                </span>
+                                <span className="text-base font-bold text-slate-900 dark:text-white">
+                                    {isPro && proPeriodEnd
+                                        ? format(new Date(proPeriodEnd), 'dd MMMM yyyy')
+                                        : isPro
+                                        ? 'Active'
+                                        : 'Active Free Account'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Pro Upgrade Promotion (if not Pro) */}
+                    {!isPro && (
+                        <div className="rounded-3xl border border-amber-200 dark:border-amber-800/60 bg-gradient-to-br from-amber-50/70 via-white to-orange-50/60 dark:from-amber-950/20 dark:via-slate-900 dark:to-orange-950/10 p-6 sm:p-8 shadow-sm">
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                                <div className="space-y-2">
+                                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-bold">
+                                        <Sparkles className="h-3.5 w-3.5" />
+                                        <span>Unlock Full Competitive Potential</span>
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                                        Upgrade to Areena Pro
+                                    </h3>
+                                    <p className="text-xs text-slate-600 dark:text-slate-400 max-w-xl leading-relaxed">
+                                        Get instant access to head-to-head matchup analytics, pre-match Elo rating forecast calculations, performance trend analysis, and priority tournament entries.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => upgradeToPro('MONTHLY')}
+                                        disabled={proLoading}
+                                        className="px-5 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-xs hover:bg-amber-50 dark:hover:bg-amber-950/40 transition shadow-xs disabled:opacity-50"
+                                    >
+                                        Monthly (CHF 9.90/mo)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => upgradeToPro('YEARLY')}
+                                        disabled={proLoading}
+                                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold text-xs shadow-md transition transform hover:-translate-y-0.5 disabled:opacity-50"
+                                    >
+                                        Annual (CHF 89/yr - Save 25%)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Features Comparison / Summary */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 sm:p-8 shadow-xs">
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">
+                            Included Pro Benefits
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800">
+                                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <strong className="block text-slate-900 dark:text-white">Head-to-Head Explorer</strong>
+                                    <span className="text-slate-500">Historical records, set scores, win probabilities</span>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800">
+                                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <strong className="block text-slate-900 dark:text-white">Elo Rating Forecasts</strong>
+                                    <span className="text-slate-500">Expected rating shifts calculated before every match</span>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800">
+                                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <strong className="block text-slate-900 dark:text-white">Performance Analytics</strong>
+                                    <span className="text-slate-500">Form index, 5th set win rates, venue breakdown</span>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800">
+                                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <strong className="block text-slate-900 dark:text-white">Tournament Priority Alerts</strong>
+                                    <span className="text-slate-500">Immediate push alerts when tournament entry opens</span>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800">
+                                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <strong className="block text-slate-900 dark:text-white">Official Gold Insignia</strong>
+                                    <span className="text-slate-500">Pro badge displayed on profile and rankings</span>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800">
+                                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <strong className="block text-slate-900 dark:text-white">Swiss & Global Payments</strong>
+                                    <span className="text-slate-500">TWINT, Credit Cards, Apple Pay, Google Pay</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 4. LICENSES TAB */}
             {activeTab === 'licenses' && (
                 <div className="space-y-6">
                     {/* Header Card */}

@@ -1,5 +1,13 @@
 import { Gender } from './common';
 
+export enum SubscriptionStatus {
+    INACTIVE = 'INACTIVE',
+    TRIALING = 'TRIALING',
+    ACTIVE = 'ACTIVE',
+    PAST_DUE = 'PAST_DUE',
+    CANCELED = 'CANCELED',
+}
+
 export enum OAuthClientStatus {
     PENDING_APPROVAL = 'PENDING_APPROVAL',
     APPROVED = 'APPROVED',
@@ -29,6 +37,11 @@ export interface UserProfile {
     displayNameChoice?: 'FULL_NAME' | 'INITIALS' | 'ANONYMOUS';
     hideEloRanking?: boolean;
     hideContactInfo?: boolean;
+    subscriptionStatus?: SubscriptionStatus;
+    subscriptionPlan?: string | null;
+    subscriptionCurrentPeriodEnd?: string | null;
+    subscriptionCancelAtPeriodEnd?: boolean;
+    isPro?: boolean;
     createdAt: string;
     updatedAt: string;
 }

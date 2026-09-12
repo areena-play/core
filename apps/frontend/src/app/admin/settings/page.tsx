@@ -26,6 +26,7 @@ import {
     RefreshCw,
     Lock,
     Gauge,
+    CreditCard,
 } from 'lucide-react';
 import { AccessDenied } from '@/components/auth/AccessDenied';
 import { Modal } from '@/components/ui/Modal';
@@ -41,6 +42,22 @@ export default function AdminSettingsPage() {
     const [dbImporting, setDbImporting] = useState(false);
     const [dbSuccess, setDbSuccess] = useState('');
     const [dbError, setDbError] = useState('');
+
+    // Stripe State
+    const [stripeSecretKey, setStripeSecretKey] = useState('');
+    const [stripePublishableKey, setStripePublishableKey] = useState('');
+    const [stripeWebhookSecret, setStripeWebhookSecret] = useState('');
+    const [stripeProMonthlyPriceId, setStripeProMonthlyPriceId] = useState('');
+    const [stripeProYearlyPriceId, setStripeProYearlyPriceId] = useState('');
+    const [stripeHasSecretKey, setStripeHasSecretKey] = useState(false);
+    const [stripeHasWebhookSecret, setStripeHasWebhookSecret] = useState(false);
+    const [stripeShowSecret, setStripeShowSecret] = useState(false);
+    const [stripeShowWebhook, setStripeShowWebhook] = useState(false);
+    const [stripeIsConfigured, setStripeIsConfigured] = useState(false);
+    const [stripeSaving, setStripeSaving] = useState(false);
+    const [stripeTesting, setStripeTesting] = useState(false);
+    const [stripeSuccess, setStripeSuccess] = useState('');
+    const [stripeError, setStripeError] = useState('');
 
     // Mailgun State
     const [mgApiKey, setMgApiKey] = useState('');
@@ -145,6 +162,20 @@ export default function AdminSettingsPage() {
                 api.getOAuthClients({ all: true }).catch(() => []),
             ]);
             setOauthClients(clientsData || []);
+            if (data?.stripe) {
+                setStripePublishableKey(data.stripe.publishableKey || '');
+                setStripeProMonthlyPriceId(data.stripe.proMonthlyPriceId || '');
+                setStripeProYearlyPriceId(data.stripe.proYearlyPriceId || '');
+                setStripeHasSecretKey(data.stripe.hasSecretKey);
+                setStripeHasWebhookSecret(data.stripe.hasWebhookSecret);
+                setStripeIsConfigured(data.stripe.isConfigured);
+                if (data.stripe.hasSecretKey) {
+                    setStripeSecretKey(data.stripe.secretKey || '');
+                }
+                if (data.stripe.hasWebhookSecret) {
+                    setStripeWebhookSecret(data.stripe.webhookSecret || '');
+                }
+            }
             if (data?.mailgun) {
                 setMgDomain(data.mailgun.domain || '');
                 setMgUrl(data.mailgun.url || 'https://api.mailgun.net');
@@ -186,6 +217,59 @@ export default function AdminSettingsPage() {
             loadSettings();
         }
     }, [user]);
+
+    const handleSaveStripe = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setStripeSaving(true);
+        setStripeError('');
+        setStripeSuccess('');
+        try {
+            const payload: any = {
+                publishableKey: stripePublishableKey,
+                proMonthlyPriceId: stripeProMonthlyPriceId,
+                proYearlyPriceId: stripeProYearlyPriceId,
+            };
+            if (stripeSecretKey && !stripeSecretKey.includes('••••••••')) {
+                payload.secretKey = stripeSecretKey;
+            }
+            if (stripeWebhookSecret && !stripeWebhookSecret.includes('••••••••')) {
+                payload.webhookSecret = stripeWebhookSecret;
+            }
+            const res = await api.updateStripeSettings(payload);
+            setStripeSuccess(res.message || 'Stripe configuration saved successfully.');
+            setStripeHasSecretKey(res.stripe?.hasSecretKey);
+            setStripeHasWebhookSecret(res.stripe?.hasWebhookSecret);
+            setStripeIsConfigured(res.stripe?.isConfigured);
+            if (payload.secretKey) {
+                setStripeSecretKey('••••••••••••••••••••••••');
+            }
+            if (payload.webhookSecret) {
+                setStripeWebhookSecret('••••••••••••••••••••••••');
+            }
+        } catch (err: any) {
+            setStripeError(err.message || 'Failed to save Stripe settings');
+        } finally {
+            setStripeSaving(false);
+        }
+    };
+
+    const handleTestStripe = async () => {
+        setStripeTesting(true);
+        setStripeError('');
+        setStripeSuccess('');
+        try {
+            const res = await api.testStripeSettings();
+            if (res.success) {
+                setStripeSuccess(res.message || 'Stripe connection test successful!');
+            } else {
+                setStripeError(res.message || 'Stripe connection test failed.');
+            }
+        } catch (err: any) {
+            setStripeError(err.message || 'Failed to connect to Stripe API.');
+        } finally {
+            setStripeTesting(false);
+        }
+    };
 
     const handleSaveRateLimit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -646,7 +730,176 @@ export default function AdminSettingsPage() {
                 </form>
             </div>
 
-            {/* 3. API RATE LIMITING & TRAFFIC THROTTLING */}
+            {/* 3. STRIPE PAYMENTS & SUBSCRIPTIONS */}
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                            <CreditCard className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h2 className="font-bold text-base text-slate-900 dark:text-white">
+                                Stripe Payments & Pro Subscriptions
+                            </h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Configure API credentials, webhooks, and Stripe Price IDs for Pro memberships and direct payments.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {stripeIsConfigured ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                <CheckCircle2 className="h-3.5 w-3.5" /> Configured
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 px-3 py-1 text-xs font-bold">
+                                Optional / Unset
+                            </span>
+                        )}
+                        <button
+                            type="button"
+                            onClick={handleTestStripe}
+                            disabled={stripeTesting || (!stripeSecretKey && !stripeHasSecretKey)}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 transition disabled:opacity-50"
+                        >
+                            {stripeTesting ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-indigo-500" /> : <Send className="h-3.5 w-3.5 text-indigo-500" />}
+                            <span>{stripeTesting ? 'Testing...' : 'Test Stripe API'}</span>
+                        </button>
+                    </div>
+                </div>
+
+                {stripeError && (
+                    <div className="flex items-start gap-2 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/50 p-3 text-xs text-red-700 dark:text-red-300">
+                        <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                        <div>{stripeError}</div>
+                    </div>
+                )}
+                {stripeSuccess && (
+                    <div className="flex items-start gap-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/50 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <div>{stripeSuccess}</div>
+                    </div>
+                )}
+
+                <form onSubmit={handleSaveStripe} className="space-y-4 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Stripe Publishable Key
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="pk_test_... or pk_live_..."
+                                value={stripePublishableKey}
+                                onChange={(e) => setStripePublishableKey(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 font-mono text-xs text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
+                            />
+                            <span className="text-[10px] text-slate-400 mt-1 block">
+                                Safe for browser & client-side checkout redirection.
+                            </span>
+                        </div>
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Stripe Secret Key
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type={stripeShowSecret ? 'text' : 'password'}
+                                    placeholder={stripeHasSecretKey ? '••••••••••••••••••••••••' : 'sk_test_... or sk_live_...'}
+                                    value={stripeSecretKey}
+                                    onChange={(e) => setStripeSecretKey(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 pr-10 font-mono text-xs text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setStripeShowSecret(!stripeShowSecret)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                >
+                                    {stripeShowSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                            </div>
+                            <span className="text-[10px] text-slate-400 mt-1 block">
+                                Kept securely on backend. Used for creating checkouts & customer portal sessions.
+                            </span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Stripe Webhook Signing Secret
+                        </label>
+                        <div className="relative">
+                            <input
+                                type={stripeShowWebhook ? 'text' : 'password'}
+                                placeholder={stripeHasWebhookSecret ? '••••••••••••••••••••••••' : 'whsec_...'}
+                                value={stripeWebhookSecret}
+                                onChange={(e) => setStripeWebhookSecret(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 pr-10 font-mono text-xs text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setStripeShowWebhook(!stripeShowWebhook)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                            >
+                                {stripeShowWebhook ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                        </div>
+                        <div className="mt-1 flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 gap-1 bg-slate-50 dark:bg-slate-950/60 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800/60">
+                            <div>
+                                <span className="font-semibold text-slate-700 dark:text-slate-300">Webhook URL: </span>
+                                <code className="font-mono text-indigo-600 dark:text-indigo-400">https://your-domain.com/api/billing/webhook</code>
+                            </div>
+                            <span className="text-[10px] text-slate-400">Events: checkout.session.completed, customer.subscription.*, invoice.*</span>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Pro Monthly Price ID
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="price_1Q..."
+                                value={stripeProMonthlyPriceId}
+                                onChange={(e) => setStripeProMonthlyPriceId(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 font-mono text-xs text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
+                            />
+                            <span className="text-[10px] text-slate-400 mt-1 block">
+                                Stripe recurring monthly plan Price ID for AREENA Pro.
+                            </span>
+                        </div>
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Pro Yearly Price ID
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="price_1Q..."
+                                value={stripeProYearlyPriceId}
+                                onChange={(e) => setStripeProYearlyPriceId(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 font-mono text-xs text-slate-900 dark:text-white focus:border-red-500 focus:outline-none"
+                            />
+                            <span className="text-[10px] text-slate-400 mt-1 block">
+                                Stripe recurring annual plan Price ID for AREENA Pro.
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                            type="submit"
+                            disabled={stripeSaving}
+                            className="rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 px-6 py-2.5 text-xs font-bold shadow transition disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {stripeSaving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : null}
+                            <span>{stripeSaving ? 'Saving...' : 'Save Stripe Settings'}</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {/* 4. API RATE LIMITING & TRAFFIC THROTTLING */}
             <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-sm space-y-6">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
                     <div className="flex items-center gap-3">
