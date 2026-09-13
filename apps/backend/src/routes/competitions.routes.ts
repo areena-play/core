@@ -984,51 +984,200 @@ router.post('/categories/:categoryId/teams', authenticateToken, async (req: Auth
     }
 });
 
-// POST /competitions/categories/:categoryId/generate-groups
+// PUT /competitions/categories/:categoryId - Update category settings
+router.post('/categories/:categoryId/update', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const {
+            name,
+            nameI18n,
+            teamSize,
+            minElo,
+            maxElo,
+            minAge,
+            maxAge,
+            genderRestriction,
+            requiredLicenseType,
+            encounterFormat,
+            roundsPerGroup,
+        } = req.body;
+
+        const updated = await prisma.category.update({
+            where: { id: req.params.categoryId },
+            data: {
+                ...(name !== undefined ? { name } : {}),
+                ...(nameI18n !== undefined ? { nameI18n } : {}),
+                ...(teamSize !== undefined ? { teamSize: Number(teamSize) } : {}),
+                ...(minElo !== undefined ? { minElo: minElo === null || minElo === '' ? null : Number(minElo) } : {}),
+                ...(maxElo !== undefined ? { maxElo: maxElo === null || maxElo === '' ? null : Number(maxElo) } : {}),
+                ...(minAge !== undefined ? { minAge: minAge === null || minAge === '' ? null : Number(minAge) } : {}),
+                ...(maxAge !== undefined ? { maxAge: maxAge === null || maxAge === '' ? null : Number(maxAge) } : {}),
+                ...(genderRestriction !== undefined ? { genderRestriction } : {}),
+                ...(requiredLicenseType !== undefined ? { requiredLicenseType: requiredLicenseType || null } : {}),
+                ...(encounterFormat !== undefined ? { encounterFormat } : {}),
+                ...(roundsPerGroup !== undefined ? { roundsPerGroup: Number(roundsPerGroup) } : {}),
+            },
+        });
+
+        res.json(updated);
+    } catch (err) {
+        next(err);
+    }
+});
+
+router.put('/categories/:categoryId', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const {
+            name,
+            nameI18n,
+            teamSize,
+            minElo,
+            maxElo,
+            minAge,
+            maxAge,
+            genderRestriction,
+            requiredLicenseType,
+            encounterFormat,
+            roundsPerGroup,
+        } = req.body;
+
+        const updated = await prisma.category.update({
+            where: { id: req.params.categoryId },
+            data: {
+                ...(name !== undefined ? { name } : {}),
+                ...(nameI18n !== undefined ? { nameI18n } : {}),
+                ...(teamSize !== undefined ? { teamSize: Number(teamSize) } : {}),
+                ...(minElo !== undefined ? { minElo: minElo === null || minElo === '' ? null : Number(minElo) } : {}),
+                ...(maxElo !== undefined ? { maxElo: maxElo === null || maxElo === '' ? null : Number(maxElo) } : {}),
+                ...(minAge !== undefined ? { minAge: minAge === null || minAge === '' ? null : Number(minAge) } : {}),
+                ...(maxAge !== undefined ? { maxAge: maxAge === null || maxAge === '' ? null : Number(maxAge) } : {}),
+                ...(genderRestriction !== undefined ? { genderRestriction } : {}),
+                ...(requiredLicenseType !== undefined ? { requiredLicenseType: requiredLicenseType || null } : {}),
+                ...(encounterFormat !== undefined ? { encounterFormat } : {}),
+                ...(roundsPerGroup !== undefined ? { roundsPerGroup: Number(roundsPerGroup) } : {}),
+            },
+        });
+
+        res.json(updated);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// POST /competitions/categories/:categoryId/reset-draw - Clear existing draw/pools/encounters
+router.post('/categories/:categoryId/reset-draw', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const categoryId = req.params.categoryId;
+        await prisma.$transaction(async (tx) => {
+            // Delete matches
+            await tx.match.deleteMany({
+                where: { encounter: { categoryId } },
+            });
+            // Delete encounters
+            await tx.encounter.deleteMany({
+                where: { categoryId },
+            });
+            // Delete group standings
+            await tx.groupStanding.deleteMany({
+                where: { group: { categoryId } },
+            });
+            // Delete competition groups
+            await tx.competitionGroup.deleteMany({
+                where: { categoryId },
+            });
+        });
+
+        res.json({ success: true, message: 'Category draw and encounters cleared successfully.' });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// POST /competitions/categories/:categoryId/generate-groups - Generate pools & fixtures
 router.post('/categories/:categoryId/generate-groups', authenticateToken, async (req: AuthRequest, res: Response, next) => {
     try {
-        const { groupCount = 1 } = req.body;
+        const { groupCount = 1, customGroups } = req.body;
+
+        const category = await prisma.category.findUnique({
+            where: { id: req.params.categoryId },
+        });
+
+        if (!category) {
+            return res.status(404).json({ error: 'Category not found' });
+        }
 
         const registrations = await prisma.teamCategoryRegistration.findMany({
             where: { categoryId: req.params.categoryId },
             include: { team: true },
         });
 
-        const teamIds = registrations.map((r) => r.teamId);
-        if (teamIds.length < 2) {
-            return res.status(400).json({ error: 'At least 2 teams required to generate groups' });
+        const allTeamIds = registrations.map((r) => r.teamId);
+        if (allTeamIds.length < 2) {
+            return res.status(400).json({ error: 'At least 2 teams required to generate draw' });
         }
 
-        const category = await prisma.category.findUnique({
-            where: { id: req.params.categoryId },
+        // Clean previous groups and encounters
+        await prisma.$transaction(async (tx) => {
+            await tx.match.deleteMany({ where: { encounter: { categoryId: category.id } } });
+            await tx.encounter.deleteMany({ where: { categoryId: category.id } });
+            await tx.groupStanding.deleteMany({ where: { group: { categoryId: category.id } } });
+            await tx.competitionGroup.deleteMany({ where: { categoryId: category.id } });
         });
 
         const groups = [];
-        const teamsPerGroup = Math.ceil(teamIds.length / groupCount);
 
-        for (let g = 0; g < groupCount; g++) {
-            const groupLetter = String.fromCharCode(65 + g);
-            const gTeamIds = teamIds.slice(g * teamsPerGroup, (g + 1) * teamsPerGroup);
+        if (Array.isArray(customGroups) && customGroups.length > 0) {
+            // Custom groups distribution passed by admin
+            for (let i = 0; i < customGroups.length; i++) {
+                const cg = customGroups[i];
+                const gTeamIds = (cg.teamIds || []).filter((id: string) => allTeamIds.includes(id));
+                if (gTeamIds.length === 0) continue;
 
-            if (gTeamIds.length === 0) continue;
+                const group = await prisma.competitionGroup.create({
+                    data: {
+                        categoryId: category.id,
+                        name: cg.name || `Group ${String.fromCharCode(65 + i)}`,
+                    },
+                });
 
-            const group = await prisma.competitionGroup.create({
-                data: {
-                    categoryId: req.params.categoryId,
-                    name: `Group ${groupLetter}`,
-                },
-            });
+                if (gTeamIds.length >= 2) {
+                    await CompetitionService.generateGroupEncounters(
+                        category.id,
+                        group.id,
+                        gTeamIds,
+                        category.roundsPerGroup || 1,
+                    );
+                }
 
-            if (gTeamIds.length >= 2) {
-                await CompetitionService.generateGroupEncounters(
-                    req.params.categoryId,
-                    group.id,
-                    gTeamIds,
-                    category?.roundsPerGroup || 1,
-                );
+                groups.push(group);
             }
+        } else {
+            // Automated equal distribution
+            const teamsPerGroup = Math.ceil(allTeamIds.length / groupCount);
 
-            groups.push(group);
+            for (let g = 0; g < groupCount; g++) {
+                const groupLetter = String.fromCharCode(65 + g);
+                const gTeamIds = allTeamIds.slice(g * teamsPerGroup, (g + 1) * teamsPerGroup);
+
+                if (gTeamIds.length === 0) continue;
+
+                const group = await prisma.competitionGroup.create({
+                    data: {
+                        categoryId: category.id,
+                        name: `Group ${groupLetter}`,
+                    },
+                });
+
+                if (gTeamIds.length >= 2) {
+                    await CompetitionService.generateGroupEncounters(
+                        category.id,
+                        group.id,
+                        gTeamIds,
+                        category.roundsPerGroup || 1,
+                    );
+                }
+
+                groups.push(group);
+            }
         }
 
         res.status(201).json(groups);

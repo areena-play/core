@@ -37,6 +37,19 @@ export class CompetitionsApi {
         return this.generateGroups(categoryId, body);
     }
 
+    updateCategory(categoryId: string, body: any) {
+        return this.http.request(`/competitions/categories/${categoryId}/update`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
+
+    resetCategoryDraw(categoryId: string) {
+        return this.http.request(`/competitions/categories/${categoryId}/reset-draw`, {
+            method: 'POST',
+        });
+    }
+
     createCategory(competitionId: string, body: any) {
         return this.http.request(`/competitions/${competitionId}/categories`, {
             method: 'POST',

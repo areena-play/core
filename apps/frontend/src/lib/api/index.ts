@@ -189,6 +189,8 @@ export class ApiClient extends HttpClient {
     getLiveEncounters = () => this.competitions.getLiveEncounters();
     createCompetition = (body: any) => this.competitions.createCompetition(body);
     createCompetitionCategory = (competitionId: string, body: any) => this.competitions.createCompetitionCategory(competitionId, body);
+    updateCategory = (categoryId: string, body: any) => this.competitions.updateCategory(categoryId, body);
+    resetCategoryDraw = (categoryId: string) => this.competitions.resetCategoryDraw(categoryId);
     createCategoryTeam = (categoryId: string, body: any) => this.competitions.createCategoryTeam(categoryId, body);
     generateCategoryGroups = (categoryId: string, body: any) => this.competitions.generateCategoryGroups(categoryId, body);
     createCategory = (competitionId: string, body: any) => this.competitions.createCategory(competitionId, body);
