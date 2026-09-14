@@ -27,6 +27,7 @@ import {
     Megaphone,
     Sparkles,
     Settings,
+    Layers,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -41,6 +42,7 @@ export default function SingleClubOverviewPage() {
     const [members, setMembers] = useState<any[]>([]);
     const [contactsData, setContactsData] = useState<any>(null);
     const [eventsData, setEventsData] = useState<any>(null);
+    const [tournamentsData, setTournamentsData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     const isClubOfficial =
@@ -54,18 +56,20 @@ export default function SingleClubOverviewPage() {
     const fetchClubData = async () => {
         setLoading(true);
         try {
-            const [contactsRes, membersRes, eventsRes] = await Promise.all([
+            const [contactsRes, membersRes, eventsRes, tournamentsRes] = await Promise.all([
                 api.getClubContacts(clubIdentifier).catch(() => null),
                 api.getClubMembers(clubIdentifier).catch(() => null),
                 api.getClubEvents(clubIdentifier).catch(() => null),
+                api.getClubTournaments(clubIdentifier).catch(() => null),
             ]);
 
-            const targetClub = contactsRes?.club || membersRes?.club || eventsRes?.club;
+            const targetClub = contactsRes?.club || membersRes?.club || eventsRes?.club || tournamentsRes?.club;
             if (targetClub) {
                 setClub(targetClub);
                 setContactsData(contactsRes);
                 setMembers(membersRes?.members || membersRes?.licenses || []);
                 setEventsData(eventsRes);
+                setTournamentsData(tournamentsRes);
 
                 setEntityMeta({
                     id: targetClub.id,
@@ -140,6 +144,7 @@ export default function SingleClubOverviewPage() {
     const officialsCount = contactsData?.officials?.length || 0;
     const venuesCount = contactsData?.locations?.length || 0;
     const teamsCount = eventsData?.teams?.length || 0;
+    const hostedTournamentsCount = tournamentsData?.hostedTournaments?.length || 0;
 
     return (
         <div className="space-y-8 pb-12">
@@ -168,18 +173,18 @@ export default function SingleClubOverviewPage() {
 
                     <div className="flex items-center gap-2 flex-wrap">
                         <Link
-                            href={`/club/${clubIdentifier}/members`}
+                            href={`/club/${clubIdentifier}/teams`}
                             className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 transition"
                         >
-                            <Users className="w-4 h-4" />
-                            <span>View Roster</span>
+                            <Trophy className="w-4 h-4 text-blue-500" />
+                            <span>Team Hub</span>
                         </Link>
                         <Link
-                            href={`/club/${clubIdentifier}/contacts`}
+                            href={`/club/${clubIdentifier}/tournaments`}
                             className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition"
                         >
-                            <Building2 className="w-4 h-4" />
-                            <span>Contacts & Venues</span>
+                            <Layers className="w-4 h-4" />
+                            <span>Tournament Hub</span>
                         </Link>
                         {isClubOfficial && (
                             <Link
@@ -212,20 +217,20 @@ export default function SingleClubOverviewPage() {
                     className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between hover:border-blue-300 dark:hover:border-blue-900 transition group"
                 >
                     <div>
-                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider group-hover:text-blue-600 transition">Teams</div>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider group-hover:text-blue-600 transition">Team Hub</div>
                         <div className="text-2xl font-black text-blue-600 dark:text-blue-400">{teamsCount}</div>
                     </div>
                     <Trophy className="w-7 h-7 text-blue-500" />
                 </Link>
                 <Link
-                    href={`/club/${clubIdentifier}/contacts`}
-                    className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between hover:border-amber-300 dark:hover:border-amber-900 transition group"
+                    href={`/club/${clubIdentifier}/tournaments`}
+                    className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between hover:border-purple-300 dark:hover:border-purple-900 transition group"
                 >
                     <div>
-                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider group-hover:text-amber-600 transition">Officials</div>
-                        <div className="text-2xl font-black text-amber-600 dark:text-amber-400">{officialsCount}</div>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider group-hover:text-purple-600 transition">Hosted Tournaments</div>
+                        <div className="text-2xl font-black text-purple-600 dark:text-purple-400">{hostedTournamentsCount}</div>
                     </div>
-                    <UserCheck className="w-7 h-7 text-amber-500" />
+                    <Layers className="w-7 h-7 text-purple-500" />
                 </Link>
                 <Link
                     href={`/club/${clubIdentifier}/contacts`}
@@ -244,21 +249,21 @@ export default function SingleClubOverviewPage() {
                 <h2 className="text-lg font-black text-slate-900 dark:text-white">Club Sections & Sites</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <Link
-                        href={`/club/${clubIdentifier}/contacts`}
-                        className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-red-300 dark:hover:border-red-900 transition group space-y-3"
+                        href={`/club/${clubIdentifier}/teams`}
+                        className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-blue-300 dark:hover:border-blue-900 transition group space-y-3"
                     >
-                        <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-950 text-red-600 flex items-center justify-center font-bold">
-                            <Building2 className="w-5 h-5" />
+                        <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-600 flex items-center justify-center font-bold">
+                            <Trophy className="w-5 h-5" />
                         </div>
                         <div>
                             <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-red-600 transition">
-                                    Contacts & Venues
+                                <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition">
+                                    Teams & Rosters
                                 </h3>
-                                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-red-600 transition" />
+                                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition" />
                             </div>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                Club address, board officials, and sports court facilities.
+                                Overview of registered teams in leagues and cups, squad rosters, and standings.
                             </p>
                         </div>
                     </Link>
@@ -267,7 +272,7 @@ export default function SingleClubOverviewPage() {
                         href={`/club/${clubIdentifier}/members`}
                         className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-red-300 dark:hover:border-red-900 transition group space-y-3"
                     >
-                        <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-600 flex items-center justify-center font-bold">
+                        <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-950 text-red-600 flex items-center justify-center font-bold">
                             <Users className="w-5 h-5" />
                         </div>
                         <div>
@@ -284,21 +289,21 @@ export default function SingleClubOverviewPage() {
                     </Link>
 
                     <Link
-                        href={`/club/${clubIdentifier}/teams`}
-                        className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-purple-300 dark:hover:border-purple-900 transition group space-y-3"
+                        href={`/club/${clubIdentifier}/contacts`}
+                        className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-emerald-300 dark:hover:border-emerald-900 transition group space-y-3"
                     >
-                        <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-600 flex items-center justify-center font-bold">
-                            <Trophy className="w-5 h-5" />
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center font-bold">
+                            <Building2 className="w-5 h-5" />
                         </div>
                         <div>
                             <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-purple-600 transition">
-                                    Club Teams
+                                <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 transition">
+                                    Contacts & Venues
                                 </h3>
-                                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-purple-600 transition" />
+                                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition" />
                             </div>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                League, cup & tournament squads, rosters, and standings.
+                                Club address, board officials, and sports court facilities.
                             </p>
                         </div>
                     </Link>
@@ -338,7 +343,47 @@ export default function SingleClubOverviewPage() {
                         </span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <Link
+                            href={`/club/${clubIdentifier}/team-hub`}
+                            className="rounded-2xl border border-red-200 dark:border-red-900/40 bg-red-50/30 dark:bg-red-950/10 p-5 shadow-sm hover:border-red-400 transition group space-y-3"
+                        >
+                            <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold">
+                                <Users className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-red-600 transition">
+                                        Team Hub
+                                    </h3>
+                                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-red-600 transition" />
+                                </div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Register teams, manage player rosters, set captains, and manage promotions & relegations.
+                                </p>
+                            </div>
+                        </Link>
+
+                        <Link
+                            href={`/club/${clubIdentifier}/tournaments`}
+                            className="rounded-2xl border border-purple-200 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/10 p-5 shadow-sm hover:border-purple-400 transition group space-y-3"
+                        >
+                            <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold">
+                                <Layers className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-purple-600 transition">
+                                        Tournament Hub
+                                    </h3>
+                                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-purple-600 transition" />
+                                </div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Register & host tournaments, configure categories, entry fees, and tableaus.
+                                </p>
+                            </div>
+                        </Link>
+
                         <Link
                             href={`/club/${clubIdentifier}/licensing`}
                             className="rounded-2xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/30 dark:bg-amber-950/10 p-5 shadow-sm hover:border-amber-400 transition group space-y-3"
@@ -383,13 +428,13 @@ export default function SingleClubOverviewPage() {
                             href={`/club/${clubIdentifier}/communications`}
                             className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-red-300 dark:hover:border-red-900 transition group space-y-3"
                         >
-                            <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold">
+                            <div className="w-10 h-10 rounded-xl bg-slate-800 text-white flex items-center justify-center font-bold">
                                 <Megaphone className="w-5 h-5" />
                             </div>
                             <div>
                                 <div className="flex items-center justify-between">
                                     <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-red-600 transition">
-                                        Communication
+                                        Communication Hub
                                     </h3>
                                     <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-red-600 transition" />
                                 </div>
@@ -401,20 +446,20 @@ export default function SingleClubOverviewPage() {
 
                         <Link
                             href={`/club/${clubIdentifier}/settings`}
-                            className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-red-300 dark:hover:border-red-900 transition group space-y-3"
+                            className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 shadow-sm hover:border-slate-400 dark:hover:border-slate-700 transition group space-y-3"
                         >
-                            <div className="w-10 h-10 rounded-xl bg-slate-800 text-white flex items-center justify-center font-bold">
+                            <div className="w-10 h-10 rounded-xl bg-slate-700 text-white flex items-center justify-center font-bold">
                                 <Settings className="w-5 h-5" />
                             </div>
                             <div>
                                 <div className="flex items-center justify-between">
-                                    <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-red-600 transition">
+                                    <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-slate-900 dark:group-hover:text-white transition">
                                         Club Settings
                                     </h3>
-                                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-red-600 transition" />
+                                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition" />
                                 </div>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                    Edit contact addresses, website, branding, and slug.
+                                    Manage club info, addresses, branding logos, and preferences.
                                 </p>
                             </div>
                         </Link>

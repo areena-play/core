@@ -324,10 +324,16 @@ export function getCommonNavSections({
                 sectionTitle: t('clubWorkspace.navOperations') || 'Club Operations',
                 items: [
                     {
-                        id: 'club-settings',
-                        label: t('clubWorkspace.settings') || 'Club Settings',
-                        href: `/club/${entityId}/settings`,
-                        icon: Settings,
+                        id: 'club-team-hub',
+                        label: t('clubWorkspace.teamHub') || 'Team Hub',
+                        href: `/club/${entityId}/team-hub`,
+                        icon: Users,
+                    },
+                    {
+                        id: 'club-tournaments-op',
+                        label: t('clubWorkspace.tournamentHub') || 'Tournament Hub',
+                        href: `/club/${entityId}/tournaments`,
+                        icon: Layers,
                     },
                     {
                         id: 'club-licensing',
@@ -347,6 +353,12 @@ export function getCommonNavSections({
                         href: `/club/${entityId}/communications`,
                         icon: MessageSquare,
                     },
+                    {
+                        id: 'club-settings',
+                        label: t('clubWorkspace.settings') || 'Club Settings',
+                        href: `/club/${entityId}/settings`,
+                        icon: Settings,
+                    },
                 ],
             });
         }
@@ -364,6 +376,7 @@ export function getCommonNavSections({
     const assocOverviewHref = isSubAssoc ? `/association/${entityId}` : '/';
     const competitionsHref = isSubAssoc ? `${subAssocPrefix}/competitions` : '/competitions';
     const leaguesHref = `${competitionsHref}?type=league`;
+    const cupsHref = `${competitionsHref}?type=cup`;
     const tournamentsHref = `${competitionsHref}?type=tournament`;
     const seasonTournamentsHref = `${competitionsHref}?type=season_tournament`;
     const peopleHref = isSubAssoc ? `${subAssocPrefix}/people` : '/people';
@@ -444,6 +457,11 @@ export function getCommonNavSections({
                             id: 'leagues',
                             label: t('nav.leagues'),
                             href: leaguesHref,
+                        },
+                        {
+                            id: 'cups',
+                            label: t('nav.cups') || 'Cups',
+                            href: cupsHref,
                         },
                         {
                             id: 'tournaments',

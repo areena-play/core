@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
 import { useMainView } from '@/lib/mainViewContext';
 import {
@@ -22,11 +23,14 @@ import {
     BarChart3,
     History,
     Sparkles,
+    Settings,
+    ArrowRight,
 } from 'lucide-react';
 
 export default function ClubTeamsPage() {
     const params = useParams();
     const clubIdentifier = params?.id as string;
+    const { user } = useAuth();
     const { t } = useI18n();
     const { setEntityMeta } = useMainView();
 
@@ -38,6 +42,14 @@ export default function ClubTeamsPage() {
     const [selectedType, setSelectedType] = useState<string>('ALL');
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [error, setError] = useState<string>('');
+
+    const isClubOfficial =
+        user?.isSuperAdmin ||
+        user?.clubRoles?.some(
+            (r: any) =>
+                (r.clubId === club?.id || r.club?.slug === club?.slug || r.clubId === clubIdentifier || r.club?.slug === clubIdentifier) &&
+                ['ADMIN', 'PRESIDENT', 'SECRETARY', 'TREASURER', 'COACH', 'TECHNICAL_DIRECTOR', 'JUNIOR_COACH', 'OFFICIAL'].includes(r.role)
+        );
 
     const loadData = async () => {
         setLoading(true);
@@ -212,10 +224,10 @@ export default function ClubTeamsPage() {
                     </div>
                     <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
                         <Trophy className="w-8 h-8 text-red-600" />
-                        <span>Club Teams & Competition Rosters</span>
+                        <span>Registered Teams &amp; Rosters</span>
                     </h1>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                        All registered teams of {club.name} across leagues, national cups, and tournaments.
+                        Public overview of all registered teams of {club.name} in league and cup competitions.
                     </p>
                 </div>
 
@@ -245,8 +257,34 @@ export default function ClubTeamsPage() {
                 </div>
             </div>
 
+            {/* Official Link Banner if User is Club Official */}
+            {isClubOfficial && (
+                <div className="rounded-2xl border border-red-200 dark:border-red-900/40 bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-950/20 dark:to-rose-950/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                            <Users className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                                Club Official Operations
+                            </h4>
+                            <p className="text-xs text-slate-600 dark:text-slate-300">
+                                You can register new teams, manage player squad rosters, set captains, and accept/decline promotions &amp; relegations in the official Team Hub.
+                            </p>
+                        </div>
+                    </div>
+                    <Link
+                        href={`/club/${club.slug || clubIdentifier}/team-hub`}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition shrink-0"
+                    >
+                        <span>Open Team Hub</span>
+                        <ArrowRight className="w-4 h-4" />
+                    </Link>
+                </div>
+            )}
+
             {/* Quick Metrics */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between">
                     <div>
                         <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Teams</div>
@@ -268,13 +306,6 @@ export default function ClubTeamsPage() {
                     </div>
                     <Award className="w-7 h-7 text-amber-500" />
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-4 shadow-sm flex items-center justify-between">
-                    <div>
-                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tournaments</div>
-                        <div className="text-2xl font-black text-purple-600 dark:text-purple-400">{tournamentTeamsCount}</div>
-                    </div>
-                    <Flame className="w-7 h-7 text-purple-500" />
-                </div>
             </div>
 
             {/* Filter Bar: Competition Types & Search */}
@@ -288,7 +319,7 @@ export default function ClubTeamsPage() {
                                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
                         }`}
                     >
-                        All Competitions ({teams.length})
+                        All Teams ({teams.length})
                     </button>
                     <button
                         onClick={() => setSelectedType('LEAGUE')}
@@ -309,16 +340,6 @@ export default function ClubTeamsPage() {
                         }`}
                     >
                         Cup ({cupTeamsCount})
-                    </button>
-                    <button
-                        onClick={() => setSelectedType('TOURNAMENT')}
-                        className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition ${
-                            selectedType === 'TOURNAMENT'
-                                ? 'bg-purple-600 text-white shadow-xs'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                        }`}
-                    >
-                        Tournaments ({tournamentTeamsCount})
                     </button>
                 </div>
 

@@ -27,6 +27,52 @@ export class ClubsApi {
         return this.http.request(`/clubs/${idOrSlug}/teams${qs ? `?${qs}` : ''}`);
     }
 
+    getClubTeamHub(idOrSlug: string, params?: { seasonId?: string; type?: string }) {
+        const query = new URLSearchParams();
+        if (params?.seasonId) query.set('seasonId', params.seasonId);
+        if (params?.type) query.set('type', params.type);
+        const qs = query.toString();
+        return this.http.request(`/clubs/${idOrSlug}/team-hub${qs ? `?${qs}` : ''}`);
+    }
+
+    registerClubTeam(idOrSlug: string, body: { categoryId: string; teamName: string; playerUserIds?: string[]; captainUserId?: string }) {
+        return this.http.request(`/clubs/${idOrSlug}/teams`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
+
+    updateClubTeam(idOrSlug: string, teamId: string, body: { name?: string; playerUserIds?: string[]; captainUserId?: string }) {
+        return this.http.request(`/clubs/${idOrSlug}/teams/${teamId}`, {
+            method: 'PUT',
+            body: JSON.stringify(body),
+        });
+    }
+
+    withdrawClubTeam(idOrSlug: string, teamId: string) {
+        return this.http.request(`/clubs/${idOrSlug}/teams/${teamId}`, {
+            method: 'DELETE',
+        });
+    }
+
+    submitClubTeamLeagueDecision(idOrSlug: string, teamId: string, body: { decision: string; notes?: string }) {
+        return this.http.request(`/clubs/${idOrSlug}/teams/${teamId}/league-decision`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
+
+    getClubTournaments(idOrSlug: string) {
+        return this.http.request(`/clubs/${idOrSlug}/tournaments`);
+    }
+
+    createClubTournament(idOrSlug: string, body: any) {
+        return this.http.request(`/clubs/${idOrSlug}/tournaments`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+    }
+
     getClubEvents(idOrSlug: string) {
         return this.http.request(`/clubs/${idOrSlug}/events`);
     }

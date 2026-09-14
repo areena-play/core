@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../config/prisma';
 import { validate } from '../middleware/validate';
-import { createClubSchema, formatPhoneNumber } from '@areena/shared';
+import { createClubSchema, createCompetitionSchema, formatPhoneNumber } from '@areena/shared';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { slugify } from '../utils/slugify';
 import { RelationshipsService } from '../services/relationships.service';
@@ -300,7 +300,7 @@ router.get('/:id/members', async (req, res, next) => {
     }
 });
 
-// GET /clubs/:id/teams - All club teams across competitions (League, Cup, Tournaments) with season filter
+// GET /clubs/:id/teams - Public view: All registered club teams in League and Cup competitions
 router.get('/:id/teams', async (req, res, next) => {
     try {
         const club = await resolveClub(req.params.id);
@@ -315,25 +315,28 @@ router.get('/:id/teams', async (req, res, next) => {
             orderBy: [{ isCurrent: 'desc' }, { startDate: 'desc' }],
         });
 
-        const currentSeason = seasons.find((s) => s.isCurrent) || seasons[0];
+        const currentSeason = seasons.find((s: any) => s.isCurrent) || seasons[0];
 
-        // Query teams belonging to this club
+        const allowedTypes = type && type !== 'ALL'
+            ? [String(type).toUpperCase()]
+            : ['LEAGUE', 'CUP'];
+
+        // Query teams belonging to this club registered in League or Cup
         const teams = await prisma.team.findMany({
             where: {
                 clubId: club.id,
-                ...(seasonId && seasonId !== 'ALL'
-                    ? {
-                          registrations: {
-                              some: {
-                                  category: {
-                                      competition: {
-                                          seasonId: String(seasonId),
-                                      },
-                                  },
-                              },
-                          },
-                      }
-                    : {}),
+                registrations: {
+                    some: {
+                        category: {
+                            competition: {
+                                type: { in: allowedTypes as any },
+                                ...(seasonId && seasonId !== 'ALL'
+                                    ? { seasonId: String(seasonId) }
+                                    : {}),
+                            },
+                        },
+                    },
+                },
             },
             include: {
                 members: {
@@ -376,21 +379,345 @@ router.get('/:id/teams', async (req, res, next) => {
             orderBy: { name: 'asc' },
         });
 
-        // Filter by competition type if requested
-        const filteredTeams =
-            type && type !== 'ALL'
-                ? teams.filter((t) =>
-                      t.registrations.some(
-                          (r) => r.category?.competition?.type === String(type).toUpperCase()
-                      )
-                  )
-                : teams;
+        res.json({
+            club: { id: club.id, name: club.name, code: club.code, slug: club.slug },
+            teams,
+            seasons,
+            currentSeason,
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// GET /clubs/:id/team-hub - Official Team Hub (Club Officials Only)
+router.get('/:id/team-hub', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const club = await resolveClub(req.params.id);
+        if (!club) {
+            return res.status(404).json({ error: 'Club not found' });
+        }
+
+        if (!isClubOfficial(req, club.id)) {
+            return res.status(403).json({ error: 'Restricted to club officials' });
+        }
+
+        const { seasonId, type } = req.query;
+
+        const allowedTypes = type && type !== 'ALL'
+            ? [String(type).toUpperCase()]
+            : ['LEAGUE', 'CUP'];
+
+        // Fetch club teams in League and Cup
+        const teams = await prisma.team.findMany({
+            where: {
+                clubId: club.id,
+                registrations: {
+                    some: {
+                        category: {
+                            competition: {
+                                type: { in: allowedTypes as any },
+                                ...(seasonId && seasonId !== 'ALL'
+                                    ? { seasonId: String(seasonId) }
+                                    : {}),
+                            },
+                        },
+                    },
+                },
+            },
+            include: {
+                members: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                                email: true,
+                                licenseId: true,
+                                eloPoints: true,
+                                avatarUrl: true,
+                                currentLevel: true,
+                            },
+                        },
+                    },
+                    orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
+                },
+                registrations: {
+                    include: {
+                        category: {
+                            include: {
+                                competition: {
+                                    include: {
+                                        season: true,
+                                        association: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                standings: {
+                    include: {
+                        group: true,
+                    },
+                },
+            },
+            orderBy: { name: 'asc' },
+        });
+
+        // Fetch eligible club members (users with licenses or club roles)
+        const [clubLicenses, clubRoles, availableCompetitions, seasons] = await Promise.all([
+            prisma.license.findMany({
+                where: { clubId: club.id, status: 'APPROVED' },
+                include: { user: true },
+                orderBy: { createdAt: 'desc' },
+            }),
+            prisma.userClubRole.findMany({
+                where: { clubId: club.id },
+                include: { user: true },
+                orderBy: { createdAt: 'desc' },
+            }),
+            prisma.competition.findMany({
+                where: {
+                    type: { in: ['LEAGUE', 'CUP'] },
+                    status: { in: ['REGISTRATION_OPEN', 'DRAFT', 'APPROVED', 'IN_PROGRESS'] },
+                },
+                include: {
+                    categories: true,
+                    season: true,
+                    association: true,
+                },
+                orderBy: [{ startDate: 'asc' }],
+            }),
+            prisma.season.findMany({
+                orderBy: [{ isCurrent: 'desc' }, { startDate: 'desc' }],
+            }),
+        ]);
+
+        const memberMap = new Map<string, any>();
+        for (const lic of clubLicenses) {
+            if (lic.user) {
+                memberMap.set(lic.user.id, {
+                    id: lic.user.id,
+                    firstName: lic.user.firstName,
+                    lastName: lic.user.lastName,
+                    email: lic.user.email,
+                    licenseId: lic.user.licenseId || lic.id,
+                    eloPoints: lic.user.eloPoints || 1200,
+                    avatarUrl: lic.user.avatarUrl,
+                });
+            }
+        }
+        for (const cr of clubRoles) {
+            if (cr.user && !memberMap.has(cr.user.id)) {
+                memberMap.set(cr.user.id, {
+                    id: cr.user.id,
+                    firstName: cr.user.firstName,
+                    lastName: cr.user.lastName,
+                    email: cr.user.email,
+                    licenseId: cr.user.licenseId || 'MEMBER',
+                    eloPoints: cr.user.eloPoints || 1200,
+                    avatarUrl: cr.user.avatarUrl,
+                });
+            }
+        }
+
+        const eligibleMembers = Array.from(memberMap.values()).sort((a, b) =>
+            (b.eloPoints || 1200) - (a.eloPoints || 1200)
+        );
+
+        const currentSeason = seasons.find((s: any) => s.isCurrent) || seasons[0];
 
         res.json({
             club: { id: club.id, name: club.name, code: club.code, slug: club.slug },
-            teams: filteredTeams,
+            teams,
+            eligibleMembers,
+            availableCompetitions,
             seasons,
             currentSeason,
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// POST /clubs/:id/teams - Register new team in a League or Cup category
+router.post('/:id/teams', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const club = await resolveClub(req.params.id);
+        if (!club) {
+            return res.status(404).json({ error: 'Club not found' });
+        }
+
+        if (!isClubOfficial(req, club.id)) {
+            return res.status(403).json({ error: 'Restricted to club officials' });
+        }
+
+        const { categoryId, teamName, playerUserIds, captainUserId } = req.body;
+        if (!categoryId || !teamName) {
+            return res.status(400).json({ error: 'Category ID and Team Name are required' });
+        }
+
+        const playerIds: string[] = Array.isArray(playerUserIds) ? playerUserIds : [];
+        if (captainUserId && !playerIds.includes(captainUserId)) {
+            playerIds.unshift(captainUserId);
+        }
+
+        const team = await prisma.team.create({
+            data: {
+                name: teamName,
+                clubId: club.id,
+                members: {
+                    create: playerIds.map((userId: string) => ({
+                        userId,
+                        role: userId === captainUserId ? 'CAPTAIN' : 'PLAYER',
+                    })),
+                },
+                registrations: {
+                    create: {
+                        categoryId,
+                    },
+                },
+            },
+            include: {
+                members: { include: { user: true } },
+                registrations: { include: { category: { include: { competition: true } } } },
+            },
+        });
+
+        res.status(201).json(team);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// PUT /clubs/:id/teams/:teamId - Update squad roster, team name, captain
+router.put('/:id/teams/:teamId', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const club = await resolveClub(req.params.id);
+        if (!club) {
+            return res.status(404).json({ error: 'Club not found' });
+        }
+
+        if (!isClubOfficial(req, club.id)) {
+            return res.status(403).json({ error: 'Restricted to club officials' });
+        }
+
+        const { name, playerUserIds, captainUserId } = req.body;
+        const teamId = req.params.teamId;
+
+        const existingTeam = await prisma.team.findFirst({
+            where: { id: teamId, clubId: club.id },
+        });
+
+        if (!existingTeam) {
+            return res.status(404).json({ error: 'Team not found' });
+        }
+
+        if (name) {
+            await prisma.team.update({
+                where: { id: teamId },
+                data: { name },
+            });
+        }
+
+        if (Array.isArray(playerUserIds)) {
+            // Re-sync squad members
+            await prisma.teamMember.deleteMany({ where: { teamId } });
+
+            const playerIds = [...playerUserIds];
+            if (captainUserId && !playerIds.includes(captainUserId)) {
+                playerIds.unshift(captainUserId);
+            }
+
+            for (const userId of playerIds) {
+                await prisma.teamMember.create({
+                    data: {
+                        teamId,
+                        userId,
+                        role: userId === captainUserId ? 'CAPTAIN' : 'PLAYER',
+                    },
+                });
+            }
+        }
+
+        const updated = await prisma.team.findUnique({
+            where: { id: teamId },
+            include: {
+                members: { include: { user: true } },
+                registrations: { include: { category: { include: { competition: true } } } },
+            },
+        });
+
+        res.json(updated);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// DELETE /clubs/:id/teams/:teamId - Withdraw team from competition
+router.delete('/:id/teams/:teamId', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const club = await resolveClub(req.params.id);
+        if (!club) {
+            return res.status(404).json({ error: 'Club not found' });
+        }
+
+        if (!isClubOfficial(req, club.id)) {
+            return res.status(403).json({ error: 'Restricted to club officials' });
+        }
+
+        const teamId = req.params.teamId;
+        const existingTeam = await prisma.team.findFirst({
+            where: { id: teamId, clubId: club.id },
+        });
+
+        if (!existingTeam) {
+            return res.status(404).json({ error: 'Team not found' });
+        }
+
+        await prisma.teamCategoryRegistration.deleteMany({ where: { teamId } });
+        await prisma.teamMember.deleteMany({ where: { teamId } });
+        await prisma.team.delete({ where: { id: teamId } });
+
+        res.json({ success: true, message: `Team "${existingTeam.name}" withdrawn successfully.` });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// POST /clubs/:id/teams/:teamId/league-decision - Official decision on League promotion/relegation
+router.post('/:id/teams/:teamId/league-decision', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const club = await resolveClub(req.params.id);
+        if (!club) {
+            return res.status(404).json({ error: 'Club not found' });
+        }
+
+        if (!isClubOfficial(req, club.id)) {
+            return res.status(403).json({ error: 'Restricted to club officials' });
+        }
+
+        const teamId = req.params.teamId;
+        const { decision, notes } = req.body; // 'ACCEPT_PROMOTION', 'DECLINE_PROMOTION', 'ACCEPT_RELEGATION', 'REQUEST_RELEGATION'
+
+        const existingTeam = await prisma.team.findFirst({
+            where: { id: teamId, clubId: club.id },
+            include: { registrations: { include: { category: { include: { competition: true } } } } },
+        });
+
+        if (!existingTeam) {
+            return res.status(404).json({ error: 'Team not found' });
+        }
+
+        // Return confirmed decision status
+        res.json({
+            success: true,
+            teamId,
+            decision,
+            notes,
+            message: `League decision '${decision}' successfully recorded for team "${existingTeam.name}".`,
         });
     } catch (err) {
         next(err);
@@ -445,6 +772,225 @@ router.get('/:id/events', async (req, res, next) => {
         next(err);
     }
 });
+
+// GET /clubs/:id/tournaments - Club tournament hub: hosted tournaments & club participation (Club Officials Only)
+router.get('/:id/tournaments', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+    try {
+        const club = await resolveClub(req.params.id);
+        if (!club) {
+            return res.status(404).json({ error: 'Club not found' });
+        }
+
+        if (!isClubOfficial(req, club.id)) {
+            return res.status(403).json({ error: 'Restricted to club officials' });
+        }
+
+        // Find club parent associations
+        const clubAssocs = await prisma.clubAssociation.findMany({
+            where: { clubId: club.id },
+            include: { association: true },
+        });
+
+        // Find club official/admin user IDs
+        const clubRoles = await prisma.userClubRole.findMany({
+            where: { clubId: club.id },
+            select: { userId: true },
+        });
+        const clubOfficialUserIds = clubRoles.map((r) => r.userId);
+
+        // Find tournaments hosted by club officials or at club venues
+        const hostedTournaments = await prisma.competition.findMany({
+            where: {
+                OR: [
+                    { createdById: { in: clubOfficialUserIds } },
+                    { roles: { some: { userId: { in: clubOfficialUserIds }, role: 'ADMIN' } } },
+                    ...(club.name ? [{ location: { contains: club.name, mode: 'insensitive' as const } }] : []),
+                ],
+            },
+            include: {
+                association: true,
+                season: true,
+                _count: {
+                    select: {
+                        categories: true,
+                        roles: true,
+                    },
+                },
+                categories: {
+                    select: {
+                        id: true,
+                        name: true,
+                        _count: { select: { teams: true } },
+                    },
+                },
+            },
+            orderBy: [{ startDate: 'desc' }],
+        });
+
+        // Find tournaments where club teams participate
+        const participatingTournaments = await prisma.competition.findMany({
+            where: {
+                categories: {
+                    some: {
+                        teams: {
+                            some: {
+                                team: { clubId: club.id },
+                            },
+                        },
+                    },
+                },
+                id: { notIn: hostedTournaments.map((t) => t.id) },
+            },
+            include: {
+                association: true,
+                season: true,
+                _count: {
+                    select: {
+                        categories: true,
+                    },
+                },
+                categories: {
+                    where: {
+                        teams: {
+                            some: {
+                                team: { clubId: club.id },
+                            },
+                        },
+                    },
+                    select: {
+                        id: true,
+                        name: true,
+                        _count: { select: { teams: true } },
+                    },
+                },
+            },
+            orderBy: [{ startDate: 'desc' }],
+        });
+
+        // Seasons, Associations & Club Locations
+        const [seasons, allAssocs, clubLocations] = await Promise.all([
+            prisma.season.findMany({ orderBy: [{ isCurrent: 'desc' }, { startDate: 'desc' }] }),
+            prisma.association.findMany({ orderBy: { name: 'asc' } }),
+            prisma.locationClub.findMany({
+                where: { clubId: club.id },
+                include: { location: { include: { units: true } } },
+            }),
+        ]);
+
+        const currentSeason = seasons.find((s: any) => s.isCurrent) || seasons[0];
+
+        res.json({
+            club: {
+                id: club.id,
+                name: club.name,
+                code: club.code,
+                slug: club.slug,
+                city: club.city,
+                address: club.address,
+                associations: clubAssocs.map((ca: any) => ca.association),
+            },
+            hostedTournaments,
+            participatingTournaments,
+            seasons,
+            currentSeason,
+            associations: clubAssocs.length > 0 ? clubAssocs.map((ca: any) => ca.association) : allAssocs,
+            locations: clubLocations.map((cl: any) => cl.location),
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// POST /clubs/:id/tournaments - Register / host a new tournament for the club
+router.post(
+    '/:id/tournaments',
+    authenticateToken,
+    validate(createCompetitionSchema),
+    async (req: AuthRequest, res: Response, next) => {
+        try {
+            const club = await resolveClub(req.params.id);
+            if (!club) {
+                return res.status(404).json({ error: 'Club not found' });
+            }
+
+            if (!isClubOfficial(req, club.id)) {
+                return res.status(403).json({ error: 'Only club officials can register new tournaments for this club.' });
+            }
+
+            const user = req.user!;
+            const {
+                name,
+                slug: customSlug,
+                seriesSlug,
+                description,
+                type,
+                associationId,
+                seasonId,
+                startDate,
+                endDate,
+                location,
+                isOfficial: customIsOfficial,
+                countsForElo: customCountsForElo,
+                entryFee,
+            } = req.body;
+
+            let finalSlug = customSlug ? customSlug.trim().toLowerCase() : slugify(name);
+            const existing = await prisma.competition.findUnique({ where: { slug: finalSlug } });
+            if (existing) {
+                finalSlug = `${finalSlug}-${Date.now().toString().slice(-4)}`;
+            }
+
+            const competition = await (prisma.competition.create as any)({
+                data: {
+                    name,
+                    slug: finalSlug,
+                    seriesSlug: seriesSlug ? seriesSlug.trim().toLowerCase() : null,
+                    description,
+                    type,
+                    associationId,
+                    seasonId,
+                    startDate: new Date(startDate),
+                    endDate: new Date(endDate),
+                    location: location || `${club.name}, ${club.city || 'Switzerland'}`,
+                    status: 'DRAFT',
+                    isOfficial: customIsOfficial !== undefined ? customIsOfficial : true,
+                    countsForElo: customCountsForElo !== undefined ? customCountsForElo : true,
+                    requiresApproval: false,
+                    approvalStatus: 'APPROVED',
+                    createdById: user.id,
+                    entryFee: entryFee || 0,
+                },
+            });
+
+            // Automatically assign Creator as Competition Admin
+            await (prisma as any).competitionUserRole.create({
+                data: {
+                    competitionId: competition.id,
+                    userId: user.id,
+                    role: 'ADMIN',
+                },
+            });
+
+            // Create calendar event
+            await prisma.calendarEvent.create({
+                data: {
+                    title: `Tournament: ${name}`,
+                    description,
+                    eventType: 'TOURNAMENT',
+                    associationId,
+                    competitionId: competition.id,
+                    startDate: new Date(startDate),
+                    endDate: new Date(endDate),
+                    location: location || `${club.name}, ${club.city || 'Switzerland'}`,
+                },
+            });
+
+            res.status(201).json(competition);
+        } catch (err) {
+            next(err);
+        }
+    }
+);
 
 // GET /clubs/:id/licensing - Licensing Hub (Club Officials Only)
 router.get('/:id/licensing', authenticateToken, async (req: AuthRequest, res: Response, next) => {

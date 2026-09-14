@@ -149,6 +149,13 @@ export class ApiClient extends HttpClient {
     getClubContacts = (idOrSlug: string) => this.clubs.getClubContacts(idOrSlug);
     getClubMembers = (idOrSlug: string) => this.clubs.getClubMembers(idOrSlug);
     getClubTeams = (idOrSlug: string, params?: { seasonId?: string; type?: string }) => this.clubs.getClubTeams(idOrSlug, params);
+    getClubTeamHub = (idOrSlug: string, params?: { seasonId?: string; type?: string }) => this.clubs.getClubTeamHub(idOrSlug, params);
+    registerClubTeam = (idOrSlug: string, body: { categoryId: string; teamName: string; playerUserIds?: string[]; captainUserId?: string }) => this.clubs.registerClubTeam(idOrSlug, body);
+    updateClubTeam = (idOrSlug: string, teamId: string, body: { name?: string; playerUserIds?: string[]; captainUserId?: string }) => this.clubs.updateClubTeam(idOrSlug, teamId, body);
+    withdrawClubTeam = (idOrSlug: string, teamId: string) => this.clubs.withdrawClubTeam(idOrSlug, teamId);
+    submitClubTeamLeagueDecision = (idOrSlug: string, teamId: string, body: { decision: string; notes?: string }) => this.clubs.submitClubTeamLeagueDecision(idOrSlug, teamId, body);
+    getClubTournaments = (idOrSlug: string) => this.clubs.getClubTournaments(idOrSlug);
+    createClubTournament = (idOrSlug: string, body: any) => this.clubs.createClubTournament(idOrSlug, body);
     getClubEvents = (idOrSlug: string) => this.clubs.getClubEvents(idOrSlug);
     getClubLicensing = (idOrSlug: string) => this.clubs.getClubLicensing(idOrSlug);
     applyClubLicenseOnBehalf = (idOrSlug: string, data: { userId: string; type: string; validUntil?: string; notes?: string }) => this.clubs.applyClubLicenseOnBehalf(idOrSlug, data);
