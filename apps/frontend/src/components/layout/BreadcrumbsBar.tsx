@@ -3,9 +3,37 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { ChevronRight, Home, Shield, Trophy, Building2, User, Layers, HelpCircle, Calculator, BookOpen, Activity, Code2, Megaphone, SlidersHorizontal, Table as TableIcon } from 'lucide-react';
+import {
+    ChevronRight,
+    Home,
+    Shield,
+    Trophy,
+    Building2,
+    User,
+    Layers,
+    HelpCircle,
+    Calculator,
+    BookOpen,
+    Activity,
+    Code2,
+    Megaphone,
+    SlidersHorizontal,
+    Table as TableIcon,
+    Swords,
+    Users,
+    Settings,
+    Key,
+    FileSpreadsheet,
+    FileText,
+    BarChart3,
+    DollarSign,
+    Calendar,
+    Award,
+    Volume2,
+} from 'lucide-react';
 import { useMainView } from '@/lib/mainViewContext';
 import { useI18n } from '@/lib/i18nContext';
+import { findCategoryBySlug } from '@/lib/slug';
 
 // Map of static pathname segments to clean human-readable names and icons
 const SEGMENT_METADATA: Record<string, { labelKey?: string; fallback: string; icon?: any }> = {
@@ -14,8 +42,8 @@ const SEGMENT_METADATA: Record<string, { labelKey?: string; fallback: string; ic
     club: { fallback: 'Club', icon: Shield },
     competitions: { fallback: 'Competitions', icon: Trophy },
     competition: { fallback: 'Competition', icon: Trophy },
-    calendar: { fallback: 'Calendar', icon: Activity },
-    courses: { fallback: 'Refresher Courses' },
+    calendar: { fallback: 'Calendar', icon: Calendar },
+    courses: { fallback: 'Refresher Courses', icon: BookOpen },
     locations: { fallback: 'Locations & Venues' },
     associations: { fallback: 'Associations', icon: Building2 },
     association: { fallback: 'Association', icon: Building2 },
@@ -27,24 +55,57 @@ const SEGMENT_METADATA: Record<string, { labelKey?: string; fallback: string; ic
     support: { fallback: 'Support & Help', icon: HelpCircle },
     manual: { fallback: 'User Manual', icon: BookOpen },
     'audit-trail': { fallback: 'Audit Trail', icon: Activity },
+    'audit-logs': { fallback: 'Audit Logs', icon: Activity },
     notices: { fallback: 'System Notices', icon: Megaphone },
     profile: { fallback: 'My Profile', icon: User },
-    management: { fallback: 'Management' },
-    admin: { fallback: 'System Administration' },
-    settings: { fallback: 'Settings' },
-    users: { fallback: 'User Management' },
-    finances: { fallback: 'Finances & Invoices' },
-    communications: { fallback: 'Communications' },
-    licenses: { fallback: 'Licensing' },
-    access: { fallback: 'Access Control' },
-    referees: { fallback: 'Referees' },
-    dashboard: { fallback: 'Dashboard' },
-    draws: { fallback: 'Draws & Brackets' },
-    matches: { fallback: 'Match Schedule' },
-    registrations: { fallback: 'Registrations' },
-    categories: { fallback: 'Categories' },
-    standings: { fallback: 'Standings' },
+    management: { fallback: 'Management', icon: SlidersHorizontal },
+    admin: { fallback: 'System Administration', icon: Settings },
+    settings: { fallback: 'Settings', icon: Settings },
+    users: { fallback: 'User Management', icon: Users },
+    finances: { fallback: 'Finances & Invoices', icon: DollarSign },
+    billing: { fallback: 'Billing & Invoices', icon: DollarSign },
+    communications: { fallback: 'Communications', icon: Megaphone },
+    communication: { fallback: 'Communications', icon: Megaphone },
+    licenses: { fallback: 'Licensing', icon: Award },
+    licensing: { fallback: 'Licensing', icon: Award },
+    access: { fallback: 'Access Control', icon: Key },
+    referees: { fallback: 'Referees', icon: Award },
+    dashboard: { fallback: 'Dashboard', icon: Activity },
+    draws: { fallback: 'Draws & Brackets', icon: Layers },
+    draw: { fallback: 'Draw & Brackets', icon: Layers },
+    matches: { fallback: 'Match Schedule', icon: Swords },
+    registrations: { fallback: 'Registrations', icon: Users },
+    categories: { fallback: 'Categories', icon: Layers },
+    category: { fallback: 'Category', icon: Layers },
+    standings: { fallback: 'Standings', icon: BarChart3 },
+    ranking: { fallback: 'Final Ranking', icon: BarChart3 },
+    tableau: { fallback: 'Tableau & Results', icon: TableIcon },
+    overview: { fallback: 'Overview', icon: Activity },
+    details: { fallback: 'Details', icon: FileText },
+    speaker: { fallback: 'Speaker Hub', icon: Volume2 },
+    cashier: { fallback: 'Cashier Hub', icon: DollarSign },
+    actions: { fallback: 'Actions Hub', icon: SlidersHorizontal },
+    statistics: { fallback: 'Statistics', icon: BarChart3 },
+    results: { fallback: 'Results', icon: Trophy },
+    players: { fallback: 'Players', icon: Users },
+    teams: { fallback: 'Teams', icon: Users },
+    members: { fallback: 'Members', icon: Users },
+    'members-hub': { fallback: 'Members Hub', icon: Users },
+    contacts: { fallback: 'Contacts', icon: User },
+    events: { fallback: 'Events & Tournaments', icon: Calendar },
+    tournaments: { fallback: 'Tournaments', icon: Trophy },
+    'api-keys': { fallback: 'API Keys', icon: Key },
+    clicktt: { fallback: 'Click-TT Import', icon: FileSpreadsheet },
+    encounter: { fallback: 'Encounter', icon: Swords },
 };
+
+function formatSlug(slug: string): string {
+    return decodeURIComponent(slug)
+        .split(/[-_]/)
+        .filter(Boolean)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+}
 
 export function BreadcrumbsBar() {
     const pathname = usePathname();
@@ -83,94 +144,144 @@ export function BreadcrumbsBar() {
     const currentAssoc = assocIdOrSlug
         ? associations?.find(
               (a: any) =>
-                  a.id === assocIdOrSlug ||
-                  a.slug === assocIdOrSlug ||
+                  a.id?.toLowerCase() === assocIdOrSlug.toLowerCase() ||
+                  a.slug?.toLowerCase() === assocIdOrSlug.toLowerCase() ||
                   a.code?.toLowerCase() === assocIdOrSlug.toLowerCase()
           ) || entityMeta
         : null;
 
     let pathAccumulator = '';
-    let skipNext = false;
+    let i = 0;
 
-    for (let i = 0; i < segments.length; i++) {
+    while (i < segments.length) {
         const seg = segments[i];
-        pathAccumulator += `/${seg}`;
 
-        if (skipNext) {
-            skipNext = false;
-            continue;
-        }
-
-        // Handle /association/[id]
+        // 1. Handle /association/[idOrSlug]
         if (seg === 'association' && i + 1 < segments.length) {
             const nextSeg = segments[i + 1];
-            pathAccumulator += `/${nextSeg}`;
-            skipNext = true;
-
-            const isLast = i + 1 === segments.length - 1 && !searchParams.toString();
+            pathAccumulator += `/association/${nextSeg}`;
+            const label = currentAssoc?.title || currentAssoc?.name || currentAssoc?.shortName || (entityMeta?.title ?? 'Association');
             crumbs.push({
-                label: currentAssoc?.title || currentAssoc?.name || currentAssoc?.shortName || 'Association',
-                href: isLast ? undefined : pathAccumulator,
-                isCurrent: isLast,
+                label,
+                href: pathAccumulator,
+                isCurrent: false,
                 icon: Building2,
             });
+            i += 2;
             continue;
         }
 
-        // Handle /competition/[id] or /club/[id]
-        if ((seg === 'competition' || seg === 'club') && i + 1 < segments.length) {
+        // 2. Handle /club/[idOrSlug]
+        if (seg === 'club' && i + 1 < segments.length) {
             const nextSeg = segments[i + 1];
-            pathAccumulator += `/${nextSeg}`;
-            skipNext = true;
-
-            const isLast = i + 1 === segments.length - 1 && !searchParams.toString();
-            const resolvedTitle = entityMeta?.id === nextSeg ? entityMeta.title : (seg === 'club' ? 'Club' : 'Competition');
+            pathAccumulator += `/club/${nextSeg}`;
+            const label = entityMeta?.title || formatSlug(nextSeg) || 'Club';
             crumbs.push({
-                label: resolvedTitle,
-                href: isLast ? undefined : pathAccumulator,
-                isCurrent: isLast,
-                icon: seg === 'club' ? Shield : Trophy,
+                label,
+                href: pathAccumulator,
+                isCurrent: false,
+                icon: Shield,
             });
+            i += 2;
             continue;
         }
 
-        // Handle /people/[identifier]
+        // 3. Handle /competition/[idOrSlug] and nested /category/[catSlug] or /encounter/[id]
+        if (seg === 'competition' && i + 1 < segments.length) {
+            const compSlug = segments[i + 1];
+            pathAccumulator += `/competition/${compSlug}`;
+            const compLabel = entityMeta?.title || formatSlug(compSlug) || 'Competition';
+            crumbs.push({
+                label: compLabel,
+                href: pathAccumulator,
+                isCurrent: false,
+                icon: Trophy,
+            });
+            i += 2;
+
+            // Check if followed by /category/[catSlug]
+            if (i < segments.length && segments[i] === 'category' && i + 1 < segments.length) {
+                const catSlug = segments[i + 1];
+                pathAccumulator += `/category/${catSlug}`;
+                const foundCategory = findCategoryBySlug(entityMeta?.categories || [], catSlug);
+                const catLabel = foundCategory?.name || formatSlug(catSlug) || 'Category';
+                crumbs.push({
+                    label: catLabel,
+                    href: pathAccumulator,
+                    isCurrent: false,
+                    icon: Layers,
+                });
+                i += 2;
+            } else if (i < segments.length && segments[i] === 'encounter' && i + 1 < segments.length) {
+                const encId = segments[i + 1];
+                pathAccumulator += `/encounter/${encId}`;
+                crumbs.push({
+                    label: 'Encounter',
+                    href: pathAccumulator,
+                    isCurrent: false,
+                    icon: Swords,
+                });
+                i += 2;
+            }
+            continue;
+        }
+
+        // 4. Handle standalone /category/[catSlug] (if visited directly)
+        if (seg === 'category' && i + 1 < segments.length) {
+            const catSlug = segments[i + 1];
+            pathAccumulator += `/category/${catSlug}`;
+            const foundCategory = findCategoryBySlug(entityMeta?.categories || [], catSlug);
+            const catLabel = foundCategory?.name || formatSlug(catSlug) || 'Category';
+            crumbs.push({
+                label: catLabel,
+                href: pathAccumulator,
+                isCurrent: false,
+                icon: Layers,
+            });
+            i += 2;
+            continue;
+        }
+
+        // 5. Handle /people/[identifier]
         if (seg === 'people' && i + 1 < segments.length) {
-            const isLast = i === segments.length - 1;
+            pathAccumulator += `/${seg}/${segments[i + 1]}`;
             crumbs.push({
                 label: 'People',
-                href: isLast ? undefined : '/people',
-                isCurrent: isLast,
+                href: pathAccumulator,
+                isCurrent: false,
                 icon: User,
             });
+            i += 2;
             continue;
         }
 
-        // Standard segment name resolution
-        const isLast = i === segments.length - 1;
+        // 6. Standard segment resolution
+        pathAccumulator += `/${seg}`;
         const meta = SEGMENT_METADATA[seg.toLowerCase()];
-        let label = meta?.fallback || seg;
+        let label = meta?.fallback;
 
-        // Clean up formatted UUIDs or codes
-        if (!meta && seg.length > 20) {
-            label = 'Details';
-        } else if (!meta) {
-            // Capitalize generic slug (e.g. "elo-calculator" -> "Elo Calculator")
-            label = seg
-                .split(/[-_]/)
-                .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                .join(' ');
+        if (!label) {
+            if (seg.length > 20) {
+                label = 'Details';
+            } else {
+                label = formatSlug(seg);
+            }
         }
 
         crumbs.push({
             label,
-            href: isLast ? undefined : pathAccumulator,
-            isCurrent: isLast,
+            href: pathAccumulator,
+            isCurrent: false,
             icon: meta?.icon,
         });
+        i += 1;
     }
 
     if (crumbs.length <= 1) return null;
+
+    // Mark the final crumb as current and remove its link
+    crumbs[crumbs.length - 1].isCurrent = true;
+    crumbs[crumbs.length - 1].href = undefined;
 
     return (
         <nav
