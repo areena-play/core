@@ -27,6 +27,9 @@ import {
     Lock,
     Gauge,
     CreditCard,
+    Bot,
+    Volume2,
+    Play,
 } from 'lucide-react';
 import { AccessDenied } from '@/components/auth/AccessDenied';
 import { Modal } from '@/components/ui/Modal';
@@ -42,6 +45,36 @@ export default function AdminSettingsPage() {
     const [dbImporting, setDbImporting] = useState(false);
     const [dbSuccess, setDbSuccess] = useState('');
     const [dbError, setDbError] = useState('');
+
+    // Gemini AI State
+    const [geminiApiKey, setGeminiApiKey] = useState('');
+    const [geminiHasApiKey, setGeminiHasApiKey] = useState(false);
+    const [geminiShowKey, setGeminiShowKey] = useState(false);
+    const [geminiModel, setGeminiModel] = useState('gemini-2.0-flash');
+    const [availableGeminiModels, setAvailableGeminiModels] = useState<Array<{ id: string; displayName: string; description?: string }>>([]);
+    const [fetchingGeminiModels, setFetchingGeminiModels] = useState(false);
+    const [isCustomModel, setIsCustomModel] = useState(false);
+    const [geminiEnabled, setGeminiEnabled] = useState(true);
+    const [geminiIsConfigured, setGeminiIsConfigured] = useState(false);
+    const [geminiSaving, setGeminiSaving] = useState(false);
+    const [geminiTesting, setGeminiTesting] = useState(false);
+    const [geminiSuccess, setGeminiSuccess] = useState('');
+    const [geminiError, setGeminiError] = useState('');
+    const [geminiTestResponse, setGeminiTestResponse] = useState('');
+
+    // Google Cloud Text-to-Speech State
+    const [ttsApiKey, setTtsApiKey] = useState('');
+    const [ttsHasApiKey, setTtsHasApiKey] = useState(false);
+    const [ttsShowKey, setTtsShowKey] = useState(false);
+    const [ttsLanguageCode, setTtsLanguageCode] = useState('de-CH');
+    const [ttsVoiceName, setTtsVoiceName] = useState('de-CH-Wavenet-A');
+    const [ttsEnabled, setTtsEnabled] = useState(true);
+    const [ttsIsConfigured, setTtsIsConfigured] = useState(false);
+    const [ttsSaving, setTtsSaving] = useState(false);
+    const [ttsTesting, setTtsTesting] = useState(false);
+    const [ttsSuccess, setTtsSuccess] = useState('');
+    const [ttsError, setTtsError] = useState('');
+    const [ttsPlaying, setTtsPlaying] = useState(false);
 
     // Stripe State
     const [stripeSecretKey, setStripeSecretKey] = useState('');
@@ -155,6 +188,21 @@ export default function AdminSettingsPage() {
         }
     };
 
+    const fetchGeminiModels = async (keyOverride?: string) => {
+        setFetchingGeminiModels(true);
+        try {
+            const key = keyOverride !== undefined ? keyOverride : (geminiApiKey && !geminiApiKey.includes('••••••••') ? geminiApiKey : undefined);
+            const res = await api.admin.getGeminiModels(key);
+            if (res?.models && res.models.length > 0) {
+                setAvailableGeminiModels(res.models);
+            }
+        } catch (err: any) {
+            console.warn('Failed to fetch available Gemini models:', err);
+        } finally {
+            setFetchingGeminiModels(false);
+        }
+    };
+
     const loadSettings = async () => {
         try {
             const [data, clientsData] = await Promise.all([
@@ -162,6 +210,27 @@ export default function AdminSettingsPage() {
                 api.getOAuthClients({ all: true }).catch(() => []),
             ]);
             setOauthClients(clientsData || []);
+            if (data?.gemini) {
+                setGeminiModel(data.gemini.model || 'gemini-2.0-flash');
+                setGeminiEnabled(data.gemini.enabled !== false);
+                setGeminiHasApiKey(data.gemini.hasApiKey);
+                setGeminiIsConfigured(data.gemini.isConfigured);
+                if (data.gemini.hasApiKey) {
+                    setGeminiApiKey(data.gemini.apiKey || '');
+                }
+                // Fetch models dynamically
+                fetchGeminiModels();
+            }
+            if (data?.googleTts) {
+                setTtsLanguageCode(data.googleTts.languageCode || 'de-CH');
+                setTtsVoiceName(data.googleTts.voiceName || 'de-CH-Wavenet-A');
+                setTtsEnabled(data.googleTts.enabled !== false);
+                setTtsHasApiKey(data.googleTts.hasApiKey);
+                setTtsIsConfigured(data.googleTts.isConfigured);
+                if (data.googleTts.hasApiKey) {
+                    setTtsApiKey(data.googleTts.apiKey || '');
+                }
+            }
             if (data?.stripe) {
                 setStripePublishableKey(data.stripe.publishableKey || '');
                 setStripeProMonthlyPriceId(data.stripe.proMonthlyPriceId || '');
@@ -217,6 +286,107 @@ export default function AdminSettingsPage() {
             loadSettings();
         }
     }, [user]);
+
+    const handleSaveGemini = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setGeminiSaving(true);
+        setGeminiError('');
+        setGeminiSuccess('');
+        try {
+            const payload: any = {
+                model: geminiModel,
+                enabled: geminiEnabled,
+            };
+            if (geminiApiKey && !geminiApiKey.includes('••••••••')) {
+                payload.apiKey = geminiApiKey;
+            }
+            const res = await api.admin.updateGeminiSettings(payload);
+            setGeminiSuccess(res.message || 'Gemini AI settings saved successfully.');
+            setGeminiHasApiKey(res.gemini?.hasApiKey);
+            setGeminiIsConfigured(res.gemini?.isConfigured);
+            if (payload.apiKey) {
+                setGeminiApiKey('••••••••••••••••••••••••');
+            }
+            fetchGeminiModels();
+        } catch (err: any) {
+            setGeminiError(err.message || 'Failed to save Gemini AI settings');
+        } finally {
+            setGeminiSaving(false);
+        }
+    };
+
+    const handleTestGemini = async () => {
+        setGeminiTesting(true);
+        setGeminiError('');
+        setGeminiSuccess('');
+        setGeminiTestResponse('');
+        try {
+            const testKey = geminiApiKey && !geminiApiKey.includes('••••••••') ? geminiApiKey : undefined;
+            const res = await api.admin.testGeminiSettings({ apiKey: testKey, model: geminiModel });
+            if (res.success) {
+                setGeminiSuccess(`Gemini AI connection successful! Model: ${res.model}`);
+                setGeminiTestResponse(res.sampleResponse || '');
+            } else {
+                setGeminiError(res.error || 'Gemini connection test failed.');
+            }
+        } catch (err: any) {
+            setGeminiError(err.message || 'Failed to connect to Google Gemini AI API.');
+        } finally {
+            setGeminiTesting(false);
+        }
+    };
+
+    const handleSaveGoogleTts = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setTtsSaving(true);
+        setTtsError('');
+        setTtsSuccess('');
+        try {
+            const payload: any = {
+                languageCode: ttsLanguageCode,
+                voiceName: ttsVoiceName,
+                enabled: ttsEnabled,
+            };
+            if (ttsApiKey && !ttsApiKey.includes('••••••••')) {
+                payload.apiKey = ttsApiKey;
+            }
+            const res = await api.admin.updateGoogleTtsSettings(payload);
+            setTtsSuccess(res.message || 'Google TTS settings saved successfully.');
+            setTtsHasApiKey(res.googleTts?.hasApiKey);
+            setTtsIsConfigured(res.googleTts?.isConfigured);
+            if (payload.apiKey) {
+                setTtsApiKey('••••••••••••••••••••••••');
+            }
+        } catch (err: any) {
+            setTtsError(err.message || 'Failed to save Google TTS settings');
+        } finally {
+            setTtsSaving(false);
+        }
+    };
+
+    const handleTestGoogleTts = async () => {
+        setTtsTesting(true);
+        setTtsError('');
+        setTtsSuccess('');
+        try {
+            const res = await api.admin.testGoogleTtsSettings();
+            if (res.success && res.audioBase64) {
+                setTtsSuccess(`TTS Speech Synthesis test passed (${res.voiceName})! Playing sample...`);
+                const audio = new Audio(`data:audio/mp3;base64,${res.audioBase64}`);
+                setTtsPlaying(true);
+                audio.onended = () => setTtsPlaying(false);
+                audio.onerror = () => setTtsPlaying(false);
+                await audio.play();
+            } else {
+                setTtsError(res.error || 'Google TTS test failed.');
+            }
+        } catch (err: any) {
+            setTtsError(err.message || 'Failed to test Google TTS.');
+            setTtsPlaying(false);
+        } finally {
+            setTtsTesting(false);
+        }
+    };
 
     const handleSaveStripe = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -416,8 +586,353 @@ export default function AdminSettingsPage() {
                     <span>{t('nav.systemSettings')}</span>
                 </h1>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                    Manage installation-wide email delivery credentials stored securely in the database (Mailgun REST API & Standard SMTP). Different server deployments configure their own keys directly here without needing changes to raw <code className="font-mono bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-red-500">.env</code> files.
+                    Manage installation-wide services stored securely in the database (Gemini AI, Google TTS, Stripe, Mailgun & SMTP). Different server deployments configure their own keys directly here without needing changes to raw <code className="font-mono bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-red-500">.env</code> files.
                 </p>
+            </div>
+
+            {/* A. GOOGLE GEMINI AI CONFIGURATION */}
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                            <Bot className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h2 className="font-bold text-base text-slate-900 dark:text-white">
+                                    Google Gemini AI Engine
+                                </h2>
+                                <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-300">
+                                    <Sparkles className="h-3 w-3" /> Pro Matches & Phonetics
+                                </span>
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Powers tactical Pro Match Analysis, athlete phonetic name suggestions, and anti-abuse validation.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {geminiIsConfigured && geminiEnabled ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                <CheckCircle2 className="h-3.5 w-3.5" /> Active & Connected
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-3 py-1 text-xs font-bold text-amber-600 dark:text-amber-400">
+                                <AlertCircle className="h-3.5 w-3.5" /> {!geminiEnabled ? 'Disabled' : 'API Key Missing'}
+                            </span>
+                        )}
+                        {geminiHasApiKey && (
+                            <button
+                                type="button"
+                                onClick={handleTestGemini}
+                                disabled={geminiTesting}
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/80 dark:hover:bg-indigo-900 px-3 py-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300 transition disabled:opacity-50"
+                            >
+                                {geminiTesting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 text-indigo-500" />}
+                                <span>{geminiTesting ? 'Testing...' : 'Test AI Connection'}</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {geminiError && (
+                    <div className="flex items-start gap-2 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/50 p-3 text-xs text-red-700 dark:text-red-300">
+                        <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                        <div>{geminiError}</div>
+                    </div>
+                )}
+                {geminiSuccess && (
+                    <div className="space-y-2">
+                        <div className="flex items-start gap-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/50 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                            <div>{geminiSuccess}</div>
+                        </div>
+                        {geminiTestResponse && (
+                            <div className="rounded-xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/50 dark:bg-indigo-950/30 p-3 text-xs text-slate-700 dark:text-slate-300">
+                                <span className="font-semibold text-indigo-600 dark:text-indigo-400 block mb-1">AI Test Response:</span>
+                                <em>"{geminiTestResponse}"</em>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                <form onSubmit={handleSaveGemini} className="space-y-4 text-xs">
+                    {/* Enable Toggle */}
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <span className="font-bold text-slate-900 dark:text-white block text-sm">
+                                Gemini AI Integration Active
+                            </span>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Master toggle for AI tactical coaching summaries, phonetic spelling assistance, and name moderation.
+                            </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                            <input
+                                type="checkbox"
+                                checked={geminiEnabled}
+                                onChange={(e) => setGeminiEnabled(e.target.checked)}
+                                className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Google Gemini API Key *
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type={geminiShowKey ? 'text' : 'password'}
+                                    required={!geminiHasApiKey}
+                                    placeholder={geminiHasApiKey ? '•••••••••••••••••••••••• (Leave blank to keep key)' : 'AIzaSy...'}
+                                    value={geminiApiKey}
+                                    onChange={(e) => setGeminiApiKey(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 pr-10 pl-3 py-2.5 font-mono text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setGeminiShowKey(!geminiShowKey)}
+                                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                                >
+                                    {geminiShowKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                            </div>
+                            <span className="text-[10px] text-slate-400 mt-1 block">
+                                Generated from Google AI Studio / Google Cloud Console.
+                            </span>
+                        </div>
+                        <div>
+                            <div className="flex items-center justify-between mb-1">
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300">
+                                    Default AI Model *
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        disabled={fetchingGeminiModels}
+                                        onClick={() => fetchGeminiModels()}
+                                        className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 disabled:opacity-50"
+                                        title="Query Google Generative Language API for models active on this API key"
+                                    >
+                                        <RefreshCw className={`h-3 w-3 ${fetchingGeminiModels ? 'animate-spin' : ''}`} />
+                                        <span>{fetchingGeminiModels ? 'Discovering...' : 'Discover Models'}</span>
+                                    </button>
+                                    <span className="text-slate-300 dark:text-slate-700">|</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsCustomModel(!isCustomModel)}
+                                        className="text-[11px] font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                                    >
+                                        {isCustomModel ? 'Pick from List' : 'Custom Model'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {isCustomModel ? (
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="e.g. gemini-2.0-flash, gemini-2.5-flash, gemini-1.5-flash-latest"
+                                    value={geminiModel}
+                                    onChange={(e) => setGeminiModel(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 font-mono text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none"
+                                />
+                            ) : (
+                                <select
+                                    value={geminiModel}
+                                    onChange={(e) => setGeminiModel(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none font-medium"
+                                >
+                                    {availableGeminiModels.length > 0 ? (
+                                        availableGeminiModels.map((m) => (
+                                            <option key={m.id} value={m.id}>
+                                                {m.displayName || m.id} ({m.id})
+                                            </option>
+                                        ))
+                                    ) : (
+                                        <>
+                                            <option value="gemini-2.0-flash">Gemini 2.0 Flash (Fastest, High-Precision & Next-Gen - Recommended)</option>
+                                            <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Experimental</option>
+                                            <option value="gemini-1.5-flash">Gemini 1.5 Flash (Fast & Cost-Effective)</option>
+                                            <option value="gemini-1.5-flash-latest">Gemini 1.5 Flash (Latest Release)</option>
+                                            <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B (Ultra-Lightweight)</option>
+                                            <option value="gemini-1.5-pro">Gemini 1.5 Pro (Deep Strategic Reasoning)</option>
+                                            <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro (Latest Release)</option>
+                                        </>
+                                    )}
+                                </select>
+                            )}
+
+                            <span className="text-[10px] text-slate-400 mt-1 block">
+                                {availableGeminiModels.find((m) => m.id === geminiModel)?.description ||
+                                    'Click "Discover Models" to automatically fetch the active models supported by your Google AI account.'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                            type="submit"
+                            disabled={geminiSaving}
+                            className="rounded-xl bg-indigo-600 hover:bg-indigo-700 px-6 py-2.5 text-xs font-bold text-white shadow transition disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {geminiSaving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : null}
+                            <span>{geminiSaving ? 'Saving...' : 'Save Gemini AI Settings'}</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {/* B. GOOGLE CLOUD TEXT-TO-SPEECH (TTS) */}
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
+                            <Volume2 className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h2 className="font-bold text-base text-slate-900 dark:text-white">
+                                    Google Cloud Text-to-Speech (TTS)
+                                </h2>
+                                <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 px-2 py-0.5 text-[10px] font-bold text-teal-700 dark:text-teal-300">
+                                    Speaker Callouts & Name Pronunciation
+                                </span>
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Synthesizes tournament arena loudspeaker match announcements and athlete name pronunciation previews.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {ttsIsConfigured && ttsEnabled ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                <CheckCircle2 className="h-3.5 w-3.5" /> Active & Connected
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-3 py-1 text-xs font-bold text-amber-600 dark:text-amber-400">
+                                <AlertCircle className="h-3.5 w-3.5" /> {!ttsEnabled ? 'Disabled' : 'API Key Missing'}
+                            </span>
+                        )}
+                        {ttsHasApiKey && (
+                            <button
+                                type="button"
+                                onClick={handleTestGoogleTts}
+                                disabled={ttsTesting || ttsPlaying}
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/80 dark:hover:bg-teal-900 px-3 py-1.5 text-xs font-bold text-teal-700 dark:text-teal-300 transition disabled:opacity-50"
+                            >
+                                {ttsTesting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5 text-teal-500 fill-current" />}
+                                <span>{ttsTesting ? 'Synthesizing...' : ttsPlaying ? 'Playing Audio...' : 'Test Speech Audio'}</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {ttsError && (
+                    <div className="flex items-start gap-2 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/50 p-3 text-xs text-red-700 dark:text-red-300">
+                        <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                        <div>{ttsError}</div>
+                    </div>
+                )}
+                {ttsSuccess && (
+                    <div className="flex items-start gap-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/50 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <div>{ttsSuccess}</div>
+                    </div>
+                )}
+
+                <form onSubmit={handleSaveGoogleTts} className="space-y-4 text-xs">
+                    {/* Enable Toggle */}
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <span className="font-bold text-slate-900 dark:text-white block text-sm">
+                                Text-to-Speech Engine Active
+                            </span>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                When active, tournament speaker callouts and athlete pronunciation previews will use high-fidelity neural voice synthesis.
+                            </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                            <input
+                                type="checkbox"
+                                checked={ttsEnabled}
+                                onChange={(e) => setTtsEnabled(e.target.checked)}
+                                className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-teal-600"></div>
+                        </label>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Google Cloud TTS API Key *
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type={ttsShowKey ? 'text' : 'password'}
+                                    required={!ttsHasApiKey}
+                                    placeholder={ttsHasApiKey ? '•••••••••••••••••••••••• (Leave blank to keep key)' : 'AIzaSy...'}
+                                    value={ttsApiKey}
+                                    onChange={(e) => setTtsApiKey(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 pr-10 pl-3 py-2.5 font-mono text-xs text-slate-900 dark:text-white focus:border-teal-500 focus:outline-none"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setTtsShowKey(!ttsShowKey)}
+                                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                                >
+                                    {ttsShowKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Default Language Code *
+                            </label>
+                            <select
+                                value={ttsLanguageCode}
+                                onChange={(e) => setTtsLanguageCode(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-teal-500 focus:outline-none font-medium"
+                            >
+                                <option value="de-CH">German (Switzerland) - de-CH</option>
+                                <option value="de-DE">German (Germany) - de-DE</option>
+                                <option value="fr-CH">French (Switzerland) - fr-CH</option>
+                                <option value="fr-FR">French (France) - fr-FR</option>
+                                <option value="it-CH">Italian (Switzerland) - it-CH</option>
+                                <option value="en-US">English (US) - en-US</option>
+                                <option value="en-GB">English (UK) - en-GB</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Default Neural Voice Name *
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="de-CH-Wavenet-A"
+                                value={ttsVoiceName}
+                                onChange={(e) => setTtsVoiceName(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 font-mono text-xs text-slate-900 dark:text-white focus:border-teal-500 focus:outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                            type="submit"
+                            disabled={ttsSaving}
+                            className="rounded-xl bg-teal-600 hover:bg-teal-700 px-6 py-2.5 text-xs font-bold text-white shadow transition disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {ttsSaving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : null}
+                            <span>{ttsSaving ? 'Saving...' : 'Save Google TTS Settings'}</span>
+                        </button>
+                    </div>
+                </form>
             </div>
 
             {/* 1. MAILGUN REST API GATEWAY */}

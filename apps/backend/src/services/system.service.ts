@@ -42,6 +42,23 @@ export interface StripeConfig {
     hasWebhookSecret: boolean;
 }
 
+export interface GeminiConfig {
+    apiKey: string;
+    model: string;
+    enabled: boolean;
+    isConfigured: boolean;
+    hasApiKey: boolean;
+}
+
+export interface GoogleTtsConfig {
+    apiKey: string;
+    languageCode: string;
+    voiceName: string;
+    enabled: boolean;
+    isConfigured: boolean;
+    hasApiKey: boolean;
+}
+
 export function formatEmailSender(
     fromEmail?: string,
     fromName?: string,
@@ -438,6 +455,8 @@ export class SystemService {
             mailgunConfig,
             smtpConfig,
             stripeConfig,
+            geminiConfig,
+            googleTtsConfig,
         ] = await Promise.all([
             prisma.user.count(),
             prisma.user.count({ where: { isSuperAdmin: true } }),
@@ -454,6 +473,8 @@ export class SystemService {
             this.getMailgunConfig(),
             this.getSmtpConfig(),
             this.getStripeConfig(),
+            this.getGeminiConfig(),
+            this.getGoogleTtsConfig(),
         ]);
 
         return {
@@ -483,6 +504,17 @@ export class SystemService {
                     status: stripeConfig.isConfigured ? 'configured' : 'not_configured',
                     hasSecretKey: stripeConfig.hasSecretKey,
                     publishableKey: stripeConfig.publishableKey || null,
+                },
+                gemini: {
+                    status: geminiConfig.isConfigured ? 'configured' : 'not_configured',
+                    model: geminiConfig.model,
+                    enabled: geminiConfig.enabled,
+                },
+                googleTts: {
+                    status: googleTtsConfig.isConfigured ? 'configured' : 'not_configured',
+                    languageCode: googleTtsConfig.languageCode,
+                    voiceName: googleTtsConfig.voiceName,
+                    enabled: googleTtsConfig.enabled,
                 },
                 mailgun: {
                     status: mailgunConfig.isConfigured ? 'configured' : 'not_configured',
@@ -594,5 +626,120 @@ export class SystemService {
                 error: err.message || 'Failed to authenticate with Stripe API.',
             };
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // GEMINI AI CONFIGURATION
+    // -------------------------------------------------------------------------
+
+    private static geminiConfigCache: GeminiConfig | null = null;
+
+    public static async getGeminiConfig(): Promise<GeminiConfig> {
+        if (this.geminiConfigCache) {
+            return this.geminiConfigCache;
+        }
+
+        const [apiKey, model, enabledStr] = await Promise.all([
+            this.getSetting('GEMINI_API_KEY'),
+            this.getSetting('GEMINI_MODEL', 'gemini-1.5-flash'),
+            this.getSetting('GEMINI_ENABLED', 'true'),
+        ]);
+
+        const k = (apiKey || process.env.GEMINI_API_KEY || '').trim();
+        const m = (model || 'gemini-1.5-flash').trim();
+        const enabled = enabledStr !== 'false';
+
+        this.geminiConfigCache = {
+            apiKey: k,
+            model: m,
+            enabled,
+            isConfigured: Boolean(k),
+            hasApiKey: Boolean(k),
+        };
+
+        return this.geminiConfigCache;
+    }
+
+    public static async updateGeminiConfig(
+        data: {
+            apiKey?: string;
+            model?: string;
+            enabled?: boolean;
+        },
+        updatedBy?: string
+    ): Promise<GeminiConfig> {
+        if (data.apiKey !== undefined && data.apiKey.trim() !== '') {
+            await this.setSetting('GEMINI_API_KEY', data.apiKey.trim(), 'Google Gemini AI API Key', true, updatedBy);
+        }
+        if (data.model !== undefined) {
+            await this.setSetting('GEMINI_MODEL', data.model.trim() || 'gemini-1.5-flash', 'Default Gemini AI Model', false, updatedBy);
+        }
+        if (data.enabled !== undefined) {
+            await this.setSetting('GEMINI_ENABLED', data.enabled ? 'true' : 'false', 'Gemini AI Integration Enabled', false, updatedBy);
+        }
+
+        this.geminiConfigCache = null;
+        return this.getGeminiConfig();
+    }
+
+    // -------------------------------------------------------------------------
+    // GOOGLE TEXT-TO-SPEECH (TTS) CONFIGURATION
+    // -------------------------------------------------------------------------
+
+    private static googleTtsConfigCache: GoogleTtsConfig | null = null;
+
+    public static async getGoogleTtsConfig(): Promise<GoogleTtsConfig> {
+        if (this.googleTtsConfigCache) {
+            return this.googleTtsConfigCache;
+        }
+
+        const [apiKey, languageCode, voiceName, enabledStr] = await Promise.all([
+            this.getSetting('GOOGLE_TTS_API_KEY'),
+            this.getSetting('GOOGLE_TTS_LANGUAGE_CODE', 'de-CH'),
+            this.getSetting('GOOGLE_TTS_VOICE_NAME', 'de-CH-Wavenet-A'),
+            this.getSetting('GOOGLE_TTS_ENABLED', 'true'),
+        ]);
+
+        const k = (apiKey || process.env.GOOGLE_TTS_API_KEY || '').trim();
+        const lang = (languageCode || 'de-CH').trim();
+        const voice = (voiceName || 'de-CH-Wavenet-A').trim();
+        const enabled = enabledStr !== 'false';
+
+        this.googleTtsConfigCache = {
+            apiKey: k,
+            languageCode: lang,
+            voiceName: voice,
+            enabled,
+            isConfigured: Boolean(k),
+            hasApiKey: Boolean(k),
+        };
+
+        return this.googleTtsConfigCache;
+    }
+
+    public static async updateGoogleTtsConfig(
+        data: {
+            apiKey?: string;
+            languageCode?: string;
+            voiceName?: string;
+            enabled?: boolean;
+        },
+        updatedBy?: string
+    ): Promise<GoogleTtsConfig> {
+        if (data.apiKey !== undefined && data.apiKey.trim() !== '') {
+            await this.setSetting('GOOGLE_TTS_API_KEY', data.apiKey.trim(), 'Google Cloud Text-to-Speech API Key', true, updatedBy);
+        }
+        if (data.languageCode !== undefined) {
+            await this.setSetting('GOOGLE_TTS_LANGUAGE_CODE', data.languageCode.trim() || 'de-CH', 'Default Google TTS Language Code', false, updatedBy);
+        }
+        if (data.voiceName !== undefined) {
+            await this.setSetting('GOOGLE_TTS_VOICE_NAME', data.voiceName.trim() || 'de-CH-Wavenet-A', 'Default Google TTS Voice Name', false, updatedBy);
+        }
+        if (data.enabled !== undefined) {
+            await this.setSetting('GOOGLE_TTS_ENABLED', data.enabled ? 'true' : 'false', 'Google TTS Integration Enabled', false, updatedBy);
+        }
+
+        this.googleTtsConfigCache = null;
+        return this.getGoogleTtsConfig();
     }
 }

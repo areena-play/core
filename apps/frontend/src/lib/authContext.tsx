@@ -9,6 +9,8 @@ export interface User {
     email: string;
     firstName: string;
     lastName: string;
+    phoneticFirstName?: string | null;
+    phoneticLastName?: string | null;
     phone: string;
     street: string;
     postalCode: string;

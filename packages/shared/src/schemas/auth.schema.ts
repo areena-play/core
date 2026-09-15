@@ -81,6 +81,8 @@ export const loginSchema = z.object({
 export const updateProfileSchema = z.object({
     firstName: z.string().min(1).optional(),
     lastName: z.string().min(1).optional(),
+    phoneticFirstName: z.string().max(60).optional().nullable(),
+    phoneticLastName: z.string().max(60).optional().nullable(),
     phone: optionalPhoneSchema,
     street: z.string().min(2).optional(),
     postalCode: z.string().min(2).optional(),
@@ -105,6 +107,8 @@ export const createOAuthClientSchema = z.object({
 export const adminUpdateUserSchema = z.object({
     firstName: z.string().min(1).optional(),
     lastName: z.string().min(1).optional(),
+    phoneticFirstName: z.string().max(60).optional().nullable(),
+    phoneticLastName: z.string().max(60).optional().nullable(),
     email: z.string().email().optional(),
     phone: optionalPhoneSchema,
     street: z.string().min(2).optional(),

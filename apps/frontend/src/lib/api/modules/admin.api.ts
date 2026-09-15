@@ -65,6 +65,59 @@ export class AdminApi {
         });
     }
 
+    updateGeminiSettings(body: {
+        apiKey?: string;
+        model?: string;
+        enabled?: boolean;
+    }) {
+        return this.http.request('/admin/settings/gemini', {
+            method: 'PUT',
+            body: JSON.stringify(body),
+        });
+    }
+
+    testGeminiSettings(body?: { apiKey?: string; model?: string }) {
+        return this.http.request('/admin/settings/gemini/test', {
+            method: 'POST',
+            body: body ? JSON.stringify(body) : undefined,
+        });
+    }
+
+    getGeminiModels(apiKey?: string) {
+        return this.http.request<{
+            success: boolean;
+            models: Array<{
+                id: string;
+                displayName: string;
+                description?: string;
+                inputTokenLimit?: number;
+                outputTokenLimit?: number;
+            }>;
+            error?: string;
+        }>('/admin/settings/gemini/models', {
+            method: 'POST',
+            body: JSON.stringify({ apiKey }),
+        });
+    }
+
+    updateGoogleTtsSettings(body: {
+        apiKey?: string;
+        languageCode?: string;
+        voiceName?: string;
+        enabled?: boolean;
+    }) {
+        return this.http.request('/admin/settings/tts', {
+            method: 'PUT',
+            body: JSON.stringify(body),
+        });
+    }
+
+    testGoogleTtsSettings() {
+        return this.http.request('/admin/settings/tts/test', {
+            method: 'POST',
+        });
+    }
+
     exportDatabase() {
         return this.http.request('/admin/database/export');
     }

@@ -50,6 +50,11 @@ import {
     EyeOff,
     ArrowLeft,
     Plus,
+    Volume2,
+    VolumeX,
+    Mic,
+    Play,
+    Bot,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { AccessDenied } from '@/components/auth/AccessDenied';
@@ -73,6 +78,13 @@ function ProfilePageContent() {
     // Personal Form State
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
+    const [phoneticFirstName, setPhoneticFirstName] = useState('');
+    const [phoneticLastName, setPhoneticLastName] = useState('');
+    const [suggestingPhonetics, setSuggestingPhonetics] = useState(false);
+    const [phoneticSuggestionNotice, setPhoneticSuggestionNotice] = useState('');
+    const [testingTts, setTestingTts] = useState(false);
+    const [ttsPreviewPlaying, setTtsPreviewPlaying] = useState(false);
+    const [phoneticValidationWarning, setPhoneticValidationWarning] = useState('');
     const [phone, setPhone] = useState('');
     const [street, setStreet] = useState('');
     const [postalCode, setPostalCode] = useState('');
@@ -277,6 +289,8 @@ function ProfilePageContent() {
             if (data?.user) {
                 setFirstName(data.user.firstName || '');
                 setLastName(data.user.lastName || '');
+                setPhoneticFirstName(data.user.phoneticFirstName || '');
+                setPhoneticLastName(data.user.phoneticLastName || '');
                 setPhone(data.user.phone || '');
                 setStreet(data.user.street || '');
                 setPostalCode(data.user.postalCode || '');
@@ -301,6 +315,57 @@ function ProfilePageContent() {
             fetchOverview();
         }
     }, [user]);
+
+    const handleSuggestPhonetics = async () => {
+        const targetFirst = firstName || user?.firstName;
+        const targetLast = lastName || user?.lastName;
+        if (!targetFirst && !targetLast) return;
+
+        setSuggestingPhonetics(true);
+        setPhoneticSuggestionNotice('');
+        setPhoneticValidationWarning('');
+        try {
+            const res = await api.ai.suggestPhonetics({ firstName: targetFirst, lastName: targetLast });
+            if (res.success && res.suggestion) {
+                setPhoneticFirstName(res.suggestion.phoneticFirstName || targetFirst || '');
+                setPhoneticLastName(res.suggestion.phoneticLastName || targetLast || '');
+                setPhoneticSuggestionNotice(res.suggestion.explanation || 'Phonetic pronunciation suggested by Gemini AI.');
+                setTimeout(() => setPhoneticSuggestionNotice(''), 6000);
+            }
+        } catch (err: any) {
+            console.error('AI suggest phonetics failed:', err);
+            setPhoneticValidationWarning('Could not generate phonetic suggestion at this time.');
+        } finally {
+            setSuggestingPhonetics(false);
+        }
+    };
+
+    const handleTestPronunciation = async () => {
+        setTestingTts(true);
+        setPhoneticValidationWarning('');
+        try {
+            const res = await api.tts.previewPronunciation({
+                phoneticFirstName: phoneticFirstName || null,
+                phoneticLastName: phoneticLastName || null,
+            });
+            if (res.success && res.audioBase64) {
+                const audio = new Audio(`data:audio/mp3;base64,${res.audioBase64}`);
+                setTtsPreviewPlaying(true);
+                audio.onended = () => setTtsPreviewPlaying(false);
+                audio.onerror = () => setTtsPreviewPlaying(false);
+                await audio.play();
+            }
+        } catch (err: any) {
+            if (err.status === 429 || err.message?.includes('rate limit') || err.message?.includes('Too Many Requests')) {
+                setPhoneticValidationWarning(err.message || 'TTS pronunciation test rate limit reached (5 tests per hour). Please try again later.');
+            } else {
+                setPhoneticValidationWarning(err.message || 'Failed to synthesize name pronunciation.');
+            }
+            setTtsPreviewPlaying(false);
+        } finally {
+            setTestingTts(false);
+        }
+    };
 
     const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -367,6 +432,8 @@ function ProfilePageContent() {
             await api.updateProfile({
                 firstName,
                 lastName,
+                phoneticFirstName: phoneticFirstName ? phoneticFirstName.trim() : null,
+                phoneticLastName: phoneticLastName ? phoneticLastName.trim() : null,
                 phone: normalizedPhone || phone,
                 street,
                 postalCode,
@@ -670,6 +737,92 @@ function ProfilePageContent() {
                                     onChange={(e) => setLastName(e.target.value)}
                                     className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
                                 />
+                            </div>
+                        </div>
+
+                        {/* Phonetic Pronunciation & TTS Section */}
+                        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 p-4 sm:p-5 space-y-3.5">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80 dark:border-slate-800">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
+                                        <Volume2 className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm flex items-center gap-2">
+                                            <span>Tournament Speaker & Pronunciation</span>
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 px-2 py-0.5 text-[10px] font-bold text-teal-700 dark:text-teal-300">
+                                                TTS Engine
+                                            </span>
+                                        </h3>
+                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                            Define phonetic spelling so automated tournament arena announcements pronounce your name accurately.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={handleSuggestPhonetics}
+                                        disabled={suggestingPhonetics || (!firstName && !lastName)}
+                                        className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/80 dark:hover:bg-indigo-900 px-3 py-1.5 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 transition disabled:opacity-50"
+                                        title="Use Gemini AI to pre-fill phonetic spelling based on your name"
+                                    >
+                                        {suggestingPhonetics ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3 text-indigo-500" />}
+                                        <span>{suggestingPhonetics ? 'Generating...' : 'AI Auto-Suggest'}</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleTestPronunciation}
+                                        disabled={testingTts || ttsPreviewPlaying}
+                                        className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 text-[11px] font-bold shadow-xs transition disabled:opacity-50"
+                                        title="Listen to how the TTS speaker will pronounce your name"
+                                    >
+                                        {testingTts ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3 fill-current" />}
+                                        <span>{testingTts ? 'Testing...' : ttsPreviewPlaying ? 'Playing...' : 'Listen'}</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {phoneticSuggestionNotice && (
+                                <div className="flex items-start gap-2 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50 dark:bg-indigo-950/50 p-2.5 text-[11px] text-indigo-800 dark:text-indigo-300">
+                                    <Sparkles className="h-3.5 w-3.5 text-indigo-500 shrink-0 mt-0.5" />
+                                    <div>{phoneticSuggestionNotice}</div>
+                                </div>
+                            )}
+
+                            {phoneticValidationWarning && (
+                                <div className="flex items-start gap-2 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/50 p-2.5 text-[11px] text-amber-800 dark:text-amber-300">
+                                    <AlertCircle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+                                    <div>{phoneticValidationWarning}</div>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">
+                                        Phonetic First Name (Optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder={firstName || 'e.g. Dom-in-ik'}
+                                        value={phoneticFirstName}
+                                        onChange={(e) => setPhoneticFirstName(e.target.value)}
+                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-teal-500 focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-[11px]">
+                                        Phonetic Last Name (Optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder={lastName || 'e.g. Zohn-der-eg-ger'}
+                                        value={phoneticLastName}
+                                        onChange={(e) => setPhoneticLastName(e.target.value)}
+                                        className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-teal-500 focus:outline-none"
+                                    />
+                                </div>
                             </div>
                         </div>
 

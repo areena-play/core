@@ -47,6 +47,7 @@ import {
     Target,
 } from 'lucide-react';
 import { JsonLd, generatePersonJsonLd } from '@/components/seo/JsonLd';
+import { MatchAiAnalysisModal } from '@/components/competitions/MatchAiAnalysisModal';
 
 type ActiveTab = 'overview' | 'roles' | 'statistics';
 
@@ -63,6 +64,10 @@ export default function PersonProfilePage() {
     const [statsLoading, setStatsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
+
+    // AI Analysis Modal State
+    const [aiModalMatchId, setAiModalMatchId] = useState<string | null>(null);
+    const [aiModalTitle, setAiModalTitle] = useState<string | undefined>(undefined);
 
     // Filters for statistics / match history
     const [matchFilterType, setMatchFilterType] = useState<string>('ALL');
@@ -334,6 +339,12 @@ export default function PersonProfilePage() {
                             {person.accountStatus === 'MANAGED' && (
                                 <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-400">
                                     Managed Dependent
+                                </span>
+                            )}
+                            {(person.phoneticFirstName || person.phoneticLastName) && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 dark:bg-purple-950/40 px-2.5 py-0.5 text-[10px] font-mono text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800" title="Phonetic Pronunciation Guide">
+                                    <span>🗣️</span>
+                                    <span>{[person.phoneticFirstName, person.phoneticLastName].filter(Boolean).join(' ')}</span>
                                 </span>
                             )}
                         </div>
@@ -1783,9 +1794,23 @@ export default function PersonProfilePage() {
                                                 </div>
                                             </div>
 
-                                            <div className="text-right text-[11px] text-slate-400 font-mono whitespace-nowrap">
-                                                <div>{format(new Date(m.date), 'dd.MM.yyyy')}</div>
-                                                <div className="text-[10px] text-slate-400 uppercase">{m.competitionType}</div>
+                                            <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 text-right">
+                                                <div className="text-[11px] text-slate-400 font-mono whitespace-nowrap">
+                                                    <div>{format(new Date(m.date), 'dd.MM.yyyy')}</div>
+                                                    <div className="text-[10px] text-slate-400 uppercase">{m.competitionType}</div>
+                                                </div>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setAiModalMatchId(m.id);
+                                                        setAiModalTitle(`${person.firstName} ${person.lastName} vs ${m.opponents?.map((o: any) => `${o.firstName} ${o.lastName}`).join('/') || 'Opponent'}`);
+                                                    }}
+                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition shadow-2xs"
+                                                >
+                                                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                                                    <span>AI Analysis</span>
+                                                </button>
                                             </div>
                                         </div>
                                     );
@@ -1799,6 +1824,17 @@ export default function PersonProfilePage() {
                     </div>
                 </div>
             )}
+
+            {/* AI Tactical Match Analysis Modal */}
+            <MatchAiAnalysisModal
+                isOpen={!!aiModalMatchId}
+                onClose={() => {
+                    setAiModalMatchId(null);
+                    setAiModalTitle(undefined);
+                }}
+                matchId={aiModalMatchId || ''}
+                matchSummaryTitle={aiModalTitle}
+            />
         </div>
     );
 }

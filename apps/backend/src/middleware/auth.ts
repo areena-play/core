@@ -97,3 +97,32 @@ export function requireClubAdmin(clubIdParamKey: string = 'clubId') {
         next();
     };
 }
+
+export async function requirePro(req: AuthRequest, res: Response, next: NextFunction) {
+    if (!req.user) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+    if (req.user.isSuperAdmin) {
+        return next();
+    }
+    try {
+        const { prisma } = await import('../config/prisma');
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.id },
+            select: { subscriptionStatus: true, subscriptionCurrentPeriodEnd: true },
+        });
+
+        const isPro = user?.subscriptionStatus === 'ACTIVE' || user?.subscriptionStatus === 'TRIALING';
+        if (!isPro) {
+            return res.status(403).json({
+                error: 'PRO_REQUIRED',
+                message: 'This feature is exclusive to AREENA Pro members. Upgrade your subscription to unlock AI Match Analysis.',
+            });
+        }
+        next();
+    } catch (err: any) {
+        console.error('requirePro check failed:', err);
+        return res.status(500).json({ error: 'Failed to verify subscription status' });
+    }
+}
+

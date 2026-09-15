@@ -15,7 +15,9 @@ import {
     Calendar,
     MapPin,
     Shield,
+    Sparkles,
 } from 'lucide-react';
+import { MatchAiAnalysisModal } from '@/components/competitions/MatchAiAnalysisModal';
 
 export default function EncounterScoresheetPage() {
     const params = useParams();
@@ -34,6 +36,7 @@ export default function EncounterScoresheetPage() {
     const [selectedMatch, setSelectedMatch] = useState<any | null>(null);
     const [sets, setSets] = useState<Array<{ home: number; away: number }>>([{ home: 0, away: 0 }]);
     const [isFinished, setIsFinished] = useState(false);
+    const [showAiAnalysis, setShowAiAnalysis] = useState(false);
     const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     const fetchData = async () => {
@@ -193,11 +196,22 @@ export default function EncounterScoresheetPage() {
                 {/* Score Input Card */}
                 {selectedMatch && (
                     <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 p-5 sm:p-6 shadow-sm space-y-5">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                 <Flame className="h-4 w-4 text-red-500" />
                                 <span>Table Scoresheet: {selectedMatch.homePlayer1?.lastName || 'Home'} vs {selectedMatch.awayPlayer1?.lastName || 'Away'}</span>
                             </h3>
+
+                            {selectedMatch.status === 'FINISHED' && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAiAnalysis(true)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition shadow-2xs self-start sm:self-auto"
+                                >
+                                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                                    <span>AI Match Analysis (Pro)</span>
+                                </button>
+                            )}
                         </div>
 
                         {/* Set by set inputs */}
@@ -293,6 +307,16 @@ export default function EncounterScoresheetPage() {
                     </div>
                 )}
             </div>
+
+            {/* AI Tactical Match Analysis Modal */}
+            {selectedMatch && (
+                <MatchAiAnalysisModal
+                    isOpen={showAiAnalysis}
+                    onClose={() => setShowAiAnalysis(false)}
+                    matchId={selectedMatch.id}
+                    matchSummaryTitle={`${selectedMatch.homePlayer1?.lastName || 'Home'} vs ${selectedMatch.awayPlayer1?.lastName || 'Away'}`}
+                />
+            )}
         </div>
     );
 }

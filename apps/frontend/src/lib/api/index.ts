@@ -19,6 +19,8 @@ import { PushApi } from './modules/push.api';
 import { RelationshipsApi } from './modules/relationships.api';
 import { SearchApi } from './modules/search.api';
 import { BillingApi } from './modules/billing.api';
+import { AiApi } from './modules/ai.api';
+import { TtsApi } from './modules/tts.api';
 
 export * from './client';
 export * from './modules/system.api';
@@ -41,6 +43,8 @@ export * from './modules/push.api';
 export * from './modules/relationships.api';
 export * from './modules/search.api';
 export * from './modules/billing.api';
+export * from './modules/ai.api';
+export * from './modules/tts.api';
 
 export class ApiClient extends HttpClient {
     public readonly system: SystemApi;
@@ -63,6 +67,8 @@ export class ApiClient extends HttpClient {
     public readonly relationships: RelationshipsApi;
     public readonly search: SearchApi;
     public readonly billing: BillingApi;
+    public readonly ai: AiApi;
+    public readonly tts: TtsApi;
 
     constructor() {
         super();
@@ -86,6 +92,8 @@ export class ApiClient extends HttpClient {
         this.relationships = new RelationshipsApi(this);
         this.search = new SearchApi(this);
         this.billing = new BillingApi(this);
+        this.ai = new AiApi(this);
+        this.tts = new TtsApi(this);
     }
 
     // Direct proxy convenience methods for unified access & 100% backward compatibility

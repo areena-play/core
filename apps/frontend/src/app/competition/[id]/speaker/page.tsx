@@ -15,6 +15,8 @@ import {
     XCircle,
     AlertCircle,
     Bell,
+    Loader2,
+    Play,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { AccessDenied } from '@/components/auth/AccessDenied';
@@ -32,6 +34,8 @@ export default function CompetitionSpeakerPage() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [newCallout, setNewCallout] = useState({ title: '', message: '', type: 'MATCH_CALL', unitName: '' });
+    const [autoSpeakTts, setAutoSpeakTts] = useState(true);
+    const [speakingId, setSpeakingId] = useState<string | null>(null);
     const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     const fetchData = async () => {
@@ -92,11 +96,43 @@ export default function CompetitionSpeakerPage() {
         }
     };
 
+    const handleSpeakCallout = async (text: string, calloutId?: string) => {
+        if (!text) return;
+        setSpeakingId(calloutId || 'active');
+        try {
+            playChime();
+            // Wait slightly for chime before speech
+            await new Promise((r) => setTimeout(r, 600));
+
+            // Try backend Google Cloud TTS synthesis first
+            const res = await api.tts.synthesizeAnnouncement({ text }).catch(() => null);
+
+            if (res?.audioBase64) {
+                const audio = new Audio(`data:${res.mimeType || 'audio/mp3'};base64,${res.audioBase64}`);
+                await audio.play();
+            } else if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                // Fallback to browser Web Speech API
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'de-CH';
+                utterance.rate = 0.95;
+                window.speechSynthesis.speak(utterance);
+            }
+        } catch (err: any) {
+            console.error('Speech synthesis error:', err);
+        } finally {
+            setTimeout(() => setSpeakingId(null), 1500);
+        }
+    };
+
     const handleCreateCallout = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             await api.createCompetitionSpeakerCallout(competitionId, newCallout);
-            playChime();
+            if (autoSpeakTts) {
+                handleSpeakCallout(newCallout.message);
+            } else {
+                playChime();
+            }
             setShowModal(false);
             setNewCallout({ title: '', message: '', type: 'MATCH_CALL', unitName: '' });
             setActionMsg({ type: 'success', text: 'Callout broadcasted over speaker console.' });
@@ -240,15 +276,37 @@ export default function CompetitionSpeakerPage() {
                                     <p className="text-xs text-slate-600 dark:text-slate-300">{c.message}</p>
                                 </div>
 
-                                {canManage && (
+                                <div className="flex items-center gap-2 shrink-0">
                                     <button
                                         type="button"
-                                        onClick={() => handleDismissCallout(c.id)}
-                                        className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0 transition"
+                                        disabled={speakingId === c.id}
+                                        onClick={() => handleSpeakCallout(c.message, c.id)}
+                                        className="px-3 py-1.5 rounded-lg border border-purple-300 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-xs font-bold text-purple-700 dark:text-purple-300 inline-flex items-center gap-1.5 transition disabled:opacity-50"
+                                        title="Speak announcement over arena sound system using Google Cloud TTS"
                                     >
-                                        Dismiss
+                                        {speakingId === c.id ? (
+                                            <>
+                                                <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-600" />
+                                                <span>Speaking...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Volume2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                                                <span>Speak (TTS)</span>
+                                            </>
+                                        )}
                                     </button>
-                                )}
+
+                                    {canManage && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDismissCallout(c.id)}
+                                            className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 text-xs font-bold text-slate-700 dark:text-slate-300 transition"
+                                        >
+                                            Dismiss
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         ))
                     )}
@@ -314,6 +372,18 @@ export default function CompetitionSpeakerPage() {
                         />
                     </div>
 
+                    <label className="flex items-center gap-2 cursor-pointer pt-1">
+                        <input
+                            type="checkbox"
+                            checked={autoSpeakTts}
+                            onChange={(e) => setAutoSpeakTts(e.target.checked)}
+                            className="h-4 w-4 rounded accent-red-600"
+                        />
+                        <span className="text-xs text-slate-600 dark:text-slate-300">
+                            🔊 Automatically synthesize & speak message via Google Cloud TTS
+                        </span>
+                    </label>
+
                     <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                         <button
                             type="button"
@@ -326,7 +396,7 @@ export default function CompetitionSpeakerPage() {
                             type="submit"
                             className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white shadow-xs"
                         >
-                            Broadcast & Play Chime
+                            Broadcast & Speak
                         </button>
                     </div>
                 </form>

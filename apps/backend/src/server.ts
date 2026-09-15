@@ -31,6 +31,8 @@ import pushRoutes from './routes/push.routes';
 import relationshipRoutes from './routes/relationships.routes';
 import { ratingsRouter } from './routes/ratings.routes';
 import billingRoutes from './routes/billing.routes';
+import aiRoutes from './routes/ai.routes';
+import ttsRoutes from './routes/tts.routes';
 import { startDemoScheduler } from './services/demoScheduler.service';
 import { CronSchedulerService } from './services/cronScheduler.service';
 import { RatingSchedulerService } from './services/ratingScheduler.service';
@@ -115,6 +117,8 @@ v1Router.use('/push', pushRoutes);
 v1Router.use('/relationships', relationshipRoutes);
 v1Router.use('/ratings', ratingsRouter);
 v1Router.use('/billing', billingRoutes);
+v1Router.use('/ai', aiRoutes);
+v1Router.use('/tts', ttsRoutes);
 
 // 404 Catch-All Handler for unmatched v1 routes
 v1Router.use((req, res) => {

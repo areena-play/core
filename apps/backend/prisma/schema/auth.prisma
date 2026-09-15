@@ -28,6 +28,8 @@ model User {
   claimTokenExpires DateTime?
   firstName    String
   lastName     String
+  phoneticFirstName String?
+  phoneticLastName  String?
   phone        String            @default("")
   street       String            @default("")
   postalCode   String            @default("")

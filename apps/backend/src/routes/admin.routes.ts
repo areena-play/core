@@ -6,6 +6,8 @@ import { AuditService } from '../services/audit.service';
 import { DatabaseBackupService } from '../services/databaseBackup.service';
 import { CronSchedulerService } from '../services/cronScheduler.service';
 import { ClickTTImportService } from '../services/clickttImport.service';
+import { GeminiService } from '../services/gemini.service';
+import { GoogleTtsService } from '../services/tts.service';
 
 const router = Router();
 
@@ -32,11 +34,13 @@ router.get('/dashboard', async (req: AuthRequest, res: Response) => {
  */
 router.get('/settings', async (req: AuthRequest, res: Response) => {
     try {
-        const [mailgunConfig, smtpConfig, rateLimitConfig, stripeConfig] = await Promise.all([
+        const [mailgunConfig, smtpConfig, rateLimitConfig, stripeConfig, geminiConfig, googleTtsConfig] = await Promise.all([
             SystemService.getMailgunConfig(),
             SystemService.getSmtpConfig(),
             SystemService.getRateLimitConfig(),
             SystemService.getStripeConfig(),
+            SystemService.getGeminiConfig(),
+            SystemService.getGoogleTtsConfig(),
         ]);
 
         const maskedApiKey = mailgunConfig.apiKey
@@ -57,6 +61,18 @@ router.get('/settings', async (req: AuthRequest, res: Response) => {
                 : '••••••••'
             : '';
 
+        const maskedGeminiKey = geminiConfig.apiKey
+            ? geminiConfig.apiKey.length > 8
+                ? `${geminiConfig.apiKey.substring(0, 6)}••••••••${geminiConfig.apiKey.slice(-4)}`
+                : '••••••••'
+            : '';
+
+        const maskedGoogleTtsKey = googleTtsConfig.apiKey
+            ? googleTtsConfig.apiKey.length > 8
+                ? `${googleTtsConfig.apiKey.substring(0, 6)}••••••••${googleTtsConfig.apiKey.slice(-4)}`
+                : '••••••••'
+            : '';
+
         res.json({
             stripe: {
                 publishableKey: stripeConfig.publishableKey,
@@ -67,6 +83,21 @@ router.get('/settings', async (req: AuthRequest, res: Response) => {
                 proMonthlyPriceId: stripeConfig.proMonthlyPriceId,
                 proYearlyPriceId: stripeConfig.proYearlyPriceId,
                 isConfigured: stripeConfig.isConfigured,
+            },
+            gemini: {
+                apiKey: maskedGeminiKey,
+                hasApiKey: Boolean(geminiConfig.apiKey),
+                model: geminiConfig.model,
+                enabled: geminiConfig.enabled,
+                isConfigured: geminiConfig.isConfigured,
+            },
+            googleTts: {
+                apiKey: maskedGoogleTtsKey,
+                hasApiKey: Boolean(googleTtsConfig.apiKey),
+                languageCode: googleTtsConfig.languageCode,
+                voiceName: googleTtsConfig.voiceName,
+                enabled: googleTtsConfig.enabled,
+                isConfigured: googleTtsConfig.isConfigured,
             },
             mailgun: {
                 apiKey: maskedApiKey,
@@ -378,6 +409,188 @@ router.post('/settings/stripe/test', async (req: AuthRequest, res: Response) => 
     } catch (err: any) {
         console.error('Test Stripe Error:', err);
         res.status(500).json({ error: err.message || 'Failed to test Stripe connection' });
+    }
+});
+
+/**
+ * PUT /api/admin/settings/gemini
+ * Update Gemini AI API credentials & settings in Database
+ */
+router.put('/settings/gemini', async (req: AuthRequest, res: Response) => {
+    try {
+        const { apiKey, model, enabled } = req.body;
+
+        const updated = await SystemService.updateGeminiConfig(
+            {
+                apiKey,
+                model,
+                enabled: enabled !== undefined ? Boolean(enabled) : undefined,
+            },
+            req.user?.id
+        );
+
+        await AuditService.record({
+            req,
+            action: 'UPDATE_SYSTEM_SETTING',
+            entityType: 'SystemSetting',
+            entityId: 'GEMINI_CONFIG',
+            description: `Updated Gemini AI settings (Model: ${updated.model}, Enabled: ${updated.enabled}, HasKey: ${updated.hasApiKey})`,
+            metadata: {
+                hasApiKey: updated.hasApiKey,
+                model: updated.model,
+                enabled: updated.enabled,
+            },
+        });
+
+        res.json({
+            message: 'Gemini AI settings updated successfully',
+            gemini: {
+                hasApiKey: updated.hasApiKey,
+                model: updated.model,
+                enabled: updated.enabled,
+                isConfigured: updated.isConfigured,
+            },
+        });
+    } catch (err: any) {
+        console.error('Update Gemini Settings Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to update Gemini settings' });
+    }
+});
+
+/**
+ * POST /api/admin/settings/gemini/models
+ * Fetch all available Gemini models using stored or provided API key
+ */
+router.post('/settings/gemini/models', async (req: AuthRequest, res: Response) => {
+    try {
+        const { apiKey } = req.body;
+        const result = await GeminiService.listAvailableModels(apiKey);
+        res.json(result);
+    } catch (err: any) {
+        console.error('List Gemini Models Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to list Gemini models', models: GeminiService.getFallbackModels() });
+    }
+});
+
+/**
+ * GET /api/admin/settings/gemini/models
+ */
+router.get('/settings/gemini/models', async (req: AuthRequest, res: Response) => {
+    try {
+        const result = await GeminiService.listAvailableModels();
+        res.json(result);
+    } catch (err: any) {
+        console.error('List Gemini Models Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to list Gemini models', models: GeminiService.getFallbackModels() });
+    }
+});
+
+/**
+ * POST /api/admin/settings/gemini/test
+ * Validate and test live Gemini AI API credentials
+ */
+router.post('/settings/gemini/test', async (req: AuthRequest, res: Response) => {
+    try {
+        const { apiKey, model } = req.body;
+        const result = await GeminiService.testConnection({ apiKey, model });
+        if (!result.success) {
+            return res.status(400).json({ error: result.error, model: result.model });
+        }
+
+        await AuditService.record({
+            req,
+            action: 'TEST_GEMINI_CONNECTION',
+            entityType: 'SystemSetting',
+            entityId: 'GEMINI_TEST',
+            description: `Tested Gemini AI connection: SUCCESS (Model: ${result.model})`,
+            metadata: result,
+        });
+
+        res.json({
+            message: `Gemini AI connected successfully using ${result.model}`,
+            ...result,
+        });
+    } catch (err: any) {
+        console.error('Test Gemini Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to test Gemini connection' });
+    }
+});
+
+/**
+ * PUT /api/admin/settings/tts
+ * Update Google Text-to-Speech API credentials & settings in Database
+ */
+router.put('/settings/tts', async (req: AuthRequest, res: Response) => {
+    try {
+        const { apiKey, languageCode, voiceName, enabled } = req.body;
+
+        const updated = await SystemService.updateGoogleTtsConfig(
+            {
+                apiKey,
+                languageCode,
+                voiceName,
+                enabled: enabled !== undefined ? Boolean(enabled) : undefined,
+            },
+            req.user?.id
+        );
+
+        await AuditService.record({
+            req,
+            action: 'UPDATE_SYSTEM_SETTING',
+            entityType: 'SystemSetting',
+            entityId: 'GOOGLE_TTS_CONFIG',
+            description: `Updated Google TTS settings (Language: ${updated.languageCode}, Voice: ${updated.voiceName}, Enabled: ${updated.enabled})`,
+            metadata: {
+                hasApiKey: updated.hasApiKey,
+                languageCode: updated.languageCode,
+                voiceName: updated.voiceName,
+                enabled: updated.enabled,
+            },
+        });
+
+        res.json({
+            message: 'Google TTS settings updated successfully',
+            googleTts: {
+                hasApiKey: updated.hasApiKey,
+                languageCode: updated.languageCode,
+                voiceName: updated.voiceName,
+                enabled: updated.enabled,
+                isConfigured: updated.isConfigured,
+            },
+        });
+    } catch (err: any) {
+        console.error('Update Google TTS Settings Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to update Google TTS settings' });
+    }
+});
+
+/**
+ * POST /api/admin/settings/tts/test
+ * Validate and test live Google Cloud Text-to-Speech API
+ */
+router.post('/settings/tts/test', async (req: AuthRequest, res: Response) => {
+    try {
+        const result = await GoogleTtsService.testConnection();
+        if (!result.success) {
+            return res.status(400).json({ error: result.error });
+        }
+
+        await AuditService.record({
+            req,
+            action: 'TEST_GOOGLE_TTS_CONNECTION',
+            entityType: 'SystemSetting',
+            entityId: 'GOOGLE_TTS_TEST',
+            description: `Tested Google TTS connection: SUCCESS (Voice: ${result.voiceName})`,
+            metadata: { voiceName: result.voiceName, languageCode: result.languageCode },
+        });
+
+        res.json({
+            message: `Google TTS speech synthesis verified successfully (${result.voiceName})`,
+            ...result,
+        });
+    } catch (err: any) {
+        console.error('Test Google TTS Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to test Google TTS connection' });
     }
 });
 

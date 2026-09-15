@@ -5,11 +5,13 @@
     "scripts": {
         "dev": "nodemon --watch src --exec ts-node -r dotenv/config src/server.ts",
         "build": "prisma generate --schema=prisma/schema && tsc",
-        "start": "node dist/server.js",
-        "prisma:generate": "prisma generate --schema=prisma/schema",
-        "prisma:migrate": "prisma migrate dev --schema=prisma/schema",
-        "prisma:push": "prisma db push --schema=prisma/schema",
-        "prisma:update": "prisma db push --schema=prisma/schema && prisma generate --schema=prisma/schema",
+        "prisma": "node ../../scripts/prisma.js",
+        "prisma:generate": "node ../../scripts/prisma.js generate",
+        "prisma:migrate": "node ../../scripts/prisma.js migrate dev",
+        "prisma:push": "node ../../scripts/prisma.js db push",
+        "prisma:status": "node ../../scripts/prisma.js migrate status",
+        "prisma:studio": "node ../../scripts/prisma.js studio",
+        "prisma:update": "node ../../scripts/prisma.js db push && node ../../scripts/prisma.js generate",
         "prisma:seed": "ts-node -r dotenv/config src/seed.ts",
         "db:fresh": "ts-node -r dotenv/config src/scripts/resetFreshDatabase.ts",
         "import:clicktt": "ts-node -r dotenv/config src/scripts/importClickTT.ts"

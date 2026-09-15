@@ -29,6 +29,7 @@ import { AuditService } from '../services/audit.service';
 import { EmailService } from '../services/email.service';
 import { PrivacyService } from '../services/privacy.service';
 import { DuplicateDetectionService } from '../services/duplicateDetection.service';
+import { GeminiService } from '../services/gemini.service';
 
 const router = Router();
 
@@ -255,6 +256,8 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
                 email: user.email,
                 firstName: user.firstName,
                 lastName: user.lastName,
+                phoneticFirstName: (user as any).phoneticFirstName,
+                phoneticLastName: (user as any).phoneticLastName,
                 phone: user.phone,
                 street: user.street,
                 postalCode: user.postalCode,
@@ -266,6 +269,8 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
                 eloPoints: user.eloPoints,
                 rank: user.rank,
                 isSuperAdmin: user.isSuperAdmin,
+                subscriptionStatus: (user as any).subscriptionStatus,
+                subscriptionPlan: (user as any).subscriptionPlan,
                 emailVerified: user.emailVerified,
                 associationRoles: user.associationRoles,
                 clubRoles: user.clubRoles,
@@ -975,6 +980,8 @@ router.get('/profile-overview', authenticateToken, async (req: AuthRequest, res:
                 email: user.email,
                 firstName: user.firstName,
                 lastName: user.lastName,
+                phoneticFirstName: user.phoneticFirstName,
+                phoneticLastName: user.phoneticLastName,
                 phone: user.phone,
                 street: user.street,
                 postalCode: user.postalCode,
@@ -1017,6 +1024,8 @@ router.put(
             const {
                 firstName,
                 lastName,
+                phoneticFirstName,
+                phoneticLastName,
                 phone,
                 street,
                 postalCode,
@@ -1050,11 +1059,34 @@ router.put(
                 }
             }
 
+            // Validate phonetic names if updated
+            if (phoneticFirstName !== undefined || phoneticLastName !== undefined) {
+                const targetFirst = firstName || currentUser.firstName;
+                const targetLast = lastName || currentUser.lastName;
+                const pFirst = phoneticFirstName !== undefined ? phoneticFirstName : currentUser.phoneticFirstName;
+                const pLast = phoneticLastName !== undefined ? phoneticLastName : currentUser.phoneticLastName;
+
+                const validation = await GeminiService.validatePhoneticName(
+                    targetFirst,
+                    targetLast,
+                    pFirst,
+                    pLast
+                );
+
+                if (!validation.isValid) {
+                    return res.status(400).json({
+                        error: validation.reason || 'Invalid phonetic name. Please enter a reasonable phonetic pronunciation of your actual name.',
+                    });
+                }
+            }
+
             const updated = await prisma.user.update({
                 where: { id: req.user!.id },
                 data: {
                     ...(firstName ? { firstName } : {}),
                     ...(lastName ? { lastName } : {}),
+                    ...(phoneticFirstName !== undefined ? { phoneticFirstName: phoneticFirstName ? phoneticFirstName.trim() : null } : {}),
+                    ...(phoneticLastName !== undefined ? { phoneticLastName: phoneticLastName ? phoneticLastName.trim() : null } : {}),
                     ...(phone ? { phone: formatPhoneNumber(phone) } : {}),
                     ...(street ? { street } : {}),
                     ...(postalCode ? { postalCode } : {}),
@@ -1286,6 +1318,8 @@ router.get('/users/:identifier', optionalAuth, async (req: AuthRequest, res: Res
                 id: true,
                 firstName: true,
                 lastName: true,
+                phoneticFirstName: true,
+                phoneticLastName: true,
                 email: true,
                 phone: true,
                 street: true,

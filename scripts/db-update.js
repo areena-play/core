@@ -20,11 +20,6 @@ for (const envPath of candidateEnvPaths) {
 }
 dotenv.config();
 
-// Default fallback for local development if not defined
-if (!process.env.DATABASE_URL) {
-    process.env.DATABASE_URL = 'postgresql://areena_admin:supersecretpassword@localhost:5432/areena_db?schema=public';
-}
-
 const backendDir = path.resolve(__dirname, '../apps/backend');
 const isWindows = process.platform === 'win32';
 const npxCmd = isWindows ? 'npx.cmd' : 'npx';
