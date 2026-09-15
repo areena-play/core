@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client';
 export interface RequestPrismaState {
     cache: Map<string, Promise<any>>;
     txClient?: Prisma.TransactionClient;
+    systemSettingsPromise?: Promise<Map<string, string>>;
 }
 
 /**

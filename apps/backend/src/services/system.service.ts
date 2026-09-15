@@ -1,4 +1,5 @@
 import { prisma } from '../config/prisma';
+import { prismaRequestContext } from '../middleware/prismaCacheContext';
 import FormData from 'form-data';
 import Mailgun from 'mailgun.js';
 import nodemailer, { Transporter } from 'nodemailer';
@@ -84,37 +85,63 @@ export function formatEmailSender(
 }
 
 export class SystemService {
-    private static mailgunClientCache: any = null;
-    private static mailgunConfigCache: MailgunConfig | null = null;
-    private static smtpTransporterCache: Transporter | null = null;
-    private static smtpConfigCache: SmtpConfig | null = null;
-    private static rateLimitConfigCache: RateLimitConfig | null = null;
-
-    public static async getRateLimitConfig(): Promise<RateLimitConfig> {
-        if (this.rateLimitConfigCache) {
-            return this.rateLimitConfigCache;
+    /**
+     * Fetch all system settings in a single batch query, scoped to the active HTTP request.
+     * Prevents multi-server cache drift while reducing 25+ SQL queries per request down to 1.
+     */
+    public static async getAllSettingsMap(): Promise<Map<string, string>> {
+        const store = prismaRequestContext.getStore();
+        if (store) {
+            if (!store.systemSettingsPromise) {
+                store.systemSettingsPromise = (async () => {
+                    try {
+                        const settings = await prisma.systemSetting.findMany();
+                        const map = new Map<string, string>();
+                        for (const s of settings) {
+                            map.set(s.key, s.value);
+                        }
+                        return map;
+                    } catch (err) {
+                        console.error('[SystemService] Failed to batch load system settings:', err);
+                        return new Map<string, string>();
+                    }
+                })();
+            }
+            return store.systemSettingsPromise;
         }
 
-        const [enabledStr, capacityStr, refillRateStr, blockAnonymousStr] = await Promise.all([
-            this.getSetting('RATE_LIMIT_ENABLED', 'true'),
-            this.getSetting('RATE_LIMIT_CAPACITY', '120'),
-            this.getSetting('RATE_LIMIT_REFILL_PER_SEC', '2'),
-            this.getSetting('RATE_LIMIT_BLOCK_ANONYMOUS', 'true'),
-        ]);
+        // Direct fallback when running outside an Express request context (e.g. background workers, seeders)
+        try {
+            const settings = await prisma.systemSetting.findMany();
+            const map = new Map<string, string>();
+            for (const s of settings) {
+                map.set(s.key, s.value);
+            }
+            return map;
+        } catch (err) {
+            console.error('[SystemService] Failed to batch load system settings:', err);
+            return new Map<string, string>();
+        }
+    }
+
+    public static async getRateLimitConfig(): Promise<RateLimitConfig> {
+        const map = await this.getAllSettingsMap();
+        const enabledStr = map.get('RATE_LIMIT_ENABLED') ?? 'true';
+        const capacityStr = map.get('RATE_LIMIT_CAPACITY') ?? '120';
+        const refillRateStr = map.get('RATE_LIMIT_REFILL_PER_SEC') ?? '2';
+        const blockAnonymousStr = map.get('RATE_LIMIT_BLOCK_ANONYMOUS') ?? 'true';
 
         const capacity = Math.max(10, parseInt(capacityStr || '120', 10) || 120);
         const refillRatePerSec = Math.max(0.1, parseFloat(refillRateStr || '2') || 2);
         const enabled = enabledStr !== 'false';
         const blockAnonymousBots = blockAnonymousStr !== 'false';
 
-        this.rateLimitConfigCache = {
+        return {
             enabled,
             capacity,
             refillRatePerSec,
             blockAnonymousBots,
         };
-
-        return this.rateLimitConfigCache;
     }
 
     public static async updateRateLimitConfig(
@@ -139,19 +166,12 @@ export class SystemService {
             await this.setSetting('RATE_LIMIT_BLOCK_ANONYMOUS', String(data.blockAnonymousBots), 'Block Direct Unauthenticated Bot & Scraper Traffic', false, updatedBy);
         }
 
-        // Invalidate in-memory cache
-        this.rateLimitConfigCache = null;
-
         return this.getRateLimitConfig();
     }
 
     public static async getSetting(key: string, defaultValue: string = ''): Promise<string> {
-        try {
-            const setting = await prisma.systemSetting.findUnique({ where: { key } });
-            return setting ? setting.value : defaultValue;
-        } catch {
-            return defaultValue;
-        }
+        const map = await this.getAllSettingsMap();
+        return map.get(key) ?? defaultValue;
     }
 
     public static async setSetting(
@@ -166,6 +186,12 @@ export class SystemService {
             update: { value, description, isSecret, updatedBy },
             create: { key, value, description, isSecret, updatedBy },
         });
+
+        // Invalidate the request-scoped cache so subsequent reads in the same request see the new value
+        const store = prismaRequestContext.getStore();
+        if (store) {
+            store.systemSettingsPromise = undefined;
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -173,17 +199,12 @@ export class SystemService {
     // -------------------------------------------------------------------------
 
     public static async getMailgunConfig(): Promise<MailgunConfig> {
-        if (this.mailgunConfigCache) {
-            return this.mailgunConfigCache;
-        }
-
-        const [apiKey, domain, rawUrl, rawFromEmail, rawFromName] = await Promise.all([
-            this.getSetting('MAILGUN_API_KEY'),
-            this.getSetting('MAILGUN_DOMAIN'),
-            this.getSetting('MAILGUN_HOST'),
-            this.getSetting('MAILGUN_FROM_EMAIL'),
-            this.getSetting('MAILGUN_FROM_NAME'),
-        ]);
+        const map = await this.getAllSettingsMap();
+        const apiKey = map.get('MAILGUN_API_KEY');
+        const domain = map.get('MAILGUN_DOMAIN');
+        const rawUrl = map.get('MAILGUN_HOST');
+        const rawFromEmail = map.get('MAILGUN_FROM_EMAIL');
+        const rawFromName = map.get('MAILGUN_FROM_NAME');
 
         const apiKeyClean = (apiKey || '').trim();
         const domainClean = (domain || '').trim();
@@ -192,7 +213,7 @@ export class SystemService {
 
         const isConfigured = Boolean(apiKeyClean && domainClean);
 
-        this.mailgunConfigCache = {
+        return {
             apiKey: apiKeyClean,
             domain: domainClean,
             url: urlClean,
@@ -200,26 +221,22 @@ export class SystemService {
             fromName: sender.cleanName,
             isConfigured,
         };
-
-        return this.mailgunConfigCache;
     }
 
     public static async getMailgunClient(): Promise<{ client: any; domain: string; from: string } | null> {
         const config = await this.getMailgunConfig();
         if (!config.isConfigured) return null;
 
-        if (!this.mailgunClientCache) {
-            const mailgun = new Mailgun(FormData);
-            this.mailgunClientCache = mailgun.client({
-                username: 'api',
-                key: config.apiKey,
-                url: config.url || 'https://api.mailgun.net',
-            });
-        }
+        const mailgun = new Mailgun(FormData);
+        const client = mailgun.client({
+            username: 'api',
+            key: config.apiKey,
+            url: config.url || 'https://api.mailgun.net',
+        });
 
         const sender = formatEmailSender(config.fromEmail, config.fromName, config.domain || 'areena.ch');
         return {
-            client: this.mailgunClientCache,
+            client,
             domain: config.domain,
             from: sender.formatted,
         };
@@ -254,10 +271,6 @@ export class SystemService {
         if (data.fromName !== undefined) {
             await this.setSetting('MAILGUN_FROM_NAME', data.fromName.trim(), 'Mailgun Default Sender Name', false, updatedBy);
         }
-
-        // Invalidate in-memory cache
-        this.mailgunConfigCache = null;
-        this.mailgunClientCache = null;
 
         return this.getMailgunConfig();
     }
@@ -309,18 +322,13 @@ export class SystemService {
     // -------------------------------------------------------------------------
 
     public static async getSmtpConfig(): Promise<SmtpConfig> {
-        if (this.smtpConfigCache) {
-            return this.smtpConfigCache;
-        }
-
-        const [host, portStr, user, pass, secureStr, rawFrom] = await Promise.all([
-            this.getSetting('SMTP_HOST'),
-            this.getSetting('SMTP_PORT'),
-            this.getSetting('SMTP_USER'),
-            this.getSetting('SMTP_PASS'),
-            this.getSetting('SMTP_SECURE'),
-            this.getSetting('SMTP_FROM'),
-        ]);
+        const map = await this.getAllSettingsMap();
+        const host = map.get('SMTP_HOST');
+        const portStr = map.get('SMTP_PORT');
+        const user = map.get('SMTP_USER');
+        const pass = map.get('SMTP_PASS');
+        const secureStr = map.get('SMTP_SECURE');
+        const rawFrom = map.get('SMTP_FROM');
 
         const hostClean = (host || '').trim();
         const port = parseInt(portStr || '587', 10);
@@ -328,7 +336,7 @@ export class SystemService {
         const isConfigured = Boolean(hostClean);
         const sender = formatEmailSender(rawFrom, undefined, 'areena.ch');
 
-        this.smtpConfigCache = {
+        return {
             host: hostClean,
             port,
             user: (user || '').trim(),
@@ -338,33 +346,29 @@ export class SystemService {
             isConfigured,
             hasPassword: Boolean(pass),
         };
-
-        return this.smtpConfigCache;
     }
 
     public static async getSmtpTransporter(): Promise<{ transporter: Transporter; from: string } | null> {
         const config = await this.getSmtpConfig();
         if (!config.isConfigured) return null;
 
-        if (!this.smtpTransporterCache) {
-            this.smtpTransporterCache = nodemailer.createTransport({
-                host: config.host,
-                port: config.port,
-                secure: config.secure,
-                auth: config.user
-                    ? {
-                          user: config.user,
-                          pass: config.pass,
-                      }
-                    : undefined,
-                tls: {
-                    rejectUnauthorized: process.env.NODE_ENV === 'production',
-                },
-            });
-        }
+        const transporter = nodemailer.createTransport({
+            host: config.host,
+            port: config.port,
+            secure: config.secure,
+            auth: config.user
+                ? {
+                      user: config.user,
+                      pass: config.pass,
+                  }
+                : undefined,
+            tls: {
+                rejectUnauthorized: process.env.NODE_ENV === 'production',
+            },
+        });
 
         return {
-            transporter: this.smtpTransporterCache,
+            transporter,
             from: config.from,
         };
     }
@@ -399,10 +403,6 @@ export class SystemService {
             const sender = formatEmailSender(data.from);
             await this.setSetting('SMTP_FROM', sender.formatted, 'SMTP Default From Address', false, updatedBy);
         }
-
-        // Invalidate in-memory cache
-        this.smtpConfigCache = null;
-        this.smtpTransporterCache = null;
 
         return this.getSmtpConfig();
     }
@@ -541,27 +541,19 @@ export class SystemService {
     // STRIPE CONFIGURATION
     // -------------------------------------------------------------------------
 
-    private static stripeConfigCache: StripeConfig | null = null;
-
     public static async getStripeConfig(): Promise<StripeConfig> {
-        if (this.stripeConfigCache) {
-            return this.stripeConfigCache;
-        }
-
-        const [secretKey, publishableKey, webhookSecret, proMonthlyPriceId, proYearlyPriceId] =
-            await Promise.all([
-                this.getSetting('STRIPE_SECRET_KEY'),
-                this.getSetting('STRIPE_PUBLISHABLE_KEY'),
-                this.getSetting('STRIPE_WEBHOOK_SECRET'),
-                this.getSetting('STRIPE_PRO_MONTHLY_PRICE_ID'),
-                this.getSetting('STRIPE_PRO_YEARLY_PRICE_ID'),
-            ]);
+        const map = await this.getAllSettingsMap();
+        const secretKey = map.get('STRIPE_SECRET_KEY');
+        const publishableKey = map.get('STRIPE_PUBLISHABLE_KEY');
+        const webhookSecret = map.get('STRIPE_WEBHOOK_SECRET');
+        const proMonthlyPriceId = map.get('STRIPE_PRO_MONTHLY_PRICE_ID');
+        const proYearlyPriceId = map.get('STRIPE_PRO_YEARLY_PRICE_ID');
 
         const sk = (secretKey || '').trim();
         const pk = (publishableKey || '').trim();
         const wh = (webhookSecret || '').trim();
 
-        this.stripeConfigCache = {
+        return {
             secretKey: sk,
             publishableKey: pk,
             webhookSecret: wh,
@@ -571,8 +563,6 @@ export class SystemService {
             hasSecretKey: Boolean(sk),
             hasWebhookSecret: Boolean(wh),
         };
-
-        return this.stripeConfigCache;
     }
 
     public static async updateStripeConfig(
@@ -601,7 +591,6 @@ export class SystemService {
             await this.setSetting('STRIPE_PRO_YEARLY_PRICE_ID', data.proYearlyPriceId.trim(), 'Stripe Annual Pro Plan Price ID', false, updatedBy);
         }
 
-        this.stripeConfigCache = null;
         return this.getStripeConfig();
     }
 
@@ -632,32 +621,23 @@ export class SystemService {
     // GEMINI AI CONFIGURATION
     // -------------------------------------------------------------------------
 
-    private static geminiConfigCache: GeminiConfig | null = null;
-
     public static async getGeminiConfig(): Promise<GeminiConfig> {
-        if (this.geminiConfigCache) {
-            return this.geminiConfigCache;
-        }
-
-        const [apiKey, model, enabledStr] = await Promise.all([
-            this.getSetting('GEMINI_API_KEY'),
-            this.getSetting('GEMINI_MODEL', 'gemini-1.5-flash'),
-            this.getSetting('GEMINI_ENABLED', 'true'),
-        ]);
+        const map = await this.getAllSettingsMap();
+        const apiKey = map.get('GEMINI_API_KEY');
+        const model = map.get('GEMINI_MODEL');
+        const enabledStr = map.get('GEMINI_ENABLED');
 
         const k = (apiKey || process.env.GEMINI_API_KEY || '').trim();
         const m = (model || 'gemini-1.5-flash').trim();
         const enabled = enabledStr !== 'false';
 
-        this.geminiConfigCache = {
+        return {
             apiKey: k,
             model: m,
             enabled,
             isConfigured: Boolean(k),
             hasApiKey: Boolean(k),
         };
-
-        return this.geminiConfigCache;
     }
 
     public static async updateGeminiConfig(
@@ -678,7 +658,6 @@ export class SystemService {
             await this.setSetting('GEMINI_ENABLED', data.enabled ? 'true' : 'false', 'Gemini AI Integration Enabled', false, updatedBy);
         }
 
-        this.geminiConfigCache = null;
         return this.getGeminiConfig();
     }
 
@@ -686,26 +665,19 @@ export class SystemService {
     // GOOGLE TEXT-TO-SPEECH (TTS) CONFIGURATION
     // -------------------------------------------------------------------------
 
-    private static googleTtsConfigCache: GoogleTtsConfig | null = null;
-
     public static async getGoogleTtsConfig(): Promise<GoogleTtsConfig> {
-        if (this.googleTtsConfigCache) {
-            return this.googleTtsConfigCache;
-        }
-
-        const [apiKey, languageCode, voiceName, enabledStr] = await Promise.all([
-            this.getSetting('GOOGLE_TTS_API_KEY'),
-            this.getSetting('GOOGLE_TTS_LANGUAGE_CODE', 'de-CH'),
-            this.getSetting('GOOGLE_TTS_VOICE_NAME', 'de-CH-Wavenet-A'),
-            this.getSetting('GOOGLE_TTS_ENABLED', 'true'),
-        ]);
+        const map = await this.getAllSettingsMap();
+        const apiKey = map.get('GOOGLE_TTS_API_KEY');
+        const languageCode = map.get('GOOGLE_TTS_LANGUAGE_CODE');
+        const voiceName = map.get('GOOGLE_TTS_VOICE_NAME');
+        const enabledStr = map.get('GOOGLE_TTS_ENABLED');
 
         const k = (apiKey || process.env.GOOGLE_TTS_API_KEY || '').trim();
         const lang = (languageCode || 'de-CH').trim();
         const voice = (voiceName || 'de-CH-Wavenet-A').trim();
         const enabled = enabledStr !== 'false';
 
-        this.googleTtsConfigCache = {
+        return {
             apiKey: k,
             languageCode: lang,
             voiceName: voice,
@@ -713,8 +685,6 @@ export class SystemService {
             isConfigured: Boolean(k),
             hasApiKey: Boolean(k),
         };
-
-        return this.googleTtsConfigCache;
     }
 
     public static async updateGoogleTtsConfig(
@@ -739,7 +709,6 @@ export class SystemService {
             await this.setSetting('GOOGLE_TTS_ENABLED', data.enabled ? 'true' : 'false', 'Google TTS Integration Enabled', false, updatedBy);
         }
 
-        this.googleTtsConfigCache = null;
         return this.getGoogleTtsConfig();
     }
 }
