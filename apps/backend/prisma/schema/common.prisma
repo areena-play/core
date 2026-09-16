@@ -1,0 +1,8 @@
+// Shared cross-domain enums and foundational models
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
