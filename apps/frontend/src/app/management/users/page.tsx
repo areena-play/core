@@ -36,6 +36,7 @@ import {
     ExternalLink,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
+import { SortingState } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/DataTable';
 
 interface AdminUserItem {
@@ -103,6 +104,7 @@ export default function AdminUsersPage() {
     const [pageSize, setPageSize] = useState(15);
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
+    const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }]);
 
     // Filter states
     const [associations, setAssociations] = useState<any[]>([]);
@@ -227,12 +229,16 @@ export default function AdminUsersPage() {
         setLoading(true);
         try {
             const activeAssocId = assocId || selectedAssoc;
+            const sortBy = sorting[0]?.id || 'lastName';
+            const sortDir = sorting[0]?.desc ? 'desc' : 'asc';
             const res = await api.getAdminUsers({
                 q: debouncedSearch,
                 role: selectedRole !== 'ALL' ? selectedRole : undefined,
                 associationId: activeAssocId || undefined,
                 page,
                 limit: pageSize,
+                sortBy,
+                sortDir,
             });
             setUsers(res.users || []);
             setTotalPages(res.totalPages || 1);
@@ -251,7 +257,7 @@ export default function AdminUsersPage() {
         if (isAuthorized) {
             loadUsers();
         }
-    }, [currentUser, isAuthorized, page, pageSize, selectedRole, debouncedSearch, selectedAssoc, assocId]);
+    }, [currentUser, isAuthorized, page, pageSize, selectedRole, debouncedSearch, selectedAssoc, assocId, sorting]);
 
     // Check permissions
     if (!currentUser || !isAuthorized) {
@@ -833,6 +839,12 @@ export default function AdminUsersPage() {
                 onPaginationChange={(nextPageIndex, nextPageSize) => {
                     setPage(nextPageIndex + 1);
                     setPageSize(nextPageSize);
+                }}
+                manualSorting={true}
+                sorting={sorting}
+                onSortingChange={(newSorting) => {
+                    setSorting(newSorting);
+                    setPage(1);
                 }}
                 emptyMessage="No registered users match your search criteria."
             />

@@ -119,10 +119,34 @@ export class AuditService {
         endDate?: string;
         page?: number;
         limit?: number;
+        sortBy?: string;
+        sortDir?: string;
     }) {
         const page = Math.max(1, Number(filters.page) || 1);
         const limit = Math.min(200, Math.max(1, Number(filters.limit) || 50));
         const skip = (page - 1) * limit;
+
+        const rawSortBy = filters.sortBy || 'createdAt';
+        const sortDir = (filters.sortDir || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
+
+        let orderBy: any = { createdAt: 'desc' };
+        if (rawSortBy === 'createdAt' || rawSortBy === 'timestamp') {
+            orderBy = { createdAt: sortDir };
+        } else if (rawSortBy === 'actor' || rawSortBy === 'userName') {
+            orderBy = { userName: sortDir };
+        } else if (rawSortBy === 'userEmail') {
+            orderBy = { userEmail: sortDir };
+        } else if (rawSortBy === 'action') {
+            orderBy = { action: sortDir };
+        } else if (rawSortBy === 'category') {
+            orderBy = { category: sortDir };
+        } else if (rawSortBy === 'status') {
+            orderBy = { status: sortDir };
+        } else if (rawSortBy === 'description') {
+            orderBy = { description: sortDir };
+        } else if (rawSortBy === 'clientIp' || rawSortBy === 'ipAddress') {
+            orderBy = { ipAddress: sortDir };
+        }
 
         const where: any = {};
 
@@ -204,7 +228,7 @@ export class AuditService {
                         },
                     },
                 },
-                orderBy: { createdAt: 'desc' },
+                orderBy,
                 skip,
                 take: limit,
             }),

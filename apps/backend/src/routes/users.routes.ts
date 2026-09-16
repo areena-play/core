@@ -109,13 +109,22 @@ router.get('/admin/list', async (req: AuthRequest, res: Response, next) => {
             where.AND = andConditions;
         }
 
+        let orderBy: any = [{ lastName: 'asc' }, { firstName: 'asc' }];
+        if (sortBy === 'name' || sortBy === 'lastName') {
+            orderBy = [{ lastName: sortDir }, { firstName: sortDir }];
+        } else if (sortBy === 'firstName') {
+            orderBy = [{ firstName: sortDir }, { lastName: sortDir }];
+        } else if (['email', 'licenseId', 'eloPoints', 'rank', 'city', 'createdAt', 'updatedAt', 'phone', 'birthDate', 'gender', 'playingGender', 'emailVerified', 'isSuperAdmin'].includes(sortBy)) {
+            orderBy = { [sortBy]: sortDir };
+        }
+
         // Parallel queries: users list, total matching count, and overall stats
         const [users, total, totalUsers, superAdmins, verifiedUsers, unverifiedUsers] = await Promise.all([
             prisma.user.findMany({
                 where,
                 skip,
                 take: limit,
-                orderBy: { [sortBy]: sortDir },
+                orderBy,
                 select: {
                     id: true,
                     email: true,

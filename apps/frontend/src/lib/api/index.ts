@@ -116,7 +116,7 @@ export class ApiClient extends HttpClient {
     forgotPassword = (email: string) => this.auth.forgotPassword(email);
     resetPassword = (body: { token: string; password: string }) => this.auth.resetPassword(body);
     changePassword = (body: { currentPassword: string; newPassword: string }) => this.auth.changePassword(body);
-    getUsers = (params?: string | { q?: string; associationId?: string; role?: string; page?: number; limit?: number }) => this.auth.getUsers(params);
+    getUsers = (params?: string | { q?: string; associationId?: string; role?: string; page?: number; limit?: number; sortBy?: string; sortDir?: string }) => this.auth.getUsers(params);
     getPerson = (identifier: string) => this.auth.getPerson(identifier);
     getPersonStats = (identifier: string) => this.auth.getPersonStats(identifier);
     getHeadToHead = (identifier: string, opponentIdentifier: string) => this.auth.getHeadToHead(identifier, opponentIdentifier);

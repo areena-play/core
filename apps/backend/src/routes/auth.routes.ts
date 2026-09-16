@@ -1222,6 +1222,28 @@ router.get('/users', authenticateToken, async (req: AuthRequest, res: Response, 
         const hasPagination = req.query.page !== undefined || req.query.limit !== undefined;
         const skip = (page - 1) * limit;
 
+        const rawSortBy = (req.query.sortBy as string) || '';
+        const sortDir = (req.query.sortDir as string)?.toLowerCase() === 'desc' ? 'desc' : 'asc';
+
+        let orderBy: any = [{ lastName: 'asc' }, { firstName: 'asc' }];
+        if (rawSortBy === 'name' || rawSortBy === 'lastName') {
+            orderBy = [{ lastName: sortDir }, { firstName: sortDir }];
+        } else if (rawSortBy === 'firstName') {
+            orderBy = [{ firstName: sortDir }, { lastName: sortDir }];
+        } else if (rawSortBy === 'eloPoints' || rawSortBy === 'elo') {
+            orderBy = { eloPoints: sortDir };
+        } else if (rawSortBy === 'rank') {
+            orderBy = { rank: sortDir };
+        } else if (rawSortBy === 'licenseId') {
+            orderBy = { licenseId: sortDir };
+        } else if (rawSortBy === 'city') {
+            orderBy = { city: sortDir };
+        } else if (rawSortBy === 'email') {
+            orderBy = { email: sortDir };
+        } else if (rawSortBy === 'createdAt') {
+            orderBy = { createdAt: sortDir };
+        }
+
         const [users, total, totalUnfiltered] = await Promise.all([
             prisma.user.findMany({
                 where,
@@ -1271,7 +1293,7 @@ router.get('/users', authenticateToken, async (req: AuthRequest, res: Response, 
                 },
                 skip: hasPagination ? skip : 0,
                 take: hasPagination ? limit : 100,
-                orderBy: { lastName: 'asc' },
+                orderBy,
             }),
             prisma.user.count({ where }),
             prisma.user.count({}),

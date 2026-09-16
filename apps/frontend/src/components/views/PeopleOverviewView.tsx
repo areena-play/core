@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/authContext';
 import { useI18n } from '@/lib/i18nContext';
-import { ColumnDef } from '@tanstack/react-table';
+import { ColumnDef, SortingState } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/DataTable';
 import {
     Users,
@@ -44,6 +44,7 @@ function PeopleOverviewViewContent({ scopedAssociationId }: PeopleOverviewViewPr
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
     const [totalPages, setTotalPages] = useState(1);
+    const [sorting, setSorting] = useState<SortingState>([{ id: 'person', desc: false }]);
 
     const [associations, setAssociations] = useState<any[]>([]);
     const [scopedAssoc, setScopedAssoc] = useState<any | null>(null);
@@ -99,12 +100,23 @@ function PeopleOverviewViewContent({ scopedAssociationId }: PeopleOverviewViewPr
         setLoading(true);
         try {
             const activeAssocId = scopedAssoc?.id || selectedAssoc || scopedAssociationId;
+            const sortCol = sorting[0]?.id;
+            let sortBy: string | undefined = undefined;
+            if (sortCol === 'person') sortBy = 'name';
+            else if (sortCol === 'rating') sortBy = 'eloPoints';
+            else if (sortCol === 'location') sortBy = 'city';
+            else if (sortCol) sortBy = sortCol;
+
+            const sortDir = sorting[0] ? (sorting[0].desc ? 'desc' : 'asc') : undefined;
+
             const res = await api.getUsers({
                 q: debouncedSearch,
                 associationId: activeAssocId || undefined,
                 role: roleFilter !== 'all' ? roleFilter : undefined,
                 page,
                 limit: pageSize,
+                sortBy,
+                sortDir,
             });
 
             if (res && Array.isArray(res.users)) {
@@ -134,7 +146,7 @@ function PeopleOverviewViewContent({ scopedAssociationId }: PeopleOverviewViewPr
 
     useEffect(() => {
         loadUsers();
-    }, [debouncedSearch, selectedAssoc, scopedAssociationId, roleFilter, page, pageSize]);
+    }, [debouncedSearch, selectedAssoc, scopedAssociationId, roleFilter, page, pageSize, sorting]);
 
     const getRoleTitle = () => {
         if (roleFilter === 'player') return 'Players Directory';
@@ -449,6 +461,12 @@ function PeopleOverviewViewContent({ scopedAssociationId }: PeopleOverviewViewPr
                         </div>
                     </div>
                 }
+                manualSorting={true}
+                sorting={sorting}
+                onSortingChange={(newSorting) => {
+                    setSorting(newSorting);
+                    setPage(1);
+                }}
                 manualPagination={true}
                 pageCount={totalPages}
                 totalCount={total}

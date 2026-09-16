@@ -36,7 +36,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { AccessDenied } from '@/components/auth/AccessDenied';
-import { ColumnDef } from '@tanstack/react-table';
+import { ColumnDef, SortingState } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/DataTable';
 
 interface AuditTrailViewerProps {
@@ -70,6 +70,7 @@ export function AuditTrailViewer({
     const [totalPages, setTotalPages] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const [totalUnfilteredCount, setTotalUnfilteredCount] = useState<number | undefined>(undefined);
+    const [sorting, setSorting] = useState<SortingState>([{ id: 'timestamp', desc: true }]);
 
     // Filters
     const [selectedCategory, setSelectedCategory] = useState(initialCategory || 'ALL');
@@ -111,9 +112,20 @@ export function AuditTrailViewer({
     const fetchLogs = async () => {
         try {
             setLoading(true);
+            const sortCol = sorting[0]?.id;
+            let sortBy: string | undefined = undefined;
+            if (sortCol === 'timestamp') sortBy = 'createdAt';
+            else if (sortCol === 'actor') sortBy = 'userName';
+            else if (sortCol === 'clientIp') sortBy = 'ipAddress';
+            else if (sortCol) sortBy = sortCol;
+
+            const sortDir = sorting[0] ? (sorting[0].desc ? 'desc' : 'asc') : undefined;
+
             const params: Record<string, any> = {
                 page,
                 limit: pageSize,
+                sortBy,
+                sortDir,
             };
             if (associationId && associationId.trim() !== '') params.associationId = associationId.trim();
             if (clubId && clubId.trim() !== '') params.clubId = clubId.trim();
@@ -135,7 +147,7 @@ export function AuditTrailViewer({
 
     useEffect(() => {
         fetchLogs();
-    }, [associationId, clubId, selectedCategory, selectedStatus, debouncedSearch, page, pageSize]);
+    }, [associationId, clubId, selectedCategory, selectedStatus, debouncedSearch, page, pageSize, sorting]);
 
     useEffect(() => {
         fetchStats();
@@ -534,6 +546,12 @@ export function AuditTrailViewer({
                         </div>
                     </div>
                 }
+                manualSorting={true}
+                sorting={sorting}
+                onSortingChange={(newSorting) => {
+                    setSorting(newSorting);
+                    setPage(1);
+                }}
                 manualPagination={true}
                 totalCount={totalCount}
                 totalUnfilteredCount={totalUnfilteredCount}

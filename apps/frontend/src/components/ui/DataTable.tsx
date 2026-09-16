@@ -83,6 +83,11 @@ export interface DataTableProps<TData, TValue = any> {
     pageIndex?: number;
     pageSize?: number;
     onPaginationChange?: (pageIndex: number, pageSize: number) => void;
+
+    // Server-side / controlled sorting support
+    manualSorting?: boolean;
+    sorting?: SortingState;
+    onSortingChange?: (sorting: SortingState, sortBy?: string, sortDir?: 'asc' | 'desc') => void;
 }
 
 /**
@@ -147,10 +152,15 @@ export function DataTable<TData, TValue = any>({
     pageIndex: controlledPageIndex,
     pageSize: controlledPageSize,
     onPaginationChange,
+    manualSorting = false,
+    sorting: controlledSorting,
+    onSortingChange,
 }: DataTableProps<TData, TValue>) {
     const { t } = useI18n();
 
-    const [sorting, setSorting] = useState<SortingState>(initialSorting);
+    const [uncontrolledSorting, setUncontrolledSorting] = useState<SortingState>(initialSorting);
+    const activeSorting = controlledSorting !== undefined ? controlledSorting : uncontrolledSorting;
+
     const [globalFilter, setGlobalFilter] = useState<string>('');
     const [uncontrolledPagination, setUncontrolledPagination] = useState<PaginationState>({
         pageIndex: 0,
@@ -177,22 +187,34 @@ export function DataTable<TData, TValue = any>({
         }
     };
 
+    const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
+        const nextSorting = typeof updater === 'function' ? updater(activeSorting) : updater;
+        if (controlledSorting === undefined) {
+            setUncontrolledSorting(nextSorting);
+        }
+        const firstSort = nextSorting[0];
+        const sortBy = firstSort?.id;
+        const sortDir = firstSort ? (firstSort.desc ? 'desc' : 'asc') : undefined;
+        onSortingChange?.(nextSorting, sortBy, sortDir);
+    };
+
     const table = useReactTable({
         data,
         columns,
         state: {
-            sorting,
+            sorting: activeSorting,
             globalFilter,
             pagination,
         },
         manualPagination,
+        manualSorting,
         pageCount: manualPagination ? controlledPageCount : undefined,
         globalFilterFn: globalSearchFilter,
-        onSortingChange: setSorting,
+        onSortingChange: handleSortingChange,
         onGlobalFilterChange: setGlobalFilter,
         onPaginationChange: handlePaginationChange,
         getCoreRowModel: getCoreRowModel(),
-        getSortedRowModel: getSortedRowModel(),
+        getSortedRowModel: manualSorting ? undefined : getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
     });

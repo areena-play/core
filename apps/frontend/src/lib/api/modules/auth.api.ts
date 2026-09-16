@@ -66,7 +66,7 @@ export class AuthApi {
         return this.http.request('/auth/change-password', { method: 'POST', body: JSON.stringify(body) });
     }
 
-    getUsers(params: string | { q?: string; associationId?: string; role?: string; page?: number; limit?: number } = '') {
+    getUsers(params: string | { q?: string; associationId?: string; role?: string; page?: number; limit?: number; sortBy?: string; sortDir?: string } = '') {
         if (typeof params === 'string') {
             return this.http.request(`/auth/users?q=${encodeURIComponent(params)}`);
         }
@@ -76,6 +76,8 @@ export class AuthApi {
         if (params.role) qs.set('role', params.role);
         if (params.page) qs.set('page', String(params.page));
         if (params.limit) qs.set('limit', String(params.limit));
+        if (params.sortBy) qs.set('sortBy', params.sortBy);
+        if (params.sortDir) qs.set('sortDir', params.sortDir);
         const query = qs.toString();
         return this.http.request(`/auth/users${query ? `?${query}` : ''}`);
     }
