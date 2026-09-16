@@ -84,7 +84,7 @@ async function resetToFreshAssociation() {
     console.log('🏛️  Creating fresh empty top-level Association...');
     const mainAssociation = await prisma.association.create({
         data: {
-            name: 'Swiss Table Tennis Federation',
+            name: 'Swiss Table Tennis',
             shortName: 'STT',
             code: 'STT',
             slug: 'stt',
@@ -98,35 +98,6 @@ async function resetToFreshAssociation() {
                 requireRefereeCourseForSenior: true,
                 refresherCourseValidityMonths: 24,
             },
-        },
-    });
-
-    // 4. Create active season
-    console.log('📅 Creating initial season (2026/2027)...');
-    await prisma.season.create({
-        data: {
-            associationId: mainAssociation.id,
-            name: 'Season 2026/2027',
-            startDate: new Date('2026-08-01T00:00:00Z'),
-            endDate: new Date('2027-07-31T23:59:59Z'),
-            isCurrent: true,
-        },
-    });
-
-    // 5. Assign admin roles to Super Admin for the association
-    await prisma.userAssociationRole.create({
-        data: {
-            userId: superAdmin.id,
-            associationId: mainAssociation.id,
-            role: 'ADMIN',
-        },
-    });
-
-    await prisma.userAssociationRole.create({
-        data: {
-            userId: superAdmin.id,
-            associationId: mainAssociation.id,
-            role: 'PRESIDENT',
         },
     });
 
