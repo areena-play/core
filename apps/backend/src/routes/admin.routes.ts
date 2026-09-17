@@ -34,13 +34,14 @@ router.get('/dashboard', async (req: AuthRequest, res: Response) => {
  */
 router.get('/settings', async (req: AuthRequest, res: Response) => {
     try {
-        const [mailgunConfig, smtpConfig, rateLimitConfig, stripeConfig, geminiConfig, googleTtsConfig] = await Promise.all([
+        const [mailgunConfig, smtpConfig, rateLimitConfig, stripeConfig, geminiConfig, googleTtsConfig, googleAnalyticsConfig] = await Promise.all([
             SystemService.getMailgunConfig(),
             SystemService.getSmtpConfig(),
             SystemService.getRateLimitConfig(),
             SystemService.getStripeConfig(),
             SystemService.getGeminiConfig(),
             SystemService.getGoogleTtsConfig(),
+            SystemService.getGoogleAnalyticsConfig(),
         ]);
 
         const maskedApiKey = mailgunConfig.apiKey
@@ -98,6 +99,12 @@ router.get('/settings', async (req: AuthRequest, res: Response) => {
                 voiceName: googleTtsConfig.voiceName,
                 enabled: googleTtsConfig.enabled,
                 isConfigured: googleTtsConfig.isConfigured,
+            },
+            googleAnalytics: {
+                measurementId: googleAnalyticsConfig.measurementId,
+                enabled: googleAnalyticsConfig.enabled,
+                anonymizeIp: googleAnalyticsConfig.anonymizeIp,
+                isConfigured: googleAnalyticsConfig.isConfigured,
             },
             mailgun: {
                 apiKey: maskedApiKey,
@@ -591,6 +598,56 @@ router.post('/settings/tts/test', async (req: AuthRequest, res: Response) => {
     } catch (err: any) {
         console.error('Test Google TTS Error:', err);
         res.status(500).json({ error: err.message || 'Failed to test Google TTS connection' });
+    }
+});
+
+/**
+ * PUT /api/admin/settings/google-analytics
+ * Update Google Analytics 4 (GA4) configuration in Database
+ */
+router.put('/settings/google-analytics', async (req: AuthRequest, res: Response) => {
+    try {
+        const { measurementId, enabled, anonymizeIp } = req.body;
+
+        if (measurementId !== undefined && measurementId.trim() !== '') {
+            const cleanId = measurementId.trim().toUpperCase();
+            if (!/^G-[A-Z0-9]+$/i.test(cleanId)) {
+                return res.status(400).json({
+                    error: 'Invalid Google Analytics Measurement ID format. Expected format: G-XXXXXXXXXX',
+                });
+            }
+        }
+
+        const updated = await SystemService.updateGoogleAnalyticsConfig(
+            {
+                measurementId: measurementId !== undefined ? measurementId.trim().toUpperCase() : undefined,
+                enabled: enabled !== undefined ? Boolean(enabled) : undefined,
+                anonymizeIp: anonymizeIp !== undefined ? Boolean(anonymizeIp) : undefined,
+            },
+            req.user?.id
+        );
+
+        await AuditService.record({
+            req,
+            action: 'UPDATE_SYSTEM_SETTING',
+            entityType: 'SystemSetting',
+            entityId: 'GOOGLE_ANALYTICS_CONFIG',
+            description: `Updated Google Analytics settings (Measurement ID: ${updated.measurementId || 'none'}, Enabled: ${updated.enabled}, AnonymizeIP: ${updated.anonymizeIp})`,
+            metadata: {
+                measurementId: updated.measurementId,
+                enabled: updated.enabled,
+                anonymizeIp: updated.anonymizeIp,
+                isConfigured: updated.isConfigured,
+            },
+        });
+
+        res.json({
+            message: 'Google Analytics settings updated successfully',
+            googleAnalytics: updated,
+        });
+    } catch (err: any) {
+        console.error('Update Google Analytics Settings Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to update Google Analytics settings' });
     }
 });
 

@@ -287,6 +287,12 @@ export class ApiClient extends HttpClient {
     updateRateLimitSettings = (body: { enabled?: boolean; capacity?: number; refillRatePerSec?: number; blockAnonymousBots?: boolean }) => this.admin.updateRateLimitSettings(body);
     updateStripeSettings = (body: { secretKey?: string; publishableKey?: string; webhookSecret?: string; proMonthlyPriceId?: string; proYearlyPriceId?: string }) => this.admin.updateStripeSettings(body);
     testStripeSettings = () => this.admin.testStripeSettings();
+    updateGeminiSettings = (body: { apiKey?: string; model?: string; enabled?: boolean }) => this.admin.updateGeminiSettings(body);
+    testGeminiSettings = (body?: { apiKey?: string; model?: string }) => this.admin.testGeminiSettings(body);
+    getGeminiModels = (apiKey?: string) => this.admin.getGeminiModels(apiKey);
+    updateGoogleTtsSettings = (body: { apiKey?: string; languageCode?: string; voiceName?: string; enabled?: boolean }) => this.admin.updateGoogleTtsSettings(body);
+    testGoogleTtsSettings = () => this.admin.testGoogleTtsSettings();
+    updateGoogleAnalyticsSettings = (body: { measurementId?: string; enabled?: boolean; anonymizeIp?: boolean }) => this.admin.updateGoogleAnalyticsSettings(body);
     exportDatabase = () => this.admin.exportDatabase();
     importDatabase = (dumpData: any) => this.admin.importDatabase(dumpData);
     getClickTTStatus = (path?: string) => this.admin.getClickTTStatus(path);

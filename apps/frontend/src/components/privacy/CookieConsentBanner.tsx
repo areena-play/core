@@ -74,6 +74,9 @@ export function CookieConsentBanner() {
 
         try {
             localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(consentData));
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('areena:cookie-consent-updated', { detail: consentData }));
+            }
         } catch (e) {
             console.error('Failed to save cookie consent to localStorage', e);
         }

@@ -27,6 +27,7 @@ import { TourProvider } from '@/lib/tourContext';
 import { SpotlightTourOverlay } from '@/components/tour/SpotlightTourOverlay';
 import { WelcomeOnboardingModal } from '@/components/tour/WelcomeOnboardingModal';
 import { AuthEpochBoundary } from '@/components/auth/AuthEpochBoundary';
+import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
 
 export const viewport: Viewport = {
     width: 'device-width',
@@ -148,6 +149,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                                         <Navbar />
                                         <AdminNoticeBanner />
                                         <CookieConsentBanner />
+                                        <Suspense fallback={null}>
+                                            <GoogleAnalytics />
+                                        </Suspense>
                                         <PwaManager />
                                         <GlobalMobileScorecardController />
                                         <div className="flex flex-1 min-h-0 overflow-hidden relative">

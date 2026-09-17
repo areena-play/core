@@ -30,6 +30,7 @@ import {
     Bot,
     Volume2,
     Play,
+    BarChart3,
 } from 'lucide-react';
 import { AccessDenied } from '@/components/auth/AccessDenied';
 import { Modal } from '@/components/ui/Modal';
@@ -45,6 +46,15 @@ export default function AdminSettingsPage() {
     const [dbImporting, setDbImporting] = useState(false);
     const [dbSuccess, setDbSuccess] = useState('');
     const [dbError, setDbError] = useState('');
+
+    // Google Analytics (GA4) State
+    const [gaMeasurementId, setGaMeasurementId] = useState('');
+    const [gaEnabled, setGaEnabled] = useState(false);
+    const [gaAnonymizeIp, setGaAnonymizeIp] = useState(true);
+    const [gaIsConfigured, setGaIsConfigured] = useState(false);
+    const [gaSaving, setGaSaving] = useState(false);
+    const [gaSuccess, setGaSuccess] = useState('');
+    const [gaError, setGaError] = useState('');
 
     // Gemini AI State
     const [geminiApiKey, setGeminiApiKey] = useState('');
@@ -210,6 +220,12 @@ export default function AdminSettingsPage() {
                 api.getOAuthClients({ all: true }).catch(() => []),
             ]);
             setOauthClients(clientsData || []);
+            if (data?.googleAnalytics) {
+                setGaMeasurementId(data.googleAnalytics.measurementId || '');
+                setGaEnabled(data.googleAnalytics.enabled !== false && Boolean(data.googleAnalytics.measurementId));
+                setGaAnonymizeIp(data.googleAnalytics.anonymizeIp !== false);
+                setGaIsConfigured(data.googleAnalytics.isConfigured);
+            }
             if (data?.gemini) {
                 setGeminiModel(data.gemini.model || 'gemini-2.0-flash');
                 setGeminiEnabled(data.gemini.enabled !== false);
@@ -286,6 +302,31 @@ export default function AdminSettingsPage() {
             loadSettings();
         }
     }, [user]);
+
+    const handleSaveGoogleAnalytics = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setGaSaving(true);
+        setGaError('');
+        setGaSuccess('');
+        try {
+            const cleanMid = gaMeasurementId.trim().toUpperCase();
+            if (cleanMid && !/^G-[A-Z0-9]+$/i.test(cleanMid)) {
+                throw new Error('Invalid Measurement ID format. Expected format: G-XXXXXXXXXX');
+            }
+            await api.updateGoogleAnalyticsSettings({
+                measurementId: cleanMid,
+                enabled: gaEnabled,
+                anonymizeIp: gaAnonymizeIp,
+            });
+            setGaSuccess('Google Analytics configuration saved successfully.');
+            setGaIsConfigured(Boolean(cleanMid));
+            setTimeout(() => setGaSuccess(''), 4000);
+        } catch (err: any) {
+            setGaError(err.message || 'Failed to save Google Analytics settings');
+        } finally {
+            setGaSaving(false);
+        }
+    };
 
     const handleSaveGemini = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -586,8 +627,137 @@ export default function AdminSettingsPage() {
                     <span>{t('nav.systemSettings')}</span>
                 </h1>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                    Manage installation-wide services stored securely in the database (Gemini AI, Google TTS, Stripe, Mailgun & SMTP). Different server deployments configure their own keys directly here without needing changes to raw <code className="font-mono bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-red-500">.env</code> files.
+                    Manage installation-wide services stored securely in the database (Google Analytics, Gemini AI, Google TTS, Stripe, Mailgun & SMTP). Different server deployments configure their own keys directly here without needing changes to raw <code className="font-mono bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-red-500">.env</code> files.
                 </p>
+            </div>
+
+            {/* 0. GOOGLE ANALYTICS (GA4) CONFIGURATION */}
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            <BarChart3 className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h2 className="font-bold text-base text-slate-900 dark:text-white">
+                                    Google Analytics (GA4)
+                                </h2>
+                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+                                    Privacy & Consent Gated
+                                </span>
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Global website traffic and user engagement analytics. Only tracks visitors who explicitly consent to analytics cookies.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {gaIsConfigured && gaEnabled ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                <CheckCircle2 className="h-3.5 w-3.5" /> Active & Tracking
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 px-3 py-1 text-xs font-bold">
+                                <AlertCircle className="h-3.5 w-3.5" /> {!gaEnabled && gaIsConfigured ? 'Disabled' : 'Optional / Unset'}
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                {gaError && (
+                    <div className="flex items-start gap-2 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/50 p-3 text-xs text-red-700 dark:text-red-300">
+                        <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                        <div>{gaError}</div>
+                    </div>
+                )}
+                {gaSuccess && (
+                    <div className="flex items-start gap-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/50 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <div>{gaSuccess}</div>
+                    </div>
+                )}
+
+                <form onSubmit={handleSaveGoogleAnalytics} className="space-y-4 text-xs">
+                    {/* Enable Toggle */}
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <span className="font-bold text-slate-900 dark:text-white block text-sm">
+                                Enable Google Analytics Tracking
+                            </span>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Master toggle for Google Analytics. When disabled, no tracking scripts will load on the site.
+                            </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                            <input
+                                type="checkbox"
+                                checked={gaEnabled}
+                                onChange={(e) => setGaEnabled(e.target.checked)}
+                                className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-amber-600"></div>
+                        </label>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                Google Analytics Measurement ID (GA4)
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="e.g. G-XXXXXXXXXX"
+                                value={gaMeasurementId}
+                                onChange={(e) => setGaMeasurementId(e.target.value.toUpperCase())}
+                                className="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 font-mono text-xs text-slate-900 dark:text-white focus:border-amber-500 focus:outline-none"
+                            />
+                            <p className="text-[11px] text-slate-400 mt-1">
+                                Found in your Google Analytics Data Stream configuration (format starts with <code>G-</code>).
+                            </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 p-3.5 flex items-start justify-between gap-3">
+                            <div>
+                                <span className="font-bold text-slate-900 dark:text-white block text-xs">
+                                    IP Anonymization (Recommended)
+                                </span>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                    Masks the last octet of visitor IP addresses for enhanced Swiss DSG and GDPR privacy compliance.
+                                </p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+                                <input
+                                    type="checkbox"
+                                    checked={gaAnonymizeIp}
+                                    onChange={(e) => setGaAnonymizeIp(e.target.checked)}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 p-3 text-[11px] text-amber-800 dark:text-amber-300 space-y-1">
+                        <div className="font-bold flex items-center gap-1.5">
+                            <Lock className="h-3.5 w-3.5" /> Strict Consent Policy Active
+                        </div>
+                        <p>
+                            Google Analytics scripts are strictly blocked by default until visitors explicitly click "Accept All" or opt-in to the "Analytics" cookie category in the Cookie Consent Banner. If declined, no tracking data is transmitted.
+                        </p>
+                    </div>
+
+                    <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                            type="submit"
+                            disabled={gaSaving}
+                            className="rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 px-6 py-2.5 text-xs font-bold shadow transition disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {gaSaving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : null}
+                            <span>{gaSaving ? 'Saving...' : 'Save Analytics Settings'}</span>
+                        </button>
+                    </div>
+                </form>
             </div>
 
             {/* A. GOOGLE GEMINI AI CONFIGURATION */}

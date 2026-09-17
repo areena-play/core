@@ -36,6 +36,7 @@ import ttsRoutes from './routes/tts.routes';
 import { startDemoScheduler } from './services/demoScheduler.service';
 import { CronSchedulerService } from './services/cronScheduler.service';
 import { RatingSchedulerService } from './services/ratingScheduler.service';
+import { SystemService } from './services/system.service';
 
 const app = express();
 
@@ -73,12 +74,31 @@ const healthHandler = (req: express.Request, res: express.Response) => {
     });
 };
 
-const publicConfigHandler = (req: express.Request, res: express.Response) => {
-    res.json({
-        isDemo: config.isDemo,
-        version: config.version,
-        timestamp: new Date().toISOString(),
-    });
+const publicConfigHandler = async (req: express.Request, res: express.Response) => {
+    try {
+        const gaConfig = await SystemService.getGoogleAnalyticsConfig();
+        res.json({
+            isDemo: config.isDemo,
+            version: config.version,
+            timestamp: new Date().toISOString(),
+            googleAnalytics: {
+                measurementId: gaConfig.enabled ? gaConfig.measurementId : '',
+                enabled: gaConfig.enabled && Boolean(gaConfig.measurementId),
+                anonymizeIp: gaConfig.anonymizeIp,
+            },
+        });
+    } catch (e) {
+        res.json({
+            isDemo: config.isDemo,
+            version: config.version,
+            timestamp: new Date().toISOString(),
+            googleAnalytics: {
+                measurementId: '',
+                enabled: false,
+                anonymizeIp: true,
+            },
+        });
+    }
 };
 
 // Root Health & Config

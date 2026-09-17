@@ -60,6 +60,13 @@ export interface GoogleTtsConfig {
     hasApiKey: boolean;
 }
 
+export interface GoogleAnalyticsConfig {
+    measurementId: string;
+    enabled: boolean;
+    anonymizeIp: boolean;
+    isConfigured: boolean;
+}
+
 export function formatEmailSender(
     fromEmail?: string,
     fromName?: string,
@@ -710,5 +717,48 @@ export class SystemService {
         }
 
         return this.getGoogleTtsConfig();
+    }
+
+    // -------------------------------------------------------------------------
+    // GOOGLE ANALYTICS (GA4) CONFIGURATION
+    // -------------------------------------------------------------------------
+
+    public static async getGoogleAnalyticsConfig(): Promise<GoogleAnalyticsConfig> {
+        const map = await this.getAllSettingsMap();
+        const measurementId = map.get('GOOGLE_ANALYTICS_MEASUREMENT_ID');
+        const enabledStr = map.get('GOOGLE_ANALYTICS_ENABLED');
+        const anonymizeIpStr = map.get('GOOGLE_ANALYTICS_ANONYMIZE_IP');
+
+        const mid = (measurementId || process.env.GOOGLE_ANALYTICS_MEASUREMENT_ID || '').trim();
+        const enabled = enabledStr !== 'false' && Boolean(mid);
+        const anonymizeIp = anonymizeIpStr !== 'false';
+
+        return {
+            measurementId: mid,
+            enabled,
+            anonymizeIp,
+            isConfigured: Boolean(mid),
+        };
+    }
+
+    public static async updateGoogleAnalyticsConfig(
+        data: {
+            measurementId?: string;
+            enabled?: boolean;
+            anonymizeIp?: boolean;
+        },
+        updatedBy?: string
+    ): Promise<GoogleAnalyticsConfig> {
+        if (data.measurementId !== undefined) {
+            await this.setSetting('GOOGLE_ANALYTICS_MEASUREMENT_ID', data.measurementId.trim(), 'Google Analytics 4 Measurement ID (G-XXXXXXXXXX)', false, updatedBy);
+        }
+        if (data.enabled !== undefined) {
+            await this.setSetting('GOOGLE_ANALYTICS_ENABLED', data.enabled ? 'true' : 'false', 'Google Analytics Integration Enabled', false, updatedBy);
+        }
+        if (data.anonymizeIp !== undefined) {
+            await this.setSetting('GOOGLE_ANALYTICS_ANONYMIZE_IP', data.anonymizeIp ? 'true' : 'false', 'Anonymize IP Addresses for Google Analytics', false, updatedBy);
+        }
+
+        return this.getGoogleAnalyticsConfig();
     }
 }

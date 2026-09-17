@@ -118,6 +118,17 @@ export class AdminApi {
         });
     }
 
+    updateGoogleAnalyticsSettings(body: {
+        measurementId?: string;
+        enabled?: boolean;
+        anonymizeIp?: boolean;
+    }) {
+        return this.http.request('/admin/settings/google-analytics', {
+            method: 'PUT',
+            body: JSON.stringify(body),
+        });
+    }
+
     exportDatabase() {
         return this.http.request('/admin/database/export');
     }
