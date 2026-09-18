@@ -341,6 +341,86 @@ export class ClickTTDbIngestionService {
     }
 
     /**
+     * Sanitize clicktt competition name and build multi-lingual representation (de, fr, it, en)
+     */
+    public static sanitizeAndTranslateCompetitionName(rawName: string): {
+        sanitizedName: string;
+        nameI18n: { de: string; fr: string; it: string; en: string };
+    } {
+        if (!rawName) {
+            return {
+                sanitizedName: '',
+                nameI18n: { de: '', fr: '', it: '', en: '' },
+            };
+        }
+
+        // Clean template expressions like ${nationalligen}, ${nationalliga}, etc.
+        const baseName = rawName
+            .replace(/\$\{\s*nationalligen\s*\}/gi, 'Nationalligen')
+            .replace(/\$\{\s*nationalliga\s*\}/gi, 'Nationalliga')
+            .replace(/\$\{\s*([a-z0-9_-]+)\s*\}/gi, (_m, key) => key.toUpperCase())
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        // 1. STT Nationalligen
+        const sttNatMatch = baseName.match(/^STT\s+Nationalligen\s*(.*)$/i);
+        if (sttNatMatch) {
+            const seasonSuffix = sttNatMatch[1] ? ` ${sttNatMatch[1].trim()}` : '';
+            return {
+                sanitizedName: `STT Nationalligen${seasonSuffix}`,
+                nameI18n: {
+                    de: `STT Nationalligen${seasonSuffix}`,
+                    fr: `STT Ligues Nationales${seasonSuffix}`,
+                    it: `STT Leghe Nazionali${seasonSuffix}`,
+                    en: `STT National Leagues${seasonSuffix}`,
+                },
+            };
+        }
+
+        // 2. Schweizer Cup / Coupe Suisse / Coppa Svizzera
+        const cupMatch = baseName.match(/^(Schweizer\s+Cup|Coupe\s+Suisse|Coppa\s+Svizzera|Swiss\s+Cup)\s*(.*)$/i);
+        if (cupMatch) {
+            const seasonSuffix = cupMatch[2] ? ` ${cupMatch[2].trim()}` : '';
+            return {
+                sanitizedName: `Schweizer Cup${seasonSuffix}`,
+                nameI18n: {
+                    de: `Schweizer Cup${seasonSuffix}`,
+                    fr: `Coupe Suisse${seasonSuffix}`,
+                    it: `Coppa Svizzera${seasonSuffix}`,
+                    en: `Swiss Cup${seasonSuffix}`,
+                },
+            };
+        }
+
+        // 3. Regional Mannschaftsmeisterschaft / Championnat
+        const mmMatch = baseName.match(/^([A-Z]+)\s+Mannschaftsmeisterschaft\s*(.*)$/i);
+        if (mmMatch) {
+            const prefix = mmMatch[1].toUpperCase();
+            const seasonSuffix = mmMatch[2] ? ` ${mmMatch[2].trim()}` : '';
+            return {
+                sanitizedName: `${prefix} Mannschaftsmeisterschaft${seasonSuffix}`,
+                nameI18n: {
+                    de: `${prefix} Mannschaftsmeisterschaft${seasonSuffix}`,
+                    fr: `${prefix} Championnat Interclubs${seasonSuffix}`,
+                    it: `${prefix} Campionato a squadre${seasonSuffix}`,
+                    en: `${prefix} Team Championship${seasonSuffix}`,
+                },
+            };
+        }
+
+        // 4. Default fallback: keep sanitized name across locales
+        return {
+            sanitizedName: baseName,
+            nameI18n: {
+                de: baseName,
+                fr: baseName,
+                it: baseName,
+                en: baseName,
+            },
+        };
+    }
+
+    /**
      * Ingest Competitions, Categories, Groups, and Teams in high-performance batches
      */
     public static async ingestCompetitionsHierarchy(
@@ -368,14 +448,16 @@ export class ClickTTDbIngestionService {
             const rawId = String(c.competitionId);
             const slug = `comp-${rawId.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
             const seasonId = c.seasonNickname ? seasonIdMap.get(c.seasonNickname) || null : null;
-            const isCup = c.type === 'cup' || /cup|coupe/i.test(c.name);
-            const isTourn = c.type === 'tournament' || /turnier|tournament/i.test(c.name);
+            const { sanitizedName, nameI18n } = ClickTTDbIngestionService.sanitizeAndTranslateCompetitionName(c.name);
+            const isCup = c.type === 'cup' || /cup|coupe/i.test(sanitizedName);
+            const isTourn = c.type === 'tournament' || /turnier|tournament/i.test(sanitizedName);
             const type = isCup ? CompetitionType.CUP : isTourn ? CompetitionType.TOURNAMENT : CompetitionType.LEAGUE;
             const id = crypto.randomUUID();
 
             compRows.push({
                 id,
-                name: c.name,
+                name: sanitizedName,
+                nameI18n,
                 slug,
                 type,
                 associationId: sttId,
@@ -416,12 +498,13 @@ export class ClickTTDbIngestionService {
             const parentCompId = cat.competitionId ? compIdMap.get(String(cat.competitionId)) : null;
             if (!parentCompId) continue;
 
+            const sanitizedCatName = cat.name.replace(/\$\{\s*([a-z0-9_-]+)\s*\}/gi, (_m: string, k: string) => k.toUpperCase()).trim();
             const id = crypto.randomUUID();
             catRows.push({
                 id,
                 competitionId: parentCompId,
-                name: cat.name,
-                teamSize: cat.teamSize || (/doppel/i.test(cat.name) ? 2 : 1),
+                name: sanitizedCatName,
+                teamSize: cat.teamSize || (/doppel/i.test(sanitizedCatName) ? 2 : 1),
                 genderRestriction: GenderRestriction.ANY,
             });
             catIdMap.set(rawCatId, id);
@@ -445,11 +528,12 @@ export class ClickTTDbIngestionService {
             const catId = g.categoryId ? catIdMap.get(String(g.categoryId)) : null;
             if (!catId) continue;
 
+            const sanitizedGroupName = g.name.replace(/\$\{\s*([a-z0-9_-]+)\s*\}/gi, (_m: string, k: string) => k.toUpperCase()).trim();
             const gId = crypto.randomUUID();
             groupRows.push({
                 id: gId,
                 categoryId: catId,
-                name: g.name,
+                name: sanitizedGroupName,
             });
             groupIdMap.set(rawGroupId, gId);
 
