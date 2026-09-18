@@ -379,7 +379,8 @@ export class ClickTTDbIngestionService {
         userIdMap: Map<string, string>,
         sttId: string,
         onProgress?: (prog: IngestionProgress) => void,
-        estimatedSnapshotsTotal: number = 1277000
+        estimatedSnapshotsTotal: number = 1277000,
+        signal?: AbortSignal
     ): Promise<number> {
         let snapshotBatch: any[] = [];
         let snapshotsCount = 0;
@@ -396,12 +397,18 @@ export class ClickTTDbIngestionService {
         };
 
         for await (const p of historiesStream) {
+            if (signal?.aborted) {
+                throw new Error('Rating snapshot ingestion cancelled by administrator.');
+            }
             if (!p || !p.licenceNr || !Array.isArray(p.history)) continue;
             const licenceNr = String(p.licenceNr).trim();
             const userId = userIdMap.get(licenceNr);
             if (!userId) continue;
 
             for (const h of p.history) {
+                if (signal?.aborted) {
+                    throw new Error('Rating snapshot ingestion cancelled by administrator.');
+                }
                 if (!h || h.elo === undefined || h.elo === null) continue;
                 const elo = typeof h.elo === 'number' ? h.elo : parseFloat(h.elo) || 1000;
                 const level = h.classification || h.classificationMen || h.classificationWomen || 'D1';
@@ -754,7 +761,8 @@ export class ClickTTDbIngestionService {
         clubIdMap: Map<string, string>,
         onProgress?: (progress: IngestionProgress) => void,
         estimatedEncountersTotal: number = 365000,
-        estimatedMatchesTotal: number = 1430000
+        estimatedMatchesTotal: number = 1430000,
+        signal?: AbortSignal
     ): Promise<{ encountersCount: number; matchesCount: number }> {
         const encounterIdMap = new Map<string, string>();
         const encounterMetaMap = new Map<string, { homeTeamId: string; awayTeamId: string; categoryId: string; groupId: string | null }>();
@@ -776,6 +784,9 @@ export class ClickTTDbIngestionService {
 
         // 1. Process Encounters
         for await (const enc of encountersStream) {
+            if (signal?.aborted) {
+                throw new Error('Encounters ingestion cancelled by administrator.');
+            }
             if (!enc || !enc.encounterId) continue;
             const rawEncId = String(enc.encounterId);
             const catId = enc.categoryId ? catIdMap.get(String(enc.categoryId)) : null;
@@ -908,6 +919,9 @@ export class ClickTTDbIngestionService {
         };
 
         for await (const m of matchesStream) {
+            if (signal?.aborted) {
+                throw new Error('Matches ingestion cancelled by administrator.');
+            }
             if (!m || !m.matchId) continue;
             const encounterId = m.encounterId ? encounterIdMap.get(String(m.encounterId)) || null : null;
             const meta = encounterId ? encounterMetaMap.get(encounterId) : null;
@@ -1026,7 +1040,10 @@ export class ClickTTDbIngestionService {
     /**
      * Ingest Delta Sync Payload into PostgreSQL automatically
      */
-    public static async ingestDelta(deltaPayload: any): Promise<{ success: boolean; importedCounts: Record<string, number> }> {
+    public static async ingestDelta(
+        deltaPayload: any,
+        signal?: AbortSignal
+    ): Promise<{ success: boolean; importedCounts: Record<string, number> }> {
         const counts: Record<string, number> = {
             clubs: 0,
             seasons: 0,
@@ -1090,7 +1107,11 @@ export class ClickTTDbIngestionService {
             groupIdMap,
             teamIdMap,
             userIdMap,
-            clubIdMap
+            clubIdMap,
+            undefined,
+            (data.encounters || []).length,
+            (data.matches || []).length,
+            signal
         );
 
         counts.encounters = result.encountersCount;
@@ -1103,11 +1124,18 @@ export class ClickTTDbIngestionService {
     /**
      * Delete All Existing Sports Records and Bulk-Load Full Normalized Datasets
      */
-    public static async resetAndLoadFullDatasets(onProgress?: (p: IngestionProgress) => void): Promise<{ success: boolean; counts: Record<string, number> }> {
+    public static async resetAndLoadFullDatasets(
+        onProgress?: (p: IngestionProgress) => void,
+        signal?: AbortSignal
+    ): Promise<{ success: boolean; counts: Record<string, number> }> {
         const notify = (prog: IngestionProgress) => {
             console.log(`[DB Bulk Ingest] [${prog.percentage}%] ${prog.message}`);
             if (onProgress) onProgress(prog);
         };
+
+        if (signal?.aborted) {
+            throw new Error('Database ingestion cancelled by administrator.');
+        }
 
         notify({
             phase: 'cleanup',
@@ -1186,6 +1214,10 @@ export class ClickTTDbIngestionService {
             where: { isSuperAdmin: false },
         });
 
+        if (signal?.aborted) {
+            throw new Error('Database ingestion cancelled by administrator.');
+        }
+
         notify({
             phase: 'associations',
             phaseTitle: 'Associations Hierarchy',
@@ -1212,6 +1244,10 @@ export class ClickTTDbIngestionService {
             }
         };
 
+        if (signal?.aborted) {
+            throw new Error('Database ingestion cancelled by administrator.');
+        }
+
         // 2. Seasons
         notify({
             phase: 'seasons',
@@ -1223,6 +1259,10 @@ export class ClickTTDbIngestionService {
         const seasons = await loadJson('seasons.json');
         const seasonIdMap = await this.ingestSeasons(seasons, sttId);
         counts.seasons = seasons.length;
+
+        if (signal?.aborted) {
+            throw new Error('Database ingestion cancelled by administrator.');
+        }
 
         // 3. Clubs
         notify({
@@ -1237,6 +1277,10 @@ export class ClickTTDbIngestionService {
         const clubIdMap = await this.ingestClubs(clubs, regionMap, sttId);
         counts.clubs = clubs.length;
 
+        if (signal?.aborted) {
+            throw new Error('Database ingestion cancelled by administrator.');
+        }
+
         // 4. Players
         notify({
             phase: 'players',
@@ -1249,6 +1293,10 @@ export class ClickTTDbIngestionService {
         const players = await loadJson('players.json');
         const userIdMap = await this.ingestPlayers(players, clubIdMap, seasonIdMap, sttId);
         counts.players = players.length;
+
+        if (signal?.aborted) {
+            throw new Error('Database ingestion cancelled by administrator.');
+        }
 
         // 5. Rating Snapshot Histories (Elo Timeline)
         notify({
@@ -1265,9 +1313,14 @@ export class ClickTTDbIngestionService {
             userIdMap,
             sttId,
             (prog) => notify(prog),
-            1277000
+            1277000,
+            signal
         );
         counts.ratingSnapshots = snapshotsCount;
+
+        if (signal?.aborted) {
+            throw new Error('Database ingestion cancelled by administrator.');
+        }
 
         // 6. Competitions, Categories, Groups, Teams
         notify({
@@ -1294,6 +1347,10 @@ export class ClickTTDbIngestionService {
         counts.categories = categories.length;
         counts.groups = groups.length;
 
+        if (signal?.aborted) {
+            throw new Error('Database ingestion cancelled by administrator.');
+        }
+
         // 7. Encounters Streaming (high speed, constant memory)
         notify({
             phase: 'encounters',
@@ -1316,7 +1373,8 @@ export class ClickTTDbIngestionService {
             clubIdMap,
             (prog) => notify(prog),
             364844,
-            1430462
+            1430462,
+            signal
         );
 
         counts.encounters = encountersCount;

@@ -31,6 +31,7 @@ class ClickTTScraperManager extends EventEmitter {
     private progress: IngestionProgress | null = null;
     private logs: ScraperLogEntry[] = [];
     private maxLogs: number = 2000;
+    private abortController: AbortController | null = null;
 
     constructor() {
         super();
@@ -55,6 +56,31 @@ class ClickTTScraperManager extends EventEmitter {
 
     public clearLogs() {
         this.logs = [];
+    }
+
+    public stopJob(): boolean {
+        if (!this.isRunning) {
+            return false;
+        }
+        const job = this.activeJob;
+        this.log('warn', `🛑 Cancellation requested: Aborting active task "${job}"...`);
+        if (this.abortController) {
+            this.abortController.abort();
+            this.abortController = null;
+        }
+        this.isRunning = false;
+        this.lastResult = 'error';
+        this.lastError = 'Task was cancelled by administrator.';
+        this.lastFinishedAt = new Date().toISOString();
+        this.progress = {
+            phase: 'error',
+            phaseTitle: 'Stopped',
+            percentage: this.progress?.percentage || 0,
+            processed: this.progress?.processed || 0,
+            total: this.progress?.total,
+            message: `🛑 Task "${job}" stopped by administrator.`,
+        };
+        return true;
     }
 
     public async getStatus(): Promise<ScraperExecutionStatus> {
@@ -91,6 +117,8 @@ class ClickTTScraperManager extends EventEmitter {
         this.startedAt = Date.now();
         this.lastResult = null;
         this.lastError = null;
+        this.abortController = new AbortController();
+        const signal = this.abortController.signal;
         this.progress = {
             phase: 'cleanup',
             phaseTitle: `Starting ${jobType.toUpperCase()}`,
@@ -170,35 +198,35 @@ class ClickTTScraperManager extends EventEmitter {
                     const delta = storageManager.getDelta();
                     if (delta && delta.totalRecords > 0) {
                         const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
-                        await ClickTTDbIngestionService.ingestDelta(delta);
+                        await ClickTTDbIngestionService.ingestDelta(delta, signal);
                     }
                 } else if (jobType === 'sync') {
                     await runIncrementalSync(options);
                     const delta = storageManager.getDelta();
                     if (delta && delta.totalRecords > 0) {
                         const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
-                        await ClickTTDbIngestionService.ingestDelta(delta);
+                        await ClickTTDbIngestionService.ingestDelta(delta, signal);
                     }
                 } else if (jobType === 'results') {
                     await runIncrementalSync({ onlyResults: true, ...options });
                     const delta = storageManager.getDelta();
                     if (delta && delta.totalRecords > 0) {
                         const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
-                        await ClickTTDbIngestionService.ingestDelta(delta);
+                        await ClickTTDbIngestionService.ingestDelta(delta, signal);
                     }
                 } else if (jobType === 'players') {
                     await runIncrementalSync({ onlyPlayers: true, ...options });
                     const delta = storageManager.getDelta();
                     if (delta && delta.totalRecords > 0) {
                         const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
-                        await ClickTTDbIngestionService.ingestDelta(delta);
+                        await ClickTTDbIngestionService.ingestDelta(delta, signal);
                     }
                 } else if (jobType === 'elo') {
                     await runIncrementalSync({ onlyElo: true, ...options });
                     const delta = storageManager.getDelta();
                     if (delta && delta.totalRecords > 0) {
                         const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
-                        await ClickTTDbIngestionService.ingestDelta(delta);
+                        await ClickTTDbIngestionService.ingestDelta(delta, signal);
                     }
                 } else if (jobType === 'export') {
                     await exportAllNormalizedDatasets();
@@ -207,7 +235,7 @@ class ClickTTScraperManager extends EventEmitter {
                     await ClickTTDbIngestionService.resetAndLoadFullDatasets((progress) => {
                         this.progress = progress;
                         this.log('info', progress.message);
-                    });
+                    }, signal);
                 }
 
                 this.lastResult = 'success';

@@ -953,4 +953,30 @@ router.post('/scraper/reset-and-import', async (req: AuthRequest, res: Response)
     }
 });
 
+/**
+ * POST /api/admin/scraper/stop
+ * Stop currently running scraper or DB ingestion job
+ */
+router.post('/scraper/stop', async (req: AuthRequest, res: Response) => {
+    try {
+        await AuditService.record({
+            req,
+            action: 'STOP_CLICKTT_SCRAPER',
+            entityType: 'ClickTTScraper',
+            entityId: 'STOP',
+            description: `Admin ${req.user?.email} stopped the running Click-TT task`,
+        });
+
+        const stopped = ClickTTScraperService.stopJob();
+        if (stopped) {
+            res.json({ success: true, message: 'Scraper / DB ingestion task stopped successfully.' });
+        } else {
+            res.json({ success: false, message: 'No scraper or ingestion task is currently running.' });
+        }
+    } catch (err: any) {
+        console.error('Stop ClickTT Scraper Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to stop scraper task' });
+    }
+});
+
 export default router;

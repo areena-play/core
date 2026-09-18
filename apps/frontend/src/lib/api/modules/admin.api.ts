@@ -204,6 +204,13 @@ export class AdminApi {
         });
     }
 
+    stopScraperJob(silent: boolean = false) {
+        return this.http.request<{ success: boolean; message: string }>('/admin/scraper/stop', {
+            method: 'POST',
+            silent,
+        });
+    }
+
     getScraperLogs(limit: number = 200, silent: boolean = false) {
         return this.http.request<{ logs: Array<{ timestamp: string; level: 'info' | 'warn' | 'error' | 'success'; message: string }> }>(
             `/admin/scraper/logs?limit=${limit}`,

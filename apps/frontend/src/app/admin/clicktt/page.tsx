@@ -34,6 +34,9 @@ import {
     Settings,
     Zap,
     FileText,
+    StopCircle,
+    Square,
+    Loader2,
 } from 'lucide-react';
 import { AccessDenied } from '@/components/auth/AccessDenied';
 import { Modal } from '@/components/ui/Modal';
@@ -104,6 +107,7 @@ export default function AdminClickTTPage() {
     const [showResetModal, setShowResetModal] = useState(false);
     const [resetConfirmText, setResetConfirmText] = useState('');
     const [resetLoading, setResetLoading] = useState(false);
+    const [stoppingJob, setStoppingJob] = useState(false);
 
     // Fetch Scraper Status (silent to prevent top loading bar distraction)
     const fetchStatus = async (silent: boolean = true) => {
@@ -271,6 +275,27 @@ export default function AdminClickTTPage() {
         }
     };
 
+    // Stop currently running Scraper / Ingestion Job
+    const handleStopJob = async () => {
+        if (!isRunning) return;
+        setStoppingJob(true);
+        setActionMsg(null);
+        try {
+            const res = await api.admin.stopScraperJob(false);
+            if (res.success) {
+                setActionMsg({ type: 'success', text: res.message || 'Scraper / DB ingestion task stopped.' });
+            } else {
+                setActionMsg({ type: 'error', text: res.message || 'No active task found to stop.' });
+            }
+            await fetchStatus(true);
+            await fetchLogs(true);
+        } catch (err: any) {
+            setActionMsg({ type: 'error', text: err.message || 'Failed to stop task.' });
+        } finally {
+            setStoppingJob(false);
+        }
+    };
+
     // Toggle Cron Job
     const handleToggleCron = async (name: string, currentEnabled: boolean) => {
         try {
@@ -368,7 +393,7 @@ export default function AdminClickTTPage() {
                             </p>
                         </div>
 
-                        {/* Live Status Pill */}
+                        {/* Live Status Pill & Stop Button */}
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                             <div className="p-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center gap-3">
                                 <div className={`h-3.5 w-3.5 rounded-full ${isRunning ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
@@ -385,6 +410,22 @@ export default function AdminClickTTPage() {
                                     </div>
                                 </div>
                             </div>
+
+                            {isRunning && (
+                                <button
+                                    type="button"
+                                    onClick={handleStopJob}
+                                    disabled={stoppingJob}
+                                    className="px-4 py-3.5 rounded-2xl bg-red-600/90 hover:bg-red-600 text-white font-bold text-xs flex items-center gap-2 shadow-xl shadow-red-600/30 border border-red-500/40 transition active:scale-95 disabled:opacity-50 shrink-0"
+                                >
+                                    {stoppingJob ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <StopCircle className="w-4 h-4 text-white" />
+                                    )}
+                                    <span>Stop Task</span>
+                                </button>
+                            )}
                         </div>
                     </div>
                     <div className="absolute -right-10 -bottom-10 h-64 w-64 rounded-full bg-red-600/10 blur-3xl pointer-events-none" />
@@ -509,6 +550,23 @@ export default function AdminClickTTPage() {
                                             {progressPercentage}%
                                         </div>
                                     </div>
+
+                                    {isRunning && (
+                                        <button
+                                            type="button"
+                                            onClick={handleStopJob}
+                                            disabled={stoppingJob}
+                                            className="px-3.5 py-2.5 rounded-2xl bg-red-600/90 hover:bg-red-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-red-600/30 border border-red-500/50 transition active:scale-95 disabled:opacity-50 shrink-0"
+                                            title="Stop current scraper or ingestion pipeline"
+                                        >
+                                            {stoppingJob ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <StopCircle className="w-4 h-4 text-white" />
+                                            )}
+                                            <span>Stop Pipeline</span>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
@@ -1183,6 +1241,17 @@ export default function AdminClickTTPage() {
                         )}
                     </div>
                     <div className="flex items-center gap-3">
+                        {isRunning && (
+                            <button
+                                type="button"
+                                onClick={handleStopJob}
+                                disabled={stoppingJob}
+                                className="px-2.5 py-1 rounded-lg bg-red-600/90 hover:bg-red-600 text-white font-bold text-[11px] flex items-center gap-1.5 transition active:scale-95 disabled:opacity-50"
+                            >
+                                {stoppingJob ? <Loader2 className="w-3 h-3 animate-spin" /> : <StopCircle className="w-3 h-3" />}
+                                <span>Stop Task</span>
+                            </button>
+                        )}
                         <label className="flex items-center gap-1.5 text-[11px] text-slate-400 cursor-pointer">
                             <input
                                 type="checkbox"
