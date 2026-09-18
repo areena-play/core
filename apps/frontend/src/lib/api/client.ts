@@ -57,6 +57,54 @@ export class HttpClient {
         return this.executeRequest<T>(endpoint, options);
     }
 
+    async requestBlob(endpoint: string, options: RequestOptions = {}): Promise<{ blob: Blob; filename?: string }> {
+        const isSilent = Boolean(options.silent);
+
+        if (!isSilent) {
+            activeRequests++;
+            notifyLoading();
+        }
+
+        try {
+            const token = this.getToken();
+            const headers: Record<string, string> = {
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                ...((options.headers as Record<string, string>) || {}),
+            };
+
+            const res = await fetch(`${API_BASE}${endpoint}`, {
+                ...options,
+                headers,
+            });
+
+            if (!res.ok) {
+                let errorMessage = `HTTP Error ${res.status}`;
+                try {
+                    const errorData = await res.json();
+                    errorMessage = errorData.message || errorData.error || errorMessage;
+                } catch {}
+                throw new Error(errorMessage);
+            }
+
+            const contentDisposition = res.headers.get('Content-Disposition');
+            let filename: string | undefined;
+            if (contentDisposition) {
+                const match = contentDisposition.match(/filename="?([^"]+)"?/);
+                if (match && match[1]) {
+                    filename = match[1];
+                }
+            }
+
+            const blob = await res.blob();
+            return { blob, filename };
+        } finally {
+            if (!isSilent) {
+                activeRequests = Math.max(0, activeRequests - 1);
+                notifyLoading();
+            }
+        }
+    }
+
     private async executeRequest<T = any>(endpoint: string, options: RequestOptions = {}): Promise<T> {
         const isSilent = Boolean(options.silent);
 
@@ -68,10 +116,13 @@ export class HttpClient {
         try {
             const token = this.getToken();
             const headers: Record<string, string> = {
-                'Content-Type': 'application/json',
                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
                 ...((options.headers as Record<string, string>) || {}),
             };
+
+            if (!(options.body instanceof FormData) && !headers['Content-Type']) {
+                headers['Content-Type'] = 'application/json';
+            }
 
             const res = await fetch(`${API_BASE}${endpoint}`, {
                 ...options,

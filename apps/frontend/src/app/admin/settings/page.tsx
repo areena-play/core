@@ -150,19 +150,18 @@ export default function AdminSettingsPage() {
         setDbError('');
         setDbSuccess('');
         try {
-            const dump = await api.exportDatabase();
-            const blob = new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json' });
+            const { blob, filename } = await api.exportDatabase();
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `areena-database-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+            a.download = filename || `areena-database-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.dump`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            setDbSuccess(`Database successfully dumped and downloaded (${Object.values(dump.counts || {}).reduce((x: any, y: any) => x + y, 0)} total records).`);
+            setDbSuccess(`Database backup successfully exported and downloaded (${(blob.size / (1024 * 1024)).toFixed(2)} MB).`);
         } catch (err: any) {
-            setDbError(err.message || 'Failed to export database.');
+            setDbError(err.message || 'Failed to export database backup.');
         } finally {
             setDbExporting(false);
         }
@@ -173,7 +172,7 @@ export default function AdminSettingsPage() {
         if (!file) return;
 
         const confirmProceed = window.confirm(
-            '⚠️ WARNING: Importing a database backup will overwrite existing records in the database with the contents of the dump file. Are you sure you want to proceed?'
+            `⚠️ WARNING: Restoring a database backup will overwrite / replace existing records in the database with the contents of "${file.name}". Are you sure you want to proceed?`
         );
         if (!confirmProceed) {
             e.target.value = '';
@@ -185,13 +184,10 @@ export default function AdminSettingsPage() {
         setDbSuccess('');
 
         try {
-            const text = await file.text();
-            const dumpData = JSON.parse(text);
-            const res = await api.importDatabase(dumpData);
-            const totalRestored = Object.values(res.importedCounts || {}).reduce((x: any, y: any) => x + y, 0);
-            setDbSuccess(`Database backup successfully restored! Total records imported: ${totalRestored}.`);
+            const res = await api.importDatabase(file);
+            setDbSuccess(res.message || 'Database backup successfully restored!');
         } catch (err: any) {
-            setDbError(err.message || 'Failed to import database file. Please ensure it is a valid AREENA JSON dump.');
+            setDbError(err.message || 'Failed to restore database from backup file. Please ensure it is a valid PostgreSQL backup.');
         } finally {
             setDbImporting(false);
             e.target.value = '';
@@ -1816,10 +1812,10 @@ export default function AdminSettingsPage() {
                     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 p-5 space-y-3">
                         <div className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
                             <Download className="h-4 w-4 text-purple-500" />
-                            <span>Export Full Database (JSON)</span>
+                            <span>Export Full Database (PostgreSQL .dump)</span>
                         </div>
                         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                            Generates a complete JSON backup containing all platform entities (users, associations, clubs, competitions, licenses, encounters, matches, invoices, and settings).
+                            Streams a high-performance, compressed native PostgreSQL custom archive backup (<code className="font-mono text-purple-600 dark:text-purple-400">.dump</code>). Preserves all schemas, tables, relationships, indexes, sequences, and settings with 100% fidelity.
                         </p>
                         <div className="pt-2">
                             <button
@@ -1829,7 +1825,7 @@ export default function AdminSettingsPage() {
                                 className="rounded-xl bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 text-xs font-bold shadow transition disabled:opacity-50 flex items-center gap-2"
                             >
                                 {dbExporting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                                <span>{dbExporting ? 'Generating JSON Dump...' : 'Download Database JSON Dump'}</span>
+                                <span>{dbExporting ? 'Streaming Database Backup...' : 'Download Native PostgreSQL Backup'}</span>
                             </button>
                         </div>
                     </div>
@@ -1838,18 +1834,18 @@ export default function AdminSettingsPage() {
                     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 p-5 space-y-3">
                         <div className="flex items-center gap-2 font-bold text-sm text-slate-900 dark:text-white">
                             <Upload className="h-4 w-4 text-amber-500" />
-                            <span>Import Database (JSON)</span>
+                            <span>Restore Database (.dump / .sql)</span>
                         </div>
                         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                            Restore the platform database from an exported JSON file. <strong className="text-red-500">Warning:</strong> Importing replaces existing records with the data from the dump file.
+                            Upload a native PostgreSQL backup file (<code className="font-mono text-amber-600 dark:text-amber-400">.dump</code>, <code className="font-mono text-amber-600 dark:text-amber-400">.sql</code>, or <code className="font-mono text-amber-600 dark:text-amber-400">.tar</code>) to restore the platform state. <strong className="text-red-500">Warning:</strong> Restoring will overwrite existing records with data from the backup file.
                         </p>
                         <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center gap-3">
                             <label className={`cursor-pointer rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 px-5 py-2.5 text-xs font-bold shadow transition flex items-center gap-2 ${dbImporting ? 'opacity-50 pointer-events-none' : ''}`}>
-                                {dbImporting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <FileJson className="h-3.5 w-3.5" />}
-                                <span>{dbImporting ? 'Importing...' : 'Select JSON File & Restore'}</span>
+                                {dbImporting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Database className="h-3.5 w-3.5" />}
+                                <span>{dbImporting ? 'Restoring Database...' : 'Select Backup File & Restore'}</span>
                                 <input
                                     type="file"
-                                    accept=".json,application/json"
+                                    accept=".dump,.sql,.tar,.gz,application/octet-stream,application/x-tar"
                                     onChange={handleImportDatabase}
                                     disabled={dbImporting}
                                     className="hidden"

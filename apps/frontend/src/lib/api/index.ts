@@ -294,7 +294,7 @@ export class ApiClient extends HttpClient {
     testGoogleTtsSettings = () => this.admin.testGoogleTtsSettings();
     updateGoogleAnalyticsSettings = (body: { measurementId?: string; enabled?: boolean; anonymizeIp?: boolean }) => this.admin.updateGoogleAnalyticsSettings(body);
     exportDatabase = () => this.admin.exportDatabase();
-    importDatabase = (dumpData: any) => this.admin.importDatabase(dumpData);
+    importDatabase = (file: File) => this.admin.importDatabase(file);
 
     getScraperStatus = () => this.admin.getScraperStatus();
     getScraperConfig = () => this.admin.getScraperConfig();

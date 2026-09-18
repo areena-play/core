@@ -1,4 +1,6 @@
 import { Router, Response } from 'express';
+import multer from 'multer';
+import os from 'os';
 import { authenticateToken, requireSuperAdmin, AuthRequest } from '../middleware/auth';
 import { registerTransactionTimeout } from '../middleware/autoTransaction';
 import { SystemService } from '../services/system.service';
@@ -10,6 +12,11 @@ import { GeminiService } from '../services/gemini.service';
 import { GoogleTtsService } from '../services/tts.service';
 
 const router = Router();
+
+const backupUpload = multer({
+    dest: os.tmpdir(),
+    limits: { fileSize: 1024 * 1024 * 1024 }, // 1GB max file size
+});
 
 // All routes require Super Admin Authentication
 router.use(authenticateToken as any, requireSuperAdmin as any);
@@ -653,61 +660,58 @@ router.put('/settings/google-analytics', async (req: AuthRequest, res: Response)
 
 /**
  * GET /api/admin/database/export
- * Dumps the whole database to a structured JSON file/payload
+ * Streams a compressed native PostgreSQL database dump (.dump)
  */
 router.get('/database/export', async (req: AuthRequest, res: Response) => {
     try {
-        const dump = await DatabaseBackupService.exportFullDatabase();
-
         await AuditService.record({
             req,
             action: 'EXPORT_DATABASE_DUMP',
             entityType: 'Database',
             entityId: 'FULL_BACKUP',
-            description: `SuperAdmin ${req.user?.email} exported full database JSON dump (${Object.values(dump.counts).reduce((a, b) => a + b, 0)} total rows)`,
-            metadata: { counts: dump.counts, exportedAt: dump.exportedAt },
+            description: `SuperAdmin ${req.user?.email} exported native PostgreSQL database dump`,
         });
 
-        const filename = `areena-database-dump-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-        res.json(dump);
+        await DatabaseBackupService.streamDatabaseDump(res);
     } catch (err: any) {
         console.error('Database Export Error:', err);
-        res.status(500).json({ error: err.message || 'Failed to export database' });
+        if (!res.headersSent) {
+            res.status(500).json({ error: err.message || 'Failed to export database' });
+        }
     }
 });
 
 /**
  * POST /api/admin/database/import
- * Imports and restores the whole database from JSON
+ * Restores the whole database from an uploaded PostgreSQL backup file (.dump / .sql)
  */
-router.post('/database/import', async (req: AuthRequest, res: Response) => {
+router.post('/database/import', backupUpload.single('backupFile'), async (req: AuthRequest, res: Response) => {
     try {
-        const dump = req.body;
-        if (!dump || !dump.tables) {
-            return res.status(400).json({ error: 'Invalid database dump: "tables" object is missing.' });
+        const file = req.file;
+        if (!file) {
+            return res.status(400).json({
+                error: 'No backup file uploaded. Please upload a valid .dump or .sql backup file in "backupFile" field.',
+            });
         }
 
-        const result = await DatabaseBackupService.importFullDatabase(dump);
+        const result = await DatabaseBackupService.restoreDatabaseFromFile(file.path);
 
         await AuditService.record({
             req,
             action: 'IMPORT_DATABASE_DUMP',
             entityType: 'Database',
             entityId: 'FULL_RESTORE',
-            description: `SuperAdmin ${req.user?.email} imported and restored full database JSON dump (${Object.values(result.importedCounts).reduce((a, b) => a + b, 0)} total rows restored)`,
-            metadata: { importedCounts: result.importedCounts },
+            description: `SuperAdmin ${req.user?.email} restored native PostgreSQL database from uploaded backup (${file.originalname}, ${(file.size / (1024 * 1024)).toFixed(2)} MB)`,
+            metadata: { originalName: file.originalname, sizeBytes: file.size },
         });
 
         res.json({
             success: true,
-            message: 'Database dump successfully imported and database restored.',
-            importedCounts: result.importedCounts,
+            message: result.message || 'Database backup successfully restored.',
         });
     } catch (err: any) {
         console.error('Database Import Error:', err);
-        res.status(500).json({ error: err.message || 'Failed to import database dump' });
+        res.status(500).json({ error: err.message || 'Failed to restore database from backup file' });
     }
 });
 

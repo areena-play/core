@@ -130,13 +130,15 @@ export class AdminApi {
     }
 
     exportDatabase() {
-        return this.http.request('/admin/database/export');
+        return this.http.requestBlob('/admin/database/export');
     }
 
-    importDatabase(dumpData: any) {
-        return this.http.request('/admin/database/import', {
+    importDatabase(file: File) {
+        const formData = new FormData();
+        formData.append('backupFile', file);
+        return this.http.request<{ success: boolean; message: string }>('/admin/database/import', {
             method: 'POST',
-            body: JSON.stringify(dumpData),
+            body: formData,
         });
     }
 

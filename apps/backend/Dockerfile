@@ -22,7 +22,7 @@ RUN npm run build --workspace=@areena/backend
 FROM node:22-alpine AS runner
 WORKDIR /app
 
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl postgresql-client
 
 ENV NODE_ENV=production
 
