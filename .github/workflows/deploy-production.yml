@@ -109,13 +109,13 @@ jobs:
           #   key_secret: "PROD_SSH_KEY"
           #
           # SCENARIO B: Completely SEPARATE INSTANCES (different domain & database)
-          # (Define STTF_DOMAIN, STTF_DATABASE_URL, STTF_SSH_HOST, etc. in GitHub Secrets/Vars)
-          # - name: "Swiss Table Tennis Federation"
-          #   project_name: "areena-sttf"
-          #   prefix: "STTF"
-          #   host_key: "STTF_SSH_HOST"
-          #   user_key: "STTF_SSH_USER"
-          #   key_secret: "STTF_SSH_KEY"
+          # (Define STT_DOMAIN, STT_DATABASE_URL, STT_SSH_HOST, etc. in GitHub Secrets/Vars)
+          # - name: "Swiss Table Tennis"
+          #   project_name: "areena-stt"
+          #   prefix: "STT"
+          #   host_key: "STT_SSH_HOST"
+          #   user_key: "STT_SSH_USER"
+          #   key_secret: "STT_SSH_KEY"
           # =============================================================
 
     steps:

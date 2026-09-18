@@ -52,7 +52,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     },
     {
         roleName: 'Federation President',
-        personName: 'Beat Hirschi (STTF)',
+        personName: 'Beat Hirschi (STT)',
         email: 'president.sttf@areena.ch',
         badge: 'National Federation',
         badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40',
@@ -65,7 +65,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
         email: 'regional.sttf.east@areena.ch',
         badge: 'Regional Federation',
         badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
-        description: 'STTF Ostschweiz regional leagues, club affiliations, and fixtures.',
+        description: 'OTTV regional leagues, club affiliations, and fixtures.',
         icon: <Building2 className="w-4 h-4 text-purple-400" />,
     },
     {

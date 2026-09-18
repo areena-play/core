@@ -140,24 +140,109 @@ export class AdminApi {
         });
     }
 
-    getClickTTStatus(path?: string) {
-        return this.http.request(`/admin/import/clicktt/status${path ? `?path=${encodeURIComponent(path)}` : ''}`);
+    getScraperStatus() {
+        return this.http.request<{
+            isRunning: boolean;
+            activeJob: string | null;
+            startedAt: string | null;
+            elapsedSec: number;
+            lastFinishedAt: string | null;
+            lastResult: 'success' | 'error' | null;
+            lastError: string | null;
+            summary: any | null;
+        }>('/admin/scraper/status');
     }
 
-    importClickTT(options: {
-        dataPath?: string;
-        dryRun?: boolean;
-        batchSize?: number;
-        importLicenses?: boolean;
-        importEncounters?: boolean;
-        importMatches?: boolean;
-        maxMeetings?: number;
-        seasonsFilter?: string[];
-    } = {}) {
-        return this.http.request('/admin/import/clicktt', {
+    getScraperConfig() {
+        return this.http.request<{
+            baseUrl: string;
+            fedNickname: string;
+            clientId: string;
+            hasClientSecret: boolean;
+            webBaseUrl: string;
+            clickttUsername: string;
+            hasPassword: boolean;
+            requestDelayMs: number;
+            concurrency: number;
+            excludedClubs: string;
+            tournamentRetroDays: number;
+            isConfigured: boolean;
+        }>('/admin/scraper/config');
+    }
+
+    updateScraperConfig(body: {
+        baseUrl?: string;
+        fedNickname?: string;
+        clientId?: string;
+        clientSecret?: string;
+        webBaseUrl?: string;
+        clickttUsername?: string;
+        clickttPassword?: string;
+        requestDelayMs?: number;
+        concurrency?: number;
+        excludedClubs?: string;
+        tournamentRetroDays?: number;
+    }) {
+        return this.http.request('/admin/scraper/config', {
+            method: 'PUT',
+            body: JSON.stringify(body),
+        });
+    }
+
+    runScraperJob(jobType: 'initial' | 'sync' | 'results' | 'players' | 'elo' | 'export' | 'reset-db', options: any = {}, background: boolean = true) {
+        return this.http.request<{ success: boolean; message: string }>('/admin/scraper/run', {
             method: 'POST',
-            body: JSON.stringify(options),
+            body: JSON.stringify({ jobType, options, background }),
+        });
+    }
+
+    resetAndImportDatabase(background: boolean = true) {
+        return this.http.request<{ success: boolean; message: string }>('/admin/scraper/reset-and-import', {
+            method: 'POST',
+            body: JSON.stringify({ background }),
+        });
+    }
+
+    getScraperLogs(limit: number = 200) {
+        return this.http.request<{ logs: Array<{ timestamp: string; level: 'info' | 'warn' | 'error' | 'success'; message: string }> }>(
+            `/admin/scraper/logs?limit=${limit}`
+        );
+    }
+
+    clearScraperLogs() {
+        return this.http.request<{ success: boolean; message: string }>('/admin/scraper/logs', {
+            method: 'DELETE',
+        });
+    }
+
+    getCronJobs() {
+        return this.http.request<{
+            jobs: Array<{
+                name: string;
+                title: string;
+                description?: string;
+                intervalMs: number;
+                enabled: boolean;
+                lastRunAt: string | null;
+                nextRunAt: string | null;
+                lastRunBy?: string;
+            }>;
+        }>('/admin/cronjobs');
+    }
+
+    toggleCronJob(name: string, enabled: boolean) {
+        return this.http.request<{ success: boolean; message: string }>(`/admin/cronjobs/${encodeURIComponent(name)}/toggle`, {
+            method: 'PATCH',
+            body: JSON.stringify({ enabled }),
+        });
+    }
+
+    triggerCronJob(name: string) {
+        return this.http.request<{ success: boolean; message: string }>(`/admin/cronjobs/${encodeURIComponent(name)}/run`, {
+            method: 'POST',
         });
     }
 }
+
+
 

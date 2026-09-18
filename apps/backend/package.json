@@ -14,7 +14,7 @@
         "prisma:update": "node ../../scripts/prisma.js db push && node ../../scripts/prisma.js generate",
         "prisma:seed": "ts-node -r dotenv/config src/seed.ts",
         "db:fresh": "ts-node -r dotenv/config src/scripts/resetFreshDatabase.ts",
-        "import:clicktt": "ts-node -r dotenv/config src/scripts/importClickTT.ts"
+        "scraper:clicktt": "ts-node -r dotenv/config src/scripts/scrapeClickTT.ts"
     },
     "dependencies": {
         "@areena/shared": "*",

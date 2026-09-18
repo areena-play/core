@@ -94,8 +94,12 @@ export function autoTransaction(req: Request, res: Response, next: NextFunction)
 
     const targetUrl = req.originalUrl || req.url || req.path;
 
-    // Skip transaction for explicit file stream uploads or health endpoints
-    if (req.path.startsWith('/upload') || req.path.startsWith('/health')) {
+    // Skip transaction for explicit file stream uploads, health endpoints, or scraper background operations
+    if (
+        req.path.startsWith('/upload') ||
+        req.path.startsWith('/health') ||
+        targetUrl.includes('/scraper/')
+    ) {
         return next();
     }
 

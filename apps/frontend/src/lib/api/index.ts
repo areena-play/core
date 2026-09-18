@@ -295,19 +295,32 @@ export class ApiClient extends HttpClient {
     updateGoogleAnalyticsSettings = (body: { measurementId?: string; enabled?: boolean; anonymizeIp?: boolean }) => this.admin.updateGoogleAnalyticsSettings(body);
     exportDatabase = () => this.admin.exportDatabase();
     importDatabase = (dumpData: any) => this.admin.importDatabase(dumpData);
-    getClickTTStatus = (path?: string) => this.admin.getClickTTStatus(path);
-    importClickTT = (options?: {
-        dataPath?: string;
-        dryRun?: boolean;
-        batchSize?: number;
-        importLicenses?: boolean;
-        importEncounters?: boolean;
-        importMatches?: boolean;
-        maxMeetings?: number;
-        seasonsFilter?: string[];
-    }) => this.admin.importClickTT(options);
+
+    getScraperStatus = () => this.admin.getScraperStatus();
+    getScraperConfig = () => this.admin.getScraperConfig();
+    updateScraperConfig = (body: {
+        baseUrl?: string;
+        fedNickname?: string;
+        clientId?: string;
+        clientSecret?: string;
+        webBaseUrl?: string;
+        clickttUsername?: string;
+        clickttPassword?: string;
+        requestDelayMs?: number;
+        concurrency?: number;
+        excludedClubs?: string;
+        tournamentRetroDays?: number;
+    }) => this.admin.updateScraperConfig(body);
+    runScraperJob = (jobType: 'initial' | 'sync' | 'results' | 'players' | 'elo' | 'export' | 'reset-db', options?: any, background?: boolean) =>
+        this.admin.runScraperJob(jobType, options, background);
+    resetAndImportDatabase = (background?: boolean) => this.admin.resetAndImportDatabase(background);
+    getScraperLogs = (limit?: number) => this.admin.getScraperLogs(limit);
+    getCronJobs = () => this.admin.getCronJobs();
+    toggleCronJob = (name: string, enabled: boolean) => this.admin.toggleCronJob(name, enabled);
+    triggerCronJob = (name: string) => this.admin.triggerCronJob(name);
 }
 
 export const api = new ApiClient();
 export default api;
+
 

@@ -79,10 +79,10 @@ export async function seedDemoDatabase() {
     console.log('  🏛️  Creating Associations & Regional Federations...');
     const sttfNational = await prisma.association.create({
         data: {
-            name: 'Swiss Table Tennis Federation',
-            shortName: 'STTF',
-            code: 'STTF',
-            slug: 'sttf',
+            name: 'Swiss Table Tennis',
+            shortName: 'STT',
+            code: 'STT',
+            slug: 'stt',
             level: AssociationLevel.NATIONAL,
             isTopLevel: true,
             licenseIdTemplate: '{regionDigit}{year2}{counter3}',
@@ -98,9 +98,9 @@ export async function seedDemoDatabase() {
 
     const sttfOst = await prisma.association.create({
         data: {
-            name: 'STTF Ostschweiz (OTTV)',
+            name: 'Ostschweizer Tischtennisverband',
             shortName: 'OTTV',
-            code: 'STTF-OST',
+            code: 'OTTV',
             slug: 'ottv',
             level: AssociationLevel.REGIONAL,
             isTopLevel: false,
@@ -111,9 +111,9 @@ export async function seedDemoDatabase() {
 
     const sttfRomandie = await prisma.association.create({
         data: {
-            name: 'Association Romande de Tennis de Table (ARTT)',
-            shortName: 'ARTT',
-            code: 'STTF-WEST',
+            name: 'Association Romande de Tennis de Table',
+            shortName: 'AVVF',
+            code: 'AVVF',
             slug: 'artt',
             level: AssociationLevel.REGIONAL,
             isTopLevel: false,
@@ -1084,7 +1084,7 @@ export async function seedDemoDatabase() {
                 userName: 'Super Administrator',
                 action: 'SYSTEM_BOOTSTRAP_INITIALIZE',
                 category: AuditCategory.GOVERNANCE,
-                description: 'Initialized Swiss Table Tennis Federation (STTF) primary organization and demo seeds.',
+                description: 'Initialized Swiss Table Tennis (STT) primary organization and demo seeds.',
                 status: 'SUCCESS',
             },
             {
@@ -1161,7 +1161,7 @@ export async function seedDemoDatabase() {
         },
     });
 
-    // Association Support Subjects (STTF)
+    // Association Support Subjects (STT)
     const subLicenseTransfer = await prisma.supportSubject.create({
         data: {
             title: 'Player License Transfer & Approvals',
@@ -1327,7 +1327,7 @@ export async function seedDemoDatabase() {
         ],
     });
 
-    // Association FAQs (STTF)
+    // Association FAQs (STT)
     await prisma.faqItem.create({
         data: {
             question: 'What are the eligibility requirements for the Swiss National Championship?',
@@ -1432,10 +1432,10 @@ export async function seedDemoDatabase() {
         });
     }
 
-    // 2. STTF National Training Center Magglingen
+    // 2. STT National Training Center Magglingen
     const locMagglingen = await prisma.location.create({
         data: {
-            name: 'Nationales Sportzentrum Magglingen • STTF Arena',
+            name: 'Nationales Sportzentrum Magglingen • STT Arena',
             slug: 'sttf-arena-magglingen',
             address: 'Hauptstrasse 247',
             city: 'Magglingen',

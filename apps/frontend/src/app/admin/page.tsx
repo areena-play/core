@@ -94,7 +94,7 @@ export default function AdminDashboardPage() {
                             className="inline-flex items-center gap-2 rounded-xl bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 px-3.5 py-2 text-xs font-bold text-white transition shadow"
                         >
                             <Database className="h-3.5 w-3.5 text-red-400" />
-                            <span>ClickTT Import</span>
+                            <span>ClickTT Migration</span>
                         </Link>
                         <button
                             type="button"

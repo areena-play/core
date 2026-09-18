@@ -761,4 +761,105 @@ export class SystemService {
 
         return this.getGoogleAnalyticsConfig();
     }
+
+    // -------------------------------------------------------------------------
+    // CLICK-TT SCRAPER CONFIGURATION
+    // -------------------------------------------------------------------------
+
+    public static async getClickTTScraperConfig(): Promise<{
+        baseUrl: string;
+        fedNickname: string;
+        clientId: string;
+        hasClientSecret: boolean;
+        webBaseUrl: string;
+        clickttUsername: string;
+        hasPassword: boolean;
+        requestDelayMs: number;
+        concurrency: number;
+        excludedClubs: string;
+        tournamentRetroDays: number;
+        isConfigured: boolean;
+    }> {
+        const map = await this.getAllSettingsMap();
+        const baseUrl = map.get('CLICKTT_BASE_URL') || process.env.CLICKTT_BASE_URL || 'https://ttch-portal.liga.nu/rs';
+        const fedNickname = map.get('CLICKTT_FED') || process.env.CLICKTT_FED || 'STT';
+        const clientId = map.get('CLICKTT_CLIENT_ID') || process.env.CLICKTT_CLIENT_ID || '';
+        const clientSecret = map.get('CLICKTT_CLIENT_SECRET') || process.env.CLICKTT_CLIENT_SECRET || '';
+        const webBaseUrl = map.get('CLICKTT_WEB_BASE_URL') || process.env.CLICKTT_WEB_BASE_URL || 'https://click-tt.ch';
+        const clickttUsername = map.get('CLICKTT_USERNAME') || process.env.CLICKTT_USERNAME || '';
+        const clickttPassword = map.get('CLICKTT_PASSWORD') || process.env.CLICKTT_PASSWORD || '';
+        const requestDelayMs = parseInt(map.get('CLICKTT_DELAY_MS') || '0', 10);
+        const concurrency = parseInt(map.get('CLICKTT_CONCURRENCY') || '25', 10);
+        const excludedClubs = map.get('CLICKTT_EXCLUDED_CLUBS') || 'T-Card, T-CARD, t-card, T Card';
+        const tournamentRetroDays = parseInt(map.get('CLICKTT_TOURNAMENT_RETRO_DAYS') || '30', 10);
+
+        return {
+            baseUrl,
+            fedNickname,
+            clientId,
+            hasClientSecret: Boolean(clientSecret),
+            webBaseUrl,
+            clickttUsername,
+            hasPassword: Boolean(clickttPassword),
+            requestDelayMs,
+            concurrency,
+            excludedClubs,
+            tournamentRetroDays,
+            isConfigured: Boolean(clickttUsername || clientId),
+        };
+    }
+
+    public static async updateClickTTScraperConfig(
+        data: {
+            baseUrl?: string;
+            fedNickname?: string;
+            clientId?: string;
+            clientSecret?: string;
+            webBaseUrl?: string;
+            clickttUsername?: string;
+            clickttPassword?: string;
+            requestDelayMs?: number;
+            concurrency?: number;
+            excludedClubs?: string;
+            tournamentRetroDays?: number;
+        },
+        updatedBy?: string
+    ) {
+        if (data.baseUrl !== undefined) {
+            await this.setSetting('CLICKTT_BASE_URL', data.baseUrl.trim(), 'Click-TT REST API Base URL', false, updatedBy);
+        }
+        if (data.fedNickname !== undefined) {
+            await this.setSetting('CLICKTT_FED', data.fedNickname.trim(), 'Click-TT Federation Nickname (e.g. STT)', false, updatedBy);
+        }
+        if (data.clientId !== undefined) {
+            await this.setSetting('CLICKTT_CLIENT_ID', data.clientId.trim(), 'Click-TT REST API Client ID', false, updatedBy);
+        }
+        if (data.clientSecret !== undefined && data.clientSecret.trim() !== '') {
+            await this.setSetting('CLICKTT_CLIENT_SECRET', data.clientSecret.trim(), 'Click-TT REST API Client Secret', true, updatedBy);
+        }
+        if (data.webBaseUrl !== undefined) {
+            await this.setSetting('CLICKTT_WEB_BASE_URL', data.webBaseUrl.trim(), 'Click-TT Web Portal Base URL', false, updatedBy);
+        }
+        if (data.clickttUsername !== undefined) {
+            await this.setSetting('CLICKTT_USERNAME', data.clickttUsername.trim(), 'Click-TT Web Login Username', false, updatedBy);
+        }
+        if (data.clickttPassword !== undefined && data.clickttPassword.trim() !== '') {
+            await this.setSetting('CLICKTT_PASSWORD', data.clickttPassword.trim(), 'Click-TT Web Login Password', true, updatedBy);
+        }
+        if (data.requestDelayMs !== undefined) {
+            await this.setSetting('CLICKTT_DELAY_MS', String(Math.max(0, data.requestDelayMs)), 'Scraper Request Delay (ms)', false, updatedBy);
+        }
+        if (data.concurrency !== undefined) {
+            await this.setSetting('CLICKTT_CONCURRENCY', String(Math.max(1, Math.min(60, data.concurrency))), 'Scraper Worker Concurrency', false, updatedBy);
+        }
+        if (data.excludedClubs !== undefined) {
+            await this.setSetting('CLICKTT_EXCLUDED_CLUBS', data.excludedClubs.trim(), 'Comma-separated list of excluded club names', false, updatedBy);
+        }
+        if (data.tournamentRetroDays !== undefined) {
+            await this.setSetting('CLICKTT_TOURNAMENT_RETRO_DAYS', String(Math.max(1, data.tournamentRetroDays)), 'Tournament Retrospective Sync Days', false, updatedBy);
+        }
+
+        return this.getClickTTScraperConfig();
+    }
 }
+

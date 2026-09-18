@@ -1643,7 +1643,7 @@ export default function PersonProfilePage() {
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-3 text-slate-500">
-                                                    {snap.association?.code || snap.association?.name || 'STTF'}
+                                                    {snap.association?.code || snap.association?.name}
                                                 </td>
                                             </tr>
                                         ))}

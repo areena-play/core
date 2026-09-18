@@ -36,6 +36,7 @@ import ttsRoutes from './routes/tts.routes';
 import { startDemoScheduler } from './services/demoScheduler.service';
 import { CronSchedulerService } from './services/cronScheduler.service';
 import { RatingSchedulerService } from './services/ratingScheduler.service';
+import { ClickTTScraperService } from './services/clickttScraper.service';
 import { SystemService } from './services/system.service';
 
 const app = express();
@@ -180,6 +181,7 @@ app.listen(PORT, () => {
 
     startDemoScheduler();
     RatingSchedulerService.init();
+    ClickTTScraperService.initCronJobs();
     CronSchedulerService.start();
 });
 

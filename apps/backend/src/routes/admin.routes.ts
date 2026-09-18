@@ -5,7 +5,7 @@ import { SystemService } from '../services/system.service';
 import { AuditService } from '../services/audit.service';
 import { DatabaseBackupService } from '../services/databaseBackup.service';
 import { CronSchedulerService } from '../services/cronScheduler.service';
-import { ClickTTImportService } from '../services/clickttImport.service';
+import { ClickTTScraperService } from '../services/clickttScraper.service';
 import { GeminiService } from '../services/gemini.service';
 import { GoogleTtsService } from '../services/tts.service';
 
@@ -726,10 +726,10 @@ router.get('/cronjobs', async (req: AuthRequest, res: Response) => {
 });
 
 /**
- * POST /api/admin/cronjobs/:name/run
+ * POST /api/admin/cronjobs/:name/run & POST /api/admin/cronjobs/:name/trigger
  * Manually trigger a registered cronjob safely with distributed lock
  */
-router.post('/cronjobs/:name/run', async (req: AuthRequest, res: Response) => {
+router.post(['/cronjobs/:name/run', '/cronjobs/:name/trigger'], async (req: AuthRequest, res: Response) => {
     try {
         const { name } = req.params;
         const result = await CronSchedulerService.triggerManual(name);
@@ -802,80 +802,155 @@ router.delete('/cronjobs/:name', async (req: AuthRequest, res: Response) => {
 });
 
 /**
- * GET /api/admin/import/clicktt/status
- * Check availability of local ClickTT scraped data files
+ * GET /api/admin/scraper/status
+ * Get real-time ClickTT Scraper execution status and checkpoint summary
  */
-router.get('/import/clicktt/status', async (req: AuthRequest, res: Response) => {
+router.get('/scraper/status', async (req: AuthRequest, res: Response) => {
     try {
-        const customPath = req.query.path as string | undefined;
-        const status = ClickTTImportService.checkDataset(customPath);
+        const status = await ClickTTScraperService.getStatus();
         res.json(status);
     } catch (err: any) {
-        console.error('ClickTT Status Check Error:', err);
-        res.status(500).json({ error: err.message || 'Failed to check ClickTT dataset status' });
+        console.error('ClickTT Scraper Status Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to get scraper status' });
     }
 });
 
 /**
- * POST /api/admin/import/clicktt
- * Trigger ClickTT import into Areena database
+ * GET /api/admin/scraper/logs
+ * Get live log stream / history from ClickTT Scraper memory buffer
  */
-router.post('/import/clicktt', async (req: AuthRequest, res: Response) => {
+router.get('/scraper/logs', async (req: AuthRequest, res: Response) => {
     try {
-        const {
-            dataPath,
-            dryRun,
-            batchSize,
-            importLicenses,
-            importEncounters,
-            importMatches,
-            maxMeetings,
-            seasonsFilter,
-        } = req.body || {};
+        const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 200;
+        const logs = ClickTTScraperService.getLogs(isNaN(limit) ? 200 : limit);
+        res.json({ logs });
+    } catch (err: any) {
+        console.error('ClickTT Scraper Logs Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to get scraper logs' });
+    }
+});
 
-        const result = await ClickTTImportService.importClickTTData({
-            dataPath,
-            dryRun: Boolean(dryRun),
-            batchSize: batchSize ? parseInt(batchSize, 10) : undefined,
-            importLicenses: importLicenses !== false,
-            importEncounters: importEncounters !== false,
-            importMatches: importMatches !== false,
-            maxMeetings: maxMeetings ? parseInt(maxMeetings, 10) : undefined,
-            seasonsFilter: Array.isArray(seasonsFilter) ? seasonsFilter : undefined,
-        });
+/**
+ * DELETE /api/admin/scraper/logs
+ * Clear the in-memory scraper log buffer
+ */
+router.delete('/scraper/logs', async (req: AuthRequest, res: Response) => {
+    try {
+        ClickTTScraperService.clearLogs();
+        res.json({ success: true, message: 'Scraper logs cleared.' });
+    } catch (err: any) {
+        console.error('ClickTT Clear Scraper Logs Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to clear scraper logs' });
+    }
+});
+
+/**
+ * GET /api/admin/scraper/config
+ * Get ClickTT Scraper configuration (.env / SystemSetting)
+ */
+router.get('/scraper/config', async (req: AuthRequest, res: Response) => {
+    try {
+        const config = await SystemService.getClickTTScraperConfig();
+        res.json(config);
+    } catch (err: any) {
+        console.error('ClickTT Scraper Config Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to load scraper config' });
+    }
+});
+
+/**
+ * PUT /api/admin/scraper/config
+ * Save ClickTT Scraper configuration directly from Admin Dashboard
+ */
+router.put('/scraper/config', async (req: AuthRequest, res: Response) => {
+    try {
+        const updated = await SystemService.updateClickTTScraperConfig(req.body, req.user?.email);
 
         await AuditService.record({
             req,
-            action: dryRun ? 'CLICKTT_IMPORT_DRY_RUN' : 'CLICKTT_IMPORT_EXECUTE',
-            entityType: 'ClickTTImport',
-            entityId: 'global',
-            description: `Admin ${req.user?.email} executed ClickTT data import (dryRun: ${dryRun})`,
+            action: 'UPDATE_CLICKTT_SCRAPER_CONFIG',
+            entityType: 'SystemSetting',
+            entityId: 'CLICKTT_SCRAPER',
+            description: `Admin ${req.user?.email} updated Click-TT Scraper configuration`,
             metadata: {
-                dryRun,
-                associationsProcessed: result.associationsProcessed,
-                seasonsProcessed: result.seasonsProcessed,
-                clubsProcessed: result.clubsProcessed,
-                competitionsProcessed: result.competitionsProcessed,
-                categoriesProcessed: result.categoriesProcessed,
-                playersProcessed: result.playersProcessed,
-                tcardPlayersProcessed: result.tcardPlayersProcessed,
-                licensesCreated: result.licensesCreated,
-                encountersProcessed: result.encountersProcessed,
-                matchesProcessed: result.matchesProcessed,
-                durationMs: result.durationMs,
+                baseUrl: updated.baseUrl,
+                fedNickname: updated.fedNickname,
+                concurrency: updated.concurrency,
+                requestDelayMs: updated.requestDelayMs,
             },
         });
 
-        res.json(result);
+        res.json(updated);
     } catch (err: any) {
-        console.error('ClickTT Import Execution Error:', err);
-        res.status(500).json({ error: err.message || 'ClickTT import failed' });
+        console.error('Update ClickTT Scraper Config Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to update scraper config' });
     }
 });
-// Register custom 10-minute transaction timeout for ClickTT bulk ingestion
-registerTransactionTimeout('/admin/import/clicktt', {
-    timeout: 15 * 60 * 1000, // 15 minutes
-    maxWait: 2 * 60 * 1000,  // 2 minutes
+
+/**
+ * POST /api/admin/scraper/run
+ * Trigger a background Scraper job (initial, sync, results, players, elo, export)
+ */
+router.post('/scraper/run', async (req: AuthRequest, res: Response) => {
+    try {
+        const { jobType = 'sync', options = {}, background = true } = req.body;
+
+        await AuditService.record({
+            req,
+            action: `RUN_CLICKTT_SCRAPER_${String(jobType).toUpperCase()}`,
+            entityType: 'ClickTTScraper',
+            entityId: jobType,
+            description: `Admin ${req.user?.email} triggered Click-TT Scraper job '${jobType}'`,
+            metadata: { jobType, options, background },
+        });
+
+        if (background) {
+            // Launch in background
+            ClickTTScraperService.runJob(jobType, options).catch((err) => {
+                console.error(`[ClickTTScraper Background Error (${jobType})]:`, err);
+            });
+            res.json({ success: true, message: `Scraper task '${jobType}' launched in background.` });
+        } else {
+            // Wait for job completion
+            await ClickTTScraperService.runJob(jobType, options);
+            res.json({ success: true, message: `Scraper task '${jobType}' completed.` });
+        }
+    } catch (err: any) {
+        console.error('Run ClickTT Scraper Error:', err);
+        res.status(400).json({ error: err.message || 'Failed to start scraper task' });
+    }
+});
+
+/**
+ * POST /api/admin/scraper/reset-and-import
+ * Danger Zone: Wipe sports data and bulk-load all normalized V2 datasets
+ */
+router.post('/scraper/reset-and-import', async (req: AuthRequest, res: Response) => {
+    try {
+        const { background = true } = req.body;
+
+        await AuditService.record({
+            req,
+            action: 'RESET_AND_IMPORT_DATABASE',
+            entityType: 'Database',
+            entityId: 'FULL_RESET',
+            description: `Admin ${req.user?.email} initiated full database reset and bulk import from Click-TT datasets`,
+            metadata: { background },
+        });
+
+        if (background) {
+            ClickTTScraperService.runJob('reset-db', {}).catch((err) => {
+                console.error('[ClickTTScraper Background Reset-DB Error]:', err);
+            });
+            res.json({ success: true, message: 'Full database reset and bulk reload launched in background.' });
+        } else {
+            await ClickTTScraperService.runJob('reset-db', {});
+            res.json({ success: true, message: 'Full database reset and bulk reload completed successfully.' });
+        }
+    } catch (err: any) {
+        console.error('Reset and Import Database Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to execute database reset and import' });
+    }
 });
 
 export default router;
