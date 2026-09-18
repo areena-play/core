@@ -1152,8 +1152,8 @@ router.post('/categories/:categoryId/reset-draw', authenticateToken, async (req:
             await tx.groupStanding.deleteMany({
                 where: { group: { categoryId } },
             });
-            // Delete competition groups
-            await tx.competitionGroup.deleteMany({
+            // Delete category groups
+            await tx.categoryGroup.deleteMany({
                 where: { categoryId },
             });
         });
@@ -1188,10 +1188,17 @@ router.post('/categories/:categoryId/generate-groups', authenticateToken, async 
 
         // Clean previous groups and encounters
         await prisma.$transaction(async (tx) => {
-            await tx.match.deleteMany({ where: { encounter: { categoryId: category.id } } });
+            await tx.match.deleteMany({
+                where: {
+                    OR: [
+                        { categoryId: category.id },
+                        { encounter: { categoryId: category.id } },
+                    ],
+                },
+            });
             await tx.encounter.deleteMany({ where: { categoryId: category.id } });
             await tx.groupStanding.deleteMany({ where: { group: { categoryId: category.id } } });
-            await tx.competitionGroup.deleteMany({ where: { categoryId: category.id } });
+            await tx.categoryGroup.deleteMany({ where: { categoryId: category.id } });
         });
 
         const groups = [];
@@ -1203,7 +1210,7 @@ router.post('/categories/:categoryId/generate-groups', authenticateToken, async 
                 const gTeamIds = (cg.teamIds || []).filter((id: string) => allTeamIds.includes(id));
                 if (gTeamIds.length === 0) continue;
 
-                const group = await prisma.competitionGroup.create({
+                const group = await prisma.categoryGroup.create({
                     data: {
                         categoryId: category.id,
                         name: cg.name || `Group ${String.fromCharCode(65 + i)}`,
@@ -1231,7 +1238,7 @@ router.post('/categories/:categoryId/generate-groups', authenticateToken, async 
 
                 if (gTeamIds.length === 0) continue;
 
-                const group = await prisma.competitionGroup.create({
+                const group = await prisma.categoryGroup.create({
                     data: {
                         categoryId: category.id,
                         name: `Group ${groupLetter}`,

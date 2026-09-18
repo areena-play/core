@@ -62,6 +62,9 @@ export class CompetitionService {
                                 const fmt = encounterFormat[mIndex];
                                 await tx.match.create({
                                     data: {
+                                        categoryId,
+                                        groupId,
+                                        round,
                                         encounterId: encounter.id,
                                         orderIndex: mIndex + 1,
                                         matchType: fmt.type || MatchType.SINGLE,
@@ -75,6 +78,9 @@ export class CompetitionService {
                             // Default 1 single match
                             await tx.match.create({
                                 data: {
+                                    categoryId,
+                                    groupId,
+                                    round,
                                     encounterId: encounter.id,
                                     orderIndex: 1,
                                     matchType: MatchType.SINGLE,
@@ -142,9 +148,11 @@ export class CompetitionService {
             throw new Error('Match not found');
         }
 
-        const lockResource = initialMatch.encounter.groupId
-            ? `tournament:group:${initialMatch.encounter.groupId}`
-            : `tournament:encounter:${initialMatch.encounterId}`;
+        const lockResource = (initialMatch.encounter?.groupId || initialMatch.groupId)
+            ? `tournament:group:${initialMatch.encounter?.groupId || initialMatch.groupId}`
+            : initialMatch.encounterId
+            ? `tournament:encounter:${initialMatch.encounterId}`
+            : `tournament:match:${initialMatch.id}`;
 
         const result = await DistributedLockService.withLock(lockResource, async (tx) => {
             let homeWonSets = 0;
@@ -176,63 +184,72 @@ export class CompetitionService {
                 },
             });
 
-            // Recalculate encounter score inside transaction
-            const allMatches = await tx.match.findMany({
-                where: { encounterId: initialMatch.encounterId },
-            });
-
+            let updatedEncounter: any = null;
             let calcHomeScore = 0;
             let calcAwayScore = 0;
-            let allFinished = true;
-            let anyLiveOrFinished = false;
+            let calcEncounterStatus: EncounterStatus = matchStatus;
 
-            for (const matchItem of allMatches) {
-                if (matchItem.winner === MatchWinner.HOME) calcHomeScore++;
-                else if (matchItem.winner === MatchWinner.AWAY) calcAwayScore++;
+            if (initialMatch.encounterId) {
+                // Recalculate encounter score inside transaction
+                const allMatches = await tx.match.findMany({
+                    where: { encounterId: initialMatch.encounterId },
+                });
 
-                if (matchItem.status !== EncounterStatus.FINISHED) {
-                    allFinished = false;
+                let allFinished = true;
+                let anyLiveOrFinished = false;
+
+                for (const matchItem of allMatches) {
+                    if (matchItem.winner === MatchWinner.HOME) calcHomeScore++;
+                    else if (matchItem.winner === MatchWinner.AWAY) calcAwayScore++;
+
+                    if (matchItem.status !== EncounterStatus.FINISHED) {
+                        allFinished = false;
+                    }
+                    if (
+                        matchItem.status === EncounterStatus.LIVE ||
+                        matchItem.status === EncounterStatus.FINISHED
+                    ) {
+                        anyLiveOrFinished = true;
+                    }
                 }
-                if (
-                    matchItem.status === EncounterStatus.LIVE ||
-                    matchItem.status === EncounterStatus.FINISHED
-                ) {
-                    anyLiveOrFinished = true;
+
+                if (allFinished && allMatches.length > 0) {
+                    calcEncounterStatus = EncounterStatus.FINISHED;
+                } else if (anyLiveOrFinished) {
+                    calcEncounterStatus = EncounterStatus.LIVE;
+                } else {
+                    calcEncounterStatus = EncounterStatus.SCHEDULED;
                 }
-            }
 
-            let calcEncounterStatus: EncounterStatus = EncounterStatus.SCHEDULED;
-            if (allFinished && allMatches.length > 0) {
-                calcEncounterStatus = EncounterStatus.FINISHED;
-            } else if (anyLiveOrFinished) {
-                calcEncounterStatus = EncounterStatus.LIVE;
-            }
-
-            const updatedEncounter = await tx.encounter.update({
-                where: { id: initialMatch.encounterId },
-                data: {
-                    homeScore: calcHomeScore,
-                    awayScore: calcAwayScore,
-                    status: calcEncounterStatus,
-                },
-                include: {
-                    homeTeam: true,
-                    awayTeam: true,
-                    category: true,
-                    matches: {
-                        include: {
-                            homePlayer1: true,
-                            homePlayer2: true,
-                            awayPlayer1: true,
-                            awayPlayer2: true,
+                updatedEncounter = await tx.encounter.update({
+                    where: { id: initialMatch.encounterId },
+                    data: {
+                        homeScore: calcHomeScore,
+                        awayScore: calcAwayScore,
+                        status: calcEncounterStatus,
+                    },
+                    include: {
+                        homeTeam: true,
+                        awayTeam: true,
+                        category: true,
+                        matches: {
+                            include: {
+                                homePlayer1: true,
+                                homePlayer2: true,
+                                awayPlayer1: true,
+                                awayPlayer2: true,
+                            },
                         },
                     },
-                },
-            });
+                });
 
-            // If encounter is in a group, update group standings atomically within transaction
-            if (initialMatch.encounter.groupId) {
-                await this.recalculateGroupStandings(initialMatch.encounter.groupId, tx);
+                // If encounter is in a group, update group standings atomically within transaction
+                if (initialMatch.encounter?.groupId) {
+                    await this.recalculateGroupStandings(initialMatch.encounter.groupId, tx);
+                }
+            } else if (initialMatch.groupId) {
+                // Standalone match in group
+                await this.recalculateGroupStandings(initialMatch.groupId, tx);
             }
 
             // If match is finished, update ratings and link match participants to rating snapshots

@@ -1564,18 +1564,18 @@ export class ClickTTImportService {
                     }
                 }
 
-                // 3. Resolve CompetitionGroup
+                // 3. Resolve CategoryGroup
                 let compGroup: any = null;
                 if (category && !dryRun) {
                     const groupKey = `${category.id}:${groupName.toLowerCase()}`;
                     if (groupMap.has(groupKey)) {
                         compGroup = groupMap.get(groupKey);
                     } else {
-                        compGroup = await prisma.competitionGroup.findFirst({
+                        compGroup = await prisma.categoryGroup.findFirst({
                             where: { categoryId: category.id, name: groupName },
                         });
                         if (!compGroup) {
-                            compGroup = await prisma.competitionGroup.create({
+                            compGroup = await prisma.categoryGroup.create({
                                 data: {
                                     categoryId: category.id,
                                     name: groupName,
@@ -1726,6 +1726,7 @@ export class ClickTTImportService {
                             try {
                                 const matchRecord = await prisma.match.create({
                                     data: {
+                                        categoryId: category.id,
                                         encounterId: encounterRecord.id,
                                         orderIndex: mIdx,
                                         matchType,

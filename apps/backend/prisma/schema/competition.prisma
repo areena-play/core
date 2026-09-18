@@ -236,9 +236,10 @@ model Category {
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 
-  competition Competition                @relation(fields: [competitionId], references: [id], onDelete: Cascade)
-  groups      CompetitionGroup[]
+  competition Competition   @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  groups      CategoryGroup[]
   encounters  Encounter[]
+  matches     Match[]
   teams       Team[]
 }
 
@@ -283,7 +284,7 @@ model TeamMember {
   @@unique([teamId, userId])
 }
 
-model CompetitionGroup {
+model CategoryGroup {
   id         String   @id @default(uuid())
   categoryId String
   name       String
@@ -292,7 +293,10 @@ model CompetitionGroup {
 
   category   Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   encounters Encounter[]
+  matches    Match[]
   standings  GroupStanding[]
+
+  @@index([categoryId])
 }
 
 model GroupStanding {
@@ -312,10 +316,12 @@ model GroupStanding {
   tablePoints Int      @default(0)
   updatedAt   DateTime @updatedAt
 
-  group CompetitionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  team  Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  group CategoryGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  team  Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, teamId])
+  @@index([groupId])
+  @@index([teamId])
 }
 
 model Encounter {
@@ -333,20 +339,30 @@ model Encounter {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
-  category       Category          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  group          CompetitionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
-  homeTeam       Team              @relation("HomeTeamEncounters", fields: [homeTeamId], references: [id], onDelete: Cascade)
-  awayTeam       Team              @relation("AwayTeamEncounters", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  group          CategoryGroup?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  homeTeam       Team            @relation("HomeTeamEncounters", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  awayTeam       Team            @relation("AwayTeamEncounters", fields: [awayTeamId], references: [id], onDelete: Cascade)
   matches        Match[]
   calendarEvents CalendarEvent[]
+
+  @@index([categoryId])
+  @@index([groupId])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
 }
 
 model Match {
   id            String          @id @default(uuid())
-  encounterId   String
-  orderIndex    Int
+  categoryId    String
+  groupId       String?
+  encounterId   String?
+  round         Int?            @default(1)
+  orderIndex    Int             @default(1)
   matchType     MatchType       @default(SINGLE)
   label         String?
+  scheduledAt   DateTime?
+  location      String?
   homePlayer1Id String?
   homePlayer2Id String?
   awayPlayer1Id String?
@@ -359,12 +375,20 @@ model Match {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
-  encounter    Encounter          @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  category     Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  group        CategoryGroup?     @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  encounter    Encounter?         @relation(fields: [encounterId], references: [id], onDelete: Cascade)
   homePlayer1  User?              @relation("HomePlayer1", fields: [homePlayer1Id], references: [id], onDelete: SetNull)
   homePlayer2  User?              @relation("HomePlayer2", fields: [homePlayer2Id], references: [id], onDelete: SetNull)
   awayPlayer1  User?              @relation("AwayPlayer1", fields: [awayPlayer1Id], references: [id], onDelete: SetNull)
   awayPlayer2  User?              @relation("AwayPlayer2", fields: [awayPlayer2Id], references: [id], onDelete: SetNull)
   participants MatchParticipant[]
+
+  @@index([categoryId])
+  @@index([groupId])
+  @@index([encounterId])
+  @@index([homePlayer1Id])
+  @@index([awayPlayer1Id])
 }
 
 model MatchParticipant {

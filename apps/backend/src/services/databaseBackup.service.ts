@@ -19,7 +19,7 @@ export interface DatabaseDump {
         licenses: any[];
         competitions: any[];
         categories: any[];
-        competitionGroups: any[];
+        categoryGroups: any[];
         teams: any[];
         teamMembers: any[];
         encounters: any[];
@@ -73,7 +73,7 @@ export class DatabaseBackupService {
             licenses,
             competitions,
             categories,
-            competitionGroups,
+            categoryGroups,
             teams,
             teamMembers,
             encounters,
@@ -116,7 +116,7 @@ export class DatabaseBackupService {
             prisma.license.findMany(),
             prisma.competition.findMany(),
             prisma.category.findMany(),
-            prisma.competitionGroup.findMany(),
+            prisma.categoryGroup.findMany(),
             prisma.team.findMany(),
             prisma.teamMember.findMany(),
             prisma.encounter.findMany(),
@@ -161,7 +161,7 @@ export class DatabaseBackupService {
             licenses,
             competitions,
             categories,
-            competitionGroups,
+            categoryGroups,
             teams,
             teamMembers,
             encounters,
@@ -250,7 +250,7 @@ export class DatabaseBackupService {
             await tx.encounter.deleteMany();
             await tx.teamMember.deleteMany();
             await tx.team.deleteMany();
-            await tx.competitionGroup.deleteMany();
+            await tx.categoryGroup.deleteMany();
             await tx.category.deleteMany();
             await tx.competitionSpeakerCallout.deleteMany();
             await tx.competitionUserRole.deleteMany();
@@ -356,9 +356,10 @@ export class DatabaseBackupService {
                 await tx.category.createMany({ data: tables.categories });
                 importedCounts.categories = tables.categories.length;
             }
-            if (tables.competitionGroups?.length) {
-                await tx.competitionGroup.createMany({ data: tables.competitionGroups });
-                importedCounts.competitionGroups = tables.competitionGroups.length;
+            const groupsToImport = tables.categoryGroups || (tables as any).competitionGroups;
+            if (groupsToImport?.length) {
+                await tx.categoryGroup.createMany({ data: groupsToImport });
+                importedCounts.categoryGroups = groupsToImport.length;
             }
             if (tables.teams?.length) {
                 await tx.team.createMany({ data: tables.teams });
