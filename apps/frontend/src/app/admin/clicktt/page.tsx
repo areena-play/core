@@ -36,6 +36,7 @@ import {
     FileText,
 } from 'lucide-react';
 import { AccessDenied } from '@/components/auth/AccessDenied';
+import { Modal } from '@/components/ui/Modal';
 
 function formatBytes(bytes: number): string {
     if (!bytes || bytes === 0) return '0 B';
@@ -1098,161 +1099,145 @@ export default function AdminClickTTPage() {
             </div>
 
             {/* Initial Scrape Modal */}
-            {showInitialModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
-                    <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 space-y-5 shadow-2xl">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-red-600">
-                                <Flame className="w-5 h-5" />
-                                <h3 className="font-bold text-sm text-slate-900 dark:text-white">Full Initial Historical Scrape</h3>
+            <Modal
+                isOpen={showInitialModal}
+                onClose={() => setShowInitialModal(false)}
+                title="Full Initial Historical Scrape"
+                subtitle="Multi-season crawl across Swiss Table Tennis leagues, clubs, players, and tournaments"
+                icon={<Flame className="w-5 h-5 text-red-500" />}
+                size="md"
+                footer={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => setShowInitialModal(false)}
+                            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleRunJob('initial', initialOptions)}
+                            className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-lg"
+                        >
+                            <Play className="w-3.5 h-3.5 fill-white" />
+                            <span>Start Full Scrape</span>
+                        </button>
+                    </>
+                }
+            >
+                <div className="space-y-4">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                        This will perform a full multi-season crawl across all Swiss Table Tennis leagues, clubs, players, tournaments, and Elo history records.
+                    </p>
+
+                    <div className="space-y-3">
+                        <label className="flex items-start gap-2.5 cursor-pointer text-xs">
+                            <input
+                                type="checkbox"
+                                checked={initialOptions.skipTournaments}
+                                onChange={(e) => setInitialOptions({ ...initialOptions, skipTournaments: e.target.checked })}
+                                className="rounded border-slate-300 text-red-600 focus:ring-red-500 mt-0.5"
+                            />
+                            <div>
+                                <span className="font-bold text-slate-900 dark:text-white">Skip Tournaments</span>
+                                <p className="text-[11px] text-slate-500">Only scrape official league and cup championships.</p>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => setShowInitialModal(false)}
-                                className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
+                        </label>
 
-                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                            This will perform a full multi-season crawl across all Swiss Table Tennis leagues, clubs, players, tournaments, and Elo history records.
-                        </p>
+                        <label className="flex items-start gap-2.5 cursor-pointer text-xs">
+                            <input
+                                type="checkbox"
+                                checked={initialOptions.skipElo}
+                                onChange={(e) => setInitialOptions({ ...initialOptions, skipElo: e.target.checked })}
+                                className="rounded border-slate-300 text-red-600 focus:ring-red-500 mt-0.5"
+                            />
+                            <div>
+                                <span className="font-bold text-slate-900 dark:text-white">Skip Elo Timelines</span>
+                                <p className="text-[11px] text-slate-500">Bypasses player ranking snapshots (faster initial test).</p>
+                            </div>
+                        </label>
 
-                        <div className="space-y-3">
-                            <label className="flex items-start gap-2.5 cursor-pointer text-xs">
-                                <input
-                                    type="checkbox"
-                                    checked={initialOptions.skipTournaments}
-                                    onChange={(e) => setInitialOptions({ ...initialOptions, skipTournaments: e.target.checked })}
-                                    className="rounded border-slate-300 text-red-600 focus:ring-red-500 mt-0.5"
-                                />
-                                <div>
-                                    <span className="font-bold text-slate-900 dark:text-white">Skip Tournaments</span>
-                                    <p className="text-[11px] text-slate-500">Only scrape official league and cup championships.</p>
-                                </div>
-                            </label>
-
-                            <label className="flex items-start gap-2.5 cursor-pointer text-xs">
-                                <input
-                                    type="checkbox"
-                                    checked={initialOptions.skipElo}
-                                    onChange={(e) => setInitialOptions({ ...initialOptions, skipElo: e.target.checked })}
-                                    className="rounded border-slate-300 text-red-600 focus:ring-red-500 mt-0.5"
-                                />
-                                <div>
-                                    <span className="font-bold text-slate-900 dark:text-white">Skip Elo Timelines</span>
-                                    <p className="text-[11px] text-slate-500">Bypasses player ranking snapshots (faster initial test).</p>
-                                </div>
-                            </label>
-
-                            <label className="flex items-start gap-2.5 cursor-pointer text-xs">
-                                <input
-                                    type="checkbox"
-                                    checked={initialOptions.useApi}
-                                    onChange={(e) => setInitialOptions({ ...initialOptions, useApi: e.target.checked })}
-                                    className="rounded border-slate-300 text-red-600 focus:ring-red-500 mt-0.5"
-                                />
-                                <div>
-                                    <span className="font-bold text-slate-900 dark:text-white">Use REST API Player Fallback</span>
-                                    <p className="text-[11px] text-slate-500">Query REST API if web HTML roster has missing licences.</p>
-                                </div>
-                            </label>
-                        </div>
-
-                        <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
-                            <button
-                                type="button"
-                                onClick={() => setShowInitialModal(false)}
-                                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => handleRunJob('initial', initialOptions)}
-                                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-lg"
-                            >
-                                <Play className="w-3.5 h-3.5 fill-white" />
-                                <span>Start Full Scrape</span>
-                            </button>
-                        </div>
+                        <label className="flex items-start gap-2.5 cursor-pointer text-xs">
+                            <input
+                                type="checkbox"
+                                checked={initialOptions.useApi}
+                                onChange={(e) => setInitialOptions({ ...initialOptions, useApi: e.target.checked })}
+                                className="rounded border-slate-300 text-red-600 focus:ring-red-500 mt-0.5"
+                            />
+                            <div>
+                                <span className="font-bold text-slate-900 dark:text-white">Use REST API Player Fallback</span>
+                                <p className="text-[11px] text-slate-500">Query REST API if web HTML roster has missing licences.</p>
+                            </div>
+                        </label>
                     </div>
                 </div>
-            )}
+            </Modal>
 
             {/* Full Database Reset & Bulk Ingest Confirmation Modal */}
-            {showResetModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
-                    <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-rose-500/50 p-6 space-y-5 shadow-2xl">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-rose-600">
-                                <AlertTriangle className="w-5 h-5" />
-                                <h3 className="font-bold text-sm text-slate-900 dark:text-white">Danger Zone: Full Database Reset</h3>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowResetModal(false);
-                                    setResetConfirmText('');
-                                }}
-                                className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
+            <Modal
+                isOpen={showResetModal}
+                onClose={() => {
+                    setShowResetModal(false);
+                    setResetConfirmText('');
+                }}
+                title="Danger Zone: Full Database Reset"
+                subtitle="Wipe all sports records and load normalized datasets"
+                icon={<AlertTriangle className="w-5 h-5 text-rose-500" />}
+                size="md"
+                footer={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setShowResetModal(false);
+                                setResetConfirmText('');
+                            }}
+                            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleResetAndImport}
+                            disabled={resetConfirmText.trim() !== 'RESET' || resetLoading || isRunning}
+                            className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-lg disabled:opacity-40"
+                        >
+                            <Database className="w-3.5 h-3.5" />
+                            <span>{resetLoading ? 'Starting Reset...' : 'Confirm Full Reset & Reload'}</span>
+                        </button>
+                    </>
+                }
+            >
+                <div className="space-y-4">
+                    <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-900 dark:text-rose-200 text-xs space-y-2 leading-relaxed">
+                        <p className="font-bold">⚠️ This will delete ALL existing database records for:</p>
+                        <ul className="list-disc list-inside space-y-0.5 text-[11px] text-rose-800 dark:text-rose-300">
+                            <li>Clubs &amp; Associations</li>
+                            <li>All Athletes &amp; Licenses (except Super Admins)</li>
+                            <li>Competitions, Categories &amp; Groups</li>
+                            <li>Teams &amp; Team Members</li>
+                            <li>Encounters, Matches &amp; Match Cards</li>
+                        </ul>
+                        <p className="pt-1 text-[11px]">
+                            After purging, the database will be re-populated directly from the 9 normalized datasets stored in <code>storage/clicktt_storage/data/</code>.
+                        </p>
+                    </div>
 
-                        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-900 dark:text-rose-200 text-xs space-y-2 leading-relaxed">
-                            <p className="font-bold">⚠️ This will delete ALL existing database records for:</p>
-                            <ul className="list-disc list-inside space-y-0.5 text-[11px] text-rose-800 dark:text-rose-300">
-                                <li>Clubs &amp; Associations</li>
-                                <li>All Athletes &amp; Licenses (except Super Admins)</li>
-                                <li>Competitions, Categories &amp; Groups</li>
-                                <li>Teams &amp; Team Members</li>
-                                <li>Encounters, Matches &amp; Match Cards</li>
-                            </ul>
-                            <p className="pt-1 text-[11px]">
-                                After purging, the database will be re-populated directly from the 9 normalized datasets stored in <code>storage/clicktt_storage/data/</code>.
-                            </p>
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                                Type <span className="font-mono text-rose-600 font-black">RESET</span> to confirm:
-                            </label>
-                            <input
-                                type="text"
-                                value={resetConfirmText}
-                                onChange={(e) => setResetConfirmText(e.target.value)}
-                                placeholder="RESET"
-                                className="w-full rounded-xl border border-slate-300 bg-slate-50 dark:bg-slate-950 dark:border-slate-800 px-3 py-2 text-xs font-mono font-bold text-rose-600 focus:border-rose-500 focus:outline-none tracking-wider"
-                            />
-                        </div>
-
-                        <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowResetModal(false);
-                                    setResetConfirmText('');
-                                }}
-                                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleResetAndImport}
-                                disabled={resetConfirmText.trim() !== 'RESET' || resetLoading || isRunning}
-                                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-lg disabled:opacity-40"
-                            >
-                                <Database className="w-3.5 h-3.5" />
-                                <span>{resetLoading ? 'Starting Reset...' : 'Confirm Full Reset & Reload'}</span>
-                            </button>
-                        </div>
+                    <div className="space-y-2">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Type <span className="font-mono text-rose-600 font-black">RESET</span> to confirm:
+                        </label>
+                        <input
+                            type="text"
+                            value={resetConfirmText}
+                            onChange={(e) => setResetConfirmText(e.target.value)}
+                            placeholder="RESET"
+                            className="w-full rounded-xl border border-slate-300 bg-slate-50 dark:bg-slate-950 dark:border-slate-800 px-3 py-2 text-xs font-mono font-bold text-rose-600 focus:border-rose-500 focus:outline-none tracking-wider"
+                        />
                     </div>
                 </div>
-            )}
+            </Modal>
         </div>
     );
 }

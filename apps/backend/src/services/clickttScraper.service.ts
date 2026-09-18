@@ -88,37 +88,64 @@ class ClickTTScraperManager extends EventEmitter {
         this.lastResult = null;
         this.lastError = null;
 
-        // Hook console logging during job execution
-        const originalStdoutWrite = process.stdout.write;
+        // Hook console logging during job execution to capture only scraper-generated output
         const originalConsoleLog = console.log;
         const originalConsoleWarn = console.warn;
         const originalConsoleError = console.error;
 
-        const captureStdout = (chunk: any) => {
-            const str = String(chunk);
-            if (str.trim()) {
-                this.log('info', str.trim());
+        const isScraperMessage = (str: string): boolean => {
+            if (!str || !str.trim()) return false;
+            // Explicitly filter out general backend system and database queries
+            if (/^prisma:(query|info|warn|error)/i.test(str)) return false;
+            if (/^(GET|POST|PUT|DELETE|PATCH|OPTIONS)\s+\//i.test(str)) return false;
+            if (/\[(Auth|Billing|Email|Security|Audit|DatabasePool|WebSocket)\]/i.test(str)) return false;
+            if (/Executing query|Starting a postgresql pool/i.test(str)) return false;
+
+            // Match scraper specific keywords & prefixes
+            if (
+                /(\[Step\s+\d|\[Elo Scraper\]|\[Tournaments\]|\[Leagues & Cups\]|\[Clubs\]|\[Players\]|\[Seasons\]|\[Delta Export\]|\[DB Bulk Ingest\]|\[Database Ingestion\]|Click-TT|ClickTT|Scraper Task|stateManager|storageManager)/i.test(
+                    str
+                )
+            ) {
+                return true;
             }
-            return true;
+
+            // Match scraper emojis and structured headers
+            if (/[🚀▶️⏭️📦🎉🏁⚡📈🎯📅✨⏩ℹ️🏆🏓🏢🏛️🧹❌✅]/.test(str)) {
+                return true;
+            }
+
+            // Match divider borders
+            if (/^={10,}/.test(str.trim())) {
+                return true;
+            }
+
+            return false;
         };
 
-        (process.stdout as any).write = (chunk: any, ...rest: any[]) => {
-            captureStdout(chunk);
-            return originalStdoutWrite.apply(process.stdout, [chunk, ...rest] as any);
-        };
+        const formatArgs = (args: any[]) => args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
 
         console.log = (...args: any[]) => {
-            this.log('info', args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' '));
+            const formatted = formatArgs(args);
+            if (isScraperMessage(formatted)) {
+                this.log('info', formatted);
+            }
             originalConsoleLog.apply(console, args);
         };
 
         console.warn = (...args: any[]) => {
-            this.log('warn', args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' '));
+            const formatted = formatArgs(args);
+            if (isScraperMessage(formatted)) {
+                this.log('warn', formatted);
+            }
             originalConsoleWarn.apply(console, args);
         };
 
         console.error = (...args: any[]) => {
-            this.log('error', args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' '));
+            const formatted = formatArgs(args);
+            if (isScraperMessage(formatted)) {
+                this.log('error', formatted);
+            }
             originalConsoleError.apply(console, args);
         };
 
@@ -166,7 +193,9 @@ class ClickTTScraperManager extends EventEmitter {
                     await exportAllNormalizedDatasets();
                 } else if (jobType === 'reset-db') {
                     const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
-                    await ClickTTDbIngestionService.resetAndLoadFullDatasets();
+                    await ClickTTDbIngestionService.resetAndLoadFullDatasets((progress) => {
+                        this.log('info', progress.message);
+                    });
                 }
 
                 this.lastResult = 'success';
@@ -179,7 +208,6 @@ class ClickTTScraperManager extends EventEmitter {
             } finally {
                 this.isRunning = false;
                 this.lastFinishedAt = new Date().toISOString();
-                (process.stdout as any).write = originalStdoutWrite;
                 console.log = originalConsoleLog;
                 console.warn = originalConsoleWarn;
                 console.error = originalConsoleError;
