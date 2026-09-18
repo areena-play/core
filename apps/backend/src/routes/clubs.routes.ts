@@ -325,16 +325,12 @@ router.get('/:id/teams', async (req, res, next) => {
         const teams = await prisma.team.findMany({
             where: {
                 clubId: club.id,
-                registrations: {
-                    some: {
-                        category: {
-                            competition: {
-                                type: { in: allowedTypes as any },
-                                ...(seasonId && seasonId !== 'ALL'
-                                    ? { seasonId: String(seasonId) }
-                                    : {}),
-                            },
-                        },
+                category: {
+                    competition: {
+                        type: { in: allowedTypes as any },
+                        ...(seasonId && seasonId !== 'ALL'
+                            ? { seasonId: String(seasonId) }
+                            : {}),
                     },
                 },
             },
@@ -356,16 +352,12 @@ router.get('/:id/teams', async (req, res, next) => {
                     },
                     orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
                 },
-                registrations: {
+                category: {
                     include: {
-                        category: {
+                        competition: {
                             include: {
-                                competition: {
-                                    include: {
-                                        season: true,
-                                        association: true,
-                                    },
-                                },
+                                season: true,
+                                association: true,
                             },
                         },
                     },
@@ -412,16 +404,12 @@ router.get('/:id/team-hub', authenticateToken, async (req: AuthRequest, res: Res
         const teams = await prisma.team.findMany({
             where: {
                 clubId: club.id,
-                registrations: {
-                    some: {
-                        category: {
-                            competition: {
-                                type: { in: allowedTypes as any },
-                                ...(seasonId && seasonId !== 'ALL'
-                                    ? { seasonId: String(seasonId) }
-                                    : {}),
-                            },
-                        },
+                category: {
+                    competition: {
+                        type: { in: allowedTypes as any },
+                        ...(seasonId && seasonId !== 'ALL'
+                            ? { seasonId: String(seasonId) }
+                            : {}),
                     },
                 },
             },
@@ -443,16 +431,12 @@ router.get('/:id/team-hub', authenticateToken, async (req: AuthRequest, res: Res
                     },
                     orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
                 },
-                registrations: {
+                category: {
                     include: {
-                        category: {
+                        competition: {
                             include: {
-                                competition: {
-                                    include: {
-                                        season: true,
-                                        association: true,
-                                    },
-                                },
+                                season: true,
+                                association: true,
                             },
                         },
                     },
@@ -568,21 +552,17 @@ router.post('/:id/teams', authenticateToken, async (req: AuthRequest, res: Respo
             data: {
                 name: teamName,
                 clubId: club.id,
+                categoryId,
                 members: {
                     create: playerIds.map((userId: string) => ({
                         userId,
                         role: userId === captainUserId ? 'CAPTAIN' : 'PLAYER',
                     })),
                 },
-                registrations: {
-                    create: {
-                        categoryId,
-                    },
-                },
             },
             include: {
                 members: { include: { user: true } },
-                registrations: { include: { category: { include: { competition: true } } } },
+                category: { include: { competition: true } },
             },
         });
 
@@ -646,7 +626,7 @@ router.put('/:id/teams/:teamId', authenticateToken, async (req: AuthRequest, res
             where: { id: teamId },
             include: {
                 members: { include: { user: true } },
-                registrations: { include: { category: { include: { competition: true } } } },
+                category: { include: { competition: true } },
             },
         });
 
@@ -677,7 +657,6 @@ router.delete('/:id/teams/:teamId', authenticateToken, async (req: AuthRequest, 
             return res.status(404).json({ error: 'Team not found' });
         }
 
-        await prisma.teamCategoryRegistration.deleteMany({ where: { teamId } });
         await prisma.teamMember.deleteMany({ where: { teamId } });
         await prisma.team.delete({ where: { id: teamId } });
 
@@ -704,7 +683,7 @@ router.post('/:id/teams/:teamId/league-decision', authenticateToken, async (req:
 
         const existingTeam = await prisma.team.findFirst({
             where: { id: teamId, clubId: club.id },
-            include: { registrations: { include: { category: { include: { competition: true } } } } },
+            include: { category: { include: { competition: true } } },
         });
 
         if (!existingTeam) {
@@ -834,7 +813,7 @@ router.get('/:id/tournaments', authenticateToken, async (req: AuthRequest, res: 
                     some: {
                         teams: {
                             some: {
-                                team: { clubId: club.id },
+                                clubId: club.id,
                             },
                         },
                     },
@@ -853,7 +832,7 @@ router.get('/:id/tournaments', authenticateToken, async (req: AuthRequest, res: 
                     where: {
                         teams: {
                             some: {
-                                team: { clubId: club.id },
+                                clubId: club.id,
                             },
                         },
                     },

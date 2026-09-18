@@ -393,13 +393,11 @@ export class RelationshipsService {
         }
 
         // 4. On-Site Tournament Delegation (for active tournaments)
-        const activeDelegation = await (prisma as any).teamCategoryRegistration.findFirst({
+        const activeDelegation = await (prisma as any).team.findFirst({
             where: {
                 onSiteResponsibleUserId: actorUserId,
-                team: {
-                    members: {
-                        some: { userId: targetPlayerId },
-                    },
+                members: {
+                    some: { userId: targetPlayerId },
                 },
             },
         });
@@ -434,9 +432,9 @@ export class RelationshipsService {
         guardians.forEach((g: any) => recipients.add(g.managerUserId));
 
         // Add on-site tournament responsible if any active tournament registration exists
-        const delegation = await (prisma as any).teamCategoryRegistration.findFirst({
+        const delegation = await (prisma as any).team.findFirst({
             where: {
-                team: { members: { some: { userId: playerId } } },
+                members: { some: { userId: playerId } },
                 onSiteResponsibleUserId: { not: null },
             },
             select: { onSiteResponsibleUserId: true },

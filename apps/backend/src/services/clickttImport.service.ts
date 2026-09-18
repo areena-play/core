@@ -1595,31 +1595,19 @@ export class ClickTTImportService {
                 const guestClub = guestClubNr ? clubMapByNr.get(guestClubNr) : null;
 
                 const resolveTeam = async (name: string, club: any): Promise<any> => {
-                    const teamKey = `${club?.id || 'noclub'}:${name.toLowerCase()}`;
+                    const catId = category?.id || 'nocat';
+                    const teamKey = `${catId}:${club?.id || 'noclub'}:${name.toLowerCase()}`;
                     if (teamMap.has(teamKey)) return teamMap.get(teamKey);
                     if (!dryRun) {
+                        if (!category) return null;
                         let t = await prisma.team.findFirst({
-                            where: { name, clubId: club?.id || null },
+                            where: { name, clubId: club?.id || null, categoryId: category.id },
                         });
                         if (!t) {
                             t = await prisma.team.create({
                                 data: {
                                     name,
                                     clubId: club?.id || null,
-                                },
-                            });
-                        }
-                        if (category) {
-                            await prisma.teamCategoryRegistration.upsert({
-                                where: {
-                                    teamId_categoryId: {
-                                        teamId: t.id,
-                                        categoryId: category.id,
-                                    },
-                                },
-                                update: {},
-                                create: {
-                                    teamId: t.id,
                                     categoryId: category.id,
                                 },
                             });
@@ -1627,7 +1615,7 @@ export class ClickTTImportService {
                         teamMap.set(teamKey, t);
                         return t;
                     } else {
-                        const mock = { id: `mock-team-${name}`, name, clubId: club?.id || null };
+                        const mock = { id: `mock-team-${name}`, name, clubId: club?.id || null, categoryId: category?.id };
                         teamMap.set(teamKey, mock);
                         return mock;
                     }

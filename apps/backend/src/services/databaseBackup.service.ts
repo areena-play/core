@@ -22,7 +22,6 @@ export interface DatabaseDump {
         competitionGroups: any[];
         teams: any[];
         teamMembers: any[];
-        teamCategoryRegistrations: any[];
         encounters: any[];
         matches: any[];
         groupStandings: any[];
@@ -77,7 +76,6 @@ export class DatabaseBackupService {
             competitionGroups,
             teams,
             teamMembers,
-            teamCategoryRegistrations,
             encounters,
             matches,
             groupStandings,
@@ -121,7 +119,6 @@ export class DatabaseBackupService {
             prisma.competitionGroup.findMany(),
             prisma.team.findMany(),
             prisma.teamMember.findMany(),
-            prisma.teamCategoryRegistration.findMany(),
             prisma.encounter.findMany(),
             prisma.match.findMany(),
             prisma.groupStanding.findMany(),
@@ -167,7 +164,6 @@ export class DatabaseBackupService {
             competitionGroups,
             teams,
             teamMembers,
-            teamCategoryRegistrations,
             encounters,
             matches,
             groupStandings,
@@ -252,7 +248,6 @@ export class DatabaseBackupService {
             await tx.match.deleteMany();
             await tx.groupStanding.deleteMany();
             await tx.encounter.deleteMany();
-            await tx.teamCategoryRegistration.deleteMany();
             await tx.teamMember.deleteMany();
             await tx.team.deleteMany();
             await tx.competitionGroup.deleteMany();
@@ -372,10 +367,6 @@ export class DatabaseBackupService {
             if (tables.teamMembers?.length) {
                 await tx.teamMember.createMany({ data: tables.teamMembers });
                 importedCounts.teamMembers = tables.teamMembers.length;
-            }
-            if (tables.teamCategoryRegistrations?.length) {
-                await tx.teamCategoryRegistration.createMany({ data: tables.teamCategoryRegistrations });
-                importedCounts.teamCategoryRegistrations = tables.teamCategoryRegistrations.length;
             }
             if (tables.encounters?.length) {
                 await tx.encounter.createMany({ data: tables.encounters });

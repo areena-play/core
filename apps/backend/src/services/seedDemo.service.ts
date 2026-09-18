@@ -46,7 +46,6 @@ export async function clearDatabase() {
     await prisma.match.deleteMany();
     await prisma.groupStanding.deleteMany();
     await prisma.encounter.deleteMany();
-    await prisma.teamCategoryRegistration.deleteMany();
     await prisma.teamMember.deleteMany();
     await prisma.team.deleteMany();
     await prisma.competitionGroup.deleteMany();
@@ -630,46 +629,7 @@ export async function seedDemoDatabase() {
         ],
     });
 
-    // 6. TEAMS & CLUB ROSTERS
-    console.log('  🛡️  Creating Teams & Rosters...');
-    const teamZurichElite = await prisma.team.create({
-        data: {
-            name: 'TTC Zürich 1 (NLA)',
-            clubId: clubZurich.id,
-        },
-    });
-
-    const teamBernElite = await prisma.team.create({
-        data: {
-            name: 'TTC Bern Capitals 1 (NLA)',
-            clubId: clubBern.id,
-        },
-    });
-
-    const teamGenevaElite = await prisma.team.create({
-        data: {
-            name: 'CTT Genève 1 (NLA)',
-            clubId: clubGeneva.id,
-        },
-    });
-
-    const teamBaselElite = await prisma.team.create({
-        data: {
-            name: 'TTC Basel 1 (NLA)',
-            clubId: clubBasel.id,
-        },
-    });
-
-    await prisma.teamMember.createMany({
-        data: [
-            { teamId: teamZurichElite.id, userId: userPlayerMarco.id, role: 'CAPTAIN' },
-            { teamId: teamBernElite.id, userId: userPlayerDavid.id, role: 'CAPTAIN' },
-            { teamId: teamGenevaElite.id, userId: userPlayerElena.id, role: 'CAPTAIN' },
-            { teamId: teamBaselElite.id, userId: userPlayerLucas.id, role: 'CAPTAIN' },
-        ],
-    });
-
-    // 7. TOURNAMENTS & MATCHES
+    // 6. TOURNAMENTS & CATEGORIES
     console.log('  🏆 Creating Tournaments, Categories, Fixtures & Match Results...');
     const swissChampionship = await prisma.competition.create({
         data: {
@@ -709,13 +669,6 @@ export async function seedDemoDatabase() {
             categoryId: menEliteCategory.id,
             name: 'Quarter-Finals Group A',
         },
-    });
-
-    await prisma.teamCategoryRegistration.createMany({
-        data: [
-            { categoryId: menEliteCategory.id, teamId: teamZurichElite.id },
-            { categoryId: menEliteCategory.id, teamId: teamBernElite.id },
-        ],
     });
 
     const swissChampionship2025 = await prisma.competition.create({
@@ -764,6 +717,55 @@ export async function seedDemoDatabase() {
             location: 'National Cup Finals, Bern',
             status: CompetitionStatus.IN_PROGRESS,
         },
+    });
+
+    // 7. TEAMS & CLUB ROSTERS
+    console.log('  🛡️  Creating Teams & Rosters...');
+    const teamZurichElite = await prisma.team.create({
+        data: {
+            categoryId: menEliteCategory.id,
+            name: 'TTC Zürich 1 (NLA)',
+            clubId: clubZurich.id,
+            paymentStatus: 'PAID',
+            paidAmount: 30,
+            isCheckedIn: true,
+        },
+    });
+
+    const teamBernElite = await prisma.team.create({
+        data: {
+            categoryId: menEliteCategory.id,
+            name: 'TTC Bern Capitals 1 (NLA)',
+            clubId: clubBern.id,
+            paymentStatus: 'PAID',
+            paidAmount: 30,
+            isCheckedIn: true,
+        },
+    });
+
+    const teamGenevaElite = await prisma.team.create({
+        data: {
+            categoryId: menEliteCategory.id,
+            name: 'CTT Genève 1 (NLA)',
+            clubId: clubGeneva.id,
+        },
+    });
+
+    const teamBaselElite = await prisma.team.create({
+        data: {
+            categoryId: menEliteCategory.id,
+            name: 'TTC Basel 1 (NLA)',
+            clubId: clubBasel.id,
+        },
+    });
+
+    await prisma.teamMember.createMany({
+        data: [
+            { teamId: teamZurichElite.id, userId: userPlayerMarco.id, role: 'CAPTAIN' },
+            { teamId: teamBernElite.id, userId: userPlayerDavid.id, role: 'CAPTAIN' },
+            { teamId: teamGenevaElite.id, userId: userPlayerElena.id, role: 'CAPTAIN' },
+            { teamId: teamBaselElite.id, userId: userPlayerLucas.id, role: 'CAPTAIN' },
+        ],
     });
 
     const encounterFinal = await prisma.encounter.create({

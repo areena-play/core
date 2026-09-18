@@ -100,7 +100,7 @@ model User {
   pushSubscriptions PushSubscription[]
   managedBy     UserRelationship[] @relation("ManagedUser")
   managingUsers UserRelationship[] @relation("ManagerUser")
-  supervisedRegistrations TeamCategoryRegistration[] @relation("SupervisedRegistrations")
+  supervisedRegistrations Team[]             @relation("SupervisedRegistrations")
 
   ratingSnapshots     RatingSnapshotHistory[]
   matchParticipations MatchParticipant[]

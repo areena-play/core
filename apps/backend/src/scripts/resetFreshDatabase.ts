@@ -32,7 +32,6 @@ async function resetToFreshAssociation() {
     await prisma.match.deleteMany();
     await prisma.groupStanding.deleteMany();
     await prisma.encounter.deleteMany();
-    await prisma.teamCategoryRegistration.deleteMany();
     await prisma.teamMember.deleteMany();
     await prisma.team.deleteMany();
     await prisma.competitionGroup.deleteMany();

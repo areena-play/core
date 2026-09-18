@@ -817,15 +817,11 @@ router.get('/profile-overview', authenticateToken, async (req: AuthRequest, res:
                         team: {
                             include: {
                                 club: true,
-                                registrations: {
+                                category: {
                                     include: {
-                                        category: {
+                                        competition: {
                                             include: {
-                                                competition: {
-                                                    include: {
-                                                        association: true,
-                                                    },
-                                                },
+                                                association: true,
                                             },
                                         },
                                     },
@@ -844,34 +840,32 @@ router.get('/profile-overview', authenticateToken, async (req: AuthRequest, res:
         // 1. Resolve registered competitions
         const compMap = new Map<string, any>();
         for (const tm of user.teamMemberships) {
-            for (const reg of tm.team.registrations) {
-                const comp = reg.category?.competition;
-                if (comp) {
-                    const key = `${comp.id}:${reg.category.id}:${tm.team.id}`;
-                    if (!compMap.has(key)) {
-                        compMap.set(key, {
-                            id: comp.id,
-                            name: comp.name,
-                            slug: comp.slug,
-                            seriesSlug: comp.seriesSlug,
-                            type: comp.type,
-                            status: comp.status,
-                            startDate: comp.startDate,
-                            endDate: comp.endDate,
-                            location: comp.location,
-                            association: comp.association,
-                            category: {
-                                id: reg.category.id,
-                                name: reg.category.name,
-                            },
-                            team: {
-                                id: tm.team.id,
-                                name: tm.team.name,
-                                role: tm.role,
-                                club: tm.team.club,
-                            },
-                        });
-                    }
+            const comp = tm.team.category?.competition;
+            if (comp) {
+                const key = `${comp.id}:${tm.team.category.id}:${tm.team.id}`;
+                if (!compMap.has(key)) {
+                    compMap.set(key, {
+                        id: comp.id,
+                        name: comp.name,
+                        slug: comp.slug,
+                        seriesSlug: comp.seriesSlug,
+                        type: comp.type,
+                        status: comp.status,
+                        startDate: comp.startDate,
+                        endDate: comp.endDate,
+                        location: comp.location,
+                        association: comp.association,
+                        category: {
+                            id: tm.team.category.id,
+                            name: tm.team.category.name,
+                        },
+                        team: {
+                            id: tm.team.id,
+                            name: tm.team.name,
+                            role: tm.role,
+                            club: tm.team.club,
+                        },
+                    });
                 }
             }
         }
@@ -1411,24 +1405,20 @@ router.get('/users/:identifier', optionalAuth, async (req: AuthRequest, res: Res
                                         slug: true,
                                     },
                                 },
-                                registrations: {
+                                category: {
                                     select: {
-                                        category: {
+                                        id: true,
+                                        name: true,
+                                        competition: {
                                             select: {
                                                 id: true,
                                                 name: true,
-                                                competition: {
+                                                slug: true,
+                                                type: true,
+                                                season: {
                                                     select: {
                                                         id: true,
                                                         name: true,
-                                                        slug: true,
-                                                        type: true,
-                                                        season: {
-                                                            select: {
-                                                                id: true,
-                                                                name: true,
-                                                            },
-                                                        },
                                                     },
                                                 },
                                             },

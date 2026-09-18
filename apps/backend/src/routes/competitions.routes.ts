@@ -213,12 +213,8 @@ router.get('/:id', async (req, res, next) => {
                     },
                     teams: {
                         include: {
-                            team: {
-                                include: {
-                                    members: { include: { user: true } },
-                                    club: true,
-                                },
-                            },
+                            members: { include: { user: true } },
+                            club: true,
                         },
                     },
                     encounters: {
@@ -698,23 +694,19 @@ router.get('/:id/players', optionalAuth, async (req: AuthRequest, res: Response,
             include: {
                 teams: {
                     include: {
-                        team: {
+                        club: true,
+                        members: {
                             include: {
-                                club: true,
-                                members: {
-                                    include: {
-                                        user: {
-                                            select: {
-                                                id: true,
-                                                firstName: true,
-                                                lastName: true,
-                                                email: true,
-                                                licenseId: true,
-                                                eloPoints: true,
-                                                rank: true,
-                                                avatarUrl: true,
-                                            },
-                                        },
+                                user: {
+                                    select: {
+                                        id: true,
+                                        firstName: true,
+                                        lastName: true,
+                                        email: true,
+                                        licenseId: true,
+                                        eloPoints: true,
+                                        rank: true,
+                                        avatarUrl: true,
                                     },
                                 },
                             },
@@ -726,22 +718,22 @@ router.get('/:id/players', optionalAuth, async (req: AuthRequest, res: Response,
 
         const playersList: any[] = [];
         categories.forEach((cat) => {
-            cat.teams.forEach((reg: any) => {
-                reg.team.members.forEach((member: any) => {
+            cat.teams.forEach((team: any) => {
+                team.members.forEach((member: any) => {
                     playersList.push({
-                        registrationId: reg.id,
-                        teamId: reg.team.id,
-                        teamName: reg.team.name,
-                        clubName: reg.team.club?.name || 'Independent / Individual',
+                        registrationId: team.id,
+                        teamId: team.id,
+                        teamName: team.name,
+                        clubName: team.club?.name || 'Independent / Individual',
                         categoryId: cat.id,
                         categoryName: cat.name,
                         user: member.user,
                         role: member.role,
-                        isCheckedIn: reg.isCheckedIn,
-                        paymentStatus: reg.paymentStatus,
-                        paidAmount: reg.paidAmount,
-                        paymentMethod: reg.paymentMethod,
-                        registeredAt: reg.registeredAt,
+                        isCheckedIn: team.isCheckedIn,
+                        paymentStatus: team.paymentStatus,
+                        paidAmount: team.paidAmount,
+                        paymentMethod: team.paymentMethod,
+                        registeredAt: team.registeredAt,
                     });
                 });
             });
@@ -764,7 +756,7 @@ router.post('/:id/players/:regId/checkin', authenticateToken, async (req: AuthRe
         if (!canCheckin) return res.status(403).json({ error: 'Permission denied.' });
 
         const { isCheckedIn } = req.body;
-        const reg = await (prisma.teamCategoryRegistration.update as any)({
+        const reg = await (prisma.team.update as any)({
             where: { id: req.params.regId },
             data: {
                 isCheckedIn: isCheckedIn !== undefined ? !!isCheckedIn : true,
@@ -791,7 +783,7 @@ router.post(
             if (!canCashier) return res.status(403).json({ error: 'Permission denied for cashier action.' });
 
             const { paymentStatus, paidAmount, paymentMethod } = req.body;
-            const updated = await (prisma.teamCategoryRegistration.update as any)({
+            const updated = await (prisma.team.update as any)({
                 where: { id: req.params.regId },
                 data: {
                     paymentStatus,
@@ -878,7 +870,8 @@ router.get('/:id/statistics', async (req, res, next) => {
                     include: {
                         teams: {
                             include: {
-                                team: { include: { club: true, members: true } },
+                                club: true,
+                                members: true,
                             },
                         },
                         encounters: {
@@ -904,8 +897,8 @@ router.get('/:id/statistics', async (req, res, next) => {
         competition.categories.forEach((cat) => {
             totalTeams += cat.teams.length;
             cat.teams.forEach((t) => {
-                if (t.team.club?.name) clubsSet.add(t.team.club.name);
-                t.team.members.forEach((m) => playersSet.add(m.userId));
+                if (t.club?.name) clubsSet.add(t.club.name);
+                t.members.forEach((m) => playersSet.add(m.userId));
             });
 
             cat.encounters.forEach((enc) => {
@@ -952,7 +945,7 @@ router.post('/:id/backup', authenticateToken, async (req: AuthRequest, res: Resp
                 categories: {
                     include: {
                         groups: { include: { standings: true } },
-                        teams: { include: { team: { include: { members: true, club: true } } } },
+                        teams: { include: { members: true, club: true } },
                         encounters: { include: { matches: true } },
                     },
                 },
@@ -1040,6 +1033,7 @@ router.post('/categories/:categoryId/teams', authenticateToken, async (req: Auth
 
         const team = await prisma.team.create({
             data: {
+                categoryId: req.params.categoryId,
                 name: teamName,
                 clubId: clubId || null,
                 members: {
@@ -1048,15 +1042,11 @@ router.post('/categories/:categoryId/teams', authenticateToken, async (req: Auth
                         role: 'PLAYER',
                     })),
                 },
-                registrations: {
-                    create: {
-                        categoryId: req.params.categoryId,
-                    },
-                },
             },
             include: {
                 members: { include: { user: true } },
-                registrations: true,
+                category: true,
+                club: true,
             },
         });
 
@@ -1187,12 +1177,11 @@ router.post('/categories/:categoryId/generate-groups', authenticateToken, async 
             return res.status(404).json({ error: 'Category not found' });
         }
 
-        const registrations = await prisma.teamCategoryRegistration.findMany({
+        const teams = await prisma.team.findMany({
             where: { categoryId: req.params.categoryId },
-            include: { team: true },
         });
 
-        const allTeamIds = registrations.map((r) => r.teamId);
+        const allTeamIds = teams.map((r) => r.id);
         if (allTeamIds.length < 2) {
             return res.status(400).json({ error: 'At least 2 teams required to generate draw' });
         }
