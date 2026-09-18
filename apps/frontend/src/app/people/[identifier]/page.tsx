@@ -33,6 +33,7 @@ import {
     Activity,
     Layers,
     Users,
+    ChevronLeft,
     ChevronRight,
     TrendingUp,
     TrendingDown,
@@ -48,6 +49,8 @@ import {
 } from 'lucide-react';
 import { JsonLd, generatePersonJsonLd } from '@/components/seo/JsonLd';
 import { MatchAiAnalysisModal } from '@/components/competitions/MatchAiAnalysisModal';
+import { DataTable, DataTableColumnHeader } from '@/components/ui/DataTable';
+import { ColumnDef } from '@tanstack/react-table';
 
 type ActiveTab = 'overview' | 'roles' | 'statistics';
 
@@ -71,7 +74,6 @@ export default function PersonProfilePage() {
 
     // Filters for statistics / match history
     const [matchFilterType, setMatchFilterType] = useState<string>('ALL');
-    const [matchSearchQuery, setMatchSearchQuery] = useState<string>('');
 
     // Head-to-Head specific state
     const [selectedH2hOpponent, setSelectedH2hOpponent] = useState<any | null>(null);
@@ -208,21 +210,244 @@ export default function PersonProfilePage() {
                 (matchFilterType === 'CUP' && m.competitionType === 'CUP') ||
                 (matchFilterType === 'OTHER' && !['LEAGUE', 'TOURNAMENT', 'SEASON_TOURNAMENT', 'RANKING_TOURNAMENT', 'CUP'].includes(m.competitionType));
 
-            if (!matchesType) return false;
-
-            if (matchSearchQuery.trim()) {
-                const q = matchSearchQuery.toLowerCase();
-                const oppMatch = m.opponents?.some(
-                    (op: any) => `${op.firstName} ${op.lastName}`.toLowerCase().includes(q) || op.licenseId?.toLowerCase().includes(q)
-                );
-                const compMatch = m.competitionName?.toLowerCase().includes(q) || m.categoryName?.toLowerCase().includes(q);
-                const teamMatch = m.myTeam?.name?.toLowerCase().includes(q) || m.oppTeam?.name?.toLowerCase().includes(q);
-                return oppMatch || compMatch || teamMatch;
-            }
-
-            return true;
+            return matchesType;
         });
-    }, [statsData?.matches, matchFilterType, matchSearchQuery]);
+    }, [statsData?.matches, matchFilterType]);
+
+    const matchFilterSlot = useMemo(
+        () => (
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold">
+                {['ALL', 'LEAGUE', 'TOURNAMENT', 'CUP'].map((t) => (
+                    <button
+                        key={t}
+                        type="button"
+                        onClick={() => setMatchFilterType(t)}
+                        className={`px-2.5 py-1 rounded-lg transition ${
+                            matchFilterType === t
+                                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                    >
+                        {t === 'ALL' ? 'All' : t.charAt(0) + t.slice(1).toLowerCase()}
+                    </button>
+                ))}
+            </div>
+        ),
+        [matchFilterType]
+    );
+
+    // Columns for Elo Rating Progression DataTable
+    const eloColumns = useMemo<ColumnDef<any>[]>(
+        () => [
+            {
+                id: 'effectiveFrom',
+                accessorFn: (snap) => (snap.effectiveFrom ? new Date(snap.effectiveFrom).getTime() : 0),
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Effective Date" />,
+                cell: ({ row }) => (
+                    <span className="font-mono text-slate-600 dark:text-slate-300">
+                        {row.original.effectiveFrom ? format(new Date(row.original.effectiveFrom), 'dd.MM.yyyy') : '—'}
+                    </span>
+                ),
+            },
+            {
+                id: 'elo',
+                accessorFn: (snap) => snap.elo || 0,
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Rating (Elo)" />,
+                cell: ({ row }) => (
+                    <span className="font-black text-slate-900 dark:text-white">
+                        {Math.round(row.original.elo)} pts
+                    </span>
+                ),
+            },
+            {
+                id: 'level',
+                accessorFn: (snap) => snap.level || '',
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Level" />,
+                cell: ({ row }) => (
+                    <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300 font-bold text-[10px] border border-red-200 dark:border-red-800/60">
+                        {row.original.level || '—'}
+                    </span>
+                ),
+            },
+            {
+                id: 'rankOverall',
+                accessorFn: (snap) => snap.rankOverall || 999999,
+                header: ({ column }) => <DataTableColumnHeader column={column} title="National Rank" />,
+                cell: ({ row }) => (
+                    <span className="text-slate-600 dark:text-slate-300">
+                        {row.original.rankOverall ? `#${row.original.rankOverall}` : '—'}
+                    </span>
+                ),
+            },
+            {
+                id: 'triggerReason',
+                accessorFn: (snap) => snap.triggerReason || '',
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Trigger Reason" />,
+                cell: ({ row }) => (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                        {row.original.triggerReason ? row.original.triggerReason.replace(/_/g, ' ') : '—'}
+                    </span>
+                ),
+            },
+            {
+                id: 'association',
+                accessorFn: (snap) => snap.association?.code || snap.association?.name || '',
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Association" />,
+                cell: ({ row }) => (
+                    <span className="text-slate-500">
+                        {row.original.association?.code || row.original.association?.name || '—'}
+                    </span>
+                ),
+            },
+        ],
+        []
+    );
+
+    // Columns for Match History DataTable
+    const matchColumns = useMemo<ColumnDef<any>[]>(
+        () => [
+            {
+                id: 'result',
+                accessorFn: (m) => m.result || '',
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Result" />,
+                cell: ({ row }) => {
+                    const m = row.original;
+                    const isWin = m.result === 'WIN';
+                    const isDraw = m.result === 'DRAW';
+                    return (
+                        <div
+                            className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center shrink-0 font-black text-xs ${
+                                isWin
+                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                    : isDraw
+                                    ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                                    : 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                            }`}
+                        >
+                            <span>{m.result}</span>
+                            <span className="text-[10px] font-mono">{m.scoreSets}</span>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'details',
+                accessorFn: (m) =>
+                    `${m.matchType || ''} ${m.opponents?.map((o: any) => `${o.firstName} ${o.lastName} ${o.licenseId || ''}`).join(' ') || ''} ${m.competitionName || ''} ${m.categoryName || ''} ${m.myTeam?.name || ''} ${m.oppTeam?.name || ''}`,
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Match & Opponents" />,
+                cell: ({ row }) => {
+                    const m = row.original;
+                    return (
+                        <div className="space-y-1 py-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-xs text-slate-900 dark:text-white">
+                                    {m.matchType === 'DOUBLE' ? 'Doubles Match' : 'Singles Match'}
+                                </span>
+                                <span className="text-slate-400 text-xs">vs</span>
+                                {m.opponents?.length > 0 ? (
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        {m.opponents.map((opp: any) => (
+                                            <Link
+                                                key={opp.id}
+                                                href={`/people/${opp.licenseId || opp.id}`}
+                                                className="font-bold text-xs text-red-600 hover:underline inline-flex items-center gap-1"
+                                            >
+                                                <span>{opp.firstName} {opp.lastName}</span>
+                                                {opp.eloPoints && (
+                                                    <span className="text-[10px] text-slate-400 font-mono">
+                                                        ({opp.eloPoints})
+                                                    </span>
+                                                )}
+                                            </Link>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <span className="text-xs text-slate-400">Opponent</span>
+                                )}
+                            </div>
+
+                            <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2">
+                                <span className="font-bold text-slate-700 dark:text-slate-300">
+                                    {m.competitionName}
+                                </span>
+                                {m.categoryName && <span>• {m.categoryName}</span>}
+                                {m.myTeam?.name && (
+                                    <span>• Team: <strong>{m.myTeam.name}</strong></span>
+                                )}
+                            </div>
+
+                            {/* Sets Breakdown Chips */}
+                            {Array.isArray(m.setsDetail) && m.setsDetail.length > 0 && (
+                                <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                                    {m.setsDetail.map((s: any, idx: number) => {
+                                        const h = s.homeScore ?? s.home ?? 0;
+                                        const a = s.awayScore ?? s.away ?? 0;
+                                        const myScore = m.isHome ? h : a;
+                                        const oppScore = m.isHome ? a : h;
+                                        const wonSet = myScore > oppScore;
+
+                                        return (
+                                            <span
+                                                key={idx}
+                                                className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                                                    wonSet
+                                                        ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                                                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                                }`}
+                                            >
+                                                {myScore}:{oppScore}
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'date',
+                accessorFn: (m) => (m.date ? new Date(m.date).getTime() : 0),
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Date" />,
+                cell: ({ row }) => {
+                    const m = row.original;
+                    return (
+                        <div className="text-[11px] text-slate-400 font-mono whitespace-nowrap">
+                            <div>{m.date ? format(new Date(m.date), 'dd.MM.yyyy') : '—'}</div>
+                            <div className="text-[10px] text-slate-400 uppercase font-semibold">{m.competitionType}</div>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'actions',
+                header: () => <span className="sr-only">Actions</span>,
+                cell: ({ row }) => {
+                    const m = row.original;
+                    return (
+                        <div className="flex justify-end">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setAiModalMatchId(m.id);
+                                    setAiModalTitle(
+                                        `${person?.firstName || ''} ${person?.lastName || ''} vs ${
+                                            m.opponents?.map((o: any) => `${o.firstName} ${o.lastName}`).join('/') || 'Opponent'
+                                        }`
+                                    );
+                                }}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition shadow-2xs whitespace-nowrap"
+                            >
+                                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                                <span>AI Analysis</span>
+                            </button>
+                        </div>
+                    );
+                },
+            },
+        ],
+        [person?.firstName, person?.lastName]
+    );
 
     // Filtered licenses for Roles tab
     const filteredLicenses = useMemo(() => {
@@ -1607,220 +1832,38 @@ export default function PersonProfilePage() {
                             </span>
                         </div>
 
-                        {statsData?.eloHistory && statsData.eloHistory.length > 0 ? (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-xs">
-                                    <thead>
-                                        <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px]">
-                                            <th className="py-2.5 px-3">Effective Date</th>
-                                            <th className="py-2.5 px-3">Rating (Elo)</th>
-                                            <th className="py-2.5 px-3">Level</th>
-                                            <th className="py-2.5 px-3">National Rank</th>
-                                            <th className="py-2.5 px-3">Trigger Reason</th>
-                                            <th className="py-2.5 px-3">Association</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                                        {statsData.eloHistory.map((snap: any) => (
-                                            <tr key={snap.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                                                <td className="py-3 px-3 font-mono text-slate-600 dark:text-slate-300">
-                                                    {format(new Date(snap.effectiveFrom), 'dd.MM.yyyy')}
-                                                </td>
-                                                <td className="py-3 px-3 font-black text-slate-900 dark:text-white">
-                                                    {Math.round(snap.elo)} pts
-                                                </td>
-                                                <td className="py-3 px-3">
-                                                    <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300 font-bold text-[10px] border border-red-200 dark:border-red-800/60">
-                                                        {snap.level}
-                                                    </span>
-                                                </td>
-                                                <td className="py-3 px-3 text-slate-600 dark:text-slate-300">
-                                                    {snap.rankOverall ? `#${snap.rankOverall}` : '-'}
-                                                </td>
-                                                <td className="py-3 px-3">
-                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                                        {snap.triggerReason?.replace(/_/g, ' ')}
-                                                    </span>
-                                                </td>
-                                                <td className="py-3 px-3 text-slate-500">
-                                                    {snap.association?.code || snap.association?.name}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ) : (
-                            <div className="p-8 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-xs">
-                                No historical rating snapshots recorded yet.
-                            </div>
-                        )}
+                        <DataTable
+                            columns={eloColumns}
+                            data={statsData?.eloHistory || []}
+                            searchPlaceholder="Search snapshots..."
+                            defaultPageSize={25}
+                            pageSizeOptions={[10, 25, 50, 100]}
+                            loading={statsLoading}
+                            emptyMessage="No historical rating snapshots recorded yet."
+                        />
                     </div>
 
                     {/* Match History Table */}
                     <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 shadow-sm space-y-4">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <Trophy className="h-5 w-5 text-amber-500" />
                                 <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                                    Match History ({filteredMatches.length})
+                                    Match History ({statsData?.matches?.length || 0})
                                 </h2>
-                            </div>
-
-                            {/* Search & Competition Filter Chips */}
-                            <div className="flex flex-wrap items-center gap-3">
-                                <div className="relative">
-                                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search opponent or competition..."
-                                        value={matchSearchQuery}
-                                        onChange={(e) => setMatchSearchQuery(e.target.value)}
-                                        className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-red-500 w-48 sm:w-60"
-                                    />
-                                </div>
-
-                                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold">
-                                    {['ALL', 'LEAGUE', 'TOURNAMENT', 'CUP'].map((t) => (
-                                        <button
-                                            key={t}
-                                            onClick={() => setMatchFilterType(t)}
-                                            className={`px-2.5 py-1 rounded-lg transition ${
-                                                matchFilterType === t
-                                                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-                                                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                                            }`}
-                                        >
-                                            {t === 'ALL' ? 'All' : t.charAt(0) + t.slice(1).toLowerCase()}
-                                        </button>
-                                    ))}
-                                </div>
                             </div>
                         </div>
 
-                        {statsLoading ? (
-                            <div className="flex h-32 items-center justify-center">
-                                <div className="h-6 w-6 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
-                            </div>
-                        ) : filteredMatches.length > 0 ? (
-                            <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                                {filteredMatches.map((m: any) => {
-                                    const isWin = m.result === 'WIN';
-                                    const isDraw = m.result === 'DRAW';
-
-                                    return (
-                                        <div
-                                            key={m.id}
-                                            className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 first:pt-0 last:pb-0"
-                                        >
-                                            <div className="flex items-start sm:items-center gap-3">
-                                                {/* Outcome Badge */}
-                                                <div
-                                                    className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center shrink-0 font-black text-xs ${
-                                                        isWin
-                                                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                                                            : isDraw
-                                                            ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                                                            : 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
-                                                    }`}
-                                                >
-                                                    <span>{m.result}</span>
-                                                    <span className="text-[10px] font-mono">{m.scoreSets}</span>
-                                                </div>
-
-                                                <div className="space-y-1">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <span className="font-bold text-xs text-slate-900 dark:text-white">
-                                                            {m.matchType === 'DOUBLE' ? 'Doubles Match' : 'Singles Match'}
-                                                        </span>
-                                                        <span className="text-slate-400 text-xs">vs</span>
-                                                        {m.opponents?.length > 0 ? (
-                                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                                                {m.opponents.map((opp: any) => (
-                                                                    <Link
-                                                                        key={opp.id}
-                                                                        href={`/people/${opp.licenseId || opp.id}`}
-                                                                        className="font-bold text-xs text-red-600 hover:underline inline-flex items-center gap-1"
-                                                                    >
-                                                                        <span>{opp.firstName} {opp.lastName}</span>
-                                                                        {opp.eloPoints && (
-                                                                            <span className="text-[10px] text-slate-400 font-mono">
-                                                                                ({opp.eloPoints})
-                                                                            </span>
-                                                                        )}
-                                                                    </Link>
-                                                                ))}
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-xs text-slate-400">Opponent</span>
-                                                        )}
-                                                    </div>
-
-                                                    <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2">
-                                                        <span className="font-bold text-slate-700 dark:text-slate-300">
-                                                            {m.competitionName}
-                                                        </span>
-                                                        <span>• {m.categoryName}</span>
-                                                        {m.myTeam?.name && (
-                                                            <span>• Team: <strong>{m.myTeam.name}</strong></span>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Sets Breakdown Chips */}
-                                                    {Array.isArray(m.setsDetail) && m.setsDetail.length > 0 && (
-                                                        <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
-                                                            {m.setsDetail.map((s: any, idx: number) => {
-                                                                const h = s.homeScore ?? s.home ?? 0;
-                                                                const a = s.awayScore ?? s.away ?? 0;
-                                                                const myScore = m.isHome ? h : a;
-                                                                const oppScore = m.isHome ? a : h;
-                                                                const wonSet = myScore > oppScore;
-
-                                                                return (
-                                                                    <span
-                                                                        key={idx}
-                                                                        className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
-                                                                            wonSet
-                                                                                ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
-                                                                                : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                                                                        }`}
-                                                                    >
-                                                                        {myScore}:{oppScore}
-                                                                    </span>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 text-right">
-                                                <div className="text-[11px] text-slate-400 font-mono whitespace-nowrap">
-                                                    <div>{format(new Date(m.date), 'dd.MM.yyyy')}</div>
-                                                    <div className="text-[10px] text-slate-400 uppercase">{m.competitionType}</div>
-                                                </div>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setAiModalMatchId(m.id);
-                                                        setAiModalTitle(`${person.firstName} ${person.lastName} vs ${m.opponents?.map((o: any) => `${o.firstName} ${o.lastName}`).join('/') || 'Opponent'}`);
-                                                    }}
-                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition shadow-2xs"
-                                                >
-                                                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                                                    <span>AI Analysis</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ) : (
-                            <div className="p-8 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-xs">
-                                No completed matches recorded matching the selected filter.
-                            </div>
-                        )}
+                        <DataTable
+                            columns={matchColumns}
+                            data={filteredMatches}
+                            searchPlaceholder="Search opponent, competition or team..."
+                            searchSlot={matchFilterSlot}
+                            defaultPageSize={20}
+                            pageSizeOptions={[10, 20, 50, 100]}
+                            loading={statsLoading}
+                            emptyMessage="No completed matches recorded matching the selected filter."
+                        />
                     </div>
                 </div>
             )}

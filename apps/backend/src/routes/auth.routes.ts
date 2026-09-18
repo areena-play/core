@@ -1648,7 +1648,6 @@ router.get('/users/:identifier/stats', optionalAuth, async (req: AuthRequest, re
                 { scheduledAt: 'desc' },
                 { createdAt: 'desc' },
             ],
-            take: 100,
         });
 
         // Fetch Elo snapshots history
@@ -1660,7 +1659,6 @@ router.get('/users/:identifier/stats', optionalAuth, async (req: AuthRequest, re
                     select: { id: true, name: true, shortName: true, code: true },
                 },
             },
-            take: 50,
         });
 
         // Aggregate statistics
