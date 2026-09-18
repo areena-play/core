@@ -449,13 +449,6 @@ router.post('/:id/seasons', authenticateToken, async (req: AuthRequest, res: Res
     try {
         const { name, startDate, endDate, isCurrent } = req.body;
 
-        if (isCurrent) {
-            await prisma.season.updateMany({
-                where: { associationId: req.params.id },
-                data: { isCurrent: false },
-            });
-        }
-
         const season = await prisma.season.create({
             data: {
                 associationId: req.params.id,
@@ -477,7 +470,7 @@ router.get('/:id/seasons', async (req, res, next) => {
     try {
         const seasons = await prisma.season.findMany({
             where: { associationId: req.params.id },
-            orderBy: { startDate: 'desc' },
+            orderBy: [{ isCurrent: 'desc' }, { startDate: 'desc' }],
         });
         res.json(seasons);
     } catch (err) {
@@ -489,13 +482,6 @@ router.get('/:id/seasons', async (req, res, next) => {
 router.put('/:id/seasons/:seasonId', authenticateToken, async (req: AuthRequest, res: Response, next) => {
     try {
         const { name, startDate, endDate, isCurrent } = req.body;
-
-        if (isCurrent) {
-            await prisma.season.updateMany({
-                where: { associationId: req.params.id },
-                data: { isCurrent: false },
-            });
-        }
 
         const season = await prisma.season.update({
             where: { id: req.params.seasonId },
@@ -513,27 +499,24 @@ router.put('/:id/seasons/:seasonId', authenticateToken, async (req: AuthRequest,
     }
 });
 
-// POST /associations/:id/seasons/:seasonId/set-current - Set Active Season
+// POST /associations/:id/seasons/:seasonId/set-current - Set / Toggle Active Season
 router.post('/:id/seasons/:seasonId/set-current', authenticateToken, async (req: AuthRequest, res: Response, next) => {
     try {
-        await prisma.season.updateMany({
-            where: { associationId: req.params.id },
-            data: { isCurrent: false },
-        });
+        const { isCurrent = true } = req.body || {};
 
         const season = await prisma.season.update({
             where: { id: req.params.seasonId },
-            data: { isCurrent: true },
+            data: { isCurrent: Boolean(isCurrent) },
         });
 
         await AuditService.record({
             req,
-            action: 'SEASON_ACTIVATED',
+            action: isCurrent ? 'SEASON_ACTIVATED' : 'SEASON_DEACTIVATED',
             category: AuditCategory.GOVERNANCE,
             entityType: 'Season',
             entityId: season.id,
             associationId: req.params.id,
-            description: `Activated season "${season.name}" for association`,
+            description: `${isCurrent ? 'Activated' : 'Deactivated'} season "${season.name}" for association`,
             status: 'SUCCESS',
         });
 

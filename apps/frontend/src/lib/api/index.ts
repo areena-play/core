@@ -144,7 +144,7 @@ export class ApiClient extends HttpClient {
     createSeason = (associationId: string, body: any) => this.associations.createSeason(associationId, body);
     getSeasons = (associationId: string) => this.associations.getSeasons(associationId);
     updateSeason = (associationId: string, seasonId: string, body: any) => this.associations.updateSeason(associationId, seasonId, body);
-    setCurrentSeason = (associationId: string, seasonId: string) => this.associations.setCurrentSeason(associationId, seasonId);
+    setCurrentSeason = (associationId: string, seasonId: string, isCurrent: boolean = true) => this.associations.setCurrentSeason(associationId, seasonId, isCurrent);
     deleteSeason = (associationId: string, seasonId: string) => this.associations.deleteSeason(associationId, seasonId);
     getOfficials = (associationId: string) => this.associations.getOfficials(associationId);
     addOfficial = (associationId: string, body: { userId?: string; userIdentifier?: string; email?: string; role: string }) => this.associations.addOfficial(associationId, body);

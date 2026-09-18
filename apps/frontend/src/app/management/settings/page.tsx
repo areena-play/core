@@ -933,15 +933,15 @@ export default function AssociationSettingsPage() {
         }
     };
 
-    const handleActivateSeason = async (seasonId: string) => {
+    const handleToggleSeasonActive = async (seasonId: string, isCurrent: boolean) => {
         if (!topAssoc) return;
         try {
-            await api.setCurrentSeason(topAssoc.id, seasonId);
-            setSuccessMsg('Active season updated successfully.');
+            await api.setCurrentSeason(topAssoc.id, seasonId, isCurrent);
+            setSuccessMsg(isCurrent ? 'Season activated successfully.' : 'Season deactivated successfully.');
             setTimeout(() => setSuccessMsg(''), 4000);
             loadData();
         } catch (err: any) {
-            setErrorMsg(err.message || 'Failed to set active season.');
+            setErrorMsg(err.message || 'Failed to update season active status.');
         }
     };
 
@@ -2275,7 +2275,7 @@ export default function AssociationSettingsPage() {
                                     <span>Seasons & Periodicity Management</span>
                                 </h2>
                                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    Manage federation sporting years, license validity periods, and active competition seasons.
+                                    Manage federation sporting years, license validity periods, and active competition seasons. Multiple seasons can be active simultaneously (e.g. for juniors, seniors, or overlapping cycles).
                                 </p>
                             </div>
 
@@ -2323,7 +2323,7 @@ export default function AssociationSettingsPage() {
                                                 <td className="px-4 py-3 text-center">
                                                     {season.isCurrent ? (
                                                         <span className="px-3 py-1 rounded-full text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                                            ACTIVE CURRENT
+                                                            ACTIVE
                                                         </span>
                                                     ) : (
                                                         <span className="px-3 py-1 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500">
@@ -2333,13 +2333,21 @@ export default function AssociationSettingsPage() {
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        {!season.isCurrent && (
+                                                        {season.isCurrent ? (
                                                             <button
                                                                 type="button"
-                                                                onClick={() => handleActivateSeason(season.id)}
+                                                                onClick={() => handleToggleSeasonActive(season.id, false)}
+                                                                className="px-3 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-bold transition"
+                                                            >
+                                                                Deactivate
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleToggleSeasonActive(season.id, true)}
                                                                 className="px-3 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-[11px] font-bold transition"
                                                             >
-                                                                Set as Current
+                                                                Activate
                                                             </button>
                                                         )}
                                                         <button

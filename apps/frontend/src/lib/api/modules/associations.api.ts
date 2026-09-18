@@ -80,9 +80,10 @@ export class AssociationsApi {
         });
     }
 
-    setCurrentSeason(associationId: string, seasonId: string) {
+    setCurrentSeason(associationId: string, seasonId: string, isCurrent: boolean = true) {
         return this.http.request(`/associations/${associationId}/seasons/${seasonId}/set-current`, {
             method: 'POST',
+            body: JSON.stringify({ isCurrent }),
         });
     }
 
