@@ -22,6 +22,10 @@ function notifyLoading() {
     });
 }
 
+export interface RequestOptions extends RequestInit {
+    silent?: boolean;
+}
+
 export class HttpClient {
     private inFlightRequests = new Map<string, Promise<any>>();
 
@@ -30,7 +34,7 @@ export class HttpClient {
         return localStorage.getItem('areena_token');
     }
 
-    async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    async request<T = any>(endpoint: string, options: RequestOptions = {}): Promise<T> {
         const method = (options.method || 'GET').toUpperCase();
 
         // In-flight deduplication: Only for idempotent GET requests
@@ -53,9 +57,13 @@ export class HttpClient {
         return this.executeRequest<T>(endpoint, options);
     }
 
-    private async executeRequest<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
-        activeRequests++;
-        notifyLoading();
+    private async executeRequest<T = any>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+        const isSilent = Boolean(options.silent);
+
+        if (!isSilent) {
+            activeRequests++;
+            notifyLoading();
+        }
 
         try {
             const token = this.getToken();
@@ -88,8 +96,10 @@ export class HttpClient {
 
             return res.json();
         } finally {
-            activeRequests = Math.max(0, activeRequests - 1);
-            notifyLoading();
+            if (!isSilent) {
+                activeRequests = Math.max(0, activeRequests - 1);
+                notifyLoading();
+            }
         }
     }
 }

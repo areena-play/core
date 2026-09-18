@@ -105,20 +105,20 @@ export default function AdminClickTTPage() {
     const [resetConfirmText, setResetConfirmText] = useState('');
     const [resetLoading, setResetLoading] = useState(false);
 
-    // Fetch Scraper Status
-    const fetchStatus = async () => {
+    // Fetch Scraper Status (silent to prevent top loading bar distraction)
+    const fetchStatus = async (silent: boolean = true) => {
         try {
-            const res = await api.admin.getScraperStatus();
+            const res = await api.admin.getScraperStatus(silent);
             setScraperStatus(res);
         } catch (err) {
             // Ignore background error
         }
     };
 
-    // Fetch Logs
-    const fetchLogs = async () => {
+    // Fetch Logs (silent)
+    const fetchLogs = async (silent: boolean = true) => {
         try {
-            const res = await api.admin.getScraperLogs(300);
+            const res = await api.admin.getScraperLogs(300, silent);
             if (res && Array.isArray(res.logs)) {
                 setLogs(res.logs);
             }
@@ -128,10 +128,10 @@ export default function AdminClickTTPage() {
     };
 
     // Fetch Config
-    const fetchConfig = async () => {
+    const fetchConfig = async (silent: boolean = false) => {
         setConfigLoading(true);
         try {
-            const cfg = await api.admin.getScraperConfig();
+            const cfg = await api.admin.getScraperConfig(silent);
             if (cfg) {
                 setConfigForm((prev) => ({
                     ...prev,
@@ -155,11 +155,11 @@ export default function AdminClickTTPage() {
         }
     };
 
-    // Fetch Cronjobs
-    const fetchCronJobs = async () => {
+    // Fetch Cronjobs (silent)
+    const fetchCronJobs = async (silent: boolean = true) => {
         setCronLoading(true);
         try {
-            const res = await api.admin.getCronJobs();
+            const res = await api.admin.getCronJobs(silent);
             const list = Array.isArray(res) ? res : (res as any)?.jobs || [];
             setCronJobs(list);
         } catch (err) {
@@ -172,25 +172,26 @@ export default function AdminClickTTPage() {
     // Initial data load
     useEffect(() => {
         if (user?.isSuperAdmin) {
-            fetchStatus();
-            fetchLogs();
-            fetchConfig();
-            fetchCronJobs();
+            fetchStatus(true);
+            fetchLogs(true);
+            fetchConfig(false);
+            fetchCronJobs(true);
         }
     }, [user]);
 
-    // Polling while scraper is active or on scraper tab
+    // Polling while scraper is active or on scraper tab (all silent)
     useEffect(() => {
         if (!user?.isSuperAdmin) return;
+        const pollInterval = scraperStatus?.isRunning ? 1000 : 3000;
         const interval = setInterval(() => {
-            fetchStatus();
-            fetchLogs();
+            fetchStatus(true);
+            fetchLogs(true);
             if (activeTab === 'cronjobs') {
-                fetchCronJobs();
+                fetchCronJobs(true);
             }
-        }, 3000);
+        }, pollInterval);
         return () => clearInterval(interval);
-    }, [user, activeTab]);
+    }, [user, activeTab, scraperStatus?.isRunning]);
 
     // Auto-scroll logs strictly within the container
     useEffect(() => {
@@ -313,6 +314,32 @@ export default function AdminClickTTPage() {
     }
 
     const isRunning = scraperStatus?.isRunning;
+    const progress = scraperStatus?.progress;
+    const currentPhase = progress?.phase || 'cleanup';
+    const progressPercentage = typeof progress?.percentage === 'number' ? Math.min(100, Math.max(0, progress.percentage)) : isRunning ? 5 : 0;
+
+    const INGESTION_STEPS = [
+        { key: 'cleanup', label: '1. Cleanup', phases: ['cleanup'] },
+        { key: 'associations', label: '2. Hierarchy', phases: ['associations'] },
+        { key: 'seasons', label: '3. Seasons', phases: ['seasons'] },
+        { key: 'clubs', label: '4. Clubs & Athletes', phases: ['clubs', 'players'] },
+        { key: 'snapshots', label: '5. Rating Timeline', phases: ['snapshots'] },
+        { key: 'hierarchy', label: '6. Competitions', phases: ['hierarchy'] },
+        { key: 'encounters', label: '7. Encounters', phases: ['encounters'] },
+        { key: 'matches', label: '8. Matches', phases: ['matches'] },
+    ];
+
+    const getStepStatus = (stepPhases: string[]) => {
+        if (currentPhase === 'done' || progressPercentage === 100) return 'completed';
+        if (stepPhases.includes(currentPhase)) return 'active';
+
+        const phaseOrder = ['cleanup', 'associations', 'seasons', 'clubs', 'players', 'snapshots', 'hierarchy', 'encounters', 'matches', 'done'];
+        const currentIdx = phaseOrder.indexOf(currentPhase);
+        const maxStepIdx = Math.max(...stepPhases.map((p) => phaseOrder.indexOf(p)));
+
+        if (currentIdx > maxStepIdx) return 'completed';
+        return 'pending';
+    };
 
     return (
         <div className="space-y-8 pb-16">
@@ -350,6 +377,11 @@ export default function AdminClickTTPage() {
                                     <div className="font-bold text-white flex items-center gap-2 mt-0.5">
                                         <span>{isRunning ? `Running: ${scraperStatus?.activeJob?.toUpperCase()}` : 'Idle / Ready'}</span>
                                         {isRunning && <span className="text-amber-300 text-[11px]">({scraperStatus?.elapsedSec || 0}s)</span>}
+                                        {isRunning && (
+                                            <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-bold font-mono text-[11px] border border-amber-500/30">
+                                                {progressPercentage}%
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -432,6 +464,103 @@ export default function AdminClickTTPage() {
             {/* TAB 1: Scraper Operations */}
             {activeTab === 'scraper' && (
                 <div className="space-y-6">
+                    {/* Live Ingestion & Sync Progress Card */}
+                    {(isRunning || (progress && progress.phase !== 'done' && progress.phase !== 'error')) && (
+                        <div className="rounded-3xl border border-red-500/40 bg-gradient-to-br from-slate-950 via-slate-900 to-red-950/40 p-6 sm:p-7 text-white shadow-2xl space-y-6 relative overflow-hidden backdrop-blur-xl">
+                            {/* Card Header */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-400 text-[11px] font-mono font-bold uppercase tracking-wider border border-red-500/30">
+                                            <span className="w-2 h-2 rounded-full bg-red-400 animate-ping" />
+                                            {scraperStatus?.activeJob ? `Task: ${scraperStatus.activeJob.toUpperCase()}` : 'Active Ingestion'}
+                                        </span>
+                                        <span className="text-xs font-semibold text-slate-300">
+                                            {progress?.phaseTitle || 'Processing Pipeline'}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-slate-400 font-mono">
+                                        {progress?.message || 'Streaming records into PostgreSQL database...'}
+                                    </p>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    {progress?.ratePerSec ? (
+                                        <div className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-right">
+                                            <div className="text-[10px] text-slate-400 uppercase font-mono font-bold">Speed</div>
+                                            <div className="text-xs font-mono font-bold text-amber-300">
+                                                ⚡ {formatNumber(progress.ratePerSec)}/s
+                                            </div>
+                                        </div>
+                                    ) : null}
+
+                                    {progress?.etaSec ? (
+                                        <div className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-right">
+                                            <div className="text-[10px] text-slate-400 uppercase font-mono font-bold">ETA</div>
+                                            <div className="text-xs font-mono font-bold text-slate-200">
+                                                ~{Math.floor(progress.etaSec / 60)}m {progress.etaSec % 60}s
+                                            </div>
+                                        </div>
+                                    ) : null}
+
+                                    <div className="px-4 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-right">
+                                        <div className="text-[10px] text-amber-400 uppercase font-mono font-black">Progress</div>
+                                        <div className="text-xl sm:text-2xl font-black font-mono text-amber-300">
+                                            {progressPercentage}%
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Animated Progress Bar Track */}
+                            <div className="space-y-2 relative z-10">
+                                <div className="h-4 w-full rounded-full bg-slate-900/90 p-0.5 border border-white/10 overflow-hidden shadow-inner relative">
+                                    <div
+                                        className="h-full rounded-full bg-gradient-to-r from-red-600 via-amber-500 to-emerald-400 transition-all duration-300 relative shadow-md"
+                                        style={{ width: `${Math.max(2, progressPercentage)}%` }}
+                                    >
+                                        <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                                    <span>
+                                        Processed: <strong className="text-white">{formatNumber(progress?.processed)}</strong>
+                                        {progress?.total ? <> / {formatNumber(progress.total)}</> : null}
+                                    </span>
+                                    <span>Elapsed: <strong className="text-white">{scraperStatus?.elapsedSec || 0}s</strong></span>
+                                </div>
+                            </div>
+
+                            {/* Stage Stepper Badges */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-2 border-t border-white/10 relative z-10">
+                                {INGESTION_STEPS.map((step) => {
+                                    const status = getStepStatus(step.phases);
+                                    return (
+                                        <div
+                                            key={step.key}
+                                            className={`p-2 rounded-xl text-center border transition flex flex-col items-center justify-center gap-1 ${
+                                                status === 'completed'
+                                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                                    : status === 'active'
+                                                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 ring-2 ring-amber-500/30 animate-pulse'
+                                                    : 'bg-white/5 border-white/5 text-slate-500'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-1 text-[10px] font-mono font-bold">
+                                                {status === 'completed' && <Check className="w-3 h-3 text-emerald-400" />}
+                                                {status === 'active' && <RefreshCw className="w-3 h-3 text-amber-300 animate-spin" />}
+                                                <span>{step.label}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="absolute -left-20 -top-20 h-56 w-56 rounded-full bg-red-600/15 blur-3xl pointer-events-none" />
+                        </div>
+                    )}
+
                     {/* Quick Trigger Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {/* Incremental Sync */}
@@ -778,7 +907,7 @@ export default function AdminClickTTPage() {
                         </div>
                         <button
                             type="button"
-                            onClick={fetchCronJobs}
+                            onClick={() => fetchCronJobs(true)}
                             disabled={cronLoading}
                             className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-red-500 transition"
                         >

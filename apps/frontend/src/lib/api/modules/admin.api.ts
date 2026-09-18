@@ -140,7 +140,7 @@ export class AdminApi {
         });
     }
 
-    getScraperStatus() {
+    getScraperStatus(silent: boolean = false) {
         return this.http.request<{
             isRunning: boolean;
             activeJob: string | null;
@@ -149,11 +149,12 @@ export class AdminApi {
             lastFinishedAt: string | null;
             lastResult: 'success' | 'error' | null;
             lastError: string | null;
+            progress: any | null;
             summary: any | null;
-        }>('/admin/scraper/status');
+        }>('/admin/scraper/status', { silent });
     }
 
-    getScraperConfig() {
+    getScraperConfig(silent: boolean = false) {
         return this.http.request<{
             baseUrl: string;
             fedNickname: string;
@@ -167,7 +168,7 @@ export class AdminApi {
             excludedClubs: string;
             tournamentRetroDays: number;
             isConfigured: boolean;
-        }>('/admin/scraper/config');
+        }>('/admin/scraper/config', { silent });
     }
 
     updateScraperConfig(body: {
@@ -203,9 +204,10 @@ export class AdminApi {
         });
     }
 
-    getScraperLogs(limit: number = 200) {
+    getScraperLogs(limit: number = 200, silent: boolean = false) {
         return this.http.request<{ logs: Array<{ timestamp: string; level: 'info' | 'warn' | 'error' | 'success'; message: string }> }>(
-            `/admin/scraper/logs?limit=${limit}`
+            `/admin/scraper/logs?limit=${limit}`,
+            { silent }
         );
     }
 
@@ -215,7 +217,7 @@ export class AdminApi {
         });
     }
 
-    getCronJobs() {
+    getCronJobs(silent: boolean = false) {
         return this.http.request<{
             jobs: Array<{
                 name: string;
@@ -227,7 +229,7 @@ export class AdminApi {
                 nextRunAt: string | null;
                 lastRunBy?: string;
             }>;
-        }>('/admin/cronjobs');
+        }>('/admin/cronjobs', { silent });
     }
 
     toggleCronJob(name: string, enabled: boolean) {

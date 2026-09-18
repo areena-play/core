@@ -13,11 +13,13 @@ import {
     CompetitionType,
     CompetitionStatus,
     GenderRestriction,
+    Gender,
     EncounterStatus,
     MatchType,
     MatchWinner,
     ParticipantSide,
     UserAccountStatus,
+    RatingTriggerReason,
 } from '@prisma/client';
 
 // Regional associations definition
@@ -33,10 +35,14 @@ const REGIONAL_ASSOCIATIONS = [
 ];
 
 export interface IngestionProgress {
-    phase: string;
+    phase: 'cleanup' | 'associations' | 'seasons' | 'clubs' | 'players' | 'snapshots' | 'hierarchy' | 'encounters' | 'matches' | 'done' | 'error';
+    phaseTitle: string;
+    percentage: number;
     processed: number;
     total?: number;
     message: string;
+    ratePerSec?: number;
+    etaSec?: number;
 }
 
 function parseSafeDate(val: any, fallback: Date = new Date()): Date {
@@ -44,6 +50,20 @@ function parseSafeDate(val: any, fallback: Date = new Date()): Date {
     const d = new Date(val);
     if (isNaN(d.getTime())) return fallback;
     return d;
+}
+
+function parseRankingDate(dateStr: string): Date {
+    if (!dateStr) return new Date();
+    const parts = dateStr.trim().split('.');
+    if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const year = parseInt(parts[2], 10);
+        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+            return new Date(Date.UTC(year, month, day));
+        }
+    }
+    return parseSafeDate(dateStr, new Date());
 }
 
 export class ClickTTDbIngestionService {
@@ -258,86 +278,186 @@ export class ClickTTDbIngestionService {
         const dummyPasswordHash = await bcrypt.hash('Password123!', 10);
         const defaultSeasonId = Array.from(seasonIdMap.values())[0] || null;
 
-        for (let i = 0; i < players.length; i += 500) {
-            const chunk = players.slice(i, i + 500);
+        const userRows: any[] = [];
+        const playerMetaList: { licenseId: string; clubId: string | null; isTCard: boolean }[] = [];
 
-            for (const p of chunk) {
-                const licenceNr = p.licenceNr || p.licenseId || p.playerId;
-                if (!licenceNr) continue;
+        for (const p of players) {
+            const licenceNr = p.licenceNr || p.licenseId || p.playerId;
+            if (!licenceNr) continue;
 
-                const licenseId = String(licenceNr).trim();
-                const firstName = p.firstname || p.firstName || 'Athlete';
-                const lastName = p.lastname || p.lastName || `#${licenseId}`;
-                const gender = p.gender === 'female' || p.gender === 'FEMALE' ? 'FEMALE' : 'MALE';
-                const birthDate = p.birthday ? parseSafeDate(p.birthday, undefined) : p.birthYear ? parseSafeDate(`${p.birthYear}-01-01`, undefined) : null;
-                const eloPoints = p.currentElo ? parseInt(p.currentElo, 10) : 1000;
-                const currentLevel = p.currentClassification || p.currentClassificationMen || p.currentClassificationWomen || 'D1';
-                const rank = p.currentRank ? parseInt(p.currentRank, 10) : null;
+            const licenseId = String(licenceNr).trim();
+            const firstName = p.firstname || p.firstName || 'Athlete';
+            const lastName = p.lastname || p.lastName || `#${licenseId}`;
+            const gender = p.gender === 'female' || p.gender === 'FEMALE' ? 'FEMALE' : 'MALE';
+            const birthDate = p.birthday ? parseSafeDate(p.birthday, undefined) : p.birthYear ? parseSafeDate(`${p.birthYear}-01-01`, undefined) : null;
+            const eloPoints = p.currentElo ? parseInt(p.currentElo, 10) : 1000;
+            const currentLevel = p.currentClassification || p.currentClassificationMen || p.currentClassificationWomen || 'D1';
+            const rank = p.currentRank ? parseInt(p.currentRank, 10) : null;
+            const clubId = p.clubNr ? clubIdMap.get(String(p.clubNr)) : null;
+            const isTCard = /t-card/i.test(p.clubName || '');
 
-                const user = await prisma.user.upsert({
-                    where: { licenseId },
-                    update: {
-                        firstName,
-                        lastName,
-                        birthDate,
-                        gender,
-                        playingGender: gender,
-                        eloPoints: isNaN(eloPoints) ? 1000 : eloPoints,
-                        currentLevel,
-                        rank: rank && !isNaN(rank) ? rank : null,
-                    },
-                    create: {
-                        licenseId,
-                        firstName,
-                        lastName,
-                        birthDate,
-                        gender,
-                        playingGender: gender,
-                        eloPoints: isNaN(eloPoints) ? 1000 : eloPoints,
-                        currentLevel,
-                        rank: rank && !isNaN(rank) ? rank : null,
-                        accountStatus: UserAccountStatus.MANAGED,
-                        canLogin: true,
-                        passwordHash: dummyPasswordHash,
+            userRows.push({
+                licenseId,
+                firstName,
+                lastName,
+                birthDate,
+                gender,
+                playingGender: gender,
+                eloPoints: isNaN(eloPoints) ? 1000 : eloPoints,
+                currentLevel,
+                rank: rank && !isNaN(rank) ? rank : null,
+                accountStatus: UserAccountStatus.MANAGED,
+                canLogin: true,
+                passwordHash: dummyPasswordHash,
+            });
+
+            playerMetaList.push({
+                licenseId,
+                clubId: clubId || null,
+                isTCard,
+            });
+        }
+
+        // Batch insert Users
+        for (let i = 0; i < userRows.length; i += 1000) {
+            await prisma.user.createMany({
+                data: userRows.slice(i, i + 1000),
+                skipDuplicates: true,
+            });
+        }
+
+        // Retrieve created/existing user IDs for mapping
+        const dbUsers = await prisma.user.findMany({
+            where: {
+                licenseId: { not: null },
+            },
+            select: { id: true, licenseId: true },
+        });
+
+        for (const u of dbUsers) {
+            if (u.licenseId) {
+                userIdMap.set(u.licenseId, u.id);
+            }
+        }
+
+        // Batch insert Licenses
+        const licenseRows: any[] = [];
+        for (const meta of playerMetaList) {
+            const uid = userIdMap.get(meta.licenseId);
+            if (!uid) continue;
+
+            licenseRows.push({
+                userId: uid,
+                type: meta.isTCard ? LicenseType.PLAYER_TCARD : LicenseType.PLAYER_REGULAR,
+                status: LicenseStatus.APPROVED,
+                scope: LicenseScope.ALL,
+                clubId: meta.clubId,
+                associationId: sttId,
+                seasonId: defaultSeasonId,
+                validFrom: new Date('2024-07-01'),
+                validUntil: new Date('2025-06-30'),
+                autoApproved: true,
+                appliedByUserId: uid,
+            });
+        }
+
+        for (let i = 0; i < licenseRows.length; i += 1000) {
+            await prisma.license.createMany({
+                data: licenseRows.slice(i, i + 1000),
+                skipDuplicates: true,
+            });
+        }
+
+        return userIdMap;
+    }
+
+    /**
+     * Ingest Player Elo Rating Snapshots Timeline into PostgreSQL
+     */
+    public static async ingestRatingSnapshotsStreaming(
+        historiesStream: AsyncGenerator<any>,
+        userIdMap: Map<string, string>,
+        sttId: string,
+        onProgress?: (prog: IngestionProgress) => void,
+        estimatedSnapshotsTotal: number = 1277000
+    ): Promise<number> {
+        let snapshotBatch: any[] = [];
+        let snapshotsCount = 0;
+        const startTime = Date.now();
+
+        const flushSnapshots = async () => {
+            if (snapshotBatch.length > 0) {
+                await prisma.ratingSnapshotHistory.createMany({
+                    data: snapshotBatch,
+                    skipDuplicates: true,
+                });
+                snapshotBatch = [];
+            }
+        };
+
+        for await (const p of historiesStream) {
+            if (!p || !p.licenceNr || !Array.isArray(p.history)) continue;
+            const licenceNr = String(p.licenceNr).trim();
+            const userId = userIdMap.get(licenceNr);
+            if (!userId) continue;
+
+            for (const h of p.history) {
+                if (!h || h.elo === undefined || h.elo === null) continue;
+                const elo = typeof h.elo === 'number' ? h.elo : parseFloat(h.elo) || 1000;
+                const level = h.classification || h.classificationMen || h.classificationWomen || 'D1';
+                const gender = h.rankWomen ? Gender.FEMALE : Gender.MALE;
+                const effectiveFrom = parseRankingDate(h.rankingDate);
+                const rankOverall = h.rankTotal ? parseInt(h.rankTotal, 10) : null;
+                const rankGender = h.rankMen ? parseInt(h.rankMen, 10) : h.rankWomen ? parseInt(h.rankWomen, 10) : null;
+
+                snapshotBatch.push({
+                    id: crypto.randomUUID(),
+                    userId,
+                    associationId: sttId,
+                    elo,
+                    level,
+                    gender,
+                    playingGender: gender,
+                    rankOverall: isNaN(rankOverall as any) ? null : rankOverall,
+                    rankGender: isNaN(rankGender as any) ? null : rankGender,
+                    effectiveFrom,
+                    triggerReason: RatingTriggerReason.MONTHLY_SCHEDULE,
+                    metadata: {
+                        delta: h.delta,
+                        ageclass: h.ageclass,
                     },
                 });
 
-                userIdMap.set(licenseId, user.id);
+                snapshotsCount++;
 
-                // Upsert License
-                const clubId = p.clubNr ? clubIdMap.get(String(p.clubNr)) : null;
-                const isTCard = /t-card/i.test(p.clubName || '');
+                if (snapshotBatch.length >= 2000) {
+                    await flushSnapshots();
 
-                const existingLicense = await prisma.license.findFirst({
-                    where: { userId: user.id },
-                });
+                    if (onProgress && snapshotsCount % 10000 === 0) {
+                        const elapsed = (Date.now() - startTime) / 1000;
+                        const rate = elapsed > 0 ? Math.round(snapshotsCount / elapsed) : 0;
+                        const total = Math.max(estimatedSnapshotsTotal, snapshotsCount);
+                        const remaining = Math.max(0, total - snapshotsCount);
+                        const eta = rate > 0 ? Math.round(remaining / rate) : 0;
+                        const pct = Math.min(25, 15 + (snapshotsCount / total) * 10);
 
-                if (!existingLicense) {
-                    await prisma.license.create({
-                        data: {
-                            userId: user.id,
-                            type: isTCard ? LicenseType.PLAYER_TCARD : LicenseType.PLAYER_REGULAR,
-                            status: LicenseStatus.APPROVED,
-                            scope: LicenseScope.ALL,
-                            clubId,
-                            associationId: sttId,
-                            seasonId: defaultSeasonId,
-                            validFrom: new Date('2024-07-01'),
-                            validUntil: new Date('2025-06-30'),
-                            autoApproved: true,
-                            appliedByUserId: user.id,
-                        },
-                    });
-                } else if (clubId && existingLicense.clubId !== clubId) {
-                    await prisma.license.update({
-                        where: { id: existingLicense.id },
-                        data: { clubId },
-                    });
+                        onProgress({
+                            phase: 'snapshots',
+                            phaseTitle: 'Streaming Rating Snapshots',
+                            percentage: parseFloat(pct.toFixed(1)),
+                            processed: snapshotsCount,
+                            total,
+                            ratePerSec: rate,
+                            etaSec: eta,
+                            message: `📈 Ingested ${snapshotsCount.toLocaleString('de-CH')} / ${total.toLocaleString('de-CH')} rating snapshots (${rate.toLocaleString('de-CH')}/s)`,
+                        });
+                    }
                 }
             }
         }
 
-        return userIdMap;
+        await flushSnapshots();
+        return snapshotsCount;
     }
 
     /**
@@ -632,7 +752,9 @@ export class ClickTTDbIngestionService {
         teamIdMap: Map<string, string>,
         userIdMap: Map<string, string>,
         clubIdMap: Map<string, string>,
-        onProgress?: (msg: string) => void
+        onProgress?: (progress: IngestionProgress) => void,
+        estimatedEncountersTotal: number = 365000,
+        estimatedMatchesTotal: number = 1430000
     ): Promise<{ encountersCount: number; matchesCount: number }> {
         const encounterIdMap = new Map<string, string>();
         const encounterMetaMap = new Map<string, { homeTeamId: string; awayTeamId: string; categoryId: string; groupId: string | null }>();
@@ -640,6 +762,7 @@ export class ClickTTDbIngestionService {
         let encounterBatch: any[] = [];
         let missingTeamsBatch: any[] = [];
         let encountersCount = 0;
+        const encStartTime = Date.now();
 
         const flushTeams = async () => {
             if (missingTeamsBatch.length > 0) {
@@ -719,8 +842,25 @@ export class ClickTTDbIngestionService {
                     skipDuplicates: true,
                 });
                 encounterBatch = [];
-                if (onProgress && encountersCount % 10000 === 0) {
-                    onProgress(`⚡ Ingested ${encountersCount.toLocaleString('de-CH')} encounters...`);
+
+                if (onProgress && encountersCount % 5000 === 0) {
+                    const elapsed = (Date.now() - encStartTime) / 1000;
+                    const rate = elapsed > 0 ? Math.round(encountersCount / elapsed) : 0;
+                    const totalEnc = Math.max(estimatedEncountersTotal, encountersCount);
+                    const remaining = Math.max(0, totalEnc - encountersCount);
+                    const eta = rate > 0 ? Math.round(remaining / rate) : 0;
+                    const pct = Math.min(45, 25 + (encountersCount / totalEnc) * 20);
+
+                    onProgress({
+                        phase: 'encounters',
+                        phaseTitle: 'Streaming Encounters',
+                        percentage: parseFloat(pct.toFixed(1)),
+                        processed: encountersCount,
+                        total: totalEnc,
+                        ratePerSec: rate,
+                        etaSec: eta,
+                        message: `⚔️ Ingested ${encountersCount.toLocaleString('de-CH')} / ${totalEnc.toLocaleString('de-CH')} encounters (${rate.toLocaleString('de-CH')}/s)`,
+                    });
                 }
             }
         }
@@ -739,6 +879,33 @@ export class ClickTTDbIngestionService {
         let participantBatch: any[] = [];
         const teamMemberMap = new Map<string, { teamId: string; userId: string; role: string }>();
         let matchesCount = 0;
+        const matchStartTime = Date.now();
+
+        const flushMatchesAndParticipants = async () => {
+            if (matchBatch.length > 0) {
+                await prisma.match.createMany({
+                    data: matchBatch,
+                    skipDuplicates: true,
+                });
+                matchBatch = [];
+            }
+
+            if (participantBatch.length > 0) {
+                await prisma.matchParticipant.createMany({
+                    data: participantBatch,
+                    skipDuplicates: true,
+                });
+                participantBatch = [];
+            }
+
+            if (teamMemberMap.size >= 2000) {
+                await prisma.teamMember.createMany({
+                    data: Array.from(teamMemberMap.values()),
+                    skipDuplicates: true,
+                });
+                teamMemberMap.clear();
+            }
+        };
 
         for await (const m of matchesStream) {
             if (!m || !m.matchId) continue;
@@ -818,44 +985,39 @@ export class ClickTTDbIngestionService {
 
             matchesCount++;
 
-            if (matchBatch.length >= 2000) {
-                await prisma.match.createMany({
-                    data: matchBatch,
-                    skipDuplicates: true,
-                });
-                matchBatch = [];
+            if (matchBatch.length >= 2000 || participantBatch.length >= 2000) {
+                await flushMatchesAndParticipants();
             }
 
-            if (participantBatch.length >= 2000) {
-                await prisma.matchParticipant.createMany({
-                    data: participantBatch,
-                    skipDuplicates: true,
-                });
-                participantBatch = [];
-            }
+            if (onProgress && matchesCount % 5000 === 0) {
+                const elapsed = (Date.now() - matchStartTime) / 1000;
+                const rate = elapsed > 0 ? Math.round(matchesCount / elapsed) : 0;
+                const totalMat = Math.max(estimatedMatchesTotal, matchesCount);
+                const remaining = Math.max(0, totalMat - matchesCount);
+                const eta = rate > 0 ? Math.round(remaining / rate) : 0;
+                const pct = Math.min(99, 45 + (matchesCount / totalMat) * 54);
 
-            if (teamMemberMap.size >= 2000) {
-                await prisma.teamMember.createMany({
-                    data: Array.from(teamMemberMap.values()),
-                    skipDuplicates: true,
+                onProgress({
+                    phase: 'matches',
+                    phaseTitle: 'Streaming Matches & Scorecards',
+                    percentage: parseFloat(pct.toFixed(1)),
+                    processed: matchesCount,
+                    total: totalMat,
+                    ratePerSec: rate,
+                    etaSec: eta,
+                    message: `🏓 Ingested ${matchesCount.toLocaleString('de-CH')} / ${totalMat.toLocaleString('de-CH')} matches (${rate.toLocaleString('de-CH')}/s)`,
                 });
-                teamMemberMap.clear();
-            }
-
-            if (onProgress && matchesCount % 25000 === 0) {
-                onProgress(`🏓 Ingested ${matchesCount.toLocaleString('de-CH')} match cards & participants...`);
             }
         }
 
         // Flush remaining batches
-        if (matchBatch.length > 0) {
-            await prisma.match.createMany({ data: matchBatch, skipDuplicates: true });
-        }
-        if (participantBatch.length > 0) {
-            await prisma.matchParticipant.createMany({ data: participantBatch, skipDuplicates: true });
-        }
+        await flushMatchesAndParticipants();
         if (teamMemberMap.size > 0) {
-            await prisma.teamMember.createMany({ data: Array.from(teamMemberMap.values()), skipDuplicates: true });
+            await prisma.teamMember.createMany({
+                data: Array.from(teamMemberMap.values()),
+                skipDuplicates: true,
+            });
+            teamMemberMap.clear();
         }
 
         return { encountersCount, matchesCount };
@@ -942,48 +1104,96 @@ export class ClickTTDbIngestionService {
      * Delete All Existing Sports Records and Bulk-Load Full Normalized Datasets
      */
     public static async resetAndLoadFullDatasets(onProgress?: (p: IngestionProgress) => void): Promise<{ success: boolean; counts: Record<string, number> }> {
-        const notify = (phase: string, processed: number, total: number | undefined, message: string) => {
-            console.log(`[DB Bulk Ingest] ${message}`);
-            if (onProgress) onProgress({ phase, processed, total, message });
+        const notify = (prog: IngestionProgress) => {
+            console.log(`[DB Bulk Ingest] [${prog.percentage}%] ${prog.message}`);
+            if (onProgress) onProgress(prog);
         };
 
-        notify('cleanup', 0, undefined, '🧹 Purging existing sports database records...');
+        notify({
+            phase: 'cleanup',
+            phaseTitle: 'Purging Database',
+            percentage: 1,
+            processed: 0,
+            message: '🧹 Purging existing sports database records...',
+        });
 
-        // 1. Purge existing data in strict dependency order (preserving SuperAdmin & Settings)
-        await prisma.matchParticipant.deleteMany();
-        await prisma.match.deleteMany();
-        await prisma.groupStanding.deleteMany();
-        await prisma.encounter.deleteMany();
-        await prisma.teamMember.deleteMany();
-        await prisma.team.deleteMany();
-        await prisma.categoryGroup.deleteMany();
-        await prisma.category.deleteMany();
-        await prisma.competitionSpeakerCallout.deleteMany();
-        await prisma.competitionUserRole.deleteMany();
-        await prisma.competitionLocation.deleteMany();
-        await prisma.competition.deleteMany();
-        await prisma.courseAttendance.deleteMany();
-        await prisma.refresherCourse.deleteMany();
-        await prisma.ratingSnapshotHistory.deleteMany();
-        await prisma.license.deleteMany();
-        await prisma.season.deleteMany();
-        await prisma.userAssociationRole.deleteMany();
-        await prisma.userClubRole.deleteMany();
-        await prisma.userRelationship.deleteMany();
-        await prisma.pushSubscription.deleteMany();
-        await prisma.clubAssociation.deleteMany();
-        await prisma.locationClub.deleteMany();
-        await prisma.club.deleteMany();
-        await prisma.associationHierarchy.deleteMany();
-        await prisma.associationSport.deleteMany();
-        await prisma.association.deleteMany();
+        // 1. Instant atomic purge of sports data (preserving SuperAdmin & System Settings)
+        try {
+            await prisma.$executeRawUnsafe(`
+                TRUNCATE TABLE 
+                    "MatchParticipant",
+                    "Match",
+                    "GroupStanding",
+                    "Encounter",
+                    "TeamMember",
+                    "Team",
+                    "CategoryGroup",
+                    "Category",
+                    "CompetitionSpeakerCallout",
+                    "CompetitionUserRole",
+                    "CompetitionLocation",
+                    "Competition",
+                    "CourseAttendance",
+                    "RefresherCourse",
+                    "RatingSnapshotHistory",
+                    "License",
+                    "Season",
+                    "UserAssociationRole",
+                    "UserClubRole",
+                    "UserRelationship",
+                    "PushSubscription",
+                    "ClubAssociation",
+                    "LocationClub",
+                    "Club",
+                    "AssociationHierarchy",
+                    "AssociationSport",
+                    "Association"
+                CASCADE;
+            `);
+        } catch (truncErr) {
+            console.warn('[DB Bulk Ingest] Fallback to deleteMany after truncate notice:', truncErr);
+            await prisma.matchParticipant.deleteMany();
+            await prisma.match.deleteMany();
+            await prisma.groupStanding.deleteMany();
+            await prisma.encounter.deleteMany();
+            await prisma.teamMember.deleteMany();
+            await prisma.team.deleteMany();
+            await prisma.categoryGroup.deleteMany();
+            await prisma.category.deleteMany();
+            await prisma.competitionSpeakerCallout.deleteMany();
+            await prisma.competitionUserRole.deleteMany();
+            await prisma.competitionLocation.deleteMany();
+            await prisma.competition.deleteMany();
+            await prisma.courseAttendance.deleteMany();
+            await prisma.refresherCourse.deleteMany();
+            await prisma.ratingSnapshotHistory.deleteMany();
+            await prisma.license.deleteMany();
+            await prisma.season.deleteMany();
+            await prisma.userAssociationRole.deleteMany();
+            await prisma.userClubRole.deleteMany();
+            await prisma.userRelationship.deleteMany();
+            await prisma.pushSubscription.deleteMany();
+            await prisma.clubAssociation.deleteMany();
+            await prisma.locationClub.deleteMany();
+            await prisma.club.deleteMany();
+            await prisma.associationHierarchy.deleteMany();
+            await prisma.associationSport.deleteMany();
+            await prisma.association.deleteMany();
+        }
 
         // Delete all non-superadmin users
         await prisma.user.deleteMany({
             where: { isSuperAdmin: false },
         });
 
-        notify('associations', 1, undefined, '🏛️ Initializing National and Regional Associations...');
+        notify({
+            phase: 'associations',
+            phaseTitle: 'Associations Hierarchy',
+            percentage: 3,
+            processed: 1,
+            total: 9,
+            message: '🏛️ Initializing National and Regional Associations...',
+        });
         const { sttId, regionMap } = await this.ensureAssociations();
 
         const config = await getScraperConfig();
@@ -1003,25 +1213,70 @@ export class ClickTTDbIngestionService {
         };
 
         // 2. Seasons
-        notify('seasons', 0, undefined, '📅 Ingesting Seasons dataset...');
+        notify({
+            phase: 'seasons',
+            phaseTitle: 'Seasons & Schedules',
+            percentage: 5,
+            processed: 0,
+            message: '📅 Ingesting Seasons dataset...',
+        });
         const seasons = await loadJson('seasons.json');
         const seasonIdMap = await this.ingestSeasons(seasons, sttId);
         counts.seasons = seasons.length;
 
         // 3. Clubs
-        notify('clubs', 0, undefined, '🏢 Ingesting Clubs dataset...');
+        notify({
+            phase: 'clubs',
+            phaseTitle: 'Clubs & Affiliations',
+            percentage: 8,
+            processed: 0,
+            total: 256,
+            message: '🏢 Ingesting Clubs dataset...',
+        });
         const clubs = await loadJson('clubs.json');
         const clubIdMap = await this.ingestClubs(clubs, regionMap, sttId);
         counts.clubs = clubs.length;
 
         // 4. Players
-        notify('players', 0, undefined, '🏓 Ingesting Players dataset (User + License)...');
+        notify({
+            phase: 'players',
+            phaseTitle: 'Players & Licenses',
+            percentage: 12,
+            processed: 0,
+            total: 12436,
+            message: '🏓 Ingesting Players dataset (User + License)...',
+        });
         const players = await loadJson('players.json');
         const userIdMap = await this.ingestPlayers(players, clubIdMap, seasonIdMap, sttId);
         counts.players = players.length;
 
-        // 5. Competitions, Categories, Groups, Teams
-        notify('competitions_hierarchy', 0, undefined, '🏆 Ingesting Competitions, Categories, Groups & Teams...');
+        // 5. Rating Snapshot Histories (Elo Timeline)
+        notify({
+            phase: 'snapshots',
+            phaseTitle: 'Streaming Rating Snapshots',
+            percentage: 15,
+            processed: 0,
+            total: 1277000,
+            message: '📈 Streaming & Ingesting Elo Rating Timeline Snapshots...',
+        });
+        const historiesStream = this.streamEntityRecords('player_histories');
+        const snapshotsCount = await this.ingestRatingSnapshotsStreaming(
+            historiesStream,
+            userIdMap,
+            sttId,
+            (prog) => notify(prog),
+            1277000
+        );
+        counts.ratingSnapshots = snapshotsCount;
+
+        // 6. Competitions, Categories, Groups, Teams
+        notify({
+            phase: 'hierarchy',
+            phaseTitle: 'Competitions & Groups',
+            percentage: 25,
+            processed: 0,
+            message: '🏆 Ingesting Competitions, Categories, Groups & Teams...',
+        });
         const competitions = await loadJson('competitions.json');
         const categories = await loadJson('categories.json');
         const groups = await loadJson('groups.json');
@@ -1039,8 +1294,15 @@ export class ClickTTDbIngestionService {
         counts.categories = categories.length;
         counts.groups = groups.length;
 
-        // 6. Encounters & Matches Streaming (high speed, constant memory)
-        notify('encounters_matches', 0, undefined, '⚔️ Streaming & Ingesting Encounters, Matches, Participants & Team Members...');
+        // 7. Encounters Streaming (high speed, constant memory)
+        notify({
+            phase: 'encounters',
+            phaseTitle: 'Streaming Encounters',
+            percentage: 35,
+            processed: 0,
+            total: 364844,
+            message: '⚔️ Streaming & Ingesting Encounters...',
+        });
         const encountersStream = this.streamEntityRecords('encounters');
         const matchesStream = this.streamEntityRecords('matches');
 
@@ -1052,13 +1314,22 @@ export class ClickTTDbIngestionService {
             teamIdMap,
             userIdMap,
             clubIdMap,
-            (msg) => notify('streaming_progress', 0, undefined, msg)
+            (prog) => notify(prog),
+            364844,
+            1430462
         );
 
         counts.encounters = encountersCount;
         counts.matches = matchesCount;
 
-        notify('done', 100, 100, `🎉 Full Database Reset & Ingestion completed! Ingested ${matchesCount.toLocaleString('de-CH')} matches, ${encountersCount.toLocaleString('de-CH')} encounters, ${counts.categories} categories, and ${counts.players} players.`);
+        notify({
+            phase: 'done',
+            phaseTitle: 'Ingestion Completed',
+            percentage: 100,
+            processed: matchesCount,
+            total: matchesCount,
+            message: `🎉 Full Database Reset & Ingestion completed! Ingested ${matchesCount.toLocaleString('de-CH')} matches, ${encountersCount.toLocaleString('de-CH')} encounters, ${snapshotsCount.toLocaleString('de-CH')} rating snapshots, ${counts.categories} categories, and ${counts.players} players.`,
+        });
         return { success: true, counts };
     }
 }

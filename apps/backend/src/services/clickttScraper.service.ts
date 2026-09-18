@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import { runInitialScrape, runIncrementalSync, exportAllNormalizedDatasets, stateManager, storageManager, getScraperConfig } from '../scraper';
 import { prismaRequestContext } from '../middleware/prismaCacheContext';
+import type { IngestionProgress } from './clickttDbIngestion.service';
 
 export interface ScraperExecutionStatus {
     isRunning: boolean;
@@ -10,6 +11,7 @@ export interface ScraperExecutionStatus {
     lastFinishedAt: string | null;
     lastResult: 'success' | 'error' | null;
     lastError: string | null;
+    progress: IngestionProgress | null;
     summary: any | null;
 }
 
@@ -26,6 +28,7 @@ class ClickTTScraperManager extends EventEmitter {
     private lastFinishedAt: string | null = null;
     private lastResult: 'success' | 'error' | null = null;
     private lastError: string | null = null;
+    private progress: IngestionProgress | null = null;
     private logs: ScraperLogEntry[] = [];
     private maxLogs: number = 2000;
 
@@ -73,6 +76,7 @@ class ClickTTScraperManager extends EventEmitter {
             lastFinishedAt: this.lastFinishedAt,
             lastResult: this.lastResult,
             lastError: this.lastError,
+            progress: this.progress,
             summary,
         };
     }
@@ -87,6 +91,13 @@ class ClickTTScraperManager extends EventEmitter {
         this.startedAt = Date.now();
         this.lastResult = null;
         this.lastError = null;
+        this.progress = {
+            phase: 'cleanup',
+            phaseTitle: `Starting ${jobType.toUpperCase()}`,
+            percentage: 0,
+            processed: 0,
+            message: `Starting task ${jobType.toUpperCase()}...`,
+        };
 
         // Hook console logging during job execution to capture only scraper-generated output
         const originalConsoleLog = console.log;
@@ -194,15 +205,32 @@ class ClickTTScraperManager extends EventEmitter {
                 } else if (jobType === 'reset-db') {
                     const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
                     await ClickTTDbIngestionService.resetAndLoadFullDatasets((progress) => {
+                        this.progress = progress;
                         this.log('info', progress.message);
                     });
                 }
 
                 this.lastResult = 'success';
+                this.progress = {
+                    phase: 'done',
+                    phaseTitle: 'Completed',
+                    percentage: 100,
+                    processed: this.progress?.processed || 0,
+                    total: this.progress?.total,
+                    message: `Task "${jobType}" completed successfully!`,
+                };
                 this.log('success', `🎉 Scraper Task "${jobType}" completed successfully!`);
             } catch (err: any) {
                 this.lastResult = 'error';
                 this.lastError = err.message || String(err);
+                this.progress = {
+                    phase: 'error',
+                    phaseTitle: 'Error',
+                    percentage: this.progress?.percentage || 0,
+                    processed: this.progress?.processed || 0,
+                    total: this.progress?.total,
+                    message: `Task failed: ${this.lastError}`,
+                };
                 this.log('error', `❌ Scraper Task failed with error: ${this.lastError}`);
                 throw err;
             } finally {
