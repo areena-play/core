@@ -56,9 +56,12 @@ export enum ResultType {
     SETS_POINTS = 'SETS_POINTS',
     TIMED_SCORE = 'TIMED_SCORE',
     SIMPLE_POINTS = 'SIMPLE_POINTS',
+    RACE_TIME = 'RACE_TIME',
+    DISTANCE_METRIC = 'DISTANCE_METRIC',
+    RANK_ONLY = 'RANK_ONLY',
 }
 
-export type ParticipantSide = 'HOME' | 'AWAY';
+export type ParticipantSide = 'HOME' | 'AWAY' | 'NEUTRAL';
 
 export interface Sport {
     id: string;

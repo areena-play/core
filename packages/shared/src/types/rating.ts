@@ -31,8 +31,15 @@ export interface MatchParticipantDto {
     clubIdAtTime?: string | null;
     licenseIdUsed?: string | null;
     teamId?: string | null;
-    side: 'HOME' | 'AWAY';
+    side?: 'HOME' | 'AWAY' | 'NEUTRAL';
     position?: number;
+    bibNumber?: string | null;
+    rank?: number | null;
+    timeMs?: number | null;
+    result?: string | null;
+    splitTimes?: any;
+    participantStatus?: string | null;
+    points?: number | null;
     user?: any;
 }
 

@@ -2,6 +2,9 @@ enum ResultType {
   SETS_POINTS
   TIMED_SCORE
   SIMPLE_POINTS
+  RACE_TIME
+  DISTANCE_METRIC
+  RANK_ONLY
 }
 
 model Sport {

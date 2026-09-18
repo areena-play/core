@@ -250,11 +250,36 @@ export async function seedDemoDatabase() {
         },
     });
 
+    const sportAthletics = await prisma.sport.create({
+        data: {
+            code: 'ATHLETICS',
+            name: 'Athletics / Running',
+            nameI18n: {
+                en: 'Athletics / Running',
+                de: 'Leichtathletik / Laufen',
+                fr: 'Athlétisme / Course',
+                it: 'Atletica / Corsa',
+            },
+            unitTypeNameI18n: {
+                en: 'Track / Lane',
+                de: 'Bahn / Laufbahn',
+                fr: 'Piste / Couloir',
+                it: 'Pista / Corsia',
+            },
+            defaultResultType: 'RACE_TIME',
+            defaultRules: {
+                timingPrecision: 'MILLISECONDS',
+                falseStartRule: 'ONE_STRIKE_DQ',
+            },
+        },
+    });
+
     await prisma.associationSport.createMany({
         data: [
             { associationId: sttfNational.id, sportId: sportTableTennis.id, isDefault: true },
             { associationId: sttfNational.id, sportId: sportTennis.id, isDefault: false },
             { associationId: sttfNational.id, sportId: sportFootball.id, isDefault: false },
+            { associationId: sttfNational.id, sportId: sportAthletics.id, isDefault: false },
             { associationId: sttfOst.id, sportId: sportTableTennis.id, isDefault: true },
             { associationId: sttfRomandie.id, sportId: sportTableTennis.id, isDefault: true },
             { associationId: sttfZurich.id, sportId: sportTableTennis.id, isDefault: true },
