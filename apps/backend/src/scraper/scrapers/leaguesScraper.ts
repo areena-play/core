@@ -6,17 +6,46 @@ import { playerResolver } from '../utils/playerResolver';
 
 export function parseCategoryAndGroupName(rawGroupName: string) {
   if (!rawGroupName) return { categoryName: 'General', groupName: 'Group 1' };
-  const clean = rawGroupName.replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').trim();
+  let clean = rawGroupName.replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').trim();
 
-  // Pattern: "3. Liga Herren - Gruppe 2" or "Men 1. League - Group A"
-  if (clean.includes(' - ')) {
-    const parts = clean.split(' - ');
-    return { categoryName: parts[0].trim(), groupName: parts.slice(1).join(' - ').trim() };
+  // Strip trailing dashes, e.g., "Nationalliga A Herren --" -> "Nationalliga A Herren"
+  const cleanNoTrailing = clean.replace(/\s*--+\s*$/, '').trim();
+
+  // 1. Explicit separator " - " or " | "
+  if (clean.includes(' - ') || clean.includes(' | ')) {
+    const sep = clean.includes(' - ') ? ' - ' : ' | ';
+    const parts = clean.split(sep);
+    const categoryPart = parts[0].trim();
+    const groupPart = parts.slice(1).join(sep).trim();
+    return {
+      categoryName: categoryPart.replace(/\s*--+\s*$/, '').trim(),
+      groupName: groupPart || categoryPart,
+    };
   }
-  if (clean.includes(' | ')) {
-    const parts = clean.split(' | ');
-    return { categoryName: parts[0].trim(), groupName: parts.slice(1).join(' | ').trim() };
+
+  // 2. Multilingual Group Keyword regex (Gruppe, Groupe, Gruppo, Group, Gr., Grp.)
+  // Matches e.g. "4. Liga Herren Gruppe 1", "Nationalliga B Herren Gruppe/Groupe 2", "1. Liga Herren Gr. 1"
+  const groupRegex = /\s+((?:Gruppe\s*\/\s*Groupe|Groupe\s*\/\s*Gruppe|Gruppe|Groupe|Gruppo|Group|Gr\.|Grp\.)\s+.*)$/i;
+  const match = cleanNoTrailing.match(groupRegex);
+  if (match) {
+    const groupPart = match[1].trim();
+    const categoryPart = cleanNoTrailing.slice(0, match.index).trim();
+    if (categoryPart.length > 0) {
+      return {
+        categoryName: categoryPart,
+        groupName: groupPart,
+      };
+    }
   }
+
+  // 3. Trailing indicator without keyword (e.g. "--")
+  if (clean.endsWith('--')) {
+    return {
+      categoryName: cleanNoTrailing || clean,
+      groupName: cleanNoTrailing || clean,
+    };
+  }
+
   return { categoryName: clean, groupName: clean };
 }
 

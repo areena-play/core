@@ -1,6 +1,7 @@
 import fs from 'fs';
 import readline from 'readline';
 import path from 'path';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../config/prisma';
 import { getScraperConfig } from '../scraper/config';
@@ -36,6 +37,13 @@ export interface IngestionProgress {
     processed: number;
     total?: number;
     message: string;
+}
+
+function parseSafeDate(val: any, fallback: Date = new Date()): Date {
+    if (!val) return fallback;
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return fallback;
+    return d;
 }
 
 export class ClickTTDbIngestionService {
@@ -101,65 +109,84 @@ export class ClickTTDbIngestionService {
             }
 
             regionMap.set(reg.code, region.id);
-            regionMap.set(reg.name.toLowerCase(), region.id);
+            regionMap.set(reg.name, region.id);
+            regionMap.set(reg.shortName, region.id);
         }
 
         return { sttId: stt.id, regionMap };
     }
 
     /**
-     * Ingest Clubs into PostgreSQL
+     * Ingest Clubs and ClubAssociation relations
      */
-    public static async ingestClubs(clubs: any[], regionMap: Map<string, string>, sttId: string): Promise<Map<string, string>> {
+    public static async ingestClubs(
+        clubs: any[],
+        regionMap: Map<string, string>,
+        sttId: string
+    ): Promise<Map<string, string>> {
         const clubIdMap = new Map<string, string>();
         if (!Array.isArray(clubs) || clubs.length === 0) return clubIdMap;
 
-        for (const c of clubs) {
-            if (!c.clubNr || !c.name) continue;
-            const code = String(c.clubNr).trim();
-            const slug = `${c.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${code}`;
+        for (let i = 0; i < clubs.length; i += 500) {
+            const chunk = clubs.slice(i, i + 500);
+            for (const c of chunk) {
+                const clubNr = c.clubNr || c.clubNumber || c.id;
+                if (!clubNr) continue;
 
-            const club = await prisma.club.upsert({
-                where: { code },
-                update: {
-                    name: c.name,
-                    slug,
-                    address: c.address?.street || '',
-                    city: c.address?.city || '',
-                    postalCode: c.address?.zip || '',
-                    email: c.contactEmail || '',
-                    phone: c.contactPhone || '',
-                    website: c.website || null,
-                },
-                create: {
-                    name: c.name,
-                    code,
-                    slug,
-                    address: c.address?.street || '',
-                    city: c.address?.city || '',
-                    postalCode: c.address?.zip || '',
-                    email: c.contactEmail || '',
-                    phone: c.contactPhone || '',
-                    website: c.website || null,
-                },
-            });
+                const clubCode = String(clubNr).trim();
+                const slug = `club-${clubCode}`;
+                const name = c.name || c.clubName || `Club ${clubCode}`;
 
-            clubIdMap.set(code, club.id);
+                const street = typeof c.address === 'object' ? c.address?.street : c.street;
+                const zip = typeof c.address === 'object' ? c.address?.zip : c.zipCode || c.postalCode;
+                const city = (typeof c.address === 'object' ? c.address?.city : c.city) || 'Unknown';
+                const addressStr = street ? String(street) : (city ? `${city}, Switzerland` : 'Switzerland');
+                const postalCodeStr = zip ? String(zip) : '0000';
+                const emailStr = c.contactEmail || c.email || `info@club${clubCode}.ch`;
+                const phoneStr = c.contactPhone || c.phone || '000 000 00 00';
 
-            // Associate with region or STT
-            const targetAssocId = (c.region && regionMap.get(c.region.toLowerCase())) || regionMap.get(c.region) || sttId;
-            if (targetAssocId) {
+                const club = await prisma.club.upsert({
+                    where: { code: clubCode },
+                    update: {
+                        name,
+                        slug,
+                        website: c.website || null,
+                        email: emailStr,
+                        phone: phoneStr,
+                        city,
+                        address: addressStr,
+                        postalCode: postalCodeStr,
+                    },
+                    create: {
+                        name,
+                        code: clubCode,
+                        slug,
+                        website: c.website || null,
+                        email: emailStr,
+                        phone: phoneStr,
+                        city,
+                        address: addressStr,
+                        postalCode: postalCodeStr,
+                    },
+                });
+
+                clubIdMap.set(clubCode, club.id);
+
+                // Link to regional association or STT
+                const assocCode = c.association || c.region || 'STT';
+                const assocId = regionMap.get(assocCode) || sttId;
+
                 await prisma.clubAssociation.upsert({
                     where: {
                         clubId_associationId: {
                             clubId: club.id,
-                            associationId: targetAssocId,
+                            associationId: assocId,
                         },
                     },
                     update: {},
                     create: {
                         clubId: club.id,
-                        associationId: targetAssocId,
+                        associationId: assocId,
                     },
                 });
             }
@@ -180,22 +207,19 @@ export class ClickTTDbIngestionService {
             if (!nickname) continue;
 
             const name = s.name || `Season ${nickname}`;
-            const startDate = s.startDate ? new Date(s.startDate) : new Date('2024-07-01');
-            const endDate = s.endDate ? new Date(s.endDate) : new Date('2025-06-30');
-            const isCurrent = Boolean(s.isCurrent || s.isLatest || s.isActive);
+            const startDate = parseSafeDate(s.startDate, new Date('2024-07-01'));
+            const endDate = parseSafeDate(s.endDate, new Date('2025-06-30'));
+            const isCurrent = Boolean(s.isCurrent || s.isLatest);
 
             let existing = await prisma.season.findFirst({
-                where: {
-                    associationId: sttId,
-                    name: { in: [name, nickname] },
-                },
+                where: { OR: [{ name }, { name: nickname }] },
             });
 
             if (!existing) {
                 existing = await prisma.season.create({
                     data: {
-                        associationId: sttId,
                         name,
+                        associationId: sttId,
                         startDate,
                         endDate,
                         isCurrent,
@@ -234,78 +258,82 @@ export class ClickTTDbIngestionService {
         const dummyPasswordHash = await bcrypt.hash('Password123!', 10);
         const defaultSeasonId = Array.from(seasonIdMap.values())[0] || null;
 
-        for (const p of players) {
-            const licenceNr = p.licenceNr || p.licenseId || p.playerId;
-            if (!licenceNr) continue;
+        for (let i = 0; i < players.length; i += 500) {
+            const chunk = players.slice(i, i + 500);
 
-            const licenseId = String(licenceNr).trim();
-            const firstName = p.firstname || p.firstName || 'Athlete';
-            const lastName = p.lastname || p.lastName || `#${licenseId}`;
-            const gender = p.gender === 'female' || p.gender === 'FEMALE' ? 'FEMALE' : 'MALE';
-            const birthDate = p.birthday ? new Date(p.birthday) : p.birthYear ? new Date(`${p.birthYear}-01-01`) : null;
-            const eloPoints = p.currentElo ? parseInt(p.currentElo, 10) : 1000;
-            const currentLevel = p.currentClassification || p.currentClassificationMen || p.currentClassificationWomen || 'D1';
-            const rank = p.currentRank ? parseInt(p.currentRank, 10) : null;
+            for (const p of chunk) {
+                const licenceNr = p.licenceNr || p.licenseId || p.playerId;
+                if (!licenceNr) continue;
 
-            const user = await prisma.user.upsert({
-                where: { licenseId },
-                update: {
-                    firstName,
-                    lastName,
-                    birthDate,
-                    gender,
-                    playingGender: gender,
-                    eloPoints,
-                    currentLevel,
-                    rank,
-                },
-                create: {
-                    licenseId,
-                    firstName,
-                    lastName,
-                    birthDate,
-                    gender,
-                    playingGender: gender,
-                    eloPoints,
-                    currentLevel,
-                    rank,
-                    accountStatus: UserAccountStatus.MANAGED,
-                    canLogin: true,
-                    passwordHash: dummyPasswordHash,
-                },
-            });
+                const licenseId = String(licenceNr).trim();
+                const firstName = p.firstname || p.firstName || 'Athlete';
+                const lastName = p.lastname || p.lastName || `#${licenseId}`;
+                const gender = p.gender === 'female' || p.gender === 'FEMALE' ? 'FEMALE' : 'MALE';
+                const birthDate = p.birthday ? parseSafeDate(p.birthday, undefined) : p.birthYear ? parseSafeDate(`${p.birthYear}-01-01`, undefined) : null;
+                const eloPoints = p.currentElo ? parseInt(p.currentElo, 10) : 1000;
+                const currentLevel = p.currentClassification || p.currentClassificationMen || p.currentClassificationWomen || 'D1';
+                const rank = p.currentRank ? parseInt(p.currentRank, 10) : null;
 
-            userIdMap.set(licenseId, user.id);
-
-            // Upsert License
-            const clubId = p.clubNr ? clubIdMap.get(String(p.clubNr)) : null;
-            const isTCard = /t-card/i.test(p.clubName || '');
-
-            const existingLicense = await prisma.license.findFirst({
-                where: { userId: user.id },
-            });
-
-            if (!existingLicense) {
-                await prisma.license.create({
-                    data: {
-                        userId: user.id,
-                        type: isTCard ? LicenseType.PLAYER_TCARD : LicenseType.PLAYER_REGULAR,
-                        status: LicenseStatus.APPROVED,
-                        scope: LicenseScope.ALL,
-                        clubId,
-                        associationId: sttId,
-                        seasonId: defaultSeasonId,
-                        validFrom: new Date('2024-07-01'),
-                        validUntil: new Date('2025-06-30'),
-                        autoApproved: true,
-                        appliedByUserId: user.id,
+                const user = await prisma.user.upsert({
+                    where: { licenseId },
+                    update: {
+                        firstName,
+                        lastName,
+                        birthDate,
+                        gender,
+                        playingGender: gender,
+                        eloPoints: isNaN(eloPoints) ? 1000 : eloPoints,
+                        currentLevel,
+                        rank: rank && !isNaN(rank) ? rank : null,
+                    },
+                    create: {
+                        licenseId,
+                        firstName,
+                        lastName,
+                        birthDate,
+                        gender,
+                        playingGender: gender,
+                        eloPoints: isNaN(eloPoints) ? 1000 : eloPoints,
+                        currentLevel,
+                        rank: rank && !isNaN(rank) ? rank : null,
+                        accountStatus: UserAccountStatus.MANAGED,
+                        canLogin: true,
+                        passwordHash: dummyPasswordHash,
                     },
                 });
-            } else if (clubId && existingLicense.clubId !== clubId) {
-                await prisma.license.update({
-                    where: { id: existingLicense.id },
-                    data: { clubId },
+
+                userIdMap.set(licenseId, user.id);
+
+                // Upsert License
+                const clubId = p.clubNr ? clubIdMap.get(String(p.clubNr)) : null;
+                const isTCard = /t-card/i.test(p.clubName || '');
+
+                const existingLicense = await prisma.license.findFirst({
+                    where: { userId: user.id },
                 });
+
+                if (!existingLicense) {
+                    await prisma.license.create({
+                        data: {
+                            userId: user.id,
+                            type: isTCard ? LicenseType.PLAYER_TCARD : LicenseType.PLAYER_REGULAR,
+                            status: LicenseStatus.APPROVED,
+                            scope: LicenseScope.ALL,
+                            clubId,
+                            associationId: sttId,
+                            seasonId: defaultSeasonId,
+                            validFrom: new Date('2024-07-01'),
+                            validUntil: new Date('2025-06-30'),
+                            autoApproved: true,
+                            appliedByUserId: user.id,
+                        },
+                    });
+                } else if (clubId && existingLicense.clubId !== clubId) {
+                    await prisma.license.update({
+                        where: { id: existingLicense.id },
+                        data: { clubId },
+                    });
+                }
             }
         }
 
@@ -313,25 +341,28 @@ export class ClickTTDbIngestionService {
     }
 
     /**
-     * Ingest Competitions, Categories, Groups, Teams, Encounters, Matches, and TeamMembers
+     * Ingest Competitions, Categories, Groups, and Teams in high-performance batches
      */
-    public static async ingestCompetitionsAndEncounters(
+    public static async ingestCompetitionsHierarchy(
         competitions: any[],
         categories: any[],
         groups: any[],
-        encounters: any[],
-        matches: any[],
         clubIdMap: Map<string, string>,
         seasonIdMap: Map<string, string>,
-        userIdMap: Map<string, string>,
         sttId: string
-    ) {
+    ): Promise<{
+        compIdMap: Map<string, string>;
+        catIdMap: Map<string, string>;
+        groupIdMap: Map<string, string>;
+        teamIdMap: Map<string, string>;
+    }> {
         const compIdMap = new Map<string, string>();
         const catIdMap = new Map<string, string>();
         const groupIdMap = new Map<string, string>();
         const teamIdMap = new Map<string, string>();
 
-        // 1. Competitions
+        // 1. Competitions Batch
+        const compRows: any[] = [];
         for (const c of competitions || []) {
             if (!c.competitionId || !c.name) continue;
             const rawId = String(c.competitionId);
@@ -340,153 +371,199 @@ export class ClickTTDbIngestionService {
             const isCup = c.type === 'cup' || /cup|coupe/i.test(c.name);
             const isTourn = c.type === 'tournament' || /turnier|tournament/i.test(c.name);
             const type = isCup ? CompetitionType.CUP : isTourn ? CompetitionType.TOURNAMENT : CompetitionType.LEAGUE;
+            const id = crypto.randomUUID();
 
-            const comp = await prisma.competition.upsert({
-                where: { slug },
-                update: {
-                    name: c.name,
-                    type,
-                    seasonId,
-                    startDate: c.startDate ? new Date(c.startDate) : new Date('2024-07-01'),
-                    endDate: c.endDate ? new Date(c.endDate) : new Date('2025-06-30'),
-                    status: CompetitionStatus.COMPLETED,
-                    isOfficial: true,
-                    countsForElo: true,
-                },
-                create: {
-                    name: c.name,
-                    slug,
-                    type,
-                    associationId: sttId,
-                    seasonId,
-                    startDate: c.startDate ? new Date(c.startDate) : new Date('2024-07-01'),
-                    endDate: c.endDate ? new Date(c.endDate) : new Date('2025-06-30'),
-                    status: CompetitionStatus.COMPLETED,
-                    isOfficial: true,
-                    countsForElo: true,
-                },
+            compRows.push({
+                id,
+                name: c.name,
+                slug,
+                type,
+                associationId: sttId,
+                seasonId,
+                startDate: parseSafeDate(c.startDate, new Date('2024-07-01')),
+                endDate: parseSafeDate(c.endDate, new Date('2025-06-30')),
+                status: CompetitionStatus.COMPLETED,
+                isOfficial: true,
+                countsForElo: true,
             });
 
-            compIdMap.set(rawId, comp.id);
+            compIdMap.set(rawId, id);
         }
 
-        // 2. Categories
+        for (let i = 0; i < compRows.length; i += 500) {
+            await prisma.competition.createMany({
+                data: compRows.slice(i, i + 500),
+                skipDuplicates: true,
+            });
+        }
+
+        // If competitions already existed and IDs were retrieved
+        const existingComps = await prisma.competition.findMany({ select: { id: true, slug: true } });
+        const slugToId = new Map(existingComps.map((ec) => [ec.slug, ec.id]));
+        for (const c of competitions || []) {
+            if (!c.competitionId) continue;
+            const rawId = String(c.competitionId);
+            const slug = `comp-${rawId.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+            const realId = slugToId.get(slug);
+            if (realId) compIdMap.set(rawId, realId);
+        }
+
+        // 2. Categories Batch
+        const catRows: any[] = [];
         for (const cat of categories || []) {
             if (!cat.categoryId || !cat.name) continue;
             const rawCatId = String(cat.categoryId);
             const parentCompId = cat.competitionId ? compIdMap.get(String(cat.competitionId)) : null;
             if (!parentCompId) continue;
 
-            const existing = await prisma.category.findFirst({
-                where: { competitionId: parentCompId, name: cat.name },
+            const id = crypto.randomUUID();
+            catRows.push({
+                id,
+                competitionId: parentCompId,
+                name: cat.name,
+                teamSize: cat.teamSize || (/doppel/i.test(cat.name) ? 2 : 1),
+                genderRestriction: GenderRestriction.ANY,
             });
-
-            let categoryId = existing?.id;
-            if (!existing) {
-                const created = await prisma.category.create({
-                    data: {
-                        competitionId: parentCompId,
-                        name: cat.name,
-                        teamSize: cat.teamSize || (/doppel/i.test(cat.name) ? 2 : 1),
-                        genderRestriction: GenderRestriction.ANY,
-                    },
-                });
-                categoryId = created.id;
-            }
-
-            catIdMap.set(rawCatId, categoryId!);
+            catIdMap.set(rawCatId, id);
         }
 
-        // 3. Groups & Teams
+        for (let i = 0; i < catRows.length; i += 500) {
+            await prisma.category.createMany({
+                data: catRows.slice(i, i + 500),
+                skipDuplicates: true,
+            });
+        }
+
+        // 3. Groups & Teams Batch
+        const groupRows: any[] = [];
+        const teamRows: any[] = [];
+        const standingsRows: any[] = [];
+
         for (const g of groups || []) {
             if (!g.groupId || !g.name) continue;
             const rawGroupId = String(g.groupId);
             const catId = g.categoryId ? catIdMap.get(String(g.categoryId)) : null;
             if (!catId) continue;
 
-            let group = await prisma.categoryGroup.findFirst({
-                where: { categoryId: catId, name: g.name },
+            const gId = crypto.randomUUID();
+            groupRows.push({
+                id: gId,
+                categoryId: catId,
+                name: g.name,
             });
+            groupIdMap.set(rawGroupId, gId);
 
-            if (!group) {
-                group = await prisma.categoryGroup.create({
-                    data: {
-                        categoryId: catId,
-                        name: g.name,
-                    },
-                });
-            }
-
-            groupIdMap.set(rawGroupId, group.id);
-
-            // Ingest Teams within this Group
             for (const t of g.teams || []) {
                 if (!t.teamName) continue;
                 const rawTeamId = t.teamId ? String(t.teamId) : null;
                 const clubId = t.clubNr ? clubIdMap.get(String(t.clubNr)) || null : null;
+                const tId = crypto.randomUUID();
 
-                let team = await prisma.team.findFirst({
-                    where: { categoryId: catId, name: t.teamName },
+                teamRows.push({
+                    id: tId,
+                    categoryId: catId,
+                    name: t.teamName,
+                    clubId,
                 });
 
-                if (!team) {
-                    team = await prisma.team.create({
-                        data: {
-                            categoryId: catId,
-                            name: t.teamName,
-                            clubId,
-                        },
-                    });
-                }
+                if (rawTeamId) teamIdMap.set(rawTeamId, tId);
+                teamIdMap.set(`${catId}_${t.teamName.trim()}`, tId);
 
-                if (rawTeamId) {
-                    teamIdMap.set(rawTeamId, team.id);
-                }
-                teamIdMap.set(`${catId}_${t.teamName.trim()}`, team.id);
-
-                // Ingest Standings
-                await prisma.groupStanding.upsert({
-                    where: {
-                        groupId_teamId: {
-                            groupId: group.id,
-                            teamId: team.id,
-                        },
-                    },
-                    update: {
-                        played: t.meetingsPlayed || 0,
-                        won: t.ownPoints || 0,
-                        lost: t.otherPoints || 0,
-                        matchesWon: t.ownMatches || 0,
-                        matchesLost: t.otherMatches || 0,
-                        setsWon: t.ownSets || 0,
-                        setsLost: t.otherSets || 0,
-                    },
-                    create: {
-                        groupId: group.id,
-                        teamId: team.id,
-                        played: t.meetingsPlayed || 0,
-                        won: t.ownPoints || 0,
-                        lost: t.otherPoints || 0,
-                        matchesWon: t.ownMatches || 0,
-                        matchesLost: t.otherMatches || 0,
-                        setsWon: t.ownSets || 0,
-                        setsLost: t.otherSets || 0,
-                    },
+                standingsRows.push({
+                    groupId: gId,
+                    teamId: tId,
+                    played: t.meetingsPlayed || 0,
+                    won: t.ownPoints || 0,
+                    lost: t.otherPoints || 0,
+                    matchesWon: t.ownMatches || 0,
+                    matchesLost: t.otherMatches || 0,
+                    setsWon: t.ownSets || 0,
+                    setsLost: t.otherSets || 0,
                 });
             }
         }
 
-        // 4. Encounters
+        for (let i = 0; i < groupRows.length; i += 500) {
+            await prisma.categoryGroup.createMany({
+                data: groupRows.slice(i, i + 500),
+                skipDuplicates: true,
+            });
+        }
+
+        for (let i = 0; i < teamRows.length; i += 500) {
+            await prisma.team.createMany({
+                data: teamRows.slice(i, i + 500),
+                skipDuplicates: true,
+            });
+        }
+
+        for (let i = 0; i < standingsRows.length; i += 500) {
+            await prisma.groupStanding.createMany({
+                data: standingsRows.slice(i, i + 500),
+                skipDuplicates: true,
+            });
+        }
+
+        return { compIdMap, catIdMap, groupIdMap, teamIdMap };
+    }
+
+    /**
+     * Stream records generator from JSONL / JSON file without holding everything in memory
+     */
+    public static async *streamEntityRecords(entityName: string): AsyncGenerator<any> {
+        const config = await getScraperConfig();
+        const jsonlPath = path.join(config.storageDir, `${entityName}.jsonl`);
+        const jsonPath = path.join(config.dataDir, `${entityName}.json`);
+
+        if (fs.existsSync(jsonlPath)) {
+            const fileStream = fs.createReadStream(jsonlPath, { encoding: 'utf-8' });
+            const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
+            for await (const line of rl) {
+                const trimmed = line.trim();
+                if (trimmed) {
+                    try {
+                        yield JSON.parse(trimmed);
+                    } catch {}
+                }
+            }
+        } else if (fs.existsSync(jsonPath)) {
+            const raw = await fs.promises.readFile(jsonPath, 'utf-8');
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                for (const item of parsed) {
+                    yield item;
+                }
+            }
+        }
+    }
+
+    /**
+     * Ingest Encounters, Matches, MatchParticipants, and TeamMembers with high-speed streaming
+     */
+    public static async ingestEncountersAndMatchesStreaming(
+        encountersStream: AsyncGenerator<any>,
+        matchesStream: AsyncGenerator<any>,
+        catIdMap: Map<string, string>,
+        groupIdMap: Map<string, string>,
+        teamIdMap: Map<string, string>,
+        userIdMap: Map<string, string>,
+        clubIdMap: Map<string, string>,
+        onProgress?: (msg: string) => void
+    ): Promise<{ encountersCount: number; matchesCount: number }> {
         const encounterIdMap = new Map<string, string>();
-        for (const enc of encounters || []) {
-            if (!enc.encounterId) continue;
+        const encounterMetaMap = new Map<string, { homeTeamId: string; awayTeamId: string; categoryId: string; groupId: string | null }>();
+
+        let encounterBatch: any[] = [];
+        let encountersCount = 0;
+
+        // 1. Process Encounters
+        for await (const enc of encountersStream) {
+            if (!enc || !enc.encounterId) continue;
             const rawEncId = String(enc.encounterId);
             const catId = enc.categoryId ? catIdMap.get(String(enc.categoryId)) : null;
             const groupId = enc.groupId ? groupIdMap.get(String(enc.groupId)) || null : null;
-
             if (!catId) continue;
 
-            // Find or create home & away teams
             const homeTeamKey = enc.homeTeamId ? teamIdMap.get(String(enc.homeTeamId)) : null;
             const homeTeamNameKey = enc.homeTeamName ? teamIdMap.get(`${catId}_${enc.homeTeamName.trim()}`) : null;
             let homeTeamId = homeTeamKey || homeTeamNameKey;
@@ -495,59 +572,83 @@ export class ClickTTDbIngestionService {
             const awayTeamNameKey = enc.awayTeamName ? teamIdMap.get(`${catId}_${enc.awayTeamName.trim()}`) : null;
             let awayTeamId = awayTeamKey || awayTeamNameKey;
 
-            if (!homeTeamId && enc.homeTeamName) {
+            if (!homeTeamId) {
+                homeTeamId = crypto.randomUUID();
                 const clubId = enc.homeClubNr ? clubIdMap.get(String(enc.homeClubNr)) || null : null;
-                const created = await prisma.team.create({
-                    data: { categoryId: catId, name: enc.homeTeamName, clubId },
+                await prisma.team.create({
+                    data: { id: homeTeamId, categoryId: catId, name: enc.homeTeamName || `Home Team`, clubId },
                 });
-                homeTeamId = created.id;
                 if (enc.homeTeamId) teamIdMap.set(String(enc.homeTeamId), homeTeamId);
             }
 
-            if (!awayTeamId && enc.awayTeamName) {
+            if (!awayTeamId) {
+                awayTeamId = crypto.randomUUID();
                 const clubId = enc.awayClubNr ? clubIdMap.get(String(enc.awayClubNr)) || null : null;
-                const created = await prisma.team.create({
-                    data: { categoryId: catId, name: enc.awayTeamName, clubId },
+                await prisma.team.create({
+                    data: { id: awayTeamId, categoryId: catId, name: enc.awayTeamName || `Away Team`, clubId },
                 });
-                awayTeamId = created.id;
                 if (enc.awayTeamId) teamIdMap.set(String(enc.awayTeamId), awayTeamId);
             }
 
-            if (!homeTeamId || !awayTeamId) continue;
-
-            const scheduledAt = enc.scheduledDate ? new Date(enc.scheduledDate) : new Date();
+            const encId = crypto.randomUUID();
+            const scheduledAt = parseSafeDate(enc.scheduledDate || enc.scheduledAt, new Date());
             const homeScore = enc.homeMatches !== undefined ? parseInt(enc.homeMatches, 10) : enc.homePoints || 0;
             const awayScore = enc.awayMatches !== undefined ? parseInt(enc.awayMatches, 10) : enc.awayPoints || 0;
-            const isFinished = enc.status === 'finished' || (homeScore > 0 || awayScore > 0);
+            const isFinished = enc.status === 'finished' || homeScore > 0 || awayScore > 0;
 
-            const createdEncounter = await prisma.encounter.create({
-                data: {
-                    categoryId: catId,
-                    groupId,
-                    homeTeamId,
-                    awayTeamId,
-                    scheduledAt,
-                    homeScore,
-                    awayScore,
-                    status: isFinished ? EncounterStatus.FINISHED : EncounterStatus.SCHEDULED,
-                    location: enc.location || null,
-                },
+            encounterBatch.push({
+                id: encId,
+                categoryId: catId,
+                groupId,
+                homeTeamId,
+                awayTeamId,
+                scheduledAt,
+                homeScore: isNaN(homeScore) ? 0 : homeScore,
+                awayScore: isNaN(awayScore) ? 0 : awayScore,
+                status: isFinished ? EncounterStatus.FINISHED : EncounterStatus.SCHEDULED,
+                location: enc.location || null,
             });
 
-            encounterIdMap.set(rawEncId, createdEncounter.id);
+            encounterIdMap.set(rawEncId, encId);
+            encounterMetaMap.set(encId, { homeTeamId, awayTeamId, categoryId: catId, groupId });
+            encountersCount++;
+
+            if (encounterBatch.length >= 500) {
+                await prisma.encounter.createMany({
+                    data: encounterBatch,
+                    skipDuplicates: true,
+                });
+                encounterBatch = [];
+                if (onProgress && encountersCount % 5000 === 0) {
+                    onProgress(`⚡ Ingested ${encountersCount.toLocaleString('de-CH')} encounters...`);
+                }
+            }
         }
 
-        // 5. Matches & Match Participants & Team Members
-        const teamMemberSet = new Set<string>();
+        if (encounterBatch.length > 0) {
+            await prisma.encounter.createMany({
+                data: encounterBatch,
+                skipDuplicates: true,
+            });
+            encounterBatch = [];
+        }
 
-        for (const m of matches || []) {
-            if (!m.matchId) continue;
+        // 2. Process Matches & MatchParticipants & TeamMembers
+        let matchBatch: any[] = [];
+        let participantBatch: any[] = [];
+        const teamMemberMap = new Map<string, { teamId: string; userId: string; role: string }>();
+        let matchesCount = 0;
+
+        for await (const m of matchesStream) {
+            if (!m || !m.matchId) continue;
             const encounterId = m.encounterId ? encounterIdMap.get(String(m.encounterId)) || null : null;
-            const catId = m.categoryId ? catIdMap.get(String(m.categoryId)) : null;
-            const groupId = m.groupId ? groupIdMap.get(String(m.groupId)) || null : null;
+            const meta = encounterId ? encounterMetaMap.get(encounterId) : null;
+            const catId = m.categoryId ? catIdMap.get(String(m.categoryId)) || meta?.categoryId : meta?.categoryId;
+            const groupId = m.groupId ? groupIdMap.get(String(m.groupId)) || meta?.groupId : meta?.groupId || null;
 
             if (!catId) continue;
 
+            const matchId = crypto.randomUUID();
             const matchType = m.matchType === 'double' ? MatchType.DOUBLE : MatchType.SINGLE;
             const homeScore = m.setsHome !== undefined ? parseInt(m.setsHome, 10) : 0;
             const awayScore = m.setsGuest !== undefined ? parseInt(m.setsGuest, 10) : 0;
@@ -559,83 +660,104 @@ export class ClickTTDbIngestionService {
 
             const isFinished = homeScore > 0 || awayScore > 0 || winner !== MatchWinner.PENDING;
 
-            const createdMatch = await prisma.match.create({
-                data: {
-                    categoryId: catId,
-                    groupId,
-                    encounterId,
-                    matchType,
-                    label: m.matchPosition || (matchType === MatchType.DOUBLE ? 'Doppel' : 'Einzel'),
-                    result: m.setsScore || (m.sets && m.sets.length > 0 ? m.sets.join(' ') : null),
-                    homeScore,
-                    awayScore,
-                    winner,
-                    status: isFinished ? EncounterStatus.FINISHED : EncounterStatus.SCHEDULED,
-                },
+            matchBatch.push({
+                id: matchId,
+                categoryId: catId,
+                groupId,
+                encounterId,
+                matchType,
+                label: m.matchPosition || (matchType === MatchType.DOUBLE ? 'Doppel' : 'Einzel'),
+                result: m.setsScore || (m.sets && m.sets.length > 0 ? m.sets.join(' ') : null),
+                homeScore: isNaN(homeScore) ? 0 : homeScore,
+                awayScore: isNaN(awayScore) ? 0 : awayScore,
+                winner,
+                status: isFinished ? EncounterStatus.FINISHED : EncounterStatus.SCHEDULED,
             });
 
-            // Add Participants & Ensure Team Members
-            const addParticipant = async (player: any, side: ParticipantSide, pos: number) => {
+            // Participants Helper
+            const addParticipant = (player: any, side: ParticipantSide, pos: number) => {
                 if (!player) return;
                 const lic = player.licenceNr || player.playerId;
                 if (!lic) return;
-                const userId = userIdMap.get(String(lic));
+                const userId = userIdMap.get(String(lic).trim());
                 if (!userId) return;
 
-                // Find encounter home/away team
-                let teamId: string | null = null;
-                if (encounterId) {
-                    const enc = await prisma.encounter.findUnique({
-                        where: { id: encounterId },
-                        select: { homeTeamId: true, awayTeamId: true },
-                    });
-                    teamId = side === ParticipantSide.HOME ? enc?.homeTeamId || null : enc?.awayTeamId || null;
-                }
+                const teamId = meta ? (side === ParticipantSide.HOME ? meta.homeTeamId : meta.awayTeamId) : null;
 
-                await prisma.matchParticipant.create({
-                    data: {
-                        matchId: createdMatch.id,
-                        userId,
-                        side,
-                        position: pos,
-                        teamId,
-                    },
+                participantBatch.push({
+                    id: crypto.randomUUID(),
+                    matchId,
+                    userId,
+                    side,
+                    position: pos,
+                    teamId,
                 });
 
-                // User Request: "make sure to also create the TeamMember entries"
-                if (teamId && !teamMemberSet.has(`${teamId}_${userId}`)) {
-                    teamMemberSet.add(`${teamId}_${userId}`);
-                    await prisma.teamMember.upsert({
-                        where: {
-                            teamId_userId: {
-                                teamId,
-                                userId,
-                            },
-                        },
-                        update: {},
-                        create: {
-                            teamId,
-                            userId,
-                            role: 'PLAYER',
-                        },
-                    });
+                if (teamId) {
+                    const key = `${teamId}_${userId}`;
+                    if (!teamMemberMap.has(key)) {
+                        teamMemberMap.set(key, { teamId, userId, role: 'PLAYER' });
+                    }
                 }
             };
 
             // Home player(s)
-            if (m.homePlayer1) await addParticipant(m.homePlayer1, ParticipantSide.HOME, 1);
-            else if (m.player1Licence) await addParticipant({ licenceNr: m.player1Licence }, ParticipantSide.HOME, 1);
+            if (m.homePlayer1) addParticipant(m.homePlayer1, ParticipantSide.HOME, 1);
+            else if (m.player1Licence) addParticipant({ licenceNr: m.player1Licence }, ParticipantSide.HOME, 1);
 
-            if (m.homePlayer2) await addParticipant(m.homePlayer2, ParticipantSide.HOME, 2);
-            else if (m.player1PartnerLicence) await addParticipant({ licenceNr: m.player1PartnerLicence }, ParticipantSide.HOME, 2);
+            if (m.homePlayer2) addParticipant(m.homePlayer2, ParticipantSide.HOME, 2);
+            else if (m.player1PartnerLicence) addParticipant({ licenceNr: m.player1PartnerLicence }, ParticipantSide.HOME, 2);
 
             // Away player(s)
-            if (m.guestPlayer1) await addParticipant(m.guestPlayer1, ParticipantSide.AWAY, 1);
-            else if (m.player2Licence) await addParticipant({ licenceNr: m.player2Licence }, ParticipantSide.AWAY, 1);
+            if (m.guestPlayer1) addParticipant(m.guestPlayer1, ParticipantSide.AWAY, 1);
+            else if (m.player2Licence) addParticipant({ licenceNr: m.player2Licence }, ParticipantSide.AWAY, 1);
 
-            if (m.guestPlayer2) await addParticipant(m.guestPlayer2, ParticipantSide.AWAY, 2);
-            else if (m.player2PartnerLicence) await addParticipant({ licenceNr: m.player2PartnerLicence }, ParticipantSide.AWAY, 2);
+            if (m.guestPlayer2) addParticipant(m.guestPlayer2, ParticipantSide.AWAY, 2);
+            else if (m.player2PartnerLicence) addParticipant({ licenceNr: m.player2PartnerLicence }, ParticipantSide.AWAY, 2);
+
+            matchesCount++;
+
+            if (matchBatch.length >= 500) {
+                await prisma.match.createMany({
+                    data: matchBatch,
+                    skipDuplicates: true,
+                });
+                matchBatch = [];
+            }
+
+            if (participantBatch.length >= 1000) {
+                await prisma.matchParticipant.createMany({
+                    data: participantBatch,
+                    skipDuplicates: true,
+                });
+                participantBatch = [];
+            }
+
+            if (teamMemberMap.size >= 1000) {
+                await prisma.teamMember.createMany({
+                    data: Array.from(teamMemberMap.values()),
+                    skipDuplicates: true,
+                });
+                teamMemberMap.clear();
+            }
+
+            if (onProgress && matchesCount % 25000 === 0) {
+                onProgress(`🏓 Ingested ${matchesCount.toLocaleString('de-CH')} match cards & participants...`);
+            }
         }
+
+        // Flush remaining batches
+        if (matchBatch.length > 0) {
+            await prisma.match.createMany({ data: matchBatch, skipDuplicates: true });
+        }
+        if (participantBatch.length > 0) {
+            await prisma.matchParticipant.createMany({ data: participantBatch, skipDuplicates: true });
+        }
+        if (teamMemberMap.size > 0) {
+            await prisma.teamMember.createMany({ data: Array.from(teamMemberMap.values()), skipDuplicates: true });
+        }
+
+        return { encountersCount, matchesCount };
     }
 
     /**
@@ -679,31 +801,44 @@ export class ClickTTDbIngestionService {
         const userIdMap = await this.ingestPlayers(data.players || [], clubIdMap, seasonIdMap, sttId);
         counts.players = (data.players || []).length;
 
-        // 4. Competitions, Categories, Encounters, Matches, and TeamMembers
-        await this.ingestCompetitionsAndEncounters(
+        // 4. Competitions Hierarchy
+        const { compIdMap, catIdMap, groupIdMap, teamIdMap } = await this.ingestCompetitionsHierarchy(
             data.competitions || [],
             data.categories || [],
             data.groups || [],
-            data.encounters || [],
-            data.matches || [],
             clubIdMap,
             seasonIdMap,
-            userIdMap,
             sttId
         );
 
         counts.competitions = (data.competitions || []).length;
         counts.categories = (data.categories || []).length;
         counts.groups = (data.groups || []).length;
-        counts.encounters = (data.encounters || []).length;
-        counts.matches = (data.matches || []).length;
+
+        // 5. Encounters and Matches
+        async function* arrayToGenerator(arr: any[]) {
+            for (const item of arr) yield item;
+        }
+
+        const result = await this.ingestEncountersAndMatchesStreaming(
+            arrayToGenerator(data.encounters || []),
+            arrayToGenerator(data.matches || []),
+            catIdMap,
+            groupIdMap,
+            teamIdMap,
+            userIdMap,
+            clubIdMap
+        );
+
+        counts.encounters = result.encountersCount;
+        counts.matches = result.matchesCount;
 
         console.log(`✅ [Database Ingestion] Delta successfully applied to PostgreSQL.`);
         return { success: true, importedCounts: counts };
     }
 
     /**
-     * Delete All Existing Sports Records and Bulk-Load Full Normalized V2 Datasets
+     * Delete All Existing Sports Records and Bulk-Load Full Normalized Datasets
      */
     public static async resetAndLoadFullDatasets(onProgress?: (p: IngestionProgress) => void): Promise<{ success: boolean; counts: Record<string, number> }> {
         const notify = (phase: string, processed: number, total: number | undefined, message: string) => {
@@ -754,7 +889,7 @@ export class ClickTTDbIngestionService {
         const dataDir = config.dataDir;
         const counts: Record<string, number> = {};
 
-        // Helper to load JSON file if exists
+        // Helper to load small-to-medium JSON files
         const loadJson = async (filename: string): Promise<any[]> => {
             const filePath = path.join(dataDir, filename);
             if (!fs.existsSync(filePath)) return [];
@@ -784,34 +919,45 @@ export class ClickTTDbIngestionService {
         const userIdMap = await this.ingestPlayers(players, clubIdMap, seasonIdMap, sttId);
         counts.players = players.length;
 
-        // 5. Competitions & Categories
-        notify('competitions', 0, undefined, '🏆 Ingesting Competitions and Categories...');
+        // 5. Competitions, Categories, Groups, Teams
+        notify('competitions_hierarchy', 0, undefined, '🏆 Ingesting Competitions, Categories, Groups & Teams...');
         const competitions = await loadJson('competitions.json');
         const categories = await loadJson('categories.json');
         const groups = await loadJson('groups.json');
-        const encounters = await loadJson('encounters.json');
-        const matches = await loadJson('matches.json');
 
-        notify('encounters_matches', 0, undefined, '⚔️ Ingesting Groups, Teams, Team Members, Encounters & Match Cards...');
-        await this.ingestCompetitionsAndEncounters(
+        const { compIdMap, catIdMap, groupIdMap, teamIdMap } = await this.ingestCompetitionsHierarchy(
             competitions,
             categories,
             groups,
-            encounters,
-            matches,
             clubIdMap,
             seasonIdMap,
-            userIdMap,
             sttId
         );
 
         counts.competitions = competitions.length;
         counts.categories = categories.length;
         counts.groups = groups.length;
-        counts.encounters = encounters.length;
-        counts.matches = matches.length;
 
-        notify('done', 100, 100, '🎉 Complete Database Reset & Bulk Ingestion finished successfully!');
+        // 6. Encounters & Matches Streaming (high speed, constant memory)
+        notify('encounters_matches', 0, undefined, '⚔️ Streaming & Ingesting Encounters, Matches, Participants & Team Members...');
+        const encountersStream = this.streamEntityRecords('encounters');
+        const matchesStream = this.streamEntityRecords('matches');
+
+        const { encountersCount, matchesCount } = await this.ingestEncountersAndMatchesStreaming(
+            encountersStream,
+            matchesStream,
+            catIdMap,
+            groupIdMap,
+            teamIdMap,
+            userIdMap,
+            clubIdMap,
+            (msg) => notify('streaming_progress', 0, undefined, msg)
+        );
+
+        counts.encounters = encountersCount;
+        counts.matches = matchesCount;
+
+        notify('done', 100, 100, `🎉 Full Database Reset & Ingestion completed! Ingested ${matchesCount.toLocaleString('de-CH')} matches, ${encountersCount.toLocaleString('de-CH')} encounters, ${counts.categories} categories, and ${counts.players} players.`);
         return { success: true, counts };
     }
 }
