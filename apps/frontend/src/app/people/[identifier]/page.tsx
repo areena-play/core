@@ -421,6 +421,9 @@ export default function PersonProfilePage() {
             },
             {
                 id: 'actions',
+                accessorFn: () => '',
+                enableSorting: false,
+                enableGlobalFilter: false,
                 header: () => <span className="sr-only">Actions</span>,
                 cell: ({ row }) => {
                     const m = row.original;
@@ -447,6 +450,184 @@ export default function PersonProfilePage() {
             },
         ],
         [person?.firstName, person?.lastName]
+    );
+
+    // Columns for Opponents Faced Directory DataTable
+    const opponentsColumns = useMemo<ColumnDef<any>[]>(
+        () => [
+            {
+                id: 'opponent',
+                accessorFn: (h) =>
+                    `${h.opponent?.firstName || ''} ${h.opponent?.lastName || ''} ${h.opponent?.club?.name || ''} ${h.opponent?.licenseId || ''}`,
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Opponent" />,
+                cell: ({ row }) => {
+                    const h = row.original;
+                    const opp = h.opponent;
+                    const isSelected =
+                        selectedH2hOpponent &&
+                        ((opp?.licenseId && selectedH2hOpponent.licenseId === opp.licenseId) ||
+                            (opp?.id && selectedH2hOpponent.id === opp.id));
+
+                    return (
+                        <div className="flex items-center gap-2.5 py-0.5">
+                            <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold text-xs shrink-0 border border-slate-200 dark:border-slate-700">
+                                {opp?.firstName?.[0] || 'U'}
+                                {opp?.lastName?.[0] || ''}
+                            </div>
+                            <div className="min-w-0">
+                                <Link
+                                    href={`/people/${opp?.licenseId || opp?.id}`}
+                                    className="font-bold text-xs text-slate-900 dark:text-white hover:text-red-600 dark:hover:text-red-400 block truncate transition"
+                                >
+                                    {opp?.firstName} {opp?.lastName}
+                                </Link>
+                                <div className="text-[10px] text-slate-400 truncate">
+                                    {opp?.club?.name || (opp?.licenseId ? `#${opp.licenseId}` : 'Player')}
+                                </div>
+                            </div>
+                            {isSelected && (
+                                <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-300 border border-red-200 dark:border-red-900/60 ml-auto mr-2">
+                                    Active Rival
+                                </span>
+                            )}
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'elo',
+                accessorFn: (h) => h.opponent?.eloPoints || 0,
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Current Elo" />,
+                cell: ({ row }) => {
+                    const opp = row.original.opponent;
+                    return (
+                        <div>
+                            <div className="font-mono font-bold text-xs text-slate-900 dark:text-white">
+                                {opp?.eloPoints ? `${opp.eloPoints} pts` : '—'}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                                Lvl {opp?.currentLevel || 'D1'}
+                            </div>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'matches',
+                accessorFn: (h) => h.matchesCount || 0,
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Matches" />,
+                cell: ({ row }) => (
+                    <span className="font-bold text-xs text-slate-900 dark:text-white">
+                        {row.original.matchesCount}
+                    </span>
+                ),
+            },
+            {
+                id: 'record',
+                accessorFn: (h) => `${h.wins}-${h.losses}-${h.draws}`,
+                header: ({ column }) => <DataTableColumnHeader column={column} title="W - L - D" />,
+                cell: ({ row }) => {
+                    const h = row.original;
+                    return (
+                        <div className="text-xs font-semibold">
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">{h.wins}</span>
+                            <span className="text-slate-400"> - </span>
+                            <span className="font-bold text-rose-600 dark:text-rose-400">{h.losses}</span>
+                            <span className="text-slate-400"> - </span>
+                            <span className="font-bold text-slate-500">{h.draws}</span>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'winRate',
+                accessorFn: (h) => h.winRate || 0,
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Win %" />,
+                cell: ({ row }) => {
+                    const rate = row.original.winRate || 0;
+                    return (
+                        <span
+                            className={`font-bold text-xs ${
+                                rate >= 50 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'
+                            }`}
+                        >
+                            {rate}%
+                        </span>
+                    );
+                },
+            },
+            {
+                id: 'sets',
+                accessorFn: (h) => `${h.setsWon}:${h.setsLost}`,
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Sets (W:L)" />,
+                cell: ({ row }) => (
+                    <span className="font-mono text-xs text-slate-600 dark:text-slate-300">
+                        {row.original.setsWon}:{row.original.setsLost}
+                    </span>
+                ),
+            },
+            {
+                id: 'lastClash',
+                accessorFn: (h) => (h.lastMatchDate ? new Date(h.lastMatchDate).getTime() : 0),
+                header: ({ column }) => <DataTableColumnHeader column={column} title="Last Clash" />,
+                cell: ({ row }) => {
+                    const h = row.original;
+                    return (
+                        <div className="flex items-center gap-1.5 font-mono text-xs text-slate-500">
+                            <span>{h.lastMatchDate ? format(new Date(h.lastMatchDate), 'dd.MM.yyyy') : '—'}</span>
+                            {h.lastMatchResult && (
+                                <span
+                                    className={`px-1.5 py-0.2 rounded-md font-bold text-[9px] ${
+                                        h.lastMatchResult === 'WIN'
+                                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                            : 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                                    }`}
+                                >
+                                    {h.lastMatchResult}
+                                </span>
+                            )}
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'action',
+                accessorFn: () => '',
+                enableSorting: false,
+                enableGlobalFilter: false,
+                header: () => <span className="sr-only">Action</span>,
+                cell: ({ row }) => {
+                    const opp = row.original.opponent;
+                    const isSelected =
+                        selectedH2hOpponent &&
+                        ((opp?.licenseId && selectedH2hOpponent.licenseId === opp.licenseId) ||
+                            (opp?.id && selectedH2hOpponent.id === opp.id));
+
+                    return (
+                        <div className="flex justify-end">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSelectedH2hOpponent(opp);
+                                    const h2hEl = document.getElementById('h2h-arena-section');
+                                    if (h2hEl) {
+                                        h2hEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    }
+                                }}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition whitespace-nowrap ${
+                                    isSelected
+                                        ? 'bg-red-600 text-white shadow-xs'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/60 dark:hover:text-red-300'
+                                }`}
+                            >
+                                {isSelected ? 'Active Arena' : 'Clash Arena'}
+                            </button>
+                        </div>
+                    );
+                },
+            },
+        ],
+        [selectedH2hOpponent]
     );
 
     // Filtered licenses for Roles tab
@@ -1348,28 +1529,28 @@ export default function PersonProfilePage() {
                     </div>
 
                     {/* HEAD-TO-HEAD CLASH ARENA */}
-                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 shadow-sm space-y-6">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div id="h2h-arena-section" className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-6 shadow-sm space-y-5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
-                                <div className="p-2.5 rounded-2xl bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400">
+                                <div className="p-2 rounded-xl bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400">
                                     <Swords className="h-5 w-5" />
                                 </div>
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                        Head-to-Head Matchup Arena
+                                    <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                                        Head-to-Head Clash Arena
                                     </h2>
                                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                                        Analyze historical rivalry records, direct encounters, and Elo win probabilities.
+                                        Direct encounter breakdown and Elo win probability.
                                     </p>
                                 </div>
                             </div>
 
                             {/* Opponent Search Bar */}
-                            <div className="relative w-full md:w-72">
+                            <div className="relative w-full sm:w-64">
                                 <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input
                                     type="text"
-                                    placeholder="Search any player to compare..."
+                                    placeholder="Search player to compare..."
                                     value={h2hSearchQuery}
                                     onChange={(e) => setH2hSearchQuery(e.target.value)}
                                     className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-red-500"
@@ -1415,75 +1596,70 @@ export default function PersonProfilePage() {
 
                         {/* Quick Rival Select Pills */}
                         {statsData?.headToHead && statsData.headToHead.length > 0 && (
-                            <div className="space-y-1.5">
-                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                    Frequent Opponents & Rivals
-                                </div>
-                                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-                                    {statsData.headToHead.slice(0, 8).map((h: any) => {
-                                        const opp = h.opponent;
-                                        const isSelected = selectedH2hOpponent && (
-                                            (opp.licenseId && selectedH2hOpponent.licenseId === opp.licenseId) ||
-                                            (opp.id && selectedH2hOpponent.id === opp.id)
-                                        );
-                                        return (
-                                            <button
-                                                key={opp.id || opp.licenseId}
-                                                type="button"
-                                                onClick={() => setSelectedH2hOpponent(opp)}
-                                                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
-                                                    isSelected
-                                                        ? 'bg-red-600 text-white shadow-xs'
-                                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                                                }`}
-                                            >
-                                                <span>{opp.firstName} {opp.lastName}</span>
-                                                <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${
-                                                    isSelected
-                                                        ? 'bg-red-700/80 text-white'
-                                                        : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
-                                                }`}>
-                                                    {h.matchesCount} {h.matchesCount === 1 ? 'match' : 'matches'}
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">
+                                    Rivals:
+                                </span>
+                                {statsData.headToHead.slice(0, 8).map((h: any) => {
+                                    const opp = h.opponent;
+                                    const isSelected = selectedH2hOpponent && (
+                                        (opp.licenseId && selectedH2hOpponent.licenseId === opp.licenseId) ||
+                                        (opp.id && selectedH2hOpponent.id === opp.id)
+                                    );
+                                    return (
+                                        <button
+                                            key={opp.id || opp.licenseId}
+                                            type="button"
+                                            onClick={() => setSelectedH2hOpponent(opp)}
+                                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
+                                                isSelected
+                                                    ? 'bg-red-600 text-white shadow-xs'
+                                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                            }`}
+                                        >
+                                            <span>{opp.firstName} {opp.lastName}</span>
+                                            <span className={`text-[10px] px-1 rounded-sm ${
+                                                isSelected
+                                                    ? 'bg-red-700/80 text-white'
+                                                    : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                                            }`}>
+                                                {h.matchesCount}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         )}
 
                         {/* Matchup Comparison Card */}
                         {h2hLoading ? (
-                            <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-400">
-                                <div className="h-7 w-7 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
+                            <div className="py-10 flex flex-col items-center justify-center gap-2 text-slate-400">
+                                <div className="h-6 w-6 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
                                 <span className="text-xs">Analyzing head-to-head clash...</span>
                             </div>
                         ) : h2hData ? (
-                            <div className="space-y-6">
-                                <div className="p-6 rounded-3xl bg-linear-to-br from-slate-50 to-slate-100/70 dark:from-slate-950/60 dark:to-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-7 gap-4 items-center">
+                            <div className="space-y-4">
+                                <div className="p-5 rounded-2xl bg-linear-to-br from-slate-50 to-slate-100/70 dark:from-slate-950/60 dark:to-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-7 gap-3 items-center">
                                         {/* Player 1 (Viewed Person) */}
-                                        <div className="md:col-span-3 flex items-center gap-4">
-                                            <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-red-500 to-rose-600 text-white flex items-center justify-center font-black text-xl shadow-md shrink-0">
+                                        <div className="md:col-span-3 flex items-center gap-3">
+                                            <div className="w-11 h-11 rounded-xl bg-linear-to-br from-red-500 to-rose-600 text-white flex items-center justify-center font-black text-sm shadow-sm shrink-0">
                                                 {h2hData.player.firstName?.[0]}{h2hData.player.lastName?.[0]}
                                             </div>
-                                            <div className="space-y-1 min-w-0">
-                                                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                                    Current Player
-                                                </div>
-                                                <div className="font-black text-base text-slate-900 dark:text-white truncate">
+                                            <div className="min-w-0">
+                                                <div className="font-bold text-sm text-slate-900 dark:text-white truncate">
                                                     {h2hData.player.firstName} {h2hData.player.lastName}
                                                 </div>
-                                                <div className="flex items-center gap-2 flex-wrap">
+                                                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
                                                     <span className="font-mono font-bold text-xs text-red-600 dark:text-red-400">
                                                         {h2hData.player.eloPoints} pts
                                                     </span>
-                                                    <span className="px-2 py-0.2 rounded-md bg-slate-200 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                                                    <span className="px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300">
                                                         Lvl {h2hData.player.currentLevel || 'D1'}
                                                     </span>
                                                     {h2hData.player.club && (
-                                                        <span className="text-[11px] text-slate-500 truncate">
-                                                            {h2hData.player.club.name}
+                                                        <span className="text-[10px] text-slate-500 truncate max-w-[130px]">
+                                                            • {h2hData.player.club.name}
                                                         </span>
                                                     )}
                                                 </div>
@@ -1491,36 +1667,33 @@ export default function PersonProfilePage() {
                                         </div>
 
                                         {/* VS Center Badge & Probabilities */}
-                                        <div className="md:col-span-1 flex flex-col items-center justify-center py-2 text-center">
-                                            <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 flex items-center justify-center font-black text-xs shadow-md mb-2">
+                                        <div className="md:col-span-1 flex flex-col items-center justify-center text-center">
+                                            <div className="w-8 h-8 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 flex items-center justify-center font-black text-[10px] shadow-xs">
                                                 VS
                                             </div>
-                                            <div className="text-[10px] font-bold text-slate-500">
+                                            <span className="text-[10px] font-semibold text-slate-400 mt-1">
                                                 {h2hData.eloDifference >= 0
-                                                    ? `+${h2hData.eloDifference} Elo delta`
-                                                    : `${h2hData.eloDifference} Elo delta`}
-                                            </div>
+                                                    ? `+${h2hData.eloDifference} Elo`
+                                                    : `${h2hData.eloDifference} Elo`}
+                                            </span>
                                         </div>
 
                                         {/* Player 2 (Opponent) */}
-                                        <div className="md:col-span-3 flex items-center justify-start md:justify-end gap-4 text-left md:text-right">
-                                            <div className="space-y-1 min-w-0 order-2 md:order-1">
-                                                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                                    Opponent
-                                                </div>
+                                        <div className="md:col-span-3 flex items-center justify-start md:justify-end gap-3 text-left md:text-right">
+                                            <div className="min-w-0 order-2 md:order-1">
                                                 <Link
                                                     href={`/people/${h2hData.opponent.licenseId || h2hData.opponent.id}`}
-                                                    className="font-black text-base text-slate-900 dark:text-white hover:text-red-600 dark:hover:text-red-400 truncate block transition"
+                                                    className="font-bold text-sm text-slate-900 dark:text-white hover:text-red-600 dark:hover:text-red-400 truncate block transition"
                                                 >
                                                     {h2hData.opponent.firstName} {h2hData.opponent.lastName}
                                                 </Link>
-                                                <div className="flex items-center justify-start md:justify-end gap-2 flex-wrap">
+                                                <div className="flex items-center justify-start md:justify-end gap-1.5 flex-wrap pt-0.5">
                                                     {h2hData.opponent.club && (
-                                                        <span className="text-[11px] text-slate-500 truncate">
-                                                            {h2hData.opponent.club.name}
+                                                        <span className="text-[10px] text-slate-500 truncate max-w-[130px]">
+                                                            {h2hData.opponent.club.name} •
                                                         </span>
                                                     )}
-                                                    <span className="px-2 py-0.2 rounded-md bg-slate-200 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                                                    <span className="px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300">
                                                         Lvl {h2hData.opponent.currentLevel || 'D1'}
                                                     </span>
                                                     <span className="font-mono font-bold text-xs text-red-600 dark:text-red-400">
@@ -1528,26 +1701,26 @@ export default function PersonProfilePage() {
                                                     </span>
                                                 </div>
                                             </div>
-                                            <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-black text-xl shadow-md shrink-0 order-1 md:order-2">
+                                            <div className="w-11 h-11 rounded-xl bg-linear-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-black text-sm shadow-sm shrink-0 order-1 md:order-2">
                                                 {h2hData.opponent.firstName?.[0]}{h2hData.opponent.lastName?.[0]}
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Win Probability Bar & Overall Record Stats */}
-                                    <div className="pt-4 border-t border-slate-200/80 dark:border-slate-800 space-y-3">
+                                    <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800 space-y-2">
                                         <div className="flex items-center justify-between text-xs font-bold">
-                                            <span className="text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                                            <span className="text-red-600 dark:text-red-400 flex items-center gap-1">
                                                 <Zap className="w-3.5 h-3.5" />
                                                 {h2hData.expectedWinProbability}% Expected Win Chance
                                             </span>
-                                            <span className="text-slate-600 dark:text-slate-400">
+                                            <span className="text-slate-500 dark:text-slate-400">
                                                 {100 - h2hData.expectedWinProbability}%
                                             </span>
                                         </div>
 
                                         {/* Probability Progress Bar */}
-                                        <div className="w-full h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden flex">
+                                        <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden flex">
                                             <div
                                                 className="bg-linear-to-r from-red-500 to-rose-600 h-full transition-all duration-500"
                                                 style={{ width: `${h2hData.expectedWinProbability}%` }}
@@ -1559,28 +1732,28 @@ export default function PersonProfilePage() {
                                         </div>
 
                                         {/* Head-to-Head Statistics Badges */}
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                                            <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-center">
-                                                <div className="text-[10px] font-bold text-slate-400 uppercase">Clash Count</div>
-                                                <div className="text-lg font-black text-slate-900 dark:text-white">
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+                                            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-center">
+                                                <div className="text-[10px] font-bold text-slate-400 uppercase">Clashes</div>
+                                                <div className="text-base font-black text-slate-900 dark:text-white">
                                                     {h2hData.record.totalMatches}
                                                 </div>
                                             </div>
-                                            <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-center">
+                                            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-center">
                                                 <div className="text-[10px] font-bold text-slate-400 uppercase">W - L - D</div>
-                                                <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                                                <div className="text-base font-black text-emerald-600 dark:text-emerald-400">
                                                     {h2hData.record.wins} - {h2hData.record.losses} - {h2hData.record.draws}
                                                 </div>
                                             </div>
-                                            <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-center">
+                                            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-center">
                                                 <div className="text-[10px] font-bold text-slate-400 uppercase">Win Rate</div>
-                                                <div className="text-lg font-black text-blue-600 dark:text-blue-400">
+                                                <div className="text-base font-black text-blue-600 dark:text-blue-400">
                                                     {h2hData.record.winRate}%
                                                 </div>
                                             </div>
-                                            <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-center">
+                                            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-center">
                                                 <div className="text-[10px] font-bold text-slate-400 uppercase">Sets Won:Lost</div>
-                                                <div className="text-lg font-black text-purple-600 dark:text-purple-400">
+                                                <div className="text-base font-black text-purple-600 dark:text-purple-400">
                                                     {h2hData.record.setsWon}:{h2hData.record.setsLost}
                                                 </div>
                                             </div>
@@ -1589,16 +1762,16 @@ export default function PersonProfilePage() {
                                 </div>
 
                                 {/* Historical Encounters List */}
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center justify-between">
                                         <span>Historical Encounters ({h2hData.matches.length})</span>
-                                        <span className="text-[11px] font-normal text-slate-400">
+                                        <span className="text-[10px] text-slate-400">
                                             Chronological match log
                                         </span>
                                     </div>
 
                                     {h2hData.matches.length > 0 ? (
-                                        <div className="divide-y divide-slate-100 dark:divide-slate-800/60 border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-900/40">
+                                        <div className="divide-y divide-slate-100 dark:divide-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900/40 max-h-72 overflow-y-auto">
                                             {h2hData.matches.map((m: any) => {
                                                 const isWin = m.result === 'WIN';
                                                 const isDraw = m.result === 'DRAW';
@@ -1606,11 +1779,11 @@ export default function PersonProfilePage() {
                                                 return (
                                                     <div
                                                         key={m.id}
-                                                        className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition"
+                                                        className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition text-xs"
                                                     >
-                                                        <div className="flex items-center gap-3">
+                                                        <div className="flex items-center gap-2.5">
                                                             <div
-                                                                className={`w-11 h-11 rounded-xl flex flex-col items-center justify-center shrink-0 font-black text-[11px] ${
+                                                                className={`w-9 h-9 rounded-lg flex flex-col items-center justify-center shrink-0 font-black text-[10px] ${
                                                                     isWin
                                                                         ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                                                                         : isDraw
@@ -1619,24 +1792,24 @@ export default function PersonProfilePage() {
                                                                 }`}
                                                             >
                                                                 <span>{m.result}</span>
-                                                                <span className="text-[10px] font-mono">{m.scoreSets}</span>
+                                                                <span className="text-[9px] font-mono">{m.scoreSets}</span>
                                                             </div>
 
                                                             <div className="space-y-0.5">
                                                                 <div className="text-xs font-bold text-slate-900 dark:text-white">
                                                                     {m.competitionName}
                                                                     {m.categoryName && (
-                                                                        <span className="text-slate-400 font-normal"> • {m.categoryName}</span>
+                                                                        <span className="text-slate-400 font-normal text-[11px]"> • {m.categoryName}</span>
                                                                     )}
                                                                 </div>
-                                                                <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                                                    {m.matchType === 'DOUBLE' ? 'Doubles Match' : 'Singles Match'}
+                                                                <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                                                    {m.matchType === 'DOUBLE' ? 'Doubles' : 'Singles'}
                                                                     {m.myTeam?.name && ` • Team: ${m.myTeam.name}`}
                                                                 </div>
 
                                                                 {/* Set scores chips */}
                                                                 {Array.isArray(m.setsDetail) && m.setsDetail.length > 0 && (
-                                                                    <div className="flex items-center gap-1 pt-1 flex-wrap">
+                                                                    <div className="flex items-center gap-1 pt-0.5 flex-wrap">
                                                                         {m.setsDetail.map((s: any, idx: number) => {
                                                                             const h = s.homeScore ?? s.home ?? 0;
                                                                             const a = s.awayScore ?? s.away ?? 0;
@@ -1647,7 +1820,7 @@ export default function PersonProfilePage() {
                                                                             return (
                                                                                 <span
                                                                                     key={idx}
-                                                                                    className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                                                                                    className={`text-[9px] font-mono px-1 py-0.2 rounded ${
                                                                                         wonSet
                                                                                             ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
                                                                                             : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
@@ -1662,28 +1835,23 @@ export default function PersonProfilePage() {
                                                             </div>
                                                         </div>
 
-                                                        <div className="text-right text-[11px] text-slate-400 font-mono shrink-0">
+                                                        <div className="text-right text-[10px] text-slate-400 font-mono shrink-0">
                                                             <div>{format(new Date(m.date), 'dd.MM.yyyy')}</div>
-                                                            <div className="text-[10px] uppercase">{m.competitionType}</div>
+                                                            <div className="text-[9px] uppercase">{m.competitionType}</div>
                                                         </div>
                                                     </div>
                                                 );
                                             })}
                                         </div>
                                     ) : (
-                                        <div className="p-6 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-xs space-y-1">
-                                            <p className="font-bold text-slate-600 dark:text-slate-300">
-                                                No direct tournament or league encounters recorded yet.
-                                            </p>
-                                            <p className="text-[11px]">
-                                                Use the matchup stats above to compare rating advantage and expected win probabilities.
-                                            </p>
+                                        <div className="p-4 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-xs">
+                                            No direct tournament or league encounters recorded yet.
                                         </div>
                                     )}
                                 </div>
                             </div>
                         ) : (
-                            <div className="p-8 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-xs">
+                            <div className="p-6 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-xs">
                                 Select a rival above or search for any player to inspect direct head-to-head records.
                             </div>
                         )}
@@ -1704,117 +1872,15 @@ export default function PersonProfilePage() {
                                 </span>
                             </div>
 
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-xs">
-                                    <thead>
-                                        <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px]">
-                                            <th className="py-2.5 px-3">Opponent</th>
-                                            <th className="py-2.5 px-3">Current Elo</th>
-                                            <th className="py-2.5 px-3">Matches</th>
-                                            <th className="py-2.5 px-3">W - L - D</th>
-                                            <th className="py-2.5 px-3">Win %</th>
-                                            <th className="py-2.5 px-3">Sets (W:L)</th>
-                                            <th className="py-2.5 px-3">Last Clash</th>
-                                            <th className="py-2.5 px-3 text-right">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                                        {statsData.headToHead.map((h: any) => {
-                                            const opp = h.opponent;
-                                            const isSelected = selectedH2hOpponent && (
-                                                (opp.licenseId && selectedH2hOpponent.licenseId === opp.licenseId) ||
-                                                (opp.id && selectedH2hOpponent.id === opp.id)
-                                            );
-
-                                            return (
-                                                <tr
-                                                    key={opp.id || opp.licenseId}
-                                                    className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition ${
-                                                        isSelected ? 'bg-red-50/40 dark:bg-red-950/20' : ''
-                                                    }`}
-                                                >
-                                                    <td className="py-3 px-3">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-slate-700 dark:text-slate-300 text-[10px] shrink-0">
-                                                                {opp.firstName?.[0]}{opp.lastName?.[0]}
-                                                            </div>
-                                                            <div>
-                                                                <Link
-                                                                    href={`/people/${opp.licenseId || opp.id}`}
-                                                                    className="font-bold text-slate-900 dark:text-white hover:text-red-600 block truncate"
-                                                                >
-                                                                    {opp.firstName} {opp.lastName}
-                                                                </Link>
-                                                                <div className="text-[10px] text-slate-400 truncate">
-                                                                    {opp.club?.name || opp.licenseId || 'Player'}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-3 px-3">
-                                                        <div className="font-mono font-bold text-slate-900 dark:text-white">
-                                                            {opp.eloPoints ? `${opp.eloPoints} pts` : '-'}
-                                                        </div>
-                                                        <div className="text-[10px] text-slate-400">
-                                                            Lvl {opp.currentLevel || 'D1'}
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">
-                                                        {h.matchesCount}
-                                                    </td>
-                                                    <td className="py-3 px-3">
-                                                        <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                                                            {h.wins}
-                                                        </span>
-                                                        <span className="text-slate-400"> - </span>
-                                                        <span className="font-bold text-rose-600 dark:text-rose-400">
-                                                            {h.losses}
-                                                        </span>
-                                                        <span className="text-slate-400"> - </span>
-                                                        <span className="font-bold text-slate-500">
-                                                            {h.draws}
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">
-                                                        {h.winRate}%
-                                                    </td>
-                                                    <td className="py-3 px-3 font-mono text-slate-600 dark:text-slate-300 text-[11px]">
-                                                        {h.setsWon}:{h.setsLost}
-                                                    </td>
-                                                    <td className="py-3 px-3 font-mono text-[11px] text-slate-500 whitespace-nowrap">
-                                                        {h.lastMatchDate ? format(new Date(h.lastMatchDate), 'dd.MM.yyyy') : '-'}
-                                                        {h.lastMatchResult && (
-                                                            <span className={`ml-1.5 px-1.5 py-0.2 rounded-md font-bold text-[9px] ${
-                                                                h.lastMatchResult === 'WIN'
-                                                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
-                                                                    : 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
-                                                            }`}>
-                                                                {h.lastMatchResult}
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="py-3 px-3 text-right">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setSelectedH2hOpponent(opp);
-                                                                window.scrollTo({ top: 400, behavior: 'smooth' });
-                                                            }}
-                                                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
-                                                                isSelected
-                                                                    ? 'bg-red-600 text-white'
-                                                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/60 dark:hover:text-red-300'
-                                                            }`}
-                                                        >
-                                                            {isSelected ? 'Active Arena' : 'Clash Arena'}
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <DataTable
+                                columns={opponentsColumns}
+                                data={statsData?.headToHead || []}
+                                searchPlaceholder="Search opponents by name, club or license..."
+                                defaultPageSize={10}
+                                pageSizeOptions={[10, 20, 50, 100]}
+                                loading={statsLoading}
+                                emptyMessage="No historical opponent records found."
+                            />
                         </div>
                     )}
 
@@ -1836,7 +1902,7 @@ export default function PersonProfilePage() {
                             columns={eloColumns}
                             data={statsData?.eloHistory || []}
                             searchPlaceholder="Search snapshots..."
-                            defaultPageSize={25}
+                            defaultPageSize={10}
                             pageSizeOptions={[10, 25, 50, 100]}
                             loading={statsLoading}
                             emptyMessage="No historical rating snapshots recorded yet."
@@ -1859,7 +1925,7 @@ export default function PersonProfilePage() {
                             data={filteredMatches}
                             searchPlaceholder="Search opponent, competition or team..."
                             searchSlot={matchFilterSlot}
-                            defaultPageSize={20}
+                            defaultPageSize={10}
                             pageSizeOptions={[10, 20, 50, 100]}
                             loading={statsLoading}
                             emptyMessage="No completed matches recorded matching the selected filter."

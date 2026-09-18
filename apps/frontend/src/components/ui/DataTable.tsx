@@ -40,7 +40,12 @@ import { useI18n } from '@/lib/i18nContext';
  * 2. Quoted exact phrases (e.g. '"René"' or '"John Doe"') which preserve diacritics and phrase boundaries.
  */
 const globalSearchFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
-    const itemValue = row.getValue(columnId);
+    let itemValue: any;
+    try {
+        itemValue = row.getValue(columnId);
+    } catch {
+        return false;
+    }
     if (itemValue == null) return false;
 
     const queryString = String(value).trim();
@@ -210,6 +215,7 @@ export function DataTable<TData, TValue = any>({
         manualSorting,
         pageCount: manualPagination ? controlledPageCount : undefined,
         globalFilterFn: globalSearchFilter,
+        getColumnCanGlobalFilter: (column) => Boolean(column.accessorFn),
         onSortingChange: handleSortingChange,
         onGlobalFilterChange: setGlobalFilter,
         onPaginationChange: handlePaginationChange,
