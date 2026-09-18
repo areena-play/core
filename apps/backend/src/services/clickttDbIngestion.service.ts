@@ -638,7 +638,18 @@ export class ClickTTDbIngestionService {
         const encounterMetaMap = new Map<string, { homeTeamId: string; awayTeamId: string; categoryId: string; groupId: string | null }>();
 
         let encounterBatch: any[] = [];
+        let missingTeamsBatch: any[] = [];
         let encountersCount = 0;
+
+        const flushTeams = async () => {
+            if (missingTeamsBatch.length > 0) {
+                await prisma.team.createMany({
+                    data: missingTeamsBatch,
+                    skipDuplicates: true,
+                });
+                missingTeamsBatch = [];
+            }
+        };
 
         // 1. Process Encounters
         for await (const enc of encountersStream) {
@@ -659,19 +670,19 @@ export class ClickTTDbIngestionService {
             if (!homeTeamId) {
                 homeTeamId = crypto.randomUUID();
                 const clubId = enc.homeClubNr ? clubIdMap.get(String(enc.homeClubNr)) || null : null;
-                await prisma.team.create({
-                    data: { id: homeTeamId, categoryId: catId, name: enc.homeTeamName || `Home Team`, clubId },
-                });
+                const teamName = enc.homeTeamName || `Home Team`;
+                missingTeamsBatch.push({ id: homeTeamId, categoryId: catId, name: teamName, clubId });
                 if (enc.homeTeamId) teamIdMap.set(String(enc.homeTeamId), homeTeamId);
+                teamIdMap.set(`${catId}_${teamName.trim()}`, homeTeamId);
             }
 
             if (!awayTeamId) {
                 awayTeamId = crypto.randomUUID();
                 const clubId = enc.awayClubNr ? clubIdMap.get(String(enc.awayClubNr)) || null : null;
-                await prisma.team.create({
-                    data: { id: awayTeamId, categoryId: catId, name: enc.awayTeamName || `Away Team`, clubId },
-                });
+                const teamName = enc.awayTeamName || `Away Team`;
+                missingTeamsBatch.push({ id: awayTeamId, categoryId: catId, name: teamName, clubId });
                 if (enc.awayTeamId) teamIdMap.set(String(enc.awayTeamId), awayTeamId);
+                teamIdMap.set(`${catId}_${teamName.trim()}`, awayTeamId);
             }
 
             const encId = crypto.randomUUID();
@@ -697,18 +708,24 @@ export class ClickTTDbIngestionService {
             encounterMetaMap.set(encId, { homeTeamId, awayTeamId, categoryId: catId, groupId });
             encountersCount++;
 
-            if (encounterBatch.length >= 500) {
+            if (missingTeamsBatch.length >= 500) {
+                await flushTeams();
+            }
+
+            if (encounterBatch.length >= 1000) {
+                await flushTeams();
                 await prisma.encounter.createMany({
                     data: encounterBatch,
                     skipDuplicates: true,
                 });
                 encounterBatch = [];
-                if (onProgress && encountersCount % 5000 === 0) {
+                if (onProgress && encountersCount % 10000 === 0) {
                     onProgress(`⚡ Ingested ${encountersCount.toLocaleString('de-CH')} encounters...`);
                 }
             }
         }
 
+        await flushTeams();
         if (encounterBatch.length > 0) {
             await prisma.encounter.createMany({
                 data: encounterBatch,
@@ -801,7 +818,7 @@ export class ClickTTDbIngestionService {
 
             matchesCount++;
 
-            if (matchBatch.length >= 500) {
+            if (matchBatch.length >= 2000) {
                 await prisma.match.createMany({
                     data: matchBatch,
                     skipDuplicates: true,
@@ -809,7 +826,7 @@ export class ClickTTDbIngestionService {
                 matchBatch = [];
             }
 
-            if (participantBatch.length >= 1000) {
+            if (participantBatch.length >= 2000) {
                 await prisma.matchParticipant.createMany({
                     data: participantBatch,
                     skipDuplicates: true,
@@ -817,7 +834,7 @@ export class ClickTTDbIngestionService {
                 participantBatch = [];
             }
 
-            if (teamMemberMap.size >= 1000) {
+            if (teamMemberMap.size >= 2000) {
                 await prisma.teamMember.createMany({
                     data: Array.from(teamMemberMap.values()),
                     skipDuplicates: true,
