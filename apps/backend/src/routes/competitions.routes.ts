@@ -307,6 +307,7 @@ router.post(
                 countsForElo: customCountsForElo,
                 requiresApproval: customRequiresApproval,
                 entryFee,
+                settings,
             } = req.body;
 
             // Load association governance rules
@@ -366,26 +367,62 @@ router.post(
                 finalSlug = `${finalSlug}-${Date.now().toString().slice(-4)}`;
             }
 
+            // Build create data payload including direct competition columns
+            const createData: any = {
+                name,
+                slug: finalSlug,
+                seriesSlug: seriesSlug ? seriesSlug.trim().toLowerCase() : null,
+                description,
+                type,
+                associationId,
+                seasonId,
+                startDate: new Date(startDate),
+                endDate: new Date(endDate),
+                location,
+                status: initialStatus as any,
+                isOfficial,
+                countsForElo,
+                requiresApproval: !isAutoApproved,
+                approvalStatus,
+                createdById: user.id,
+                entryFee: entryFee || 0,
+            };
+
+            // Date settings
+            if (req.body.regStartTime) createData.regStartTime = new Date(req.body.regStartTime);
+            if (req.body.regEndTime) createData.regEndTime = new Date(req.body.regEndTime);
+            if (req.body.deregEndTime) createData.deregEndTime = new Date(req.body.deregEndTime);
+
+            // Direct settings fields
+            const allSettingFields = [
+                'nameShort', 'nameDiploma', 'nameI18n', 'tournamentHomeText', 'sport', 'isSimpleMode',
+                'plannedStartTime', 'plannedEndTime', 'deregInfo', 'blockEnrollment', 'regPassword', 'noRegPasswordForConfirmation',
+                'currency', 'associationCostSingle', 'associationCostEachDay', 'noAssociationCostForUnlicensed', 'fineCost',
+                'manyEnrollmentsDiscount', 'manyEnrollmentsNrCategories', 'manyEnrollmentsDiscountOnlyTotal', 'manyEnrollmentsAlsoJuniorCost',
+                'manyEnrollmentsAlsoTeamCost', 'moreDiscounts', 'allowOnlinePayment', 'forcePaymentDelay', 'enrollmentConfirmationDelay',
+                'maxNrRegistrationsPerPlayer', 'maxNrRegistrations', 'maxNrPlayers', 'allowOnlyRegions', 'allowOnlyClubs', 'playerBlacklist',
+                'ageCutMonth', 'juniorAge', 'categoryConflicts', 'forceTelNr', 'additionalDataClub', 'additionalDataLevel', 'additionalDataEmail',
+                'autoEnrollIfOnlyOneCategory', 'chiefReferee', 'allPlayersCanBeReferees', 'allowRefOnlyOnCorrectTable', 'allowDoubleCourtUsage',
+                'noWhenCourtFreeMessage', 'allowMatchesWithoutCourt', 'usersCanAddAvailableCourts', 'defaultCourtOrder', 'autoSetGamesToCalledOut',
+                'maxNrCallouts', 'automatedCallouts', 'usePushNotifications', 'skipAwardCeremonies', 'useShirtNumbers', 'printClubOnMatchform',
+                'printLevelOnMatchform', 'printShortTournamentName', 'printPlannedStartTime', 'printCourtPlaceDetails', 'showOnlyPlaceNotCourt',
+                'playersCanPrintMatchForm', 'advancedMatchFormTwoRows', 'allowWaitlist', 'hideWaitlistForNonadmins', 'autoConfirmTeams',
+                'autoConfirmDoubles', 'teamChangeKeepWaitlist', 'drawOnlyDisplayPresentTeams', 'drawOnlyDisplayPaidTeams',
+                'categoryRankingsShowAllTeams', 'categorySortMode', 'categorySortModeRestrictions', 'hasSubTournaments', 'subTournamentsName',
+                'subTournamentsNamePlural', 'subTournamentPassword', 'allowSamePlayerInMultipleSubTournaments', 'newSubTournamentInfotext',
+                'registrationMailText', 'registrationMailHideCost', 'organizerName', 'organizerIban', 'organizerCountry', 'organizerZip',
+                'organizerCity', 'organizerStreet', 'organizerStreetNumber', 'autoBackup', 'keepNrBackups', 'backupWithChangeData',
+                'showInArchive', 'hideInGlobalArchive',
+            ];
+
+            for (const f of allSettingFields) {
+                if (req.body[f] !== undefined) {
+                    createData[f] = req.body[f];
+                }
+            }
+
             const competition = await (prisma.competition.create as any)({
-                data: {
-                    name,
-                    slug: finalSlug,
-                    seriesSlug: seriesSlug ? seriesSlug.trim().toLowerCase() : null,
-                    description,
-                    type,
-                    associationId,
-                    seasonId,
-                    startDate: new Date(startDate),
-                    endDate: new Date(endDate),
-                    location,
-                    status: initialStatus as any,
-                    isOfficial,
-                    countsForElo,
-                    requiresApproval: !isAutoApproved,
-                    approvalStatus,
-                    createdById: user.id,
-                    entryFee: entryFee || 0,
-                },
+                data: createData,
             });
 
             // Automatically assign Creator as Competition Admin
@@ -442,19 +479,64 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response, ne
 
         const { name, description, location, startDate, endDate, isOfficial, countsForElo, entryFee, status } = req.body;
 
-        const updated = await prisma.competition.update({
+        const current = await prisma.competition.findUnique({ where: { id: req.params.id } });
+        if (!current) {
+            return res.status(404).json({ error: 'Competition not found' });
+        }
+
+        const updateData: any = {
+            ...(name ? { name } : {}),
+            ...(description !== undefined ? { description } : {}),
+            ...(location !== undefined ? { location } : {}),
+            ...(startDate ? { startDate: new Date(startDate) } : {}),
+            ...(endDate ? { endDate: new Date(endDate) } : {}),
+            ...(isOfficial !== undefined ? { isOfficial: !!isOfficial } : {}),
+            ...(countsForElo !== undefined ? { countsForElo: !!countsForElo } : {}),
+            ...(entryFee !== undefined ? { entryFee: Number(entryFee) } : {}),
+            ...(status ? { status: status as any } : {}),
+        };
+
+        // Dates
+        if (req.body.regStartTime !== undefined) {
+            updateData.regStartTime = req.body.regStartTime ? new Date(req.body.regStartTime) : null;
+        }
+        if (req.body.regEndTime !== undefined) {
+            updateData.regEndTime = req.body.regEndTime ? new Date(req.body.regEndTime) : null;
+        }
+        if (req.body.deregEndTime !== undefined) {
+            updateData.deregEndTime = req.body.deregEndTime ? new Date(req.body.deregEndTime) : null;
+        }
+
+        const allSettingFields = [
+            'nameShort', 'nameDiploma', 'nameI18n', 'tournamentHomeText', 'sport', 'isSimpleMode',
+            'plannedStartTime', 'plannedEndTime', 'deregInfo', 'blockEnrollment', 'regPassword', 'noRegPasswordForConfirmation',
+            'currency', 'associationCostSingle', 'associationCostEachDay', 'noAssociationCostForUnlicensed', 'fineCost',
+            'manyEnrollmentsDiscount', 'manyEnrollmentsNrCategories', 'manyEnrollmentsDiscountOnlyTotal', 'manyEnrollmentsAlsoJuniorCost',
+            'manyEnrollmentsAlsoTeamCost', 'moreDiscounts', 'allowOnlinePayment', 'forcePaymentDelay', 'enrollmentConfirmationDelay',
+            'maxNrRegistrationsPerPlayer', 'maxNrRegistrations', 'maxNrPlayers', 'allowOnlyRegions', 'allowOnlyClubs', 'playerBlacklist',
+            'ageCutMonth', 'juniorAge', 'categoryConflicts', 'forceTelNr', 'additionalDataClub', 'additionalDataLevel', 'additionalDataEmail',
+            'autoEnrollIfOnlyOneCategory', 'chiefReferee', 'allPlayersCanBeReferees', 'allowRefOnlyOnCorrectTable', 'allowDoubleCourtUsage',
+            'noWhenCourtFreeMessage', 'allowMatchesWithoutCourt', 'usersCanAddAvailableCourts', 'defaultCourtOrder', 'autoSetGamesToCalledOut',
+            'maxNrCallouts', 'automatedCallouts', 'usePushNotifications', 'skipAwardCeremonies', 'useShirtNumbers', 'printClubOnMatchform',
+            'printLevelOnMatchform', 'printShortTournamentName', 'printPlannedStartTime', 'printCourtPlaceDetails', 'showOnlyPlaceNotCourt',
+            'playersCanPrintMatchForm', 'advancedMatchFormTwoRows', 'allowWaitlist', 'hideWaitlistForNonadmins', 'autoConfirmTeams',
+            'autoConfirmDoubles', 'teamChangeKeepWaitlist', 'drawOnlyDisplayPresentTeams', 'drawOnlyDisplayPaidTeams',
+            'categoryRankingsShowAllTeams', 'categorySortMode', 'categorySortModeRestrictions', 'hasSubTournaments', 'subTournamentsName',
+            'subTournamentsNamePlural', 'subTournamentPassword', 'allowSamePlayerInMultipleSubTournaments', 'newSubTournamentInfotext',
+            'registrationMailText', 'registrationMailHideCost', 'organizerName', 'organizerIban', 'organizerCountry', 'organizerZip',
+            'organizerCity', 'organizerStreet', 'organizerStreetNumber', 'autoBackup', 'keepNrBackups', 'backupWithChangeData',
+            'showInArchive', 'hideInGlobalArchive',
+        ];
+
+        for (const f of allSettingFields) {
+            if (req.body[f] !== undefined) {
+                updateData[f] = req.body[f];
+            }
+        }
+
+        const updated = await (prisma.competition.update as any)({
             where: { id: req.params.id },
-            data: {
-                ...(name ? { name } : {}),
-                ...(description !== undefined ? { description } : {}),
-                ...(location !== undefined ? { location } : {}),
-                ...(startDate ? { startDate: new Date(startDate) } : {}),
-                ...(endDate ? { endDate: new Date(endDate) } : {}),
-                ...(isOfficial !== undefined ? { isOfficial: !!isOfficial } : {}),
-                ...(countsForElo !== undefined ? { countsForElo: !!countsForElo } : {}),
-                ...(entryFee !== undefined ? { entryFee: Number(entryFee) } : {}),
-                ...(status ? { status: status as any } : {}),
-            },
+            data: updateData,
         });
 
         res.json(updated);

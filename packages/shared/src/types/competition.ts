@@ -78,3 +78,127 @@ export interface TournamentCategoryDto {
     minAge?: number | null;
     maxAge?: number | null;
 }
+
+export interface DiscountRule {
+    name: string;
+    amount: number;
+    condition?: string;
+}
+
+export interface TournamentSettings {
+    // 1. General & Multilingual Branding
+    nameShort?: string;
+    nameDiploma?: string;
+    nameI18n?: Record<string, string>;
+    tournamentHomeText?: string;
+    sport?: string;
+    isSimpleMode?: boolean;
+
+    // 2. Schedule, Timings & Deadlines
+    plannedStartTime?: string;
+    plannedEndTime?: string;
+    regStartTime?: string;
+    regEndTime?: string;
+    deregEndTime?: string;
+    deregInfo?: string;
+    blockEnrollment?: boolean;
+    regPassword?: string;
+    noRegPasswordForConfirmation?: boolean;
+
+    // 3. Financials, Fees & Discounts
+    currency?: string;
+    associationCostSingle?: number;
+    associationCostEachDay?: boolean;
+    noAssociationCostForUnlicensed?: boolean;
+    fineCost?: number;
+    manyEnrollmentsDiscount?: number;
+    manyEnrollmentsNrCategories?: number;
+    manyEnrollmentsDiscountOnlyTotal?: boolean;
+    manyEnrollmentsAlsoJuniorCost?: boolean;
+    manyEnrollmentsAlsoTeamCost?: boolean;
+    moreDiscounts?: DiscountRule[];
+    allowOnlinePayment?: boolean;
+    forcePaymentDelay?: number;
+    enrollmentConfirmationDelay?: number;
+
+    // 4. Eligibility, Restrictions & Limits
+    maxNrRegistrationsPerPlayer?: number;
+    maxNrRegistrations?: number;
+    maxNrPlayers?: number;
+    allowOnlyRegions?: string[];
+    allowOnlyClubs?: string[];
+    playerBlacklist?: string;
+    ageCutMonth?: number; // -1: exact date, 0: birth year, 1-12: specific month
+    juniorAge?: number;
+    categoryConflicts?: Array<[string, string]>;
+    forceTelNr?: boolean;
+    additionalDataClub?: boolean;
+    additionalDataLevel?: boolean;
+    additionalDataEmail?: boolean;
+    autoEnrollIfOnlyOneCategory?: boolean;
+
+    // 5. Match Logistics, Courts & Match Forms
+    chiefReferee?: string;
+    allPlayersCanBeReferees?: boolean;
+    allowRefOnlyOnCorrectTable?: boolean;
+    allowDoubleCourtUsage?: boolean;
+    noWhenCourtFreeMessage?: boolean;
+    allowMatchesWithoutCourt?: boolean;
+    usersCanAddAvailableCourts?: boolean;
+    defaultCourtOrder?: string;
+    autoSetGamesToCalledOut?: boolean;
+    maxNrCallouts?: number;
+    automatedCallouts?: boolean;
+    usePushNotifications?: boolean;
+    skipAwardCeremonies?: boolean;
+    useShirtNumbers?: boolean;
+    printClubOnMatchform?: boolean;
+    printLevelOnMatchform?: boolean;
+    printShortTournamentName?: boolean;
+    printPlannedStartTime?: boolean;
+    printCourtPlaceDetails?: boolean;
+    showOnlyPlaceNotCourt?: boolean;
+    playersCanPrintMatchForm?: boolean;
+    advancedMatchFormTwoRows?: boolean;
+
+    // 6. Draw, Waitlists & Visibility
+    allowWaitlist?: boolean;
+    hideWaitlistForNonadmins?: boolean;
+    autoConfirmTeams?: boolean;
+    autoConfirmDoubles?: boolean;
+    teamChangeKeepWaitlist?: boolean;
+    drawOnlyDisplayPresentTeams?: boolean;
+    drawOnlyDisplayPaidTeams?: boolean;
+    categoryRankingsShowAllTeams?: boolean;
+    categorySortMode?: 'restrictions' | 'date_restrictions' | 'time';
+    categorySortModeRestrictions?: 'teamsize' | 'age';
+
+    // 7. Sub-Tournaments
+    hasSubTournaments?: boolean;
+    subTournamentsName?: Record<string, string> | string;
+    subTournamentsNamePlural?: Record<string, string> | string;
+    subTournamentPassword?: string;
+    allowSamePlayerInMultipleSubTournaments?: boolean;
+    newSubTournamentInfotext?: string;
+
+    // 8. Communications & Emails
+    registrationMailText?: string;
+    registrationMailHideCost?: boolean;
+
+    // 9. Organizer Invoicing & Banking Details
+    organizerName?: string;
+    organizerIban?: string;
+    organizerCountry?: string;
+    organizerZip?: string;
+    organizerCity?: string;
+    organizerStreet?: string;
+    organizerStreetNumber?: string;
+
+    // 10. Operations & Backups
+    autoBackup?: number;
+    keepNrBackups?: number;
+    backupWithChangeData?: boolean;
+    showInArchive?: boolean;
+    hideInGlobalArchive?: boolean;
+}
+

@@ -85,6 +85,122 @@ model Competition {
   approvalStatus   String            @default("APPROVED")
   createdById      String?
   entryFee         Float?            @default(0)
+
+  // 1. General & Multilingual Branding
+  nameShort        String?
+  nameDiploma      String?
+  nameI18n         Json?             @default("{}")
+  tournamentHomeText String?
+  sport            String?           @default("TABLE_TENNIS")
+  isSimpleMode     Boolean           @default(false)
+
+  // 2. Schedule, Timings & Deadlines
+  plannedStartTime String?
+  plannedEndTime   String?
+  regStartTime     DateTime?
+  regEndTime       DateTime?
+  deregEndTime     DateTime?
+  deregInfo        String?
+  blockEnrollment  Boolean           @default(false)
+  regPassword      String?
+  noRegPasswordForConfirmation Boolean @default(false)
+
+  // 3. Financials, Fees & Discounts
+  currency                        String   @default("CHF")
+  associationCostSingle           Float?   @default(0)
+  associationCostEachDay          Boolean  @default(false)
+  noAssociationCostForUnlicensed  Boolean  @default(false)
+  fineCost                        Float?   @default(0)
+  manyEnrollmentsDiscount         Float?   @default(0)
+  manyEnrollmentsNrCategories     Int?     @default(2)
+  manyEnrollmentsDiscountOnlyTotal Boolean @default(false)
+  manyEnrollmentsAlsoJuniorCost   Boolean  @default(false)
+  manyEnrollmentsAlsoTeamCost     Boolean  @default(false)
+  moreDiscounts                   Json?    @default("[]")
+  allowOnlinePayment              Boolean  @default(false)
+  forcePaymentDelay               Int?     @default(0)
+  enrollmentConfirmationDelay     Int?     @default(0)
+
+  // 4. Eligibility, Restrictions & Limits
+  maxNrRegistrationsPerPlayer Int?     @default(0)
+  maxNrRegistrations          Int?     @default(0)
+  maxNrPlayers                Int?     @default(0)
+  allowOnlyRegions            Json?    @default("[]")
+  allowOnlyClubs              Json?    @default("[]")
+  playerBlacklist             String?
+  ageCutMonth                 Int?     @default(0)
+  juniorAge                   Int?     @default(18)
+  categoryConflicts           Json?    @default("[]")
+  forceTelNr                  Boolean  @default(false)
+  additionalDataClub          Boolean  @default(false)
+  additionalDataLevel         Boolean  @default(false)
+  additionalDataEmail         Boolean  @default(false)
+  autoEnrollIfOnlyOneCategory Boolean  @default(false)
+
+  // 5. Match Logistics, Courts & Match Forms
+  chiefReferee               String?
+  allPlayersCanBeReferees    Boolean  @default(false)
+  allowRefOnlyOnCorrectTable Boolean  @default(false)
+  allowDoubleCourtUsage      Boolean  @default(false)
+  noWhenCourtFreeMessage     Boolean  @default(false)
+  allowMatchesWithoutCourt   Boolean  @default(false)
+  usersCanAddAvailableCourts Boolean  @default(false)
+  defaultCourtOrder          String?
+  autoSetGamesToCalledOut    Boolean  @default(false)
+  maxNrCallouts              Int      @default(3)
+  automatedCallouts          Boolean  @default(false)
+  usePushNotifications       Boolean  @default(false)
+  skipAwardCeremonies        Boolean  @default(false)
+  useShirtNumbers            Boolean  @default(false)
+  printClubOnMatchform       Boolean  @default(true)
+  printLevelOnMatchform      Boolean  @default(true)
+  printShortTournamentName   Boolean  @default(false)
+  printPlannedStartTime      Boolean  @default(true)
+  printCourtPlaceDetails     Boolean  @default(true)
+  showOnlyPlaceNotCourt      Boolean  @default(false)
+  playersCanPrintMatchForm   Boolean  @default(false)
+  advancedMatchFormTwoRows   Boolean  @default(false)
+
+  // 6. Draw, Waitlists & Visibility
+  allowWaitlist                Boolean  @default(true)
+  hideWaitlistForNonadmins     Boolean  @default(false)
+  autoConfirmTeams             Boolean  @default(false)
+  autoConfirmDoubles           Boolean  @default(false)
+  teamChangeKeepWaitlist       Boolean  @default(false)
+  drawOnlyDisplayPresentTeams  Boolean  @default(false)
+  drawOnlyDisplayPaidTeams     Boolean  @default(false)
+  categoryRankingsShowAllTeams Boolean  @default(false)
+  categorySortMode             String   @default("restrictions")
+  categorySortModeRestrictions String   @default("teamsize")
+
+  // 7. Sub-Tournaments
+  hasSubTournaments                      Boolean  @default(false)
+  subTournamentsName                     Json?
+  subTournamentsNamePlural               Json?
+  subTournamentPassword                  String?
+  allowSamePlayerInMultipleSubTournaments Boolean @default(false)
+  newSubTournamentInfotext               String?
+
+  // 8. Communications & Emails
+  registrationMailText     String?
+  registrationMailHideCost Boolean  @default(false)
+
+  // 9. Organizer Invoicing & Banking Details
+  organizerName         String?
+  organizerIban         String?
+  organizerCountry      String?  @default("CH")
+  organizerZip          String?
+  organizerCity         String?
+  organizerStreet       String?
+  organizerStreetNumber String?
+
+  // 10. Operations & Backups
+  autoBackup           Int?     @default(20)
+  keepNrBackups        Int?     @default(10)
+  backupWithChangeData Boolean  @default(true)
+  showInArchive        Boolean  @default(true)
+  hideInGlobalArchive  Boolean  @default(false)
+
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
