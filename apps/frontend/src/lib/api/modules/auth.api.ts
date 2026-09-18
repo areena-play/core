@@ -96,8 +96,22 @@ export class AuthApi {
         );
     }
 
-    globalSearch(query: string) {
-        return this.http.request<{ results: any[] }>(`/search/global?q=${encodeURIComponent(query)}`);
+    globalSearch(query: string, options?: { full?: boolean; limit?: number }) {
+        const params = new URLSearchParams({ q: query });
+        if (options?.full) params.set('full', 'true');
+        if (options?.limit) params.set('limit', String(options.limit));
+        return this.http.request<{
+            results: any[];
+            totals?: {
+                person?: number;
+                club?: number;
+                competition?: number;
+                association?: number;
+                page?: number;
+                total?: number;
+            };
+            hasMore?: boolean;
+        }>(`/search/global?${params.toString()}`);
     }
 }
 

@@ -22,8 +22,11 @@ router.get('/global', async (req: Request, res: Response, next) => {
     try {
         const query = (req.query.q as string)?.trim() || '';
         if (!query || query.length < 2) {
-            return res.json({ results: [] });
+            return res.json({ results: [], totals: { total: 0 }, hasMore: false });
         }
+
+        const isFull = req.query.full === 'true';
+        const limitPerType = isFull ? 500 : (Math.min(Math.max(parseInt(req.query.limit as string, 10) || 12, 1), 50));
 
         const tokens = parseSearchTokens(query);
         const results: GlobalSearchResult[] = [];
@@ -49,7 +52,7 @@ router.get('/global', async (req: Request, res: Response, next) => {
         const userConditions = buildFieldOr(['firstName', 'lastName', 'email', 'licenseId', 'city']);
         const usersPromise = prisma.user.findMany({
             where: { AND: userConditions },
-            take: 6,
+            take: limitPerType,
             select: {
                 id: true,
                 firstName: true,
@@ -61,12 +64,13 @@ router.get('/global', async (req: Request, res: Response, next) => {
             },
             orderBy: { lastName: 'asc' },
         });
+        const usersCountPromise = prisma.user.count({ where: { AND: userConditions } });
 
         // 2. Search Clubs
         const clubConditions = buildFieldOr(['name', 'code', 'city', 'slug']);
         const clubsPromise = prisma.club.findMany({
             where: { AND: clubConditions },
-            take: 5,
+            take: limitPerType,
             select: {
                 id: true,
                 name: true,
@@ -77,12 +81,13 @@ router.get('/global', async (req: Request, res: Response, next) => {
             },
             orderBy: { name: 'asc' },
         });
+        const clubsCountPromise = prisma.club.count({ where: { AND: clubConditions } });
 
         // 3. Search Competitions (Tournaments & Leagues)
         const compConditions = buildFieldOr(['name', 'slug', 'description', 'location']);
         const compsPromise = prisma.competition.findMany({
             where: { AND: compConditions },
-            take: 5,
+            take: limitPerType,
             select: {
                 id: true,
                 name: true,
@@ -99,12 +104,13 @@ router.get('/global', async (req: Request, res: Response, next) => {
             },
             orderBy: { name: 'asc' },
         });
+        const compsCountPromise = prisma.competition.count({ where: { AND: compConditions } });
 
         // 4. Search Associations / Federations
         const assocConditions = buildFieldOr(['name', 'shortName', 'code', 'slug']);
         const assocsPromise = prisma.association.findMany({
             where: { AND: assocConditions },
-            take: 3,
+            take: limitPerType,
             select: {
                 id: true,
                 name: true,
@@ -115,12 +121,26 @@ router.get('/global', async (req: Request, res: Response, next) => {
             },
             orderBy: { name: 'asc' },
         });
+        const assocsCountPromise = prisma.association.count({ where: { AND: assocConditions } });
 
-        const [users, clubs, comps, assocs] = await Promise.all([
+        const [
+            users,
+            totalUsers,
+            clubs,
+            totalClubs,
+            comps,
+            totalComps,
+            assocs,
+            totalAssocs,
+        ] = await Promise.all([
             usersPromise,
+            usersCountPromise,
             clubsPromise,
+            clubsCountPromise,
             compsPromise,
+            compsCountPromise,
             assocsPromise,
+            assocsCountPromise,
         ]);
 
         // Transform Users into results
@@ -390,7 +410,22 @@ router.get('/global', async (req: Request, res: Response, next) => {
             }
         });
 
-        res.json({ results });
+        const totalPages = results.filter((r) => r.type === 'page').length;
+        const totalMatches = totalUsers + totalClubs + totalComps + totalAssocs + totalPages;
+        const hasMore = totalMatches > results.length;
+
+        res.json({
+            results,
+            totals: {
+                person: totalUsers,
+                club: totalClubs,
+                competition: totalComps,
+                association: totalAssocs,
+                page: totalPages,
+                total: totalMatches,
+            },
+            hasMore,
+        });
     } catch (err) {
         next(err);
     }

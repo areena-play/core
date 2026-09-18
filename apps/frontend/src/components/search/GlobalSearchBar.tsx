@@ -56,6 +56,9 @@ export function GlobalSearchBar({
     const [isOpen, setIsOpen] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(0);
 
+    const [totals, setTotals] = useState<any>(null);
+    const [hasMore, setHasMore] = useState(false);
+
     const containerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -64,6 +67,8 @@ export function GlobalSearchBar({
         const trimmed = query.trim();
         if (trimmed.length < 2) {
             setResults([]);
+            setTotals(null);
+            setHasMore(false);
             setLoading(false);
             return;
         }
@@ -73,10 +78,14 @@ export function GlobalSearchBar({
             try {
                 const data = await api.globalSearch(trimmed);
                 setResults(data?.results || []);
+                setTotals(data?.totals || null);
+                setHasMore(Boolean(data?.hasMore));
                 setSelectedIndex(0);
             } catch (err) {
                 console.error('Global search error:', err);
                 setResults([]);
+                setTotals(null);
+                setHasMore(false);
             } finally {
                 setLoading(false);
             }
@@ -218,7 +227,10 @@ export function GlobalSearchBar({
                     {results.length > 0 ? (
                         <div className="space-y-1">
                             <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 mb-1 pb-2">
-                                <span>Site-wide Results ({results.length})</span>
+                                <span>
+                                    Site-wide Results ({results.length}
+                                    {totals?.total && totals.total > results.length ? ` of ${totals.total}` : ''})
+                                </span>
                                 <span className="text-[9px] font-normal lowercase flex items-center gap-1">
                                     <CornerDownLeft className="h-2.5 w-2.5" /> to open
                                 </span>
@@ -297,7 +309,15 @@ export function GlobalSearchBar({
                     )}
 
                     {query.trim().length >= 2 && (
-                        <div className="p-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <div className="p-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-1">
+                            {hasMore && totals?.total && totals.total > results.length && (
+                                <div className="px-3 py-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                                    <span>Showing top {results.length} items</span>
+                                    <span className="font-bold text-red-600 dark:text-red-400">
+                                        +{totals.total - results.length} more on full search
+                                    </span>
+                                </div>
+                            )}
                             <button
                                 type="button"
                                 onMouseDown={(e) => {
@@ -311,9 +331,13 @@ export function GlobalSearchBar({
                                     if (onSelect) onSelect();
                                     router.push(`/search?q=${encodeURIComponent(query.trim())}`);
                                 }}
-                                className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+                                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-transparent hover:border-red-200 dark:hover:border-red-900/50 transition shadow-2xs"
                             >
-                                <span>{t('uiExtras.viewAllResultsOnSearch')}</span>
+                                <span>
+                                    {totals?.total
+                                        ? `View all ${totals.total} results on Search Page`
+                                        : t('uiExtras.viewAllResultsOnSearch')}
+                                </span>
                                 <ArrowRight className="h-3.5 w-3.5" />
                             </button>
                         </div>
