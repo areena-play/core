@@ -52,6 +52,35 @@ export enum MatchWinner {
     PENDING = 'PENDING',
 }
 
+export enum ResultType {
+    SETS_POINTS = 'SETS_POINTS',
+    TIMED_SCORE = 'TIMED_SCORE',
+    SIMPLE_POINTS = 'SIMPLE_POINTS',
+}
+
+export type ParticipantSide = 'HOME' | 'AWAY';
+
+export interface Sport {
+    id: string;
+    code: string;
+    name: string;
+    nameI18n?: Record<string, string> | null;
+    unitTypeNameI18n?: Record<string, string> | null;
+    defaultResultType: ResultType;
+    defaultRules?: Record<string, any> | null;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+}
+
+export interface AssociationSport {
+    id: string;
+    associationId: string;
+    sportId: string;
+    isDefault: boolean;
+    createdAt: Date | string;
+    sport?: Sport;
+}
+
 export interface EncounterFormatItem {
     type: MatchType;
     orderIndex: number;
@@ -91,6 +120,7 @@ export interface TournamentSettings {
     nameDiploma?: string;
     nameI18n?: Record<string, string>;
     tournamentHomeText?: string;
+    sportId?: string;
     sport?: string;
     isSimpleMode?: boolean;
 

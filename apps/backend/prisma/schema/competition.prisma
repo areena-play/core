@@ -60,10 +60,8 @@ enum MatchWinner {
 }
 
 enum ParticipantSide {
-  HOME_1
-  HOME_2
-  AWAY_1
-  AWAY_2
+  HOME
+  AWAY
 }
 
 model Competition {
@@ -91,7 +89,7 @@ model Competition {
   nameDiploma      String?
   nameI18n         Json?             @default("{}")
   tournamentHomeText String?
-  sport            String?           @default("TABLE_TENNIS")
+  sportId          String?
   isSimpleMode     Boolean           @default(false)
 
   // 2. Schedule, Timings & Deadlines
@@ -206,6 +204,7 @@ model Competition {
 
   association        Association                 @relation(fields: [associationId], references: [id], onDelete: Cascade)
   season             Season?                     @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  sport              Sport?                      @relation(fields: [sportId], references: [id], onDelete: SetNull)
   categories         Category[]
   calendarEvents     CalendarEvent[]
   faqItems           FaqItem[]
@@ -217,6 +216,7 @@ model Competition {
   tournamentLicenses License[]                   @relation("TournamentLicenses")
 
   @@index([seriesSlug])
+  @@index([sportId])
 }
 
 model Category {
@@ -353,49 +353,42 @@ model Encounter {
 }
 
 model Match {
-  id            String          @id @default(uuid())
-  categoryId    String
-  groupId       String?
-  encounterId   String?
-  round         Int?            @default(1)
-  orderIndex    Int             @default(1)
-  matchType     MatchType       @default(SINGLE)
-  label         String?
-  scheduledAt   DateTime?
-  location      String?
-  homePlayer1Id String?
-  homePlayer2Id String?
-  awayPlayer1Id String?
-  awayPlayer2Id String?
-  sets          Json            @default("[]")
-  homeWonSets   Int             @default(0)
-  awayWonSets   Int             @default(0)
-  winner        MatchWinner     @default(PENDING)
-  status        EncounterStatus @default(SCHEDULED)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id          String          @id @default(uuid())
+  categoryId  String
+  groupId     String?
+  encounterId String?
+  round       Int?            @default(1)
+  orderIndex  Int             @default(1)
+  matchType   MatchType       @default(SINGLE)
+  label       String?
+  scheduledAt DateTime?
+  location    String?
+  result      String?
+  homeScore   Int             @default(0)
+  awayScore   Int             @default(0)
+  resultType  ResultType?
+  rulesConfig Json?
+  winner      MatchWinner     @default(PENDING)
+  status      EncounterStatus @default(SCHEDULED)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   category     Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   group        CategoryGroup?     @relation(fields: [groupId], references: [id], onDelete: SetNull)
   encounter    Encounter?         @relation(fields: [encounterId], references: [id], onDelete: Cascade)
-  homePlayer1  User?              @relation("HomePlayer1", fields: [homePlayer1Id], references: [id], onDelete: SetNull)
-  homePlayer2  User?              @relation("HomePlayer2", fields: [homePlayer2Id], references: [id], onDelete: SetNull)
-  awayPlayer1  User?              @relation("AwayPlayer1", fields: [awayPlayer1Id], references: [id], onDelete: SetNull)
-  awayPlayer2  User?              @relation("AwayPlayer2", fields: [awayPlayer2Id], references: [id], onDelete: SetNull)
   participants MatchParticipant[]
 
   @@index([categoryId])
   @@index([groupId])
   @@index([encounterId])
-  @@index([homePlayer1Id])
-  @@index([awayPlayer1Id])
 }
 
 model MatchParticipant {
   id               String                 @id @default(uuid())
   matchId          String
   userId           String
-  side             ParticipantSide        @default(HOME_1)
+  side             ParticipantSide        @default(HOME)
+  position         Int                    @default(1)
   teamId           String?
   clubIdAtTime     String?
   licenseIdUsed    String?

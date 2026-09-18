@@ -92,11 +92,6 @@ model User {
   createdFaqs          FaqItem[]             @relation("CreatedFaqs")
   supportInquiries     SupportInquiry[]      @relation("UserSupportInquiries")
 
-  // Matches where user is player
-  homeMatchesP1 Match[] @relation("HomePlayer1")
-  homeMatchesP2 Match[] @relation("HomePlayer2")
-  awayMatchesP1 Match[] @relation("AwayPlayer1")
-  awayMatchesP2 Match[] @relation("AwayPlayer2")
   pushSubscriptions PushSubscription[]
   managedBy     UserRelationship[] @relation("ManagedUser")
   managingUsers UserRelationship[] @relation("ManagerUser")

@@ -12,6 +12,8 @@ export interface DatabaseDump {
         associations: any[];
         associationHierarchies: any[];
         userAssociationRoles: any[];
+        sports: any[];
+        associationSports: any[];
         clubs: any[];
         clubAssociations: any[];
         userClubRoles: any[];
@@ -24,6 +26,7 @@ export interface DatabaseDump {
         teamMembers: any[];
         encounters: any[];
         matches: any[];
+        matchParticipants: any[];
         groupStandings: any[];
         competitionUserRoles: any[];
         competitionSpeakerCallouts: any[];
@@ -66,6 +69,8 @@ export class DatabaseBackupService {
             associations,
             associationHierarchies,
             userAssociationRoles,
+            sports,
+            associationSports,
             clubs,
             clubAssociations,
             userClubRoles,
@@ -78,6 +83,7 @@ export class DatabaseBackupService {
             teamMembers,
             encounters,
             matches,
+            matchParticipants,
             groupStandings,
             competitionUserRoles,
             competitionSpeakerCallouts,
@@ -109,6 +115,8 @@ export class DatabaseBackupService {
             prisma.association.findMany(),
             prisma.associationHierarchy.findMany(),
             prisma.userAssociationRole.findMany(),
+            prisma.sport.findMany(),
+            prisma.associationSport.findMany(),
             prisma.club.findMany(),
             prisma.clubAssociation.findMany(),
             prisma.userClubRole.findMany(),
@@ -121,6 +129,7 @@ export class DatabaseBackupService {
             prisma.teamMember.findMany(),
             prisma.encounter.findMany(),
             prisma.match.findMany(),
+            prisma.matchParticipant.findMany(),
             prisma.groupStanding.findMany(),
             prisma.competitionUserRole.findMany(),
             prisma.competitionSpeakerCallout.findMany(),
@@ -154,6 +163,8 @@ export class DatabaseBackupService {
             associations,
             associationHierarchies,
             userAssociationRoles,
+            sports,
+            associationSports,
             clubs,
             clubAssociations,
             userClubRoles,
@@ -166,6 +177,7 @@ export class DatabaseBackupService {
             teamMembers,
             encounters,
             matches,
+            matchParticipants,
             groupStandings,
             competitionUserRoles,
             competitionSpeakerCallouts,
@@ -245,6 +257,7 @@ export class DatabaseBackupService {
             await tx.invoice.deleteMany();
             await tx.courseAttendance.deleteMany();
             await tx.refresherCourse.deleteMany();
+            await tx.matchParticipant.deleteMany();
             await tx.match.deleteMany();
             await tx.groupStanding.deleteMany();
             await tx.encounter.deleteMany();
@@ -260,6 +273,8 @@ export class DatabaseBackupService {
             await tx.userAssociationRole.deleteMany();
             await tx.userClubRole.deleteMany();
             await tx.associationHierarchy.deleteMany();
+            await tx.associationSport.deleteMany();
+            await tx.sport.deleteMany();
             await tx.clubAssociation.deleteMany();
             await tx.club.deleteMany();
             await tx.association.deleteMany();
@@ -291,6 +306,12 @@ export class DatabaseBackupService {
                 importedCounts.systemSettings = tables.systemSettings.length;
             }
 
+            // Sports
+            if (tables.sports?.length) {
+                await tx.sport.createMany({ data: tables.sports });
+                importedCounts.sports = tables.sports.length;
+            }
+
             // Associations
             if (tables.associations?.length) {
                 await tx.association.createMany({ data: tables.associations });
@@ -299,6 +320,10 @@ export class DatabaseBackupService {
             if (tables.associationHierarchies?.length) {
                 await tx.associationHierarchy.createMany({ data: tables.associationHierarchies });
                 importedCounts.associationHierarchies = tables.associationHierarchies.length;
+            }
+            if (tables.associationSports?.length) {
+                await tx.associationSport.createMany({ data: tables.associationSports });
+                importedCounts.associationSports = tables.associationSports.length;
             }
             if (tables.userAssociationRoles?.length) {
                 await tx.userAssociationRole.createMany({ data: tables.userAssociationRoles });
@@ -376,6 +401,10 @@ export class DatabaseBackupService {
             if (tables.matches?.length) {
                 await tx.match.createMany({ data: tables.matches });
                 importedCounts.matches = tables.matches.length;
+            }
+            if (tables.matchParticipants?.length) {
+                await tx.matchParticipant.createMany({ data: tables.matchParticipants });
+                importedCounts.matchParticipants = tables.matchParticipants.length;
             }
             if (tables.groupStandings?.length) {
                 await tx.groupStanding.createMany({ data: tables.groupStandings });

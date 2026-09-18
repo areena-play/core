@@ -16,10 +16,11 @@ router.post('/match-analysis/:matchId', authenticateToken as any, requirePro as 
         const match = await prisma.match.findUnique({
             where: { id: matchId },
             include: {
-                homePlayer1: { select: { id: true, firstName: true, lastName: true, rank: true, currentLevel: true } },
-                homePlayer2: { select: { id: true, firstName: true, lastName: true } },
-                awayPlayer1: { select: { id: true, firstName: true, lastName: true, rank: true, currentLevel: true } },
-                awayPlayer2: { select: { id: true, firstName: true, lastName: true } },
+                participants: {
+                    include: {
+                        user: { select: { id: true, firstName: true, lastName: true, rank: true, currentLevel: true } },
+                    },
+                },
                 encounter: {
                     include: {
                         homeTeam: { select: { id: true, name: true } },

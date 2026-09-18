@@ -60,10 +60,13 @@ router.get('/live', async (req, res, next) => {
                 category: { include: { competition: true } },
                 matches: {
                     include: {
-                        homePlayer1: true,
-                        homePlayer2: true,
-                        awayPlayer1: true,
-                        awayPlayer2: true,
+                        participants: {
+                            include: {
+                                user: true,
+                                team: true,
+                                club: true,
+                            },
+                        },
                     },
                 },
             },
@@ -224,10 +227,13 @@ router.get('/:id', async (req, res, next) => {
                             group: true,
                             matches: {
                                 include: {
-                                    homePlayer1: true,
-                                    homePlayer2: true,
-                                    awayPlayer1: true,
-                                    awayPlayer2: true,
+                                    participants: {
+                                        include: {
+                                            user: true,
+                                            team: true,
+                                            club: true,
+                                        },
+                                    },
                                 },
                                 orderBy: { orderIndex: 'asc' as const },
                             },
@@ -906,7 +912,7 @@ router.get('/:id/statistics', async (req, res, next) => {
                     totalMatches++;
                     if (m.status === 'FINISHED') completedMatches++;
                     if (m.status === 'LIVE') liveMatches++;
-                    totalSets += (m.homeWonSets || 0) + (m.awayWonSets || 0);
+                    totalSets += (m.homeScore || 0) + (m.awayScore || 0);
                 });
             });
         });
@@ -1276,10 +1282,13 @@ router.get('/encounters/:encounterId', async (req, res, next) => {
                 group: true,
                 matches: {
                     include: {
-                        homePlayer1: true,
-                        homePlayer2: true,
-                        awayPlayer1: true,
-                        awayPlayer2: true,
+                        participants: {
+                            include: {
+                                user: true,
+                                team: true,
+                                club: true,
+                            },
+                        },
                     },
                     orderBy: { orderIndex: 'asc' },
                 },

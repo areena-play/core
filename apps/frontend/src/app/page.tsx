@@ -256,7 +256,7 @@ export default function DashboardPage() {
                                                 </div>
                                             </div>
                                             <span className="font-mono font-black text-lg text-slate-900 dark:text-white">
-                                                {item.homeWonSets ?? enc?.homeScore ?? 0}
+                                                {item.homeScore ?? item.homeWonSets ?? enc?.homeScore ?? 0}
                                             </span>
                                         </div>
 
@@ -273,7 +273,7 @@ export default function DashboardPage() {
                                                 </div>
                                             </div>
                                             <span className="font-mono font-black text-lg text-slate-900 dark:text-white">
-                                                {item.awayWonSets ?? enc?.awayScore ?? 0}
+                                                {item.awayScore ?? item.awayWonSets ?? enc?.awayScore ?? 0}
                                             </span>
                                         </div>
                                     </div>

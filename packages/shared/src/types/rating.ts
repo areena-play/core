@@ -31,7 +31,8 @@ export interface MatchParticipantDto {
     clubIdAtTime?: string | null;
     licenseIdUsed?: string | null;
     teamId?: string | null;
-    side: 'HOME_1' | 'HOME_2' | 'AWAY_1' | 'AWAY_2';
+    side: 'HOME' | 'AWAY';
+    position?: number;
     user?: any;
 }
 

@@ -1708,6 +1708,9 @@ export class ClickTTImportService {
 
                         const homeWonSets = matchItem.setsHome ?? 0;
                         const awayWonSets = matchItem.setsGuest ?? 0;
+                        const resultString = setsArray.length > 0
+                            ? setsArray.map((s) => `${s.homeScore}:${s.awayScore}`).join(', ')
+                            : (homeWonSets > 0 || awayWonSets > 0 ? `${homeWonSets}:${awayWonSets}` : null);
                         const winner =
                             (matchItem.matchesHome || 0) > (matchItem.matchesGuest || 0)
                                 ? MatchWinner.HOME
@@ -1731,13 +1734,9 @@ export class ClickTTImportService {
                                         orderIndex: mIdx,
                                         matchType,
                                         label: matchLabel,
-                                        homePlayer1Id: hp1Id,
-                                        homePlayer2Id: hp2Id,
-                                        awayPlayer1Id: ap1Id,
-                                        awayPlayer2Id: ap2Id,
-                                        sets: setsArray,
-                                        homeWonSets,
-                                        awayWonSets,
+                                        result: resultString,
+                                        homeScore: homeWonSets,
+                                        awayScore: awayWonSets,
                                         winner,
                                         status: mStatus,
                                     },
@@ -1750,7 +1749,8 @@ export class ClickTTImportService {
                                     participants.push({
                                         matchId: matchRecord.id,
                                         userId: hp1Id,
-                                        side: ParticipantSide.HOME_1,
+                                        side: ParticipantSide.HOME,
+                                        position: 1,
                                         teamId: homeTeam?.id || null,
                                         clubIdAtTime: homeClub?.id || null,
                                     });
@@ -1758,7 +1758,8 @@ export class ClickTTImportService {
                                     participants.push({
                                         matchId: matchRecord.id,
                                         userId: hp2Id,
-                                        side: ParticipantSide.HOME_2,
+                                        side: ParticipantSide.HOME,
+                                        position: 2,
                                         teamId: homeTeam?.id || null,
                                         clubIdAtTime: homeClub?.id || null,
                                     });
@@ -1766,7 +1767,8 @@ export class ClickTTImportService {
                                     participants.push({
                                         matchId: matchRecord.id,
                                         userId: ap1Id,
-                                        side: ParticipantSide.AWAY_1,
+                                        side: ParticipantSide.AWAY,
+                                        position: 1,
                                         teamId: awayTeam?.id || null,
                                         clubIdAtTime: guestClub?.id || null,
                                     });
@@ -1774,7 +1776,8 @@ export class ClickTTImportService {
                                     participants.push({
                                         matchId: matchRecord.id,
                                         userId: ap2Id,
-                                        side: ParticipantSide.AWAY_2,
+                                        side: ParticipantSide.AWAY,
+                                        position: 2,
                                         teamId: awayTeam?.id || null,
                                         clubIdAtTime: guestClub?.id || null,
                                     });

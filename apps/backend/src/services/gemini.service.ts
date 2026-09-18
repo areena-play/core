@@ -255,18 +255,21 @@ export class GeminiService {
         perspectiveUserId?: string
     ): Promise<MatchAnalysisResult> {
         // Determine player names and perspective
-        const homeName = match.homePlayer1
-            ? `${match.homePlayer1.firstName} ${match.homePlayer1.lastName}`
+        const homeP = match.participants?.find((p: any) => p.side === 'HOME');
+        const awayP = match.participants?.find((p: any) => p.side === 'AWAY');
+
+        const homeName = homeP?.user
+            ? `${homeP.user.firstName} ${homeP.user.lastName}`
             : match.encounter?.homeTeam?.name || match.homeTeam?.name || 'Home Player';
-        const awayName = match.awayPlayer1
-            ? `${match.awayPlayer1.firstName} ${match.awayPlayer1.lastName}`
+        const awayName = awayP?.user
+            ? `${awayP.user.firstName} ${awayP.user.lastName}`
             : match.encounter?.awayTeam?.name || match.awayTeam?.name || 'Away Player';
 
-        const isHome = match.homePlayer1Id === perspectiveUserId || match.homePlayer2Id === perspectiveUserId;
+        const isHome = match.participants?.some((p: any) => p.userId === perspectiveUserId && p.side === 'HOME');
         const athleteName = isHome ? homeName : awayName;
         const opponentName = isHome ? awayName : homeName;
 
-        // Parse sets and scores
+        // Parse sets and scores if available
         let setsData = match.sets;
         if (typeof setsData === 'string') {
             try {
@@ -286,16 +289,16 @@ export class GeminiService {
         const winnerLabel = match.winner === 'HOME' ? homeName : match.winner === 'AWAY' ? awayName : 'Draw / In Progress';
         const competitionTitle = match.encounter?.category?.competition?.title || match.competition?.title || match.group?.round?.competition?.title || 'League / Tournament Match';
 
-        const systemPrompt = `You are AREENA AI Coach, an elite table tennis and racket sports analytical strategist.
+        const systemPrompt = `You are AREENA AI Coach, an elite sports analytical strategist.
 Provide a sharp, motivating, and high-value tactical post-match breakdown.
 Format your response in clean, beautiful Markdown with clear section headers, bullet points, and actionable tips.
 Maintain an encouraging yet objective coaching tone.`;
 
         const userPrompt = `Analyze the following match:
 - Competition: ${competitionTitle}
-- Home Player: ${homeName} (${match.homeWonSets ?? 0} sets won)
-- Away Player: ${awayName} (${match.awayWonSets ?? 0} sets won)
-- Set Scores: ${formattedSets || 'No detailed set breakdown'}
+- Home Player: ${homeName} (${match.homeScore ?? match.homeWonSets ?? 0} score/sets won)
+- Away Player: ${awayName} (${match.awayScore ?? match.awayWonSets ?? 0} score/sets won)
+- Result: ${match.result || formattedSets || 'No detailed score breakdown'}
 - Winner: ${winnerLabel}
 - Analysis Perspective: ${perspectiveUserId ? `Focus on ${athleteName} playing against ${opponentName}` : 'General neutral match overview'}
 

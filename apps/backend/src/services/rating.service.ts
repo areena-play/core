@@ -100,6 +100,7 @@ export class RatingService {
             const match = await tx.match.findUnique({
                 where: { id: matchId },
                 include: {
+                    category: { include: { competition: true } },
                     encounter: {
                         include: {
                             category: {
@@ -119,13 +120,15 @@ export class RatingService {
                 throw new Error(`Match with ID ${matchId} not found`);
             }
 
-            const competition = match.encounter?.category?.competition;
+            const competition = match.category?.competition || match.encounter?.category?.competition;
             if (!competition?.countsForElo || match.status !== 'FINISHED' || match.winner === 'PENDING') {
                 return null;
             }
 
-            const homeUserId = match.homePlayer1Id;
-            const awayUserId = match.awayPlayer1Id;
+            const homeParticipant = match.participants.find((p: any) => p.side === 'HOME' && (p.position === 1 || !p.position));
+            const awayParticipant = match.participants.find((p: any) => p.side === 'AWAY' && (p.position === 1 || !p.position));
+            const homeUserId = homeParticipant?.userId;
+            const awayUserId = awayParticipant?.userId;
 
             if (!homeUserId || !awayUserId) {
                 // Cannot calculate rating if player IDs are not assigned (e.g. bye or walkover without user)
@@ -133,48 +136,52 @@ export class RatingService {
             }
 
             // 1. Fetch pre-match rating snapshots
-            const matchDate = match.encounter.scheduledAt || match.createdAt;
+            const matchDate = match.scheduledAt || match.encounter?.scheduledAt || match.createdAt;
             const homePreSnapshot = await this.getEffectiveSnapshot(homeUserId, matchDate, tx);
             const awayPreSnapshot = await this.getEffectiveSnapshot(awayUserId, matchDate, tx);
 
             // 2. Ensure MatchParticipant records exist and point to pre-match snapshots
-            await tx.matchParticipant.upsert({
-                where: {
-                    id: match.participants.find((p: any) => p.userId === homeUserId && p.side === 'HOME_1')?.id || 'new-home-1',
-                },
-                update: {
-                    ratingSnapshotId: homePreSnapshot.id,
-                    clubIdAtTime: match.encounter.homeTeam?.clubId || null,
-                    teamId: match.encounter.homeTeamId,
-                },
-                create: {
-                    matchId: match.id,
-                    userId: homeUserId,
-                    side: 'HOME_1',
-                    ratingSnapshotId: homePreSnapshot.id,
-                    clubIdAtTime: match.encounter.homeTeam?.clubId || null,
-                    teamId: match.encounter.homeTeamId,
-                },
-            });
+            if (homeParticipant) {
+                await tx.matchParticipant.update({
+                    where: { id: homeParticipant.id },
+                    data: {
+                        ratingSnapshotId: homePreSnapshot.id,
+                    },
+                });
+            } else {
+                await tx.matchParticipant.create({
+                    data: {
+                        matchId: match.id,
+                        userId: homeUserId,
+                        side: 'HOME',
+                        position: 1,
+                        ratingSnapshotId: homePreSnapshot.id,
+                        clubIdAtTime: match.encounter?.homeTeam?.clubId || null,
+                        teamId: match.encounter?.homeTeamId || null,
+                    },
+                });
+            }
 
-            await tx.matchParticipant.upsert({
-                where: {
-                    id: match.participants.find((p: any) => p.userId === awayUserId && p.side === 'AWAY_1')?.id || 'new-away-1',
-                },
-                update: {
-                    ratingSnapshotId: awayPreSnapshot.id,
-                    clubIdAtTime: match.encounter.awayTeam?.clubId || null,
-                    teamId: match.encounter.awayTeamId,
-                },
-                create: {
-                    matchId: match.id,
-                    userId: awayUserId,
-                    side: 'AWAY_1',
-                    ratingSnapshotId: awayPreSnapshot.id,
-                    clubIdAtTime: match.encounter.awayTeam?.clubId || null,
-                    teamId: match.encounter.awayTeamId,
-                },
-            });
+            if (awayParticipant) {
+                await tx.matchParticipant.update({
+                    where: { id: awayParticipant.id },
+                    data: {
+                        ratingSnapshotId: awayPreSnapshot.id,
+                    },
+                });
+            } else {
+                await tx.matchParticipant.create({
+                    data: {
+                        matchId: match.id,
+                        userId: awayUserId,
+                        side: 'AWAY',
+                        position: 1,
+                        ratingSnapshotId: awayPreSnapshot.id,
+                        clubIdAtTime: match.encounter?.awayTeam?.clubId || null,
+                        teamId: match.encounter?.awayTeamId || null,
+                    },
+                });
+            }
 
             // 3. Calculate Elo outcome
             const kFactor = 32; // Standard default K-factor

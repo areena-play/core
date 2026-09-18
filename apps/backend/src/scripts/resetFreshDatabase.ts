@@ -46,6 +46,8 @@ async function resetToFreshAssociation() {
     await prisma.userRelationship.deleteMany();
     await prisma.pushSubscription.deleteMany();
     await prisma.associationHierarchy.deleteMany();
+    await prisma.associationSport.deleteMany();
+    await prisma.sport.deleteMany();
     await prisma.clubAssociation.deleteMany();
     await prisma.club.deleteMany();
     await prisma.association.deleteMany();
@@ -79,7 +81,34 @@ async function resetToFreshAssociation() {
         },
     });
 
-    // 3. Create clean Top-Level National Association
+    // 3. Create default sports
+    console.log('🏓 Creating default Sports...');
+    const tableTennisSport = await prisma.sport.create({
+        data: {
+            code: 'TABLE_TENNIS',
+            name: 'Table Tennis',
+            nameI18n: {
+                en: 'Table Tennis',
+                de: 'Tischtennis',
+                fr: 'Tennis de table',
+                it: 'Tennistavolo',
+            },
+            unitTypeNameI18n: {
+                en: 'Table',
+                de: 'Tisch',
+                fr: 'Table',
+                it: 'Tavolo',
+            },
+            defaultResultType: 'SETS_POINTS',
+            defaultRules: {
+                setsToWin: 3,
+                pointsPerSet: 11,
+                tieBreakDifference: 2,
+            },
+        },
+    });
+
+    // 4. Create clean Top-Level National Association
     console.log('🏛️  Creating fresh empty top-level Association...');
     const mainAssociation = await prisma.association.create({
         data: {
@@ -97,6 +126,14 @@ async function resetToFreshAssociation() {
                 requireRefereeCourseForSenior: true,
                 refresherCourseValidityMonths: 24,
             },
+        },
+    });
+
+    await prisma.associationSport.create({
+        data: {
+            associationId: mainAssociation.id,
+            sportId: tableTennisSport.id,
+            isDefault: true,
         },
     });
 

@@ -58,6 +58,8 @@ export async function clearDatabase() {
     await prisma.userAssociationRole.deleteMany();
     await prisma.userClubRole.deleteMany();
     await prisma.associationHierarchy.deleteMany();
+    await prisma.associationSport.deleteMany();
+    await prisma.sport.deleteMany();
     await prisma.clubAssociation.deleteMany();
     await prisma.club.deleteMany();
     await prisma.association.deleteMany();
@@ -169,6 +171,95 @@ export async function seedDemoDatabase() {
             { parentId: sttfOst.id, childId: sttfStGallen.id },
             // Regional ARTT -> Local Sub-Association
             { parentId: sttfRomandie.id, childId: sttfVaud.id },
+        ],
+    });
+
+    // 1.1 SPORTS & ALLOWED SPORTS
+    console.log('  🏓 Creating Sports & Association Allowed Sports...');
+    const sportTableTennis = await prisma.sport.create({
+        data: {
+            code: 'TABLE_TENNIS',
+            name: 'Table Tennis',
+            nameI18n: {
+                en: 'Table Tennis',
+                de: 'Tischtennis',
+                fr: 'Tennis de table',
+                it: 'Tennistavolo',
+            },
+            unitTypeNameI18n: {
+                en: 'Table',
+                de: 'Tisch',
+                fr: 'Table',
+                it: 'Tavolo',
+            },
+            defaultResultType: 'SETS_POINTS',
+            defaultRules: {
+                setsToWin: 3,
+                pointsPerSet: 11,
+                tieBreakDifference: 2,
+            },
+        },
+    });
+
+    const sportTennis = await prisma.sport.create({
+        data: {
+            code: 'TENNIS',
+            name: 'Tennis',
+            nameI18n: {
+                en: 'Tennis',
+                de: 'Tennis',
+                fr: 'Tennis',
+                it: 'Tennis',
+            },
+            unitTypeNameI18n: {
+                en: 'Court',
+                de: 'Platz',
+                fr: 'Court',
+                it: 'Campo',
+            },
+            defaultResultType: 'SETS_POINTS',
+            defaultRules: {
+                setsToWin: 2,
+                gamesPerSet: 6,
+                tieBreakDifference: 2,
+            },
+        },
+    });
+
+    const sportFootball = await prisma.sport.create({
+        data: {
+            code: 'FOOTBALL',
+            name: 'Football / Soccer',
+            nameI18n: {
+                en: 'Football',
+                de: 'Fussball',
+                fr: 'Football',
+                it: 'Calcio',
+            },
+            unitTypeNameI18n: {
+                en: 'Pitch',
+                de: 'Feld',
+                fr: 'Terrain',
+                it: 'Campo',
+            },
+            defaultResultType: 'TIMED_SCORE',
+            defaultRules: {
+                halfDurationMinutes: 45,
+                extraTimeMinutes: 15,
+            },
+        },
+    });
+
+    await prisma.associationSport.createMany({
+        data: [
+            { associationId: sttfNational.id, sportId: sportTableTennis.id, isDefault: true },
+            { associationId: sttfNational.id, sportId: sportTennis.id, isDefault: false },
+            { associationId: sttfNational.id, sportId: sportFootball.id, isDefault: false },
+            { associationId: sttfOst.id, sportId: sportTableTennis.id, isDefault: true },
+            { associationId: sttfRomandie.id, sportId: sportTableTennis.id, isDefault: true },
+            { associationId: sttfZurich.id, sportId: sportTableTennis.id, isDefault: true },
+            { associationId: sttfStGallen.id, sportId: sportTableTennis.id, isDefault: true },
+            { associationId: sttfVaud.id, sportId: sportTableTennis.id, isDefault: true },
         ],
     });
 
@@ -637,6 +728,7 @@ export async function seedDemoDatabase() {
             type: CompetitionType.TOURNAMENT,
             slug: 'swiss-championship-2026',
             seriesSlug: 'swiss-championship',
+            sportId: sportTableTennis.id,
             description: 'The premier national championship tournament bringing together the top licensed athletes.',
             associationId: sttfNational.id,
             seasonId: currentSeason.id,
@@ -677,6 +769,7 @@ export async function seedDemoDatabase() {
             type: CompetitionType.TOURNAMENT,
             slug: 'swiss-championship-2025',
             seriesSlug: 'swiss-championship',
+            sportId: sportTableTennis.id,
             description: 'Previous year edition of the Swiss National Table Tennis Championship.',
             associationId: sttfNational.id,
             seasonId: currentSeason.id,
@@ -693,6 +786,7 @@ export async function seedDemoDatabase() {
             type: CompetitionType.LEAGUE,
             slug: 'national-league-a-2025-26',
             seriesSlug: 'national-league-a',
+            sportId: sportTableTennis.id,
             description: 'Swiss top division team championship league with round-robin encounters.',
             associationId: sttfNational.id,
             seasonId: currentSeason.id,
@@ -709,6 +803,7 @@ export async function seedDemoDatabase() {
             type: CompetitionType.SEASON_TOURNAMENT,
             slug: 'swiss-cup-2025-26',
             seriesSlug: 'swiss-cup',
+            sportId: sportTableTennis.id,
             description: 'Full-season knockout cup competition spanning across national and regional associations.',
             associationId: sttfNational.id,
             seasonId: currentSeason.id,
@@ -790,18 +885,17 @@ export async function seedDemoDatabase() {
             orderIndex: 1,
             matchType: MatchType.SINGLE,
             label: 'Men Singles #1: Marco Bernasconi vs David Schneider',
-            homePlayer1Id: userPlayerMarco.id,
-            awayPlayer1Id: userPlayerDavid.id,
-            homeWonSets: 3,
-            awayWonSets: 1,
+            result: '11:8, 9:11, 11:7, 11:9',
+            homeScore: 3,
+            awayScore: 1,
             winner: MatchWinner.HOME,
             status: EncounterStatus.FINISHED,
-            sets: [
-                { setNumber: 1, homeScore: 11, awayScore: 8 },
-                { setNumber: 2, homeScore: 9, awayScore: 11 },
-                { setNumber: 3, homeScore: 11, awayScore: 7 },
-                { setNumber: 4, homeScore: 11, awayScore: 9 },
-            ],
+            participants: {
+                create: [
+                    { userId: userPlayerMarco.id, side: 'HOME', position: 1, teamId: teamZurichElite.id, clubIdAtTime: clubZurich.id },
+                    { userId: userPlayerDavid.id, side: 'AWAY', position: 1, teamId: teamBernElite.id, clubIdAtTime: clubBern.id },
+                ],
+            },
         },
     });
 

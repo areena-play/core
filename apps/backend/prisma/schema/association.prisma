@@ -38,6 +38,7 @@ model Association {
   faqItems          FaqItem[]
   supportSubjects   SupportSubject[]
   locations         LocationAssociation[]
+  allowedSports     AssociationSport[]
 }
 
 model AssociationHierarchy {

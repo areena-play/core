@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CompetitionType, CompetitionRole, GenderRestriction, LicenseType } from '../types';
+import { CompetitionType, CompetitionRole, GenderRestriction, LicenseType, MatchWinner } from '../types';
 
 export const discountRuleSchema = z.object({
     name: z.string(),
@@ -13,6 +13,7 @@ export const tournamentSettingsSchema = z.object({
     nameDiploma: z.string().optional().nullable(),
     nameI18n: z.record(z.string()).optional().nullable(),
     tournamentHomeText: z.string().optional().nullable(),
+    sportId: z.string().uuid().optional().nullable(),
     sport: z.string().optional().nullable(),
     isSimpleMode: z.boolean().optional(),
 
@@ -181,11 +182,15 @@ export const createCategorySchema = z.object({
 });
 
 export const updateMatchScoreSchema = z.object({
+    result: z.string().optional().nullable(),
+    homeScore: z.number().int().nonnegative().optional(),
+    awayScore: z.number().int().nonnegative().optional(),
+    winner: z.nativeEnum(MatchWinner).optional(),
+    isFinished: z.boolean().default(false),
     sets: z.array(
         z.object({
             home: z.number().int().nonnegative(),
             away: z.number().int().nonnegative(),
         }),
-    ),
-    isFinished: z.boolean().default(false),
+    ).optional(),
 });

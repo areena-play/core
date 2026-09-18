@@ -780,22 +780,10 @@ export class DuplicateDetectionService {
                 }
             }
 
-            // 4. Reassign Matches
-            await tx.match.updateMany({
-                where: { homePlayer1Id: duplicateUserId },
-                data: { homePlayer1Id: primaryUserId },
-            });
-            await tx.match.updateMany({
-                where: { homePlayer2Id: duplicateUserId },
-                data: { homePlayer2Id: primaryUserId },
-            });
-            await tx.match.updateMany({
-                where: { awayPlayer1Id: duplicateUserId },
-                data: { awayPlayer1Id: primaryUserId },
-            });
-            await tx.match.updateMany({
-                where: { awayPlayer2Id: duplicateUserId },
-                data: { awayPlayer2Id: primaryUserId },
+            // 4. Reassign Match Participants
+            await tx.matchParticipant.updateMany({
+                where: { userId: duplicateUserId },
+                data: { userId: primaryUserId },
             });
 
             // 5. Reassign Team Memberships

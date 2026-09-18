@@ -1,0 +1,36 @@
+enum ResultType {
+  SETS_POINTS
+  TIMED_SCORE
+  SIMPLE_POINTS
+}
+
+model Sport {
+  id                String      @id @default(uuid())
+  code              String      @unique
+  name              String
+  nameI18n          Json        @default("{}")
+  unitTypeNameI18n  Json        @default("{}")
+  defaultResultType ResultType  @default(SETS_POINTS)
+  defaultRules      Json        @default("{}")
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  associations AssociationSport[]
+  competitions Competition[]
+}
+
+model AssociationSport {
+  id            String      @id @default(uuid())
+  associationId String
+  sportId       String
+  isDefault     Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  sport         Sport       @relation(fields: [sportId], references: [id], onDelete: Cascade)
+
+  @@unique([associationId, sportId])
+  @@index([associationId])
+  @@index([sportId])
+}
+

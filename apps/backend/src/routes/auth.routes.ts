@@ -1595,16 +1595,19 @@ router.get('/users/:identifier/stats', optionalAuth, async (req: AuthRequest, re
         // Fetch completed matches where user participated
         const matches = await prisma.match.findMany({
             where: {
-                OR: [
-                    { homePlayer1Id: user.id },
-                    { homePlayer2Id: user.id },
-                    { awayPlayer1Id: user.id },
-                    { awayPlayer2Id: user.id },
-                    { participants: { some: { userId: user.id } } },
-                ],
+                participants: { some: { userId: user.id } },
                 status: 'FINISHED',
             },
             include: {
+                category: {
+                    include: {
+                        competition: {
+                            include: {
+                                season: true,
+                            },
+                        },
+                    },
+                },
                 encounter: {
                     include: {
                         category: {
@@ -1632,29 +1635,19 @@ router.get('/users/:identifier/stats', optionalAuth, async (req: AuthRequest, re
                         },
                     },
                 },
-                homePlayer1: {
-                    select: { id: true, firstName: true, lastName: true, licenseId: true, eloPoints: true, avatarUrl: true },
-                },
-                homePlayer2: {
-                    select: { id: true, firstName: true, lastName: true, licenseId: true, eloPoints: true, avatarUrl: true },
-                },
-                awayPlayer1: {
-                    select: { id: true, firstName: true, lastName: true, licenseId: true, eloPoints: true, avatarUrl: true },
-                },
-                awayPlayer2: {
-                    select: { id: true, firstName: true, lastName: true, licenseId: true, eloPoints: true, avatarUrl: true },
-                },
                 participants: {
                     include: {
+                        user: {
+                            select: { id: true, firstName: true, lastName: true, licenseId: true, eloPoints: true, avatarUrl: true },
+                        },
                         ratingSnapshot: true,
                     },
                 },
             },
-            orderBy: {
-                encounter: {
-                    scheduledAt: 'desc',
-                },
-            },
+            orderBy: [
+                { scheduledAt: 'desc' },
+                { createdAt: 'desc' },
+            ],
             take: 100,
         });
 
@@ -1681,7 +1674,8 @@ router.get('/users/:identifier/stats', optionalAuth, async (req: AuthRequest, re
         let doublesLosses = 0;
 
         const formattedMatches = matches.map((m) => {
-            const isHome = m.homePlayer1Id === user.id || m.homePlayer2Id === user.id;
+            const myParticipant = m.participants.find((p) => p.userId === user.id);
+            const isHome = myParticipant ? myParticipant.side === 'HOME' : false;
             const isWinner = (isHome && m.winner === 'HOME') || (!isHome && m.winner === 'AWAY');
             const isDraw = m.winner === 'DRAW';
 
@@ -1695,34 +1689,39 @@ router.get('/users/:identifier/stats', optionalAuth, async (req: AuthRequest, re
                 else doublesLosses++;
             }
 
-            const mySets = isHome ? m.homeWonSets : m.awayWonSets;
-            const oppSets = isHome ? m.awayWonSets : m.homeWonSets;
-            setsWon += mySets;
-            setsLost += oppSets;
+            const myScore = isHome ? m.homeScore : m.awayScore;
+            const oppScore = isHome ? m.awayScore : m.homeScore;
+            setsWon += myScore;
+            setsLost += oppScore;
 
-            const opponents = isHome
-                ? [m.awayPlayer1, m.awayPlayer2].filter(Boolean)
-                : [m.homePlayer1, m.homePlayer2].filter(Boolean);
+            const opponents = m.participants
+                .filter((p) => isHome ? p.side === 'AWAY' : p.side === 'HOME')
+                .map((p) => p.user)
+                .filter(Boolean);
 
-            const partners = isHome
-                ? [m.homePlayer1, m.homePlayer2].filter((p) => p && p.id !== user.id)
-                : [m.awayPlayer1, m.awayPlayer2].filter((p) => p && p.id !== user.id);
+            const partners = m.participants
+                .filter((p) => isHome ? p.side === 'HOME' : p.side === 'AWAY')
+                .filter((p) => p.userId !== user.id)
+                .map((p) => p.user)
+                .filter(Boolean);
 
             const myTeam = isHome ? m.encounter?.homeTeam : m.encounter?.awayTeam;
             const oppTeam = isHome ? m.encounter?.awayTeam : m.encounter?.homeTeam;
+            const comp = m.category?.competition || m.encounter?.category?.competition;
+            const cat = m.category || m.encounter?.category;
 
             return {
                 id: m.id,
                 matchType: m.matchType,
-                date: m.encounter?.scheduledAt || m.createdAt,
-                competitionName: m.encounter?.category?.competition?.name || 'League / Tournament',
-                competitionType: m.encounter?.category?.competition?.type || 'LEAGUE',
-                categoryName: m.encounter?.category?.name || 'Category',
-                seasonName: m.encounter?.category?.competition?.season?.name || '',
+                date: m.scheduledAt || m.encounter?.scheduledAt || m.createdAt,
+                competitionName: comp?.name || 'League / Tournament',
+                competitionType: comp?.type || 'LEAGUE',
+                categoryName: cat?.name || 'Category',
+                seasonName: comp?.season?.name || '',
                 isHome,
                 result: isWinner ? 'WIN' : isDraw ? 'DRAW' : 'LOSS',
-                scoreSets: `${mySets}:${oppSets}`,
-                setsDetail: m.sets,
+                scoreSets: m.result || `${myScore}:${oppScore}`,
+                resultDetail: m.result,
                 opponents,
                 partners,
                 myTeam: myTeam ? { id: myTeam.id, name: myTeam.name, club: (myTeam as any).club } : null,
@@ -1773,7 +1772,7 @@ router.get('/users/:identifier/stats', optionalAuth, async (req: AuthRequest, re
                     matchType: m.matchType,
                     result: m.result,
                     scoreSets: m.scoreSets,
-                    setsDetail: m.setsDetail,
+                    resultDetail: m.resultDetail,
                 });
 
                 h2hMap.set(opp.id, existing);
@@ -1887,25 +1886,18 @@ router.get('/users/:identifier/h2h/:opponentIdentifier', optionalAuth, async (re
             where: {
                 status: 'FINISHED',
                 AND: [
-                    {
-                        OR: [
-                            { homePlayer1Id: player.id },
-                            { homePlayer2Id: player.id },
-                            { awayPlayer1Id: player.id },
-                            { awayPlayer2Id: player.id },
-                        ],
-                    },
-                    {
-                        OR: [
-                            { homePlayer1Id: opponent.id },
-                            { homePlayer2Id: opponent.id },
-                            { awayPlayer1Id: opponent.id },
-                            { awayPlayer2Id: opponent.id },
-                        ],
-                    },
+                    { participants: { some: { userId: player.id } } },
+                    { participants: { some: { userId: opponent.id } } },
                 ],
             },
             include: {
+                category: {
+                    include: {
+                        competition: {
+                            include: { season: true },
+                        },
+                    },
+                },
                 encounter: {
                     include: {
                         category: {
@@ -1917,12 +1909,16 @@ router.get('/users/:identifier/h2h/:opponentIdentifier', optionalAuth, async (re
                         },
                     },
                 },
-                homePlayer1: { select: { id: true, firstName: true, lastName: true } },
-                homePlayer2: { select: { id: true, firstName: true, lastName: true } },
-                awayPlayer1: { select: { id: true, firstName: true, lastName: true } },
-                awayPlayer2: { select: { id: true, firstName: true, lastName: true } },
+                participants: {
+                    include: {
+                        user: { select: { id: true, firstName: true, lastName: true } },
+                    },
+                },
             },
-            orderBy: { encounter: { scheduledAt: 'desc' } },
+            orderBy: [
+                { scheduledAt: 'desc' },
+                { createdAt: 'desc' },
+            ],
         });
 
         let wins = 0;
@@ -1932,7 +1928,8 @@ router.get('/users/:identifier/h2h/:opponentIdentifier', optionalAuth, async (re
         let setsLost = 0;
 
         const formattedMatches = matches.map((m) => {
-            const isHome = m.homePlayer1Id === player.id || m.homePlayer2Id === player.id;
+            const myParticipant = m.participants.find((p) => p.userId === player.id);
+            const isHome = myParticipant ? myParticipant.side === 'HOME' : false;
             const isWinner = (isHome && m.winner === 'HOME') || (!isHome && m.winner === 'AWAY');
             const isDraw = m.winner === 'DRAW';
 
@@ -1940,21 +1937,24 @@ router.get('/users/:identifier/h2h/:opponentIdentifier', optionalAuth, async (re
             else if (!isDraw && m.winner !== 'PENDING') losses++;
             else draws++;
 
-            const mySets = isHome ? m.homeWonSets : m.awayWonSets;
-            const oppSets = isHome ? m.awayWonSets : m.homeWonSets;
-            setsWon += mySets;
-            setsLost += oppSets;
+            const myScore = isHome ? m.homeScore : m.awayScore;
+            const oppScore = isHome ? m.awayScore : m.homeScore;
+            setsWon += myScore;
+            setsLost += oppScore;
+
+            const comp = m.category?.competition || m.encounter?.category?.competition;
+            const cat = m.category || m.encounter?.category;
 
             return {
                 id: m.id,
-                date: m.encounter?.scheduledAt || m.createdAt,
-                competitionName: m.encounter?.category?.competition?.name || 'Competition',
-                competitionType: m.encounter?.category?.competition?.type || 'LEAGUE',
-                categoryName: m.encounter?.category?.name || 'Category',
+                date: m.scheduledAt || m.encounter?.scheduledAt || m.createdAt,
+                competitionName: comp?.name || 'Competition',
+                competitionType: comp?.type || 'LEAGUE',
+                categoryName: cat?.name || 'Category',
                 matchType: m.matchType,
                 result: isWinner ? 'WIN' : isDraw ? 'DRAW' : 'LOSS',
-                scoreSets: `${mySets}:${oppSets}`,
-                setsDetail: m.sets,
+                scoreSets: m.result || `${myScore}:${oppScore}`,
+                resultDetail: m.result,
             };
         });
 

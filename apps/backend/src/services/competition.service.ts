@@ -70,7 +70,6 @@ export class CompetitionService {
                                         matchType: fmt.type || MatchType.SINGLE,
                                         label: fmt.label || `Match ${mIndex + 1}: ${fmt.type || 'Single'}`,
                                         status: EncounterStatus.SCHEDULED,
-                                        sets: [],
                                     },
                                 });
                             }
@@ -86,7 +85,6 @@ export class CompetitionService {
                                     matchType: MatchType.SINGLE,
                                     label: 'Match 1',
                                     status: EncounterStatus.SCHEDULED,
-                                    sets: [],
                                 },
                             });
                         }
@@ -136,7 +134,11 @@ export class CompetitionService {
      */
     static async updateMatchScore(data: {
         matchId: string;
-        sets: Array<{ home: number; away: number }>;
+        sets?: Array<{ home: number; away: number }>;
+        result?: string;
+        homeScore?: number;
+        awayScore?: number;
+        winner?: MatchWinner;
         isFinished: boolean;
     }) {
         const initialMatch = await prisma.match.findUnique({
@@ -155,30 +157,42 @@ export class CompetitionService {
             : `tournament:match:${initialMatch.id}`;
 
         const result = await DistributedLockService.withLock(lockResource, async (tx) => {
-            let homeWonSets = 0;
-            let awayWonSets = 0;
+            let homeScore = data.homeScore ?? 0;
+            let awayScore = data.awayScore ?? 0;
+            let resultStr = data.result;
 
-            for (const s of data.sets) {
-                if (s.home > s.away) homeWonSets++;
-                else if (s.away > s.home) awayWonSets++;
+            if (data.sets && data.sets.length > 0) {
+                let homeWon = 0;
+                let awayWon = 0;
+                for (const s of data.sets) {
+                    if (s.home > s.away) homeWon++;
+                    else if (s.away > s.home) awayWon++;
+                }
+                if (data.homeScore === undefined) homeScore = homeWon;
+                if (data.awayScore === undefined) awayScore = awayWon;
+                if (!resultStr) {
+                    resultStr = data.sets.map((s) => `${s.home}:${s.away}`).join(', ');
+                }
             }
 
-            let winner: MatchWinner = MatchWinner.PENDING;
+            let winner: MatchWinner = data.winner ?? MatchWinner.PENDING;
             let matchStatus = EncounterStatus.LIVE;
 
             if (data.isFinished) {
                 matchStatus = EncounterStatus.FINISHED;
-                if (homeWonSets > awayWonSets) winner = MatchWinner.HOME;
-                else if (awayWonSets > homeWonSets) winner = MatchWinner.AWAY;
-                else winner = MatchWinner.DRAW;
+                if (!data.winner || data.winner === MatchWinner.PENDING) {
+                    if (homeScore > awayScore) winner = MatchWinner.HOME;
+                    else if (awayScore > homeScore) winner = MatchWinner.AWAY;
+                    else winner = MatchWinner.DRAW;
+                }
             }
 
             const updatedMatch = await tx.match.update({
                 where: { id: data.matchId },
                 data: {
-                    sets: data.sets,
-                    homeWonSets,
-                    awayWonSets,
+                    result: resultStr,
+                    homeScore,
+                    awayScore,
                     winner,
                     status: matchStatus,
                 },
@@ -234,10 +248,13 @@ export class CompetitionService {
                         category: true,
                         matches: {
                             include: {
-                                homePlayer1: true,
-                                homePlayer2: true,
-                                awayPlayer1: true,
-                                awayPlayer2: true,
+                                participants: {
+                                    include: {
+                                        user: true,
+                                        team: true,
+                                        club: true,
+                                    },
+                                },
                             },
                         },
                     },
@@ -279,8 +296,9 @@ export class CompetitionService {
                     matchId: result.match.id,
                     encounterId: initialMatch.encounterId,
                     sets: data.sets,
-                    homeWonSets: result.match.homeWonSets,
-                    awayWonSets: result.match.awayWonSets,
+                    result: result.match.result,
+                    homeScore: result.match.homeScore,
+                    awayScore: result.match.awayScore,
                     winner: result.match.winner,
                     encounterHomeScore: result.homeScore,
                     encounterAwayScore: result.awayScore,
@@ -381,20 +399,12 @@ export class CompetitionService {
                     away.tablePoints += 1;
                 }
 
-                // Aggregate sets and points from all matches
+                // Aggregate scores from all matches
                 for (const m of enc.matches) {
-                    home.setsWon += m.homeWonSets;
-                    home.setsLost += m.awayWonSets;
-                    away.setsWon += m.awayWonSets;
-                    away.setsLost += m.homeWonSets;
-
-                    const sets = (m.sets as Array<{ home: number; away: number }>) || [];
-                    for (const s of sets) {
-                        home.pointsWon += s.home || 0;
-                        home.pointsLost += s.away || 0;
-                        away.pointsWon += s.away || 0;
-                        away.pointsLost += s.home || 0;
-                    }
+                    home.setsWon += m.homeScore;
+                    home.setsLost += m.awayScore;
+                    away.setsWon += m.awayScore;
+                    away.setsLost += m.homeScore;
                 }
             }
         }
