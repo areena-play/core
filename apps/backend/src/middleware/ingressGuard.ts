@@ -80,7 +80,7 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
     // -------------------------------------------------------------------------
     // 1. Whitelist Public Bootstrap & Static Media Endpoints
     // -------------------------------------------------------------------------
-    const cleanPath = path.replace(/^\/v[0-9]+/, '');
+    const cleanPath = path.replace(/^\/api/, '').replace(/^\/v[0-9]+/, '');
 
     if (
         cleanPath === '/health' ||

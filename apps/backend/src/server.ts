@@ -1,12 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import { HeadBucketCommand } from '@aws-sdk/client-s3';
 import { config } from './config/env';
+import { basePrisma } from './config/prisma';
 import { errorHandler } from './middleware/errorHandler';
 import { apiIngressGuard } from './middleware/ingressGuard';
 import { prismaCacheContext } from './middleware/prismaCacheContext';
 import { autoTransaction } from './middleware/autoTransaction';
-import { ensureBucketExists } from './config/s3';
+import { ensureBucketExists, s3Client } from './config/s3';
 
 // Route imports
 import authRoutes from './routes/auth.routes';
@@ -65,13 +67,71 @@ app.use((req, res, next) => {
     next();
 });
 
+// Helper to wrap promises with a timeout
+const checkWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+    let timer: NodeJS.Timeout;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} check timed out after ${timeoutMs}ms`)), timeoutMs);
+    });
+    try {
+        return await Promise.race([promise, timeoutPromise]);
+    } finally {
+        clearTimeout(timer!);
+    }
+};
+
 // Public Health & Config Handlers
-const healthHandler = (req: express.Request, res: express.Response) => {
-    res.json({
-        status: 'ok',
+const healthHandler = async (_req: express.Request, res: express.Response) => {
+    const timeoutMs = 3000;
+
+    // Concurrently execute Database and S3 checks
+    const [dbResult, s3Result] = await Promise.allSettled([
+        (async () => {
+            const start = Date.now();
+            await checkWithTimeout(basePrisma.$queryRaw`SELECT 1`, timeoutMs, 'Database');
+            return { latencyMs: Date.now() - start };
+        })(),
+        (async () => {
+            const start = Date.now();
+            await checkWithTimeout(
+                s3Client.send(new HeadBucketCommand({ Bucket: config.s3.bucketName })),
+                timeoutMs,
+                'S3 Storage'
+            );
+            return { latencyMs: Date.now() - start };
+        })(),
+    ]);
+
+    const isDbHealthy = dbResult.status === 'fulfilled';
+    const isS3Healthy = s3Result.status === 'fulfilled';
+    const isHealthy = isDbHealthy && isS3Healthy;
+
+    const dbData = isDbHealthy
+        ? { status: 'healthy', latencyMs: dbResult.value.latencyMs }
+        : {
+              status: 'unhealthy',
+              error: (dbResult as PromiseRejectedResult).reason?.message || 'Database unreachable',
+          };
+
+    const s3Data = isS3Healthy
+        ? { status: 'healthy', bucket: config.s3.bucketName, latencyMs: s3Result.value.latencyMs }
+        : {
+              status: 'unhealthy',
+              bucket: config.s3.bucketName,
+              error: (s3Result as PromiseRejectedResult).reason?.message || 'S3 storage unreachable',
+          };
+
+    const statusCode = isHealthy ? 200 : 503;
+
+    res.status(statusCode).json({
+        status: isHealthy ? 'healthy' : 'unhealthy',
         service: 'areena-backend',
         version: config.version,
         timestamp: new Date().toISOString(),
+        checks: {
+            database: dbData,
+            storage: s3Data,
+        },
     });
 };
 
@@ -104,6 +164,7 @@ const publicConfigHandler = async (req: express.Request, res: express.Response) 
 
 // Root Health & Config
 app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
 app.get('/config/public', publicConfigHandler);
 
 // API Ingress Guard (OAuth unrestricted / Frontend rate-limited / Direct blocked)
@@ -115,6 +176,7 @@ app.use(autoTransaction);
 // Assemble v1 Router
 const v1Router = express.Router();
 v1Router.get('/health', healthHandler);
+v1Router.get('/api/health', healthHandler);
 v1Router.get('/config/public', publicConfigHandler);
 v1Router.use('/auth', authRoutes);
 v1Router.use('/users', userRoutes);

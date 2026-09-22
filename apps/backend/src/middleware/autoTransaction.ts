@@ -98,6 +98,7 @@ export function autoTransaction(req: Request, res: Response, next: NextFunction)
     if (
         req.path.startsWith('/upload') ||
         req.path.startsWith('/health') ||
+        req.path.startsWith('/api/health') ||
         targetUrl.includes('/scraper/')
     ) {
         return next();
