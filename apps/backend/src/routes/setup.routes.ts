@@ -79,6 +79,7 @@ router.post('/initialize', async (req: Request, res: Response) => {
                     city: admin.city?.trim() || 'Central City',
                     country: admin.country?.trim() || association.country?.trim() || 'Switzerland',
                     isSuperAdmin: true,
+                    emailVerified: true,
                 },
             });
 
@@ -151,6 +152,7 @@ router.post('/initialize', async (req: Request, res: Response) => {
                 firstName: result.user.firstName,
                 lastName: result.user.lastName,
                 isSuperAdmin: result.user.isSuperAdmin,
+                emailVerified: result.user.emailVerified,
             },
             association: {
                 id: result.assoc.id,
