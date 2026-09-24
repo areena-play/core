@@ -98,8 +98,14 @@ export async function apiIngressGuard(req: IngressRequest, res: Response, next: 
     // 2. Check for OAuth 2.0 / API Key (Elevated Access)
     // -------------------------------------------------------------------------
     const authHeader = req.headers['authorization'];
+    let token: string | null = null;
     if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7).trim();
+        token = authHeader.substring(7).trim();
+    } else if (typeof req.query.token === 'string' && req.query.token.trim()) {
+        token = req.query.token.trim();
+    }
+
+    if (token) {
 
         // Check if token matches OAuth Token in DB
         try {

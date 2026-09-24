@@ -20,10 +20,10 @@ export interface ClickTTTransferSummary {
 
 export class ClickTTDataTransferService {
     /**
-     * Streams a compressed .tar.gz archive of the entire ClickTT scraper storage directory
+     * Streams a compressed .tar.gz archive of the ClickTT scraper storage directory
      * directly to the Express HTTP response.
      */
-    static async streamScrapedArchive(res: Response): Promise<void> {
+    static async streamScrapedArchive(res: Response, options: { includeCache?: boolean } = {}): Promise<void> {
         const config = await getScraperConfig();
         const storageDir = config.storageDir;
 
@@ -36,12 +36,19 @@ export class ClickTTDataTransferService {
 
         res.setHeader('Content-Type', 'application/gzip');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
+        res.setHeader('X-Accel-Buffering', 'no');
 
-        console.log(`[ClickTTTransfer] 📦 Creating compressed archive from: ${storageDir}`);
+        console.log(`[ClickTTTransfer] 📦 Creating compressed archive from: ${storageDir} (includeCache=${Boolean(options.includeCache)})`);
 
         return new Promise((resolve, reject) => {
-            // Use tar -czf - -C <storageDir> . to stream compressed archive to stdout
-            const tarProc = spawn('tar', ['-czf', '-', '-C', storageDir, '.'], {
+            const tarArgs = ['-czf', '-'];
+            if (!options.includeCache) {
+                tarArgs.push('--exclude=cache');
+            }
+            tarArgs.push('-C', storageDir, '.');
+
+            const tarProc = spawn('tar', tarArgs, {
                 stdio: ['ignore', 'pipe', 'pipe'],
             });
 

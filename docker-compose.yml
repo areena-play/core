@@ -71,6 +71,8 @@ services:
       - S3_SECRET_ACCESS_KEY=${MINIO_PASS}
       - S3_BUCKET_NAME=${MINIO_BUCKET_NAME}
       - JWT_SECRET=${JWT_SECRET}
+    volumes:
+      - areena_clicktt_data:/app/storage
     depends_on:
       db:
         condition: service_healthy
@@ -143,3 +145,4 @@ services:
 volumes:
   areena_pg_data:
   areena_s3_data:
+  areena_clicktt_data:

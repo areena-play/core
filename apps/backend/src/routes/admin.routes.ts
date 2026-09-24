@@ -989,16 +989,22 @@ router.post('/scraper/stop', async (req: AuthRequest, res: Response) => {
  * Streams a compressed .tar.gz archive of the complete scraped ClickTT dataset & cache
  */
 router.get('/scraper/export-archive', async (req: AuthRequest, res: Response) => {
+    // Disable request and response timeouts for long-running streaming downloads
+    req.setTimeout(0);
+    res.setTimeout(0);
+
     try {
+        const includeCache = req.query.cache === 'true' || req.query.includeCache === 'true';
+
         await AuditService.record({
             req,
             action: 'EXPORT_CLICKTT_ARCHIVE',
             entityType: 'ClickTTScraper',
             entityId: 'CACHE_ARCHIVE',
-            description: `SuperAdmin ${req.user?.email} downloaded scraped ClickTT data archive`,
+            description: `SuperAdmin ${req.user?.email} downloaded scraped ClickTT data archive (includeCache=${includeCache})`,
         });
 
-        await ClickTTDataTransferService.streamScrapedArchive(res);
+        await ClickTTDataTransferService.streamScrapedArchive(res, { includeCache });
     } catch (err: any) {
         console.error('ClickTT Archive Export Error:', err);
         if (!res.headersSent) {

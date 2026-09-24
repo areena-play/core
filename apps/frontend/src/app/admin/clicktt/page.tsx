@@ -75,6 +75,7 @@ export default function AdminClickTTPage() {
 
     // Data Transfer (Import / Export Scraped Archive)
     const [exportingArchive, setExportingArchive] = useState(false);
+    const [includeCacheInExport, setIncludeCacheInExport] = useState(false);
     const [importingArchive, setImportingArchive] = useState(false);
     const [importTriggerIngest, setImportTriggerIngest] = useState(true);
     const [importResult, setImportResult] = useState<any | null>(null);
@@ -339,12 +340,24 @@ export default function AdminClickTTPage() {
         setExportingArchive(true);
         setActionMsg(null);
         try {
-            await api.admin.exportScrapedArchive();
-            setActionMsg({ type: 'success', text: 'Downloaded scraped archive successfully.' });
+            const token = localStorage.getItem('areena_token') || '';
+            const downloadUrl = `/api/v1/admin/scraper/export-archive?token=${encodeURIComponent(token)}${includeCacheInExport ? '&cache=true' : ''}`;
+
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `clicktt_scraped_data_${new Date().toISOString().slice(0, 10)}.tar.gz`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            setActionMsg({
+                type: 'success',
+                text: 'Archive generation and stream download started in your browser. Check your browser download bar for progress.'
+            });
         } catch (err: any) {
             setActionMsg({ type: 'error', text: err.message || 'Failed to export scraped archive.' });
         } finally {
-            setExportingArchive(false);
+            setTimeout(() => setExportingArchive(false), 2000);
         }
     };
 
@@ -1376,6 +1389,23 @@ export default function AdminClickTTPage() {
                                         <li>storage/clicktt_storage/checkpoints/ (pipeline checkpoint state)</li>
                                     </ul>
                                 </div>
+
+                                <label className="flex items-start gap-2.5 cursor-pointer text-xs pt-1">
+                                    <input
+                                        type="checkbox"
+                                        checked={includeCacheInExport}
+                                        onChange={(e) => setIncludeCacheInExport(e.target.checked)}
+                                        className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 mt-0.5"
+                                    />
+                                    <div>
+                                        <span className="font-bold text-slate-900 dark:text-white">
+                                            Include Raw Web HTML Cache
+                                        </span>
+                                        <p className="text-[11px] text-slate-500">
+                                            Includes ~39,000 raw crawled HTML pages (~830MB). Leave unchecked for fastest export (datasets and records only).
+                                        </p>
+                                    </div>
+                                </label>
                             </div>
 
                             <button
