@@ -151,6 +151,8 @@ export const en = {
         myAdminAccess: 'My Admin Access',
         myProfile: 'My Profile & Settings',
         account: 'Account',
+        help: 'Help',
+        guide: 'Getting Started Guide',
         signedInAs: 'Signed in as',
         roleSuperAdmin: 'Super Administrator',
         roleAssocAdmin: 'Association Admin',

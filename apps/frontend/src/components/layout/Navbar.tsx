@@ -54,6 +54,7 @@ import {
     Mic,
     DollarSign,
     BarChart3,
+    BookOpen,
 } from 'lucide-react';
 
 export function Navbar() {
@@ -327,6 +328,16 @@ export function Navbar() {
                                                     {t('userMenu.mySpaces')}
                                                 </div>
 
+                                                {/* My Profile & Settings */}
+                                                <Link
+                                                    href={`/profile?tab=personal${pathname && !pathname.startsWith('/profile') && !pathname.startsWith('/auth') ? `&returnUrl=${encodeURIComponent(pathname)}` : ''}`}
+                                                    onClick={() => setUserMenuOpen(false)}
+                                                    className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                                >
+                                                    <User className="h-4 w-4 text-slate-400" />
+                                                    <span>{t('userMenu.myProfile')}</span>
+                                                </Link>
+
                                                 {/* My Competitions */}
                                                 <Link
                                                     href={`/profile?tab=competitions${pathname && !pathname.startsWith('/profile') && !pathname.startsWith('/auth') ? `&returnUrl=${encodeURIComponent(pathname)}` : ''}`}
@@ -384,20 +395,20 @@ export function Navbar() {
                                                 )}
                                             </div>
 
-                                            {/* Account Section */}
+                                            {/* Help Section */}
                                             <div className="space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800 mt-2">
                                                 <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                                    {t('userMenu.account')}
+                                                    {t('userMenu.help') || 'Help'}
                                                 </div>
 
-                                                {/* My Profile & Settings */}
+                                                {/* Getting Started Guide */}
                                                 <Link
-                                                    href={`/profile?tab=personal${pathname && !pathname.startsWith('/profile') && !pathname.startsWith('/auth') ? `&returnUrl=${encodeURIComponent(pathname)}` : ''}`}
+                                                    href="/guide"
                                                     onClick={() => setUserMenuOpen(false)}
                                                     className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                                 >
-                                                    <User className="h-4 w-4 text-slate-400" />
-                                                    <span>{t('userMenu.myProfile')}</span>
+                                                    <BookOpen className="h-4 w-4 text-blue-500" />
+                                                    <span>{t('userMenu.guide') || 'Getting Started Guide'}</span>
                                                 </Link>
 
                                                 {/* Support & FAQs */}
@@ -624,6 +635,16 @@ export function Navbar() {
                                                 {t('userMenu.mySpaces')}
                                             </div>
 
+                                            {/* My Profile & Settings */}
+                                            <Link
+                                                href={`/profile?tab=personal${pathname && !pathname.startsWith('/profile') && !pathname.startsWith('/auth') ? `&returnUrl=${encodeURIComponent(pathname)}` : ''}`}
+                                                onClick={() => setUserMenuOpen(false)}
+                                                className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                            >
+                                                <User className="h-4 w-4 text-slate-400" />
+                                                <span>{t('userMenu.myProfile')}</span>
+                                            </Link>
+
                                             {/* My Competitions */}
                                             <Link
                                                 href={`/profile?tab=competitions${pathname && !pathname.startsWith('/profile') && !pathname.startsWith('/auth') ? `&returnUrl=${encodeURIComponent(pathname)}` : ''}`}
@@ -681,20 +702,20 @@ export function Navbar() {
                                             )}
                                         </div>
 
-                                        {/* Account Section */}
+                                        {/* Help Section */}
                                         <div className="space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800 mt-2">
                                             <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                                {t('userMenu.account')}
+                                                {t('userMenu.help') || 'Help'}
                                             </div>
 
-                                            {/* My Profile & Settings */}
+                                            {/* Getting Started Guide */}
                                             <Link
-                                                href={`/profile?tab=personal${pathname && !pathname.startsWith('/profile') && !pathname.startsWith('/auth') ? `&returnUrl=${encodeURIComponent(pathname)}` : ''}`}
+                                                href="/guide"
                                                 onClick={() => setUserMenuOpen(false)}
                                                 className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                                             >
-                                                <User className="h-4 w-4 text-slate-400" />
-                                                <span>{t('userMenu.myProfile')}</span>
+                                                <BookOpen className="h-4 w-4 text-blue-500" />
+                                                <span>{t('userMenu.guide') || 'Getting Started Guide'}</span>
                                             </Link>
 
                                             {/* Support & FAQs */}

@@ -153,6 +153,8 @@ export const de: TranslationDictionary = {
         myAdminAccess: 'Mein Admin-Zugriff',
         myProfile: 'Mein Profil & Einstellungen',
         account: 'Konto',
+        help: 'Hilfe',
+        guide: 'Handbuch & Leitfaden',
         signedInAs: 'Angemeldet als',
         roleSuperAdmin: 'Super-Administrator',
         roleAssocAdmin: 'Verbandsadministrator',
