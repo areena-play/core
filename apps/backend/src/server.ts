@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import morgan from 'morgan';
-import { HeadBucketCommand } from '@aws-sdk/client-s3';
+import { HeadBucketCommand, HeadObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { config } from './config/env';
 import { basePrisma } from './config/prisma';
 import { errorHandler } from './middleware/errorHandler';
@@ -92,13 +91,65 @@ const healthHandler = async (_req: express.Request, res: express.Response) => {
             return { latencyMs: Date.now() - start };
         })(),
         (async () => {
+            if (!config.s3.bucketName) {
+                throw new Error('S3_BUCKET_NAME is not configured');
+            }
             const start = Date.now();
-            await checkWithTimeout(
-                s3Client.send(new HeadBucketCommand({ Bucket: config.s3.bucketName })),
-                timeoutMs,
-                'S3 Storage'
-            );
-            return { latencyMs: Date.now() - start };
+
+            // 1. Try HeadBucket first
+            try {
+                await checkWithTimeout(
+                    s3Client.send(new HeadBucketCommand({ Bucket: config.s3.bucketName })),
+                    timeoutMs,
+                    'S3 Storage (HeadBucket)'
+                );
+                return { latencyMs: Date.now() - start };
+            } catch (headBucketErr: any) {
+                // 2. If HeadBucket failed (common when IAM policy restricts bucket-level permissions),
+                // probe with HeadObject in the application's 'uploads/' folder.
+                // A 404 (NoSuchKey / NotFound) confirms the bucket/prefix is reachable, authenticated, and valid.
+                try {
+                    await checkWithTimeout(
+                        s3Client.send(
+                            new HeadObjectCommand({
+                                Bucket: config.s3.bucketName,
+                                Key: 'uploads/.healthcheck',
+                            })
+                        ),
+                        timeoutMs,
+                        'S3 Storage (HeadObject)'
+                    );
+                    return { latencyMs: Date.now() - start };
+                } catch (headObjectErr: any) {
+                    const statusCode = headObjectErr.$metadata?.httpStatusCode;
+                    const errName = headObjectErr.name;
+                    if (
+                        statusCode === 404 ||
+                        errName === 'NotFound' ||
+                        errName === 'NoSuchKey'
+                    ) {
+                        return { latencyMs: Date.now() - start };
+                    }
+
+                    // 3. Fallback: Try ListObjectsV2 on uploads/ prefix
+                    try {
+                        await checkWithTimeout(
+                            s3Client.send(
+                                new ListObjectsV2Command({
+                                    Bucket: config.s3.bucketName,
+                                    Prefix: 'uploads/',
+                                    MaxKeys: 1,
+                                })
+                            ),
+                            timeoutMs,
+                            'S3 Storage (ListObjectsV2)'
+                        );
+                        return { latencyMs: Date.now() - start };
+                    } catch (listErr: any) {
+                        throw headObjectErr || headBucketErr || listErr;
+                    }
+                }
+            }
         })(),
     ]);
 
