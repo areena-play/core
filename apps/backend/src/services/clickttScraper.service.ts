@@ -86,8 +86,12 @@ class ClickTTScraperManager extends EventEmitter {
     public async getStatus(): Promise<ScraperExecutionStatus> {
         let summary: any = null;
         try {
-            await stateManager.init();
-            summary = await stateManager.getSummary();
+            if (this.isRunning) {
+                summary = stateManager.getCachedSummary();
+            } else {
+                await stateManager.init();
+                summary = await stateManager.getSummary();
+            }
         } catch (err) {
             // Ignore if state manager not yet initialized
         }

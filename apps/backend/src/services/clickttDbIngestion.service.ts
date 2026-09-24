@@ -68,6 +68,11 @@ function parseRankingDate(dateStr: string): Date {
 
 const yieldToEventLoop = () => new Promise<void>((resolve) => setImmediate(resolve));
 
+export function toDeterministicUUID(namespace: string, id: string): string {
+    const hash = crypto.createHash('md5').update(`${namespace}:${id}`).digest('hex');
+    return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-8${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
+}
+
 export class ClickTTDbIngestionService {
     /**
      * Ensure STT National and Regional Associations exist in database
@@ -424,7 +429,7 @@ export class ClickTTDbIngestionService {
                 const rankGender = h.rankMen ? parseInt(h.rankMen, 10) : h.rankWomen ? parseInt(h.rankWomen, 10) : null;
 
                 snapshotBatch.push({
-                    id: crypto.randomUUID(),
+                    id: toDeterministicUUID('rating', `${userId}_${effectiveFrom.getTime()}_${h.rankingDate || ''}`),
                     userId,
                     associationId: sttId,
                     elo,
@@ -585,7 +590,7 @@ export class ClickTTDbIngestionService {
             const isCup = c.type === 'cup' || /cup|coupe/i.test(sanitizedName);
             const isTourn = c.type === 'tournament' || /turnier|tournament/i.test(sanitizedName);
             const type = isCup ? CompetitionType.CUP : isTourn ? CompetitionType.TOURNAMENT : CompetitionType.LEAGUE;
-            const id = crypto.randomUUID();
+            const id = toDeterministicUUID('comp', rawId);
 
             compRows.push({
                 id,
@@ -613,17 +618,6 @@ export class ClickTTDbIngestionService {
             await yieldToEventLoop();
         }
 
-        // If competitions already existed and IDs were retrieved
-        const existingComps = await prisma.competition.findMany({ select: { id: true, slug: true } });
-        const slugToId = new Map(existingComps.map((ec) => [ec.slug, ec.id]));
-        for (const c of competitions || []) {
-            if (!c.competitionId) continue;
-            const rawId = String(c.competitionId);
-            const slug = `comp-${rawId.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-            const realId = slugToId.get(slug);
-            if (realId) compIdMap.set(rawId, realId);
-        }
-
         // 2. Categories Batch
         const catRows: any[] = [];
         for (const cat of categories || []) {
@@ -633,7 +627,7 @@ export class ClickTTDbIngestionService {
             if (!parentCompId) continue;
 
             const sanitizedCatName = cat.name.replace(/\$\{\s*([a-z0-9_-]+)\s*\}/gi, (_m: string, k: string) => k.toUpperCase()).trim();
-            const id = crypto.randomUUID();
+            const id = toDeterministicUUID('cat', rawCatId);
             catRows.push({
                 id,
                 competitionId: parentCompId,
@@ -664,7 +658,7 @@ export class ClickTTDbIngestionService {
             if (!catId) continue;
 
             const sanitizedGroupName = g.name.replace(/\$\{\s*([a-z0-9_-]+)\s*\}/gi, (_m: string, k: string) => k.toUpperCase()).trim();
-            const gId = crypto.randomUUID();
+            const gId = toDeterministicUUID('group', rawGroupId);
             groupRows.push({
                 id: gId,
                 categoryId: catId,
@@ -676,7 +670,7 @@ export class ClickTTDbIngestionService {
                 if (!t.teamName) continue;
                 const rawTeamId = t.teamId ? String(t.teamId) : null;
                 const clubId = t.clubNr ? clubIdMap.get(String(t.clubNr)) || null : null;
-                const tId = crypto.randomUUID();
+                const tId = toDeterministicUUID('team', rawTeamId ? `id_${rawTeamId}` : `cat_${catId}_${t.teamName.trim()}`);
 
                 teamRows.push({
                     id: tId,
@@ -825,8 +819,8 @@ export class ClickTTDbIngestionService {
         estimatedMatchesTotal: number = 1430000,
         signal?: AbortSignal
     ): Promise<{ encountersCount: number; matchesCount: number }> {
-        const encounterIdMap = new Map<string, string>();
-        const encounterMetaMap = new Map<string, { homeTeamId: string; awayTeamId: string; categoryId: string; groupId: string | null }>();
+        // Flat compact metadata map: encId -> "homeTeamId|awayTeamId|categoryId|groupId"
+        const encounterMetaMap = new Map<string, string>();
 
         let encounterBatch: any[] = [];
         let missingTeamsBatch: any[] = [];
@@ -851,20 +845,19 @@ export class ClickTTDbIngestionService {
             }
             if (!enc || !enc.encounterId) continue;
             const rawEncId = String(enc.encounterId);
-            const catId = enc.categoryId ? catIdMap.get(String(enc.categoryId)) : null;
-            const groupId = enc.groupId ? groupIdMap.get(String(enc.groupId)) || null : null;
+            const catId = enc.categoryId ? catIdMap.get(String(enc.categoryId)) || toDeterministicUUID('cat', String(enc.categoryId)) : null;
+            const groupId = enc.groupId ? groupIdMap.get(String(enc.groupId)) || toDeterministicUUID('group', String(enc.groupId)) : null;
             if (!catId) continue;
 
             const homeTeamKey = enc.homeTeamId ? teamIdMap.get(String(enc.homeTeamId)) : null;
             const homeTeamNameKey = enc.homeTeamName ? teamIdMap.get(`${catId}_${enc.homeTeamName.trim()}`) : null;
-            let homeTeamId = homeTeamKey || homeTeamNameKey;
+            let homeTeamId = homeTeamKey || homeTeamNameKey || toDeterministicUUID('team', enc.homeTeamId ? `id_${enc.homeTeamId}` : `cat_${catId}_${(enc.homeTeamName || 'Home Team').trim()}`);
 
             const awayTeamKey = enc.awayTeamId ? teamIdMap.get(String(enc.awayTeamId)) : null;
             const awayTeamNameKey = enc.awayTeamName ? teamIdMap.get(`${catId}_${enc.awayTeamName.trim()}`) : null;
-            let awayTeamId = awayTeamKey || awayTeamNameKey;
+            let awayTeamId = awayTeamKey || awayTeamNameKey || toDeterministicUUID('team', enc.awayTeamId ? `id_${enc.awayTeamId}` : `cat_${catId}_${(enc.awayTeamName || 'Away Team').trim()}`);
 
-            if (!homeTeamId) {
-                homeTeamId = crypto.randomUUID();
+            if (!homeTeamKey && !homeTeamNameKey) {
                 const clubId = enc.homeClubNr ? clubIdMap.get(String(enc.homeClubNr)) || null : null;
                 const teamName = enc.homeTeamName || `Home Team`;
                 missingTeamsBatch.push({ id: homeTeamId, categoryId: catId, name: teamName, clubId });
@@ -872,8 +865,7 @@ export class ClickTTDbIngestionService {
                 teamIdMap.set(`${catId}_${teamName.trim()}`, homeTeamId);
             }
 
-            if (!awayTeamId) {
-                awayTeamId = crypto.randomUUID();
+            if (!awayTeamKey && !awayTeamNameKey) {
                 const clubId = enc.awayClubNr ? clubIdMap.get(String(enc.awayClubNr)) || null : null;
                 const teamName = enc.awayTeamName || `Away Team`;
                 missingTeamsBatch.push({ id: awayTeamId, categoryId: catId, name: teamName, clubId });
@@ -881,11 +873,11 @@ export class ClickTTDbIngestionService {
                 teamIdMap.set(`${catId}_${teamName.trim()}`, awayTeamId);
             }
 
-            const encId = crypto.randomUUID();
-            const scheduledAt = parseSafeDate(enc.scheduledDate || enc.scheduledAt, new Date());
-            const homeScore = enc.homeMatches !== undefined ? parseInt(enc.homeMatches, 10) : enc.homePoints || 0;
-            const awayScore = enc.awayMatches !== undefined ? parseInt(enc.awayMatches, 10) : enc.awayPoints || 0;
-            const isFinished = enc.status === 'finished' || homeScore > 0 || awayScore > 0;
+            const encId = toDeterministicUUID('encounter', rawEncId);
+            const scheduledAt = parseSafeDate(enc.scheduledDate || enc.scheduledAt || enc.date, new Date());
+            const homeScore = enc.homeMatches !== undefined ? parseInt(enc.homeMatches, 10) : enc.homePoints !== undefined ? parseInt(enc.homePoints, 10) : enc.scoreHome !== undefined ? parseInt(enc.scoreHome, 10) : 0;
+            const awayScore = enc.awayMatches !== undefined ? parseInt(enc.awayMatches, 10) : enc.awayPoints !== undefined ? parseInt(enc.awayPoints, 10) : enc.scoreGuest !== undefined ? parseInt(enc.scoreGuest, 10) : 0;
+            const isFinished = enc.status === 'finished' || enc.isPlayed === true || homeScore > 0 || awayScore > 0;
 
             encounterBatch.push({
                 id: encId,
@@ -900,8 +892,8 @@ export class ClickTTDbIngestionService {
                 location: enc.location || null,
             });
 
-            encounterIdMap.set(rawEncId, encId);
-            encounterMetaMap.set(encId, { homeTeamId, awayTeamId, categoryId: catId, groupId });
+            // Store packed metadata string (homeTeamId|awayTeamId|catId|groupId)
+            encounterMetaMap.set(rawEncId, `${homeTeamId}|${awayTeamId}|${catId}|${groupId || ''}`);
             encountersCount++;
 
             if (missingTeamsBatch.length >= 500) {
@@ -952,7 +944,8 @@ export class ClickTTDbIngestionService {
         // 2. Process Matches & MatchParticipants & TeamMembers
         let matchBatch: any[] = [];
         let participantBatch: any[] = [];
-        const teamMemberMap = new Map<string, { teamId: string; userId: string; role: string }>();
+        let teamMemberBatch: any[] = [];
+        const seenTeamMembers = new Set<string>();
         let matchesCount = 0;
         const matchStartTime = Date.now();
 
@@ -973,12 +966,12 @@ export class ClickTTDbIngestionService {
                 participantBatch = [];
             }
 
-            if (teamMemberMap.size >= 1000) {
+            if (teamMemberBatch.length > 0) {
                 await prisma.teamMember.createMany({
-                    data: Array.from(teamMemberMap.values()),
+                    data: teamMemberBatch,
                     skipDuplicates: true,
                 });
-                teamMemberMap.clear();
+                teamMemberBatch = [];
             }
 
             await yieldToEventLoop();
@@ -989,14 +982,29 @@ export class ClickTTDbIngestionService {
                 throw new Error('Matches ingestion cancelled by administrator.');
             }
             if (!m || !m.matchId) continue;
-            const encounterId = m.encounterId ? encounterIdMap.get(String(m.encounterId)) || null : null;
-            const meta = encounterId ? encounterMetaMap.get(encounterId) : null;
-            const catId = m.categoryId ? catIdMap.get(String(m.categoryId)) || meta?.categoryId : meta?.categoryId;
-            const groupId = m.groupId ? groupIdMap.get(String(m.groupId)) || meta?.groupId : meta?.groupId || null;
+
+            const rawEncId = m.encounterId ? String(m.encounterId) : null;
+            const metaStr = rawEncId ? encounterMetaMap.get(rawEncId) : null;
+            let metaHomeTeamId: string | null = null;
+            let metaAwayTeamId: string | null = null;
+            let metaCatId: string | null = null;
+            let metaGroupId: string | null = null;
+
+            if (metaStr) {
+                const parts = metaStr.split('|');
+                metaHomeTeamId = parts[0] || null;
+                metaAwayTeamId = parts[1] || null;
+                metaCatId = parts[2] || null;
+                metaGroupId = parts[3] || null;
+            }
+
+            const catId = m.categoryId ? catIdMap.get(String(m.categoryId)) || toDeterministicUUID('cat', String(m.categoryId)) : metaCatId;
+            const groupId = m.groupId ? groupIdMap.get(String(m.groupId)) || toDeterministicUUID('group', String(m.groupId)) : metaGroupId;
+            const encounterId = rawEncId ? toDeterministicUUID('encounter', rawEncId) : null;
 
             if (!catId) continue;
 
-            const matchId = crypto.randomUUID();
+            const matchId = toDeterministicUUID('match', String(m.matchId));
             const matchType = m.matchType === 'double' ? MatchType.DOUBLE : MatchType.SINGLE;
             const homeScore = m.setsHome !== undefined ? parseInt(m.setsHome, 10) : 0;
             const awayScore = m.setsGuest !== undefined ? parseInt(m.setsGuest, 10) : 0;
@@ -1030,10 +1038,10 @@ export class ClickTTDbIngestionService {
                 const userId = userIdMap.get(String(lic).trim());
                 if (!userId) return;
 
-                const teamId = meta ? (side === ParticipantSide.HOME ? meta.homeTeamId : meta.awayTeamId) : null;
+                const teamId = side === ParticipantSide.HOME ? metaHomeTeamId : metaAwayTeamId;
 
                 participantBatch.push({
-                    id: crypto.randomUUID(),
+                    id: toDeterministicUUID('part', `${matchId}_${userId}_${side}_${pos}`),
                     matchId,
                     userId,
                     side,
@@ -1042,9 +1050,15 @@ export class ClickTTDbIngestionService {
                 });
 
                 if (teamId) {
-                    const key = `${teamId}_${userId}`;
-                    if (!teamMemberMap.has(key)) {
-                        teamMemberMap.set(key, { teamId, userId, role: 'PLAYER' });
+                    const memberKey = `${teamId}_${userId}`;
+                    if (!seenTeamMembers.has(memberKey)) {
+                        seenTeamMembers.add(memberKey);
+                        teamMemberBatch.push({
+                            id: toDeterministicUUID('member', memberKey),
+                            teamId,
+                            userId,
+                            role: 'PLAYER',
+                        });
                     }
                 }
             };
@@ -1065,7 +1079,7 @@ export class ClickTTDbIngestionService {
 
             matchesCount++;
 
-            if (matchBatch.length >= 1000 || participantBatch.length >= 1000) {
+            if (matchBatch.length >= 1000 || participantBatch.length >= 1000 || teamMemberBatch.length >= 1000) {
                 await flushMatchesAndParticipants();
             }
 
@@ -1092,14 +1106,6 @@ export class ClickTTDbIngestionService {
 
         // Flush remaining batches
         await flushMatchesAndParticipants();
-        if (teamMemberMap.size > 0) {
-            await prisma.teamMember.createMany({
-                data: Array.from(teamMemberMap.values()),
-                skipDuplicates: true,
-            });
-            teamMemberMap.clear();
-            await yieldToEventLoop();
-        }
 
         return { encountersCount, matchesCount };
     }

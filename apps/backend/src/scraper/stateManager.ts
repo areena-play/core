@@ -138,7 +138,24 @@ export class StateManager {
         await fs.rename(tempPath, stateFile);
     }
 
-    async getSummary() {
+    private cachedSummary: any = null;
+    private lastSummaryAt: number = 0;
+
+    public getCachedSummary(): any {
+        return this.cachedSummary || {
+            meta: this.meta,
+            counts: this.meta.counts || {},
+            datasets: {},
+            checkpoints: {},
+        };
+    }
+
+    async getSummary(forceFresh = false) {
+        const now = Date.now();
+        if (!forceFresh && this.cachedSummary && now - this.lastSummaryAt < 15000) {
+            return this.cachedSummary;
+        }
+
         const { stateFile, dataDir, checkpointsDir } = await this.getPaths();
 
         // 1. Reload metadata from disk to ensure freshness
@@ -149,7 +166,7 @@ export class StateManager {
             }
         } catch {}
 
-        // 2. Checkpoint line counts
+        // 2. Checkpoint line counts (use in-memory Set size if available, otherwise fast count)
         const checkpoints = [
             'seasons',
             'clubs',
@@ -165,17 +182,21 @@ export class StateManager {
 
         const checkpointCounts: Record<string, number> = {};
         for (const cp of checkpoints) {
-            const filePath = path.join(checkpointsDir, `${cp}.txt`);
-            if (existsSync(filePath)) {
-                const fileStream = createReadStream(filePath, { encoding: 'utf-8' });
-                const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
-                let count = 0;
-                for await (const line of rl) {
-                    if (line.trim()) count++;
-                }
-                checkpointCounts[cp] = count;
+            if (this.sets.has(cp)) {
+                checkpointCounts[cp] = this.sets.get(cp)!.size;
             } else {
-                checkpointCounts[cp] = 0;
+                const filePath = path.join(checkpointsDir, `${cp}.txt`);
+                if (existsSync(filePath)) {
+                    const fileStream = createReadStream(filePath, { encoding: 'utf-8' });
+                    const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
+                    let count = 0;
+                    for await (const line of rl) {
+                        if (line.trim()) count++;
+                    }
+                    checkpointCounts[cp] = count;
+                } else {
+                    checkpointCounts[cp] = 0;
+                }
             }
         }
 
@@ -212,12 +233,16 @@ export class StateManager {
             }
         }
 
-        return {
+        const result = {
             meta: this.meta,
             counts: this.meta.counts || {},
             datasets: datasetCounts,
             checkpoints: checkpointCounts,
         };
+
+        this.cachedSummary = result;
+        this.lastSummaryAt = now;
+        return result;
     }
 }
 
