@@ -128,6 +128,7 @@ export class ApiClient extends HttpClient {
     adminResetPassword = (id: string, body?: { newPassword?: string; autoGenerate?: boolean }) => this.users.adminResetPassword(id, body);
     adminToggleSuperAdmin = (id: string) => this.users.adminToggleSuperAdmin(id);
     adminSendVerification = (id: string) => this.users.adminSendVerification(id);
+    adminVerifyEmail = (id: string, verified: boolean = true) => this.users.adminVerifyEmail(id, verified);
     adminDeleteUser = (id: string) => this.users.adminDeleteUser(id);
     getDuplicateUsers = () => this.users.getDuplicateUsers();
     mergeDuplicateUsers = (body: { primaryUserId: string; duplicateUserId: string; keepDuplicateEmailIfUnset?: boolean }) => this.users.mergeDuplicateUsers(body);

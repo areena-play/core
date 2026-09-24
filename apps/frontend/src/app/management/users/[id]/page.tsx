@@ -307,6 +307,25 @@ function UserDetailContent() {
         }
     };
 
+    // Manually set email verification status (Super Admin)
+    const [togglingVerification, setTogglingVerification] = useState(false);
+    const handleSetEmailVerified = async (targetState: boolean = true) => {
+        if (!userId || !userData) return;
+        setTogglingVerification(true);
+        try {
+            await api.adminVerifyEmail(userId, targetState);
+            setActionBanner({
+                type: 'success',
+                text: `Email address marked as ${targetState ? 'VERIFIED' : 'UNVERIFIED'} for ${userData.firstName} ${userData.lastName}.`,
+            });
+            await loadUserData();
+        } catch (err: any) {
+            setActionBanner({ type: 'error', text: err.message || 'Failed to update email verification status.' });
+        } finally {
+            setTogglingVerification(false);
+        }
+    };
+
     // Delete user handler
     const handleDeleteUser = async () => {
         if (!userId || !userData) return;
@@ -846,23 +865,53 @@ function UserDetailContent() {
                                         </div>
                                     </div>
                                     {userData.emailVerified ? (
-                                        <span className="p-1 rounded-full bg-emerald-500/20 text-emerald-500">
-                                            <Check className="w-4 h-4" />
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold">
+                                            <Check className="w-3.5 h-3.5" />
+                                            <span>Verified</span>
                                         </span>
                                     ) : (
-                                        <span className="p-1 rounded-full bg-amber-500/20 text-amber-500">
-                                            <Clock className="w-4 h-4" />
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[11px] font-bold">
+                                            <Clock className="w-3.5 h-3.5" />
+                                            <span>Pending</span>
                                         </span>
                                     )}
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={handleSendVerification}
-                                    className="w-full inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/20 text-xs font-semibold transition"
-                                >
-                                    <Mail className="w-3.5 h-3.5" />
-                                    <span>Resend Verification Email</span>
-                                </button>
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                    {currentUser?.isSuperAdmin && (
+                                        <button
+                                            type="button"
+                                            disabled={togglingVerification}
+                                            onClick={() => handleSetEmailVerified(!userData.emailVerified)}
+                                            className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition ${
+                                                userData.emailVerified
+                                                    ? 'bg-slate-200/60 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-800'
+                                                    : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20'
+                                            }`}
+                                        >
+                                            {userData.emailVerified ? (
+                                                <>
+                                                    <Clock className="w-3.5 h-3.5" />
+                                                    <span>Mark as Unverified</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Check className="w-3.5 h-3.5" />
+                                                    <span>Set as Verified</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+                                    {!userData.emailVerified && (
+                                        <button
+                                            type="button"
+                                            onClick={handleSendVerification}
+                                            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/20 text-xs font-semibold transition"
+                                        >
+                                            <Mail className="w-3.5 h-3.5" />
+                                            <span>Resend Verification Email</span>
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
 

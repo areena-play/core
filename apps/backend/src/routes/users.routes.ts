@@ -611,6 +611,64 @@ router.post('/admin/:id/send-verification', async (req: AuthRequest, res: Respon
 });
 
 /**
+ * POST /users/admin/:id/verify-email
+ * Manually mark user email as verified (or unverified) by Super Admin.
+ */
+router.post('/admin/:id/verify-email', async (req: AuthRequest, res: Response, next) => {
+    try {
+        const { id } = req.params;
+        const { verified = true } = req.body;
+
+        const targetUser = await prisma.user.findUnique({ where: { id } });
+        if (!targetUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const isVerified = Boolean(verified);
+
+        const updated = await prisma.user.update({
+            where: { id },
+            data: {
+                emailVerified: isVerified,
+                emailVerificationToken: isVerified ? null : targetUser.emailVerificationToken,
+                emailVerificationExpires: isVerified ? null : targetUser.emailVerificationExpires,
+            },
+            select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                emailVerified: true,
+            },
+        });
+
+        await AuditService.record({
+            req,
+            userId: req.user!.id,
+            userEmail: req.user!.email,
+            userName: `${req.user!.firstName} ${req.user!.lastName}`,
+            action: 'USER_EMAIL_VERIFIED_BY_ADMIN',
+            category: AuditCategory.GOVERNANCE,
+            entityType: 'User',
+            entityId: id,
+            description: `Super Admin manually set email verification status to ${isVerified ? 'VERIFIED' : 'UNVERIFIED'} for user ${updated.firstName} ${updated.lastName} (${updated.email})`,
+            status: 'SUCCESS',
+            metadata: {
+                targetUserId: id,
+                emailVerified: isVerified,
+            },
+        });
+
+        res.json({
+            message: `Email verification status updated to ${isVerified ? 'VERIFIED' : 'UNVERIFIED'} for ${updated.firstName} ${updated.lastName}.`,
+            user: updated,
+        });
+    } catch (err) {
+        next(err);
+    }
+});
+
+/**
  * DELETE /users/admin/:id
  * Delete a user account.
  */

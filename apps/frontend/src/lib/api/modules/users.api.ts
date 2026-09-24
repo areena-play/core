@@ -35,6 +35,13 @@ export class UsersApi {
         return this.http.request(`/users/admin/${id}/send-verification`, { method: 'POST' });
     }
 
+    adminVerifyEmail(id: string, verified: boolean = true) {
+        return this.http.request<{ message: string; user: any }>(`/users/admin/${id}/verify-email`, {
+            method: 'POST',
+            body: JSON.stringify({ verified }),
+        });
+    }
+
     adminDeleteUser(id: string) {
         return this.http.request(`/users/admin/${id}`, { method: 'DELETE' });
     }

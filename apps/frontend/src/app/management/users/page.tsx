@@ -328,6 +328,20 @@ export default function AdminUsersPage() {
         }
     };
 
+    const handleToggleEmailVerification = async (target: AdminUserItem) => {
+        const nextState = !target.emailVerified;
+        try {
+            await api.adminVerifyEmail(target.id, nextState);
+            setActionBanner({
+                type: 'success',
+                text: `Email address marked as ${nextState ? 'VERIFIED' : 'UNVERIFIED'} for ${target.firstName} ${target.lastName}.`,
+            });
+            loadUsers();
+        } catch (err: any) {
+            setActionBanner({ type: 'error', text: err.message || 'Failed to update email verification status.' });
+        }
+    };
+
     const handleDeleteUser = async () => {
         if (!deleteUser) return;
         setDeleteLoading(true);
@@ -689,6 +703,22 @@ export default function AdminUsersPage() {
                                     >
                                         <KeyRound className="w-3.5 h-3.5" />
                                     </button>
+
+                                    {/* Super Admin Email Verification Toggle */}
+                                    {currentUser.isSuperAdmin && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleToggleEmailVerification(u)}
+                                            title={u.emailVerified ? 'Mark Email as Unverified' : 'Mark Email as Verified'}
+                                            className={`p-1.5 rounded-lg border transition ${
+                                                u.emailVerified
+                                                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20'
+                                                    : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-400 hover:text-emerald-500 hover:border-emerald-500/40'
+                                            }`}
+                                        >
+                                            <Check className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
 
                                     {/* Resend Verification (if unverified) */}
                                     {!u.emailVerified && (
