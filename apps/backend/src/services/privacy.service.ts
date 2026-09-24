@@ -95,9 +95,10 @@ export class PrivacyService {
         const isPublicHidden = player.isPubliclyHidden === true;
         const choice = player.displayNameChoice || 'FULL_NAME';
 
-        // 2. Hide sensitive contact details for all standard public consumers
+        // 2. Hide sensitive personal details (birthdate, phone, street, postal code) for non-managing users
         const sanitized: any = {
             ...player,
+            birthDate: undefined,
             phone: undefined,
             street: undefined,
             postalCode: undefined,

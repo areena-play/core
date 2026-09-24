@@ -915,7 +915,7 @@ export default function PersonProfilePage() {
                                 <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 space-y-1">
                                     <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                                         <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                                        <span>Date of Birth & Gender</span>
+                                        <span>Date of Birth &amp; Gender</span>
                                     </div>
                                     <div className="font-bold text-xs text-slate-900 dark:text-white">
                                         {person.birthDate ? (
@@ -924,8 +924,15 @@ export default function PersonProfilePage() {
                                                 {person.gender && ` • ${person.gender}`}
                                             </span>
                                         ) : (
-                                            <span className="text-slate-400 italic">
-                                                {!canManage ? 'Protected birthdate' : 'Not provided'}
+                                            <span>
+                                                <span className="text-slate-400 italic">
+                                                    {!canManage ? 'Protected (Authorized Managers Only)' : 'Not provided'}
+                                                </span>
+                                                {person.gender && (
+                                                    <span className="text-slate-700 dark:text-slate-300 font-normal">
+                                                        {` • ${person.gender}`}
+                                                    </span>
+                                                )}
                                             </span>
                                         )}
                                     </div>
