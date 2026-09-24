@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { HeadBucketCommand, HeadObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { HeadBucketCommand, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { config } from './config/env';
 import { basePrisma } from './config/prisma';
 import { errorHandler } from './middleware/errorHandler';
@@ -96,7 +96,7 @@ const healthHandler = async (_req: express.Request, res: express.Response) => {
             }
             const start = Date.now();
 
-            // 1. Try HeadBucket first
+            // 1. Fast path: Try HeadBucket first
             try {
                 await checkWithTimeout(
                     s3Client.send(new HeadBucketCommand({ Bucket: config.s3.bucketName })),
@@ -105,49 +105,36 @@ const healthHandler = async (_req: express.Request, res: express.Response) => {
                 );
                 return { latencyMs: Date.now() - start };
             } catch (headBucketErr: any) {
-                // 2. If HeadBucket failed (common when IAM policy restricts bucket-level permissions),
-                // probe with HeadObject in the application's 'uploads/' folder.
-                // A 404 (NoSuchKey / NotFound) confirms the bucket/prefix is reachable, authenticated, and valid.
+                // 2. Fallback path for least-privilege IAM policies:
+                // If HeadBucket is restricted by IAM policy (common when only object-level s3:PutObject / s3:GetObject is granted),
+                // test active write capability on the application's 'uploads/' folder.
                 try {
                     await checkWithTimeout(
                         s3Client.send(
-                            new HeadObjectCommand({
+                            new PutObjectCommand({
                                 Bucket: config.s3.bucketName,
                                 Key: 'uploads/.healthcheck',
+                                Body: Buffer.from('ok'),
+                                ContentType: 'text/plain',
                             })
                         ),
                         timeoutMs,
-                        'S3 Storage (HeadObject)'
+                        'S3 Storage (PutObject)'
                     );
-                    return { latencyMs: Date.now() - start };
-                } catch (headObjectErr: any) {
-                    const statusCode = headObjectErr.$metadata?.httpStatusCode;
-                    const errName = headObjectErr.name;
-                    if (
-                        statusCode === 404 ||
-                        errName === 'NotFound' ||
-                        errName === 'NoSuchKey'
-                    ) {
-                        return { latencyMs: Date.now() - start };
-                    }
 
-                    // 3. Fallback: Try ListObjectsV2 on uploads/ prefix
-                    try {
-                        await checkWithTimeout(
-                            s3Client.send(
-                                new ListObjectsV2Command({
-                                    Bucket: config.s3.bucketName,
-                                    Prefix: 'uploads/',
-                                    MaxKeys: 1,
-                                })
-                            ),
-                            timeoutMs,
-                            'S3 Storage (ListObjectsV2)'
-                        );
-                        return { latencyMs: Date.now() - start };
-                    } catch (listErr: any) {
-                        throw headObjectErr || headBucketErr || listErr;
-                    }
+                    // Clean up test marker in background
+                    s3Client
+                        .send(
+                            new DeleteObjectCommand({
+                                Bucket: config.s3.bucketName,
+                                Key: 'uploads/.healthcheck',
+                            })
+                        )
+                        .catch(() => {});
+
+                    return { latencyMs: Date.now() - start };
+                } catch (putErr: any) {
+                    throw putErr || headBucketErr;
                 }
             }
         })(),
