@@ -1,6 +1,5 @@
 import { EventEmitter } from 'events';
 import { runInitialScrape, runIncrementalSync, exportAllNormalizedDatasets, stateManager, storageManager, getScraperConfig } from '../scraper';
-import { prismaRequestContext } from '../middleware/prismaCacheContext';
 import type { IngestionProgress } from './clickttDbIngestion.service';
 
 export interface ScraperExecutionStatus {
@@ -188,87 +187,85 @@ class ClickTTScraperManager extends EventEmitter {
             originalConsoleError.apply(console, args);
         };
 
-        return prismaRequestContext.run({ cache: new Map() }, async () => {
-            try {
-                this.log('info', `🚀 Starting Scraper Task: ${jobType.toUpperCase()}...`);
+        try {
+            this.log('info', `🚀 Starting Scraper Task: ${jobType.toUpperCase()}...`);
 
-                if (jobType === 'initial') {
-                    await runInitialScrape(options);
-                    // Ingest latest delta if produced
-                    const delta = storageManager.getDelta();
-                    if (delta && delta.totalRecords > 0) {
-                        const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
-                        await ClickTTDbIngestionService.ingestDelta(delta, signal);
-                    }
-                } else if (jobType === 'sync') {
-                    await runIncrementalSync(options);
-                    const delta = storageManager.getDelta();
-                    if (delta && delta.totalRecords > 0) {
-                        const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
-                        await ClickTTDbIngestionService.ingestDelta(delta, signal);
-                    }
-                } else if (jobType === 'results') {
-                    await runIncrementalSync({ onlyResults: true, ...options });
-                    const delta = storageManager.getDelta();
-                    if (delta && delta.totalRecords > 0) {
-                        const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
-                        await ClickTTDbIngestionService.ingestDelta(delta, signal);
-                    }
-                } else if (jobType === 'players') {
-                    await runIncrementalSync({ onlyPlayers: true, ...options });
-                    const delta = storageManager.getDelta();
-                    if (delta && delta.totalRecords > 0) {
-                        const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
-                        await ClickTTDbIngestionService.ingestDelta(delta, signal);
-                    }
-                } else if (jobType === 'elo') {
-                    await runIncrementalSync({ onlyElo: true, ...options });
-                    const delta = storageManager.getDelta();
-                    if (delta && delta.totalRecords > 0) {
-                        const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
-                        await ClickTTDbIngestionService.ingestDelta(delta, signal);
-                    }
-                } else if (jobType === 'export') {
-                    await exportAllNormalizedDatasets();
-                } else if (jobType === 'reset-db') {
+            if (jobType === 'initial') {
+                await runInitialScrape(options);
+                // Ingest latest delta if produced
+                const delta = storageManager.getDelta();
+                if (delta && delta.totalRecords > 0) {
                     const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
-                    await ClickTTDbIngestionService.resetAndLoadFullDatasets((progress) => {
-                        this.progress = progress;
-                        this.log('info', progress.message);
-                    }, signal);
+                    await ClickTTDbIngestionService.ingestDelta(delta, signal);
                 }
-
-                this.lastResult = 'success';
-                this.progress = {
-                    phase: 'done',
-                    phaseTitle: 'Completed',
-                    percentage: 100,
-                    processed: this.progress?.processed || 0,
-                    total: this.progress?.total,
-                    message: `Task "${jobType}" completed successfully!`,
-                };
-                this.log('success', `🎉 Scraper Task "${jobType}" completed successfully!`);
-            } catch (err: any) {
-                this.lastResult = 'error';
-                this.lastError = err.message || String(err);
-                this.progress = {
-                    phase: 'error',
-                    phaseTitle: 'Error',
-                    percentage: this.progress?.percentage || 0,
-                    processed: this.progress?.processed || 0,
-                    total: this.progress?.total,
-                    message: `Task failed: ${this.lastError}`,
-                };
-                this.log('error', `❌ Scraper Task failed with error: ${this.lastError}`);
-                throw err;
-            } finally {
-                this.isRunning = false;
-                this.lastFinishedAt = new Date().toISOString();
-                console.log = originalConsoleLog;
-                console.warn = originalConsoleWarn;
-                console.error = originalConsoleError;
+            } else if (jobType === 'sync') {
+                await runIncrementalSync(options);
+                const delta = storageManager.getDelta();
+                if (delta && delta.totalRecords > 0) {
+                    const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
+                    await ClickTTDbIngestionService.ingestDelta(delta, signal);
+                }
+            } else if (jobType === 'results') {
+                await runIncrementalSync({ onlyResults: true, ...options });
+                const delta = storageManager.getDelta();
+                if (delta && delta.totalRecords > 0) {
+                    const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
+                    await ClickTTDbIngestionService.ingestDelta(delta, signal);
+                }
+            } else if (jobType === 'players') {
+                await runIncrementalSync({ onlyPlayers: true, ...options });
+                const delta = storageManager.getDelta();
+                if (delta && delta.totalRecords > 0) {
+                    const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
+                    await ClickTTDbIngestionService.ingestDelta(delta, signal);
+                }
+            } else if (jobType === 'elo') {
+                await runIncrementalSync({ onlyElo: true, ...options });
+                const delta = storageManager.getDelta();
+                if (delta && delta.totalRecords > 0) {
+                    const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
+                    await ClickTTDbIngestionService.ingestDelta(delta, signal);
+                }
+            } else if (jobType === 'export') {
+                await exportAllNormalizedDatasets();
+            } else if (jobType === 'reset-db') {
+                const { ClickTTDbIngestionService } = await import('./clickttDbIngestion.service');
+                await ClickTTDbIngestionService.resetAndLoadFullDatasets((progress) => {
+                    this.progress = progress;
+                    this.log('info', progress.message);
+                }, signal);
             }
-        });
+
+            this.lastResult = 'success';
+            this.progress = {
+                phase: 'done',
+                phaseTitle: 'Completed',
+                percentage: 100,
+                processed: this.progress?.processed || 0,
+                total: this.progress?.total,
+                message: `Task "${jobType}" completed successfully!`,
+            };
+            this.log('success', `🎉 Scraper Task "${jobType}" completed successfully!`);
+        } catch (err: any) {
+            this.lastResult = 'error';
+            this.lastError = err.message || String(err);
+            this.progress = {
+                phase: 'error',
+                phaseTitle: 'Error',
+                percentage: this.progress?.percentage || 0,
+                processed: this.progress?.processed || 0,
+                total: this.progress?.total,
+                message: `Task failed: ${this.lastError}`,
+            };
+            this.log('error', `❌ Scraper Task failed with error: ${this.lastError}`);
+            throw err;
+        } finally {
+            this.isRunning = false;
+            this.lastFinishedAt = new Date().toISOString();
+            console.log = originalConsoleLog;
+            console.warn = originalConsoleWarn;
+            console.error = originalConsoleError;
+        }
     }
 
     public initCronJobs() {

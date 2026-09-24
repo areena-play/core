@@ -66,6 +66,8 @@ function parseRankingDate(dateStr: string): Date {
     return parseSafeDate(dateStr, new Date());
 }
 
+const yieldToEventLoop = () => new Promise<void>((resolve) => setImmediate(resolve));
+
 export class ClickTTDbIngestionService {
     /**
      * Ensure STT National and Regional Associations exist in database
@@ -210,6 +212,7 @@ export class ClickTTDbIngestionService {
                     },
                 });
             }
+            await yieldToEventLoop();
         }
 
         return clubIdMap;
@@ -324,6 +327,7 @@ export class ClickTTDbIngestionService {
                 data: userRows.slice(i, i + 1000),
                 skipDuplicates: true,
             });
+            await yieldToEventLoop();
         }
 
         // Retrieve created/existing user IDs for mapping
@@ -366,6 +370,7 @@ export class ClickTTDbIngestionService {
                 data: licenseRows.slice(i, i + 1000),
                 skipDuplicates: true,
             });
+            await yieldToEventLoop();
         }
 
         return userIdMap;
@@ -393,6 +398,7 @@ export class ClickTTDbIngestionService {
                     skipDuplicates: true,
                 });
                 snapshotBatch = [];
+                await yieldToEventLoop();
             }
         };
 
@@ -437,7 +443,7 @@ export class ClickTTDbIngestionService {
 
                 snapshotsCount++;
 
-                if (snapshotBatch.length >= 2000) {
+                if (snapshotBatch.length >= 1000) {
                     await flushSnapshots();
 
                     if (onProgress && snapshotsCount % 10000 === 0) {
@@ -604,6 +610,7 @@ export class ClickTTDbIngestionService {
                 data: compRows.slice(i, i + 500),
                 skipDuplicates: true,
             });
+            await yieldToEventLoop();
         }
 
         // If competitions already existed and IDs were retrieved
@@ -642,6 +649,7 @@ export class ClickTTDbIngestionService {
                 data: catRows.slice(i, i + 500),
                 skipDuplicates: true,
             });
+            await yieldToEventLoop();
         }
 
         // 3. Groups & Teams Batch
@@ -699,6 +707,7 @@ export class ClickTTDbIngestionService {
                 data: groupRows.slice(i, i + 500),
                 skipDuplicates: true,
             });
+            await yieldToEventLoop();
         }
 
         for (let i = 0; i < teamRows.length; i += 500) {
@@ -706,6 +715,7 @@ export class ClickTTDbIngestionService {
                 data: teamRows.slice(i, i + 500),
                 skipDuplicates: true,
             });
+            await yieldToEventLoop();
         }
 
         for (let i = 0; i < standingsRows.length; i += 500) {
@@ -713,6 +723,7 @@ export class ClickTTDbIngestionService {
                 data: standingsRows.slice(i, i + 500),
                 skipDuplicates: true,
             });
+            await yieldToEventLoop();
         }
 
         return { compIdMap, catIdMap, groupIdMap, teamIdMap };
@@ -779,6 +790,7 @@ export class ClickTTDbIngestionService {
                     skipDuplicates: true,
                 });
                 missingTeamsBatch = [];
+                await yieldToEventLoop();
             }
         };
 
@@ -853,6 +865,7 @@ export class ClickTTDbIngestionService {
                     skipDuplicates: true,
                 });
                 encounterBatch = [];
+                await yieldToEventLoop();
 
                 if (onProgress && encountersCount % 5000 === 0) {
                     const elapsed = (Date.now() - encStartTime) / 1000;
@@ -883,6 +896,7 @@ export class ClickTTDbIngestionService {
                 skipDuplicates: true,
             });
             encounterBatch = [];
+            await yieldToEventLoop();
         }
 
         // 2. Process Matches & MatchParticipants & TeamMembers
@@ -909,13 +923,15 @@ export class ClickTTDbIngestionService {
                 participantBatch = [];
             }
 
-            if (teamMemberMap.size >= 2000) {
+            if (teamMemberMap.size >= 1000) {
                 await prisma.teamMember.createMany({
                     data: Array.from(teamMemberMap.values()),
                     skipDuplicates: true,
                 });
                 teamMemberMap.clear();
             }
+
+            await yieldToEventLoop();
         };
 
         for await (const m of matchesStream) {
@@ -999,7 +1015,7 @@ export class ClickTTDbIngestionService {
 
             matchesCount++;
 
-            if (matchBatch.length >= 2000 || participantBatch.length >= 2000) {
+            if (matchBatch.length >= 1000 || participantBatch.length >= 1000) {
                 await flushMatchesAndParticipants();
             }
 
@@ -1032,6 +1048,7 @@ export class ClickTTDbIngestionService {
                 skipDuplicates: true,
             });
             teamMemberMap.clear();
+            await yieldToEventLoop();
         }
 
         return { encountersCount, matchesCount };
