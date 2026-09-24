@@ -596,7 +596,25 @@ export class ClickTTDbIngestionService {
         const teamIdMap = new Map<string, string>();
 
         // 1. Competitions Batch
+        const defaultCompId = toDeterministicUUID('comp', 'default_stt_competition');
         const compRows: any[] = [];
+
+        // Ensure default competition for orphan categories
+        compRows.push({
+            id: defaultCompId,
+            name: 'Swiss Table Tennis Competitions',
+            slug: 'comp-stt-general',
+            type: CompetitionType.LEAGUE,
+            associationId: sttId,
+            seasonId: Array.from(seasonIdMap.values())[0] || null,
+            startDate: new Date('2024-07-01'),
+            endDate: new Date('2025-06-30'),
+            status: CompetitionStatus.COMPLETED,
+            isOfficial: true,
+            countsForElo: true,
+        });
+        compIdMap.set('default_stt_competition', defaultCompId);
+
         for (const c of competitions || []) {
             if (!c.competitionId || !c.name) continue;
             const rawId = String(c.competitionId);
@@ -626,23 +644,37 @@ export class ClickTTDbIngestionService {
             compIdMap.set(rawId, id);
         }
 
-        for (let i = 0; i < compRows.length; i += 500) {
-            await prisma.competition.createMany({
-                data: compRows.slice(i, i + 500),
-                skipDuplicates: true,
-            });
-            await yieldToEventLoop();
-        }
-
         // 2. Categories Batch
         const catRows: any[] = [];
         for (const cat of categories || []) {
-            if (!cat.categoryId || !cat.name) continue;
+            if (!cat.categoryId) continue;
             const rawCatId = String(cat.categoryId);
-            const parentCompId = cat.competitionId ? compIdMap.get(String(cat.competitionId)) : null;
-            if (!parentCompId) continue;
+            let parentCompId = cat.competitionId ? compIdMap.get(String(cat.competitionId)) : null;
+            if (!parentCompId) {
+                if (cat.competitionId) {
+                    const rawCompId = String(cat.competitionId);
+                    parentCompId = toDeterministicUUID('comp', rawCompId);
+                    compRows.push({
+                        id: parentCompId,
+                        name: cat.competitionName || `Competition #${rawCompId}`,
+                        slug: `comp-${rawCompId.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+                        type: CompetitionType.LEAGUE,
+                        associationId: sttId,
+                        seasonId: Array.from(seasonIdMap.values())[0] || null,
+                        startDate: new Date('2024-07-01'),
+                        endDate: new Date('2025-06-30'),
+                        status: CompetitionStatus.COMPLETED,
+                        isOfficial: true,
+                        countsForElo: true,
+                    });
+                    compIdMap.set(rawCompId, parentCompId);
+                } else {
+                    parentCompId = defaultCompId;
+                }
+            }
 
-            const sanitizedCatName = cat.name.replace(/\$\{\s*([a-z0-9_-]+)\s*\}/gi, (_m: string, k: string) => k.toUpperCase()).trim();
+            const rawName = cat.name || `Category ${rawCatId}`;
+            const sanitizedCatName = rawName.replace(/\$\{\s*([a-z0-9_-]+)\s*\}/gi, (_m: string, k: string) => k.toUpperCase()).trim();
             const id = toDeterministicUUID('cat', rawCatId);
             catRows.push({
                 id,
@@ -652,6 +684,14 @@ export class ClickTTDbIngestionService {
                 genderRestriction: GenderRestriction.ANY,
             });
             catIdMap.set(rawCatId, id);
+        }
+
+        for (let i = 0; i < compRows.length; i += 500) {
+            await prisma.competition.createMany({
+                data: compRows.slice(i, i + 500),
+                skipDuplicates: true,
+            });
+            await yieldToEventLoop();
         }
 
         for (let i = 0; i < catRows.length; i += 500) {
@@ -666,14 +706,27 @@ export class ClickTTDbIngestionService {
         const groupRows: any[] = [];
         const teamRows: any[] = [];
         const standingsRows: any[] = [];
+        const dynamicCatRows: any[] = [];
 
         for (const g of groups || []) {
-            if (!g.groupId || !g.name) continue;
+            if (!g.groupId) continue;
             const rawGroupId = String(g.groupId);
-            const catId = g.categoryId ? catIdMap.get(String(g.categoryId)) : null;
-            if (!catId) continue;
+            let catId = g.categoryId ? catIdMap.get(String(g.categoryId)) : null;
+            if (!catId) {
+                const rawCatId = g.categoryId ? String(g.categoryId) : `group_cat_${rawGroupId}`;
+                catId = toDeterministicUUID('cat', rawCatId);
+                dynamicCatRows.push({
+                    id: catId,
+                    competitionId: defaultCompId,
+                    name: g.categoryName || `Category ${rawCatId}`,
+                    teamSize: 1,
+                    genderRestriction: GenderRestriction.ANY,
+                });
+                catIdMap.set(rawCatId, catId);
+            }
 
-            const sanitizedGroupName = g.name.replace(/\$\{\s*([a-z0-9_-]+)\s*\}/gi, (_m: string, k: string) => k.toUpperCase()).trim();
+            const rawName = g.name || `Group ${rawGroupId}`;
+            const sanitizedGroupName = rawName.replace(/\$\{\s*([a-z0-9_-]+)\s*\}/gi, (_m: string, k: string) => k.toUpperCase()).trim();
             const gId = toDeterministicUUID('group', rawGroupId);
             groupRows.push({
                 id: gId,
@@ -709,6 +762,16 @@ export class ClickTTDbIngestionService {
                     setsWon: t.ownSets || 0,
                     setsLost: t.otherSets || 0,
                 });
+            }
+        }
+
+        if (dynamicCatRows.length > 0) {
+            for (let i = 0; i < dynamicCatRows.length; i += 500) {
+                await prisma.category.createMany({
+                    data: dynamicCatRows.slice(i, i + 500),
+                    skipDuplicates: true,
+                });
+                await yieldToEventLoop();
             }
         }
 
@@ -837,14 +900,47 @@ export class ClickTTDbIngestionService {
     ): Promise<{ encountersCount: number; matchesCount: number }> {
         // Flat compact metadata map: encId -> "homeTeamId|awayTeamId|categoryId|groupId"
         const encounterMetaMap = new Map<string, string>();
+        const defaultCompId = toDeterministicUUID('comp', 'default_stt_competition');
 
-        let encounterBatch: any[] = [];
+        let missingCategoriesBatch: any[] = [];
+        let missingGroupsBatch: any[] = [];
         let missingTeamsBatch: any[] = [];
+        let encounterBatch: any[] = [];
         let encountersCount = 0;
         const encStartTime = Date.now();
 
+        const flushCategories = async () => {
+            if (missingCategoriesBatch.length > 0) {
+                const batch = missingCategoriesBatch;
+                missingCategoriesBatch = [];
+                await executeWithRetry(async () => {
+                    await prisma.category.createMany({
+                        data: batch,
+                        skipDuplicates: true,
+                    });
+                });
+                await yieldToEventLoop();
+            }
+        };
+
+        const flushGroups = async () => {
+            if (missingGroupsBatch.length > 0) {
+                await flushCategories();
+                const batch = missingGroupsBatch;
+                missingGroupsBatch = [];
+                await executeWithRetry(async () => {
+                    await prisma.categoryGroup.createMany({
+                        data: batch,
+                        skipDuplicates: true,
+                    });
+                });
+                await yieldToEventLoop();
+            }
+        };
+
         const flushTeams = async () => {
             if (missingTeamsBatch.length > 0) {
+                await flushCategories();
                 const batchToInsert = missingTeamsBatch;
                 missingTeamsBatch = [];
                 await executeWithRetry(async () => {
@@ -859,6 +955,8 @@ export class ClickTTDbIngestionService {
 
         const flushEncounters = async () => {
             if (encounterBatch.length > 0) {
+                await flushCategories();
+                await flushGroups();
                 await flushTeams();
                 const batchToInsert = encounterBatch;
                 encounterBatch = [];
@@ -879,9 +977,32 @@ export class ClickTTDbIngestionService {
             }
             if (!enc || !enc.encounterId) continue;
             const rawEncId = String(enc.encounterId);
-            const catId = enc.categoryId ? catIdMap.get(String(enc.categoryId)) || toDeterministicUUID('cat', String(enc.categoryId)) : null;
-            const groupId = enc.groupId ? groupIdMap.get(String(enc.groupId)) || toDeterministicUUID('group', String(enc.groupId)) : null;
+            let catId = enc.categoryId ? catIdMap.get(String(enc.categoryId)) : null;
+            if (!catId && enc.categoryId) {
+                const rawCatId = String(enc.categoryId);
+                catId = toDeterministicUUID('cat', rawCatId);
+                catIdMap.set(rawCatId, catId);
+                missingCategoriesBatch.push({
+                    id: catId,
+                    competitionId: defaultCompId,
+                    name: enc.categoryName || `Category ${rawCatId}`,
+                    teamSize: 1,
+                    genderRestriction: GenderRestriction.ANY,
+                });
+            }
             if (!catId) continue;
+
+            let groupId = enc.groupId ? groupIdMap.get(String(enc.groupId)) : null;
+            if (!groupId && enc.groupId) {
+                const rawGroupId = String(enc.groupId);
+                groupId = toDeterministicUUID('group', rawGroupId);
+                groupIdMap.set(rawGroupId, groupId);
+                missingGroupsBatch.push({
+                    id: groupId,
+                    categoryId: catId,
+                    name: enc.groupName || `Group ${rawGroupId}`,
+                });
+            }
 
             const homeTeamKey = enc.homeTeamId ? teamIdMap.get(String(enc.homeTeamId)) : null;
             const homeTeamNameKey = enc.homeTeamName ? teamIdMap.get(`${catId}_${enc.homeTeamName.trim()}`) : null;
@@ -930,6 +1051,14 @@ export class ClickTTDbIngestionService {
             encounterMetaMap.set(rawEncId, `${homeTeamId}|${awayTeamId}|${catId}|${groupId || ''}`);
             encountersCount++;
 
+            if (missingCategoriesBatch.length >= 300) {
+                await flushCategories();
+            }
+
+            if (missingGroupsBatch.length >= 300) {
+                await flushGroups();
+            }
+
             if (missingTeamsBatch.length >= 300) {
                 await flushTeams();
             }
@@ -970,6 +1099,10 @@ export class ClickTTDbIngestionService {
         const matchStartTime = Date.now();
 
         const flushMatchesAndParticipants = async () => {
+            await flushCategories();
+            await flushGroups();
+            await flushTeams();
+
             if (matchBatch.length > 0) {
                 const batch = matchBatch;
                 matchBatch = [];
@@ -1027,8 +1160,33 @@ export class ClickTTDbIngestionService {
                 metaGroupId = parts[3] || null;
             }
 
-            const catId = m.categoryId ? catIdMap.get(String(m.categoryId)) || toDeterministicUUID('cat', String(m.categoryId)) : metaCatId;
-            const groupId = m.groupId ? groupIdMap.get(String(m.groupId)) || toDeterministicUUID('group', String(m.groupId)) : metaGroupId;
+            let catId = m.categoryId ? catIdMap.get(String(m.categoryId)) : metaCatId;
+            if (!catId && m.categoryId) {
+                const rawCatId = String(m.categoryId);
+                catId = toDeterministicUUID('cat', rawCatId);
+                catIdMap.set(rawCatId, catId);
+                missingCategoriesBatch.push({
+                    id: catId,
+                    competitionId: defaultCompId,
+                    name: m.categoryName || `Category ${rawCatId}`,
+                    teamSize: 1,
+                    genderRestriction: GenderRestriction.ANY,
+                });
+            }
+            if (!catId) continue;
+
+            let groupId = m.groupId ? groupIdMap.get(String(m.groupId)) : metaGroupId;
+            if (!groupId && m.groupId) {
+                const rawGroupId = String(m.groupId);
+                groupId = toDeterministicUUID('group', rawGroupId);
+                groupIdMap.set(rawGroupId, groupId);
+                missingGroupsBatch.push({
+                    id: groupId,
+                    categoryId: catId,
+                    name: m.groupName || `Group ${rawGroupId}`,
+                });
+            }
+
             const encounterId = rawEncId ? toDeterministicUUID('encounter', rawEncId) : null;
 
             if (!catId) continue;
