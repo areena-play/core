@@ -109,6 +109,9 @@ jobs:
           IS_DEMO: ${{ vars.DEV_IS_DEMO || 'false' }}
           # Database & Security
           DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+          DB_USER: ${{ vars.DEV_DB_USER || 'areena'}}
+          DB_PASS: ${{ vars.DEV_DB_PASS || 'areena_dev_pass'}}
+          DB_NAME: ${{ vars.DEV_DB_NAME || 'areena'}}
           JWT_SECRET: ${{ secrets.DEV_JWT_SECRET }}
           REDIS_URL: ${{ vars.DEV_REDIS_URL || '' }}
           # Storage (S3)

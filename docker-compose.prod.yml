@@ -5,6 +5,26 @@
 
 services:
   # ----------------------------------------
+  # 0. DATABASE (PostgreSQL - Containerized fallback for Dev / Local)
+  # ----------------------------------------
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    profiles:
+      - db
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - areena_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  # ----------------------------------------
   # 1. REVERSE PROXY & AUTOMATED SSL (Caddy)
   # ----------------------------------------
   caddy:
@@ -120,3 +140,4 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+  areena_pg_data:

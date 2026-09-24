@@ -50,6 +50,26 @@ sync_var "BACKEND_INTERNAL_URL" "$BACKEND_INTERNAL_URL"
 sync_var "LETSENCRYPT_EMAIL" "$LETSENCRYPT_EMAIL"
 
 # Database & Cache
+if [ -z "$DATABASE_URL" ]; then
+    echo "ℹ️  No external DATABASE_URL provided. Defaulting to containerized PostgreSQL (db service)..."
+    DB_USER="${DB_USER}"
+    DB_PASS="${DB_PASS}"
+    DB_NAME="${DB_NAME}"
+    DATABASE_URL="postgresql://${DB_USER}:${DB_PASS}@db:5432/${DB_NAME}?schema=public"
+    export COMPOSE_PROFILES="db"
+    sync_var "COMPOSE_PROFILES" "db"
+    sync_var "DB_USER" "$DB_USER"
+    sync_var "DB_PASS" "$DB_PASS"
+    sync_var "DB_NAME" "$DB_NAME"
+else
+    echo "ℹ️  Using external DATABASE_URL provided via secret/environment."
+    if [ -f .env ]; then
+        grep -v "^COMPOSE_PROFILES=" .env > .env.tmp || true
+        mv .env.tmp .env
+    fi
+    unset COMPOSE_PROFILES || true
+fi
+
 sync_var "DATABASE_URL" "$DATABASE_URL"
 sync_var "REDIS_URL" "$REDIS_URL"
 
@@ -95,7 +115,19 @@ else
     docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" up -d --build --remove-orphans
 fi
 
-# 4. Synchronize Prisma database schema to PostgreSQL
+# 4. If containerized DB is active, wait for it to be ready
+if [ "$COMPOSE_PROFILES" = "db" ] || [[ "$DATABASE_URL" =~ @db: ]]; then
+    echo "⏳ Waiting for containerized PostgreSQL to be ready..."
+    for i in $(seq 1 30); do
+        if docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" exec -T db pg_isready -U "${DB_USER:-areena}" -d "${DB_NAME:-areena}" > /dev/null 2>&1; then
+            echo "✅ PostgreSQL is ready."
+            break
+        fi
+        sleep 1
+    done
+fi
+
+# 5. Synchronize Prisma database schema to PostgreSQL
 echo "🗄️ Synchronizing Prisma database schema to PostgreSQL..."
 docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" exec -T backend npx prisma db push --schema=apps/backend/prisma/schema --accept-data-loss || docker compose -f docker-compose.prod.yml -p "$PROJECT_NAME" exec -T backend npx prisma db push --schema=prisma/schema --accept-data-loss || true
 
