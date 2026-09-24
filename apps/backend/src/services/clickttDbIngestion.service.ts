@@ -35,7 +35,7 @@ const REGIONAL_ASSOCIATIONS = [
 ];
 
 export interface IngestionProgress {
-    phase: 'cleanup' | 'associations' | 'seasons' | 'clubs' | 'players' | 'snapshots' | 'hierarchy' | 'encounters' | 'matches' | 'done' | 'error';
+    phase: 'cleanup' | 'associations' | 'seasons' | 'clubs' | 'players' | 'snapshots' | 'hierarchy' | 'encounters' | 'matches' | 'indexing' | 'done' | 'error';
     phaseTitle: string;
     percentage: number;
     processed: number;
@@ -67,6 +67,19 @@ function parseRankingDate(dateStr: string): Date {
 }
 
 const yieldToEventLoop = () => new Promise<void>((resolve) => setImmediate(resolve));
+
+async function executeWithRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 500): Promise<T> {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            return await fn();
+        } catch (err: any) {
+            if (attempt === retries) throw err;
+            console.warn(`[DB Ingestion] Retrying batch (attempt ${attempt}/${retries}) after transient error:`, err.message || err);
+            await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+        }
+    }
+    throw new Error('Retry exhausted');
+}
 
 export function toDeterministicUUID(namespace: string, id: string): string {
     const hash = crypto.createHash('md5').update(`${namespace}:${id}`).digest('hex');
@@ -398,11 +411,14 @@ export class ClickTTDbIngestionService {
 
         const flushSnapshots = async () => {
             if (snapshotBatch.length > 0) {
-                await prisma.ratingSnapshotHistory.createMany({
-                    data: snapshotBatch,
-                    skipDuplicates: true,
-                });
+                const batchToInsert = snapshotBatch;
                 snapshotBatch = [];
+                await executeWithRetry(async () => {
+                    await prisma.ratingSnapshotHistory.createMany({
+                        data: batchToInsert,
+                        skipDuplicates: true,
+                    });
+                });
                 await yieldToEventLoop();
             }
         };
@@ -448,7 +464,7 @@ export class ClickTTDbIngestionService {
 
                 snapshotsCount++;
 
-                if (snapshotBatch.length >= 1000) {
+                if (snapshotBatch.length >= 300) {
                     await flushSnapshots();
 
                     if (onProgress && snapshotsCount % 10000 === 0) {
@@ -829,11 +845,29 @@ export class ClickTTDbIngestionService {
 
         const flushTeams = async () => {
             if (missingTeamsBatch.length > 0) {
-                await prisma.team.createMany({
-                    data: missingTeamsBatch,
-                    skipDuplicates: true,
-                });
+                const batchToInsert = missingTeamsBatch;
                 missingTeamsBatch = [];
+                await executeWithRetry(async () => {
+                    await prisma.team.createMany({
+                        data: batchToInsert,
+                        skipDuplicates: true,
+                    });
+                });
+                await yieldToEventLoop();
+            }
+        };
+
+        const flushEncounters = async () => {
+            if (encounterBatch.length > 0) {
+                await flushTeams();
+                const batchToInsert = encounterBatch;
+                encounterBatch = [];
+                await executeWithRetry(async () => {
+                    await prisma.encounter.createMany({
+                        data: batchToInsert,
+                        skipDuplicates: true,
+                    });
+                });
                 await yieldToEventLoop();
             }
         };
@@ -896,18 +930,12 @@ export class ClickTTDbIngestionService {
             encounterMetaMap.set(rawEncId, `${homeTeamId}|${awayTeamId}|${catId}|${groupId || ''}`);
             encountersCount++;
 
-            if (missingTeamsBatch.length >= 500) {
+            if (missingTeamsBatch.length >= 300) {
                 await flushTeams();
             }
 
-            if (encounterBatch.length >= 1000) {
-                await flushTeams();
-                await prisma.encounter.createMany({
-                    data: encounterBatch,
-                    skipDuplicates: true,
-                });
-                encounterBatch = [];
-                await yieldToEventLoop();
+            if (encounterBatch.length >= 300) {
+                await flushEncounters();
 
                 if (onProgress && encountersCount % 5000 === 0) {
                     const elapsed = (Date.now() - encStartTime) / 1000;
@@ -931,15 +959,7 @@ export class ClickTTDbIngestionService {
             }
         }
 
-        await flushTeams();
-        if (encounterBatch.length > 0) {
-            await prisma.encounter.createMany({
-                data: encounterBatch,
-                skipDuplicates: true,
-            });
-            encounterBatch = [];
-            await yieldToEventLoop();
-        }
+        await flushEncounters();
 
         // 2. Process Matches & MatchParticipants & TeamMembers
         let matchBatch: any[] = [];
@@ -951,27 +971,36 @@ export class ClickTTDbIngestionService {
 
         const flushMatchesAndParticipants = async () => {
             if (matchBatch.length > 0) {
-                await prisma.match.createMany({
-                    data: matchBatch,
-                    skipDuplicates: true,
-                });
+                const batch = matchBatch;
                 matchBatch = [];
+                await executeWithRetry(async () => {
+                    await prisma.match.createMany({
+                        data: batch,
+                        skipDuplicates: true,
+                    });
+                });
             }
 
             if (participantBatch.length > 0) {
-                await prisma.matchParticipant.createMany({
-                    data: participantBatch,
-                    skipDuplicates: true,
-                });
+                const batch = participantBatch;
                 participantBatch = [];
+                await executeWithRetry(async () => {
+                    await prisma.matchParticipant.createMany({
+                        data: batch,
+                        skipDuplicates: true,
+                    });
+                });
             }
 
             if (teamMemberBatch.length > 0) {
-                await prisma.teamMember.createMany({
-                    data: teamMemberBatch,
-                    skipDuplicates: true,
-                });
+                const batch = teamMemberBatch;
                 teamMemberBatch = [];
+                await executeWithRetry(async () => {
+                    await prisma.teamMember.createMany({
+                        data: batch,
+                        skipDuplicates: true,
+                    });
+                });
             }
 
             await yieldToEventLoop();
@@ -1079,7 +1108,7 @@ export class ClickTTDbIngestionService {
 
             matchesCount++;
 
-            if (matchBatch.length >= 1000 || participantBatch.length >= 1000 || teamMemberBatch.length >= 1000) {
+            if (matchBatch.length >= 300 || participantBatch.length >= 300 || teamMemberBatch.length >= 300) {
                 await flushMatchesAndParticipants();
             }
 
@@ -1287,6 +1316,26 @@ export class ClickTTDbIngestionService {
             where: { isSuperAdmin: false },
         });
 
+        // Drop secondary indexes on high-volume tables for maximum insert speed & minimal random disk I/O
+        try {
+            await prisma.$executeRawUnsafe(`
+                DROP INDEX IF EXISTS "RatingSnapshotHistory_userId_effectiveFrom_idx";
+                DROP INDEX IF EXISTS "RatingSnapshotHistory_associationId_effectiveFrom_idx";
+                DROP INDEX IF EXISTS "MatchParticipant_matchId_idx";
+                DROP INDEX IF EXISTS "MatchParticipant_userId_idx";
+                DROP INDEX IF EXISTS "MatchParticipant_ratingSnapshotId_idx";
+                DROP INDEX IF EXISTS "Match_categoryId_idx";
+                DROP INDEX IF EXISTS "Match_groupId_idx";
+                DROP INDEX IF EXISTS "Match_encounterId_idx";
+                DROP INDEX IF EXISTS "Encounter_categoryId_idx";
+                DROP INDEX IF EXISTS "Encounter_groupId_idx";
+                DROP INDEX IF EXISTS "Encounter_homeTeamId_idx";
+                DROP INDEX IF EXISTS "Encounter_awayTeamId_idx";
+            `);
+        } catch (idxErr) {
+            console.warn('[DB Bulk Ingest] Notice while dropping secondary indexes:', idxErr);
+        }
+
         if (signal?.aborted) {
             throw new Error('Database ingestion cancelled by administrator.');
         }
@@ -1452,6 +1501,35 @@ export class ClickTTDbIngestionService {
 
         counts.encounters = encountersCount;
         counts.matches = matchesCount;
+
+        // 8. Rebuild Secondary Indexes
+        notify({
+            phase: 'indexing',
+            phaseTitle: 'Rebuilding Database Indexes',
+            percentage: 98,
+            processed: matchesCount,
+            total: matchesCount,
+            message: '⚡ Rebuilding PostgreSQL secondary indexes for high-speed queries...',
+        });
+
+        try {
+            await prisma.$executeRawUnsafe(`
+                CREATE INDEX IF NOT EXISTS "RatingSnapshotHistory_userId_effectiveFrom_idx" ON "RatingSnapshotHistory"("userId", "effectiveFrom");
+                CREATE INDEX IF NOT EXISTS "RatingSnapshotHistory_associationId_effectiveFrom_idx" ON "RatingSnapshotHistory"("associationId", "effectiveFrom");
+                CREATE INDEX IF NOT EXISTS "MatchParticipant_matchId_idx" ON "MatchParticipant"("matchId");
+                CREATE INDEX IF NOT EXISTS "MatchParticipant_userId_idx" ON "MatchParticipant"("userId");
+                CREATE INDEX IF NOT EXISTS "MatchParticipant_ratingSnapshotId_idx" ON "MatchParticipant"("ratingSnapshotId");
+                CREATE INDEX IF NOT EXISTS "Match_categoryId_idx" ON "Match"("categoryId");
+                CREATE INDEX IF NOT EXISTS "Match_groupId_idx" ON "Match"("groupId");
+                CREATE INDEX IF NOT EXISTS "Match_encounterId_idx" ON "Match"("encounterId");
+                CREATE INDEX IF NOT EXISTS "Encounter_categoryId_idx" ON "Encounter"("categoryId");
+                CREATE INDEX IF NOT EXISTS "Encounter_groupId_idx" ON "Encounter"("groupId");
+                CREATE INDEX IF NOT EXISTS "Encounter_homeTeamId_idx" ON "Encounter"("homeTeamId");
+                CREATE INDEX IF NOT EXISTS "Encounter_awayTeamId_idx" ON "Encounter"("awayTeamId");
+            `);
+        } catch (reindexErr) {
+            console.error('[DB Bulk Ingest] Error rebuilding indexes:', reindexErr);
+        }
 
         notify({
             phase: 'done',
