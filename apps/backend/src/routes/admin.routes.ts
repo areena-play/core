@@ -8,6 +8,7 @@ import { AuditService } from '../services/audit.service';
 import { DatabaseBackupService } from '../services/databaseBackup.service';
 import { CronSchedulerService } from '../services/cronScheduler.service';
 import { ClickTTScraperService } from '../services/clickttScraper.service';
+import { ClickTTDataTransferService } from '../services/clickttDataTransfer.service';
 import { GeminiService } from '../services/gemini.service';
 import { GoogleTtsService } from '../services/tts.service';
 
@@ -980,6 +981,62 @@ router.post('/scraper/stop', async (req: AuthRequest, res: Response) => {
     } catch (err: any) {
         console.error('Stop ClickTT Scraper Error:', err);
         res.status(500).json({ error: err.message || 'Failed to stop scraper task' });
+    }
+});
+
+/**
+ * GET /api/admin/scraper/export-archive
+ * Streams a compressed .tar.gz archive of the complete scraped ClickTT dataset & cache
+ */
+router.get('/scraper/export-archive', async (req: AuthRequest, res: Response) => {
+    try {
+        await AuditService.record({
+            req,
+            action: 'EXPORT_CLICKTT_ARCHIVE',
+            entityType: 'ClickTTScraper',
+            entityId: 'CACHE_ARCHIVE',
+            description: `SuperAdmin ${req.user?.email} downloaded scraped ClickTT data archive`,
+        });
+
+        await ClickTTDataTransferService.streamScrapedArchive(res);
+    } catch (err: any) {
+        console.error('ClickTT Archive Export Error:', err);
+        if (!res.headersSent) {
+            res.status(500).json({ error: err.message || 'Failed to export ClickTT archive' });
+        }
+    }
+});
+
+/**
+ * POST /api/admin/scraper/import-archive
+ * Uploads a compressed .tar.gz / .zip archive of scraped ClickTT datasets & cache, extracts it to storageDir, and optionally triggers database ingest
+ */
+router.post('/scraper/import-archive', backupUpload.single('archiveFile'), async (req: AuthRequest, res: Response) => {
+    try {
+        const file = (req as any).file;
+        if (!file) {
+            return res.status(400).json({
+                error: 'No archive file uploaded. Please upload a valid .tar.gz or .zip archive in the "archiveFile" field.',
+            });
+        }
+
+        const triggerIngest = req.body.triggerIngest === 'true' || req.body.triggerIngest === true;
+
+        const result = await ClickTTDataTransferService.importScrapedArchive(file.path, { triggerIngest });
+
+        await AuditService.record({
+            req,
+            action: 'IMPORT_CLICKTT_ARCHIVE',
+            entityType: 'ClickTTScraper',
+            entityId: 'CACHE_ARCHIVE',
+            description: `SuperAdmin ${req.user?.email} uploaded ClickTT archive (${(file.size / (1024 * 1024)).toFixed(2)} MB, ${result.summary.totalFiles} files). Trigger Ingest: ${triggerIngest}`,
+            metadata: { ...result.summary, triggerIngest },
+        });
+
+        res.json(result);
+    } catch (err: any) {
+        console.error('ClickTT Archive Import Error:', err);
+        res.status(500).json({ error: err.message || 'Failed to import ClickTT archive' });
     }
 });
 

@@ -226,6 +226,31 @@ export class AdminApi {
         });
     }
 
+    exportScrapedArchive() {
+        return this.http.requestBlob('/admin/scraper/export-archive');
+    }
+
+    importScrapedArchive(file: File, options?: { triggerIngest?: boolean }) {
+        const formData = new FormData();
+        formData.append('archiveFile', file);
+        if (options?.triggerIngest) {
+            formData.append('triggerIngest', 'true');
+        }
+        return this.http.request<{
+            message: string;
+            summary: {
+                totalFiles: number;
+                totalSizeBytes: number;
+                hasCheckpoints: boolean;
+                hasNormalizedData: boolean;
+                extractedAt: string;
+            };
+        }>('/admin/scraper/import-archive', {
+            method: 'POST',
+            body: formData,
+        });
+    }
+
     getCronJobs(silent: boolean = false) {
         return this.http.request<{
             jobs: Array<{

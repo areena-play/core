@@ -37,6 +37,13 @@ import {
     StopCircle,
     Square,
     Loader2,
+    Upload,
+    Download,
+    Package,
+    Server,
+    HardDrive,
+    FileArchive,
+    FileCheck,
 } from 'lucide-react';
 import { AccessDenied } from '@/components/auth/AccessDenied';
 import { Modal } from '@/components/ui/Modal';
@@ -58,13 +65,21 @@ export default function AdminClickTTPage() {
     const { user, loading: authLoading } = useAuth();
     const { t } = useI18n();
 
-    const [activeTab, setActiveTab] = useState<'scraper' | 'cronjobs' | 'config'>('scraper');
+    const [activeTab, setActiveTab] = useState<'scraper' | 'cronjobs' | 'config' | 'transfer'>('scraper');
 
     // Scraper Status & Logs
     const [scraperStatus, setScraperStatus] = useState<any>(null);
     const [logs, setLogs] = useState<Array<{ timestamp: string; level: string; message: string }>>([]);
     const [autoScrollLogs, setAutoScrollLogs] = useState(true);
     const logContainerRef = useRef<HTMLDivElement>(null);
+
+    // Data Transfer (Import / Export Scraped Archive)
+    const [exportingArchive, setExportingArchive] = useState(false);
+    const [importingArchive, setImportingArchive] = useState(false);
+    const [importTriggerIngest, setImportTriggerIngest] = useState(true);
+    const [importResult, setImportResult] = useState<any | null>(null);
+    const [selectedArchiveFile, setSelectedArchiveFile] = useState<File | null>(null);
+    const archiveFileInputRef = useRef<HTMLInputElement>(null);
 
     // Scraper Running State
     const [runningJobType, setRunningJobType] = useState<string | null>(null);
@@ -319,6 +334,52 @@ export default function AdminClickTTPage() {
         }
     };
 
+    // Export Scraped Archive (.tar.gz)
+    const handleExportArchive = async () => {
+        setExportingArchive(true);
+        setActionMsg(null);
+        try {
+            await api.admin.exportScrapedArchive();
+            setActionMsg({ type: 'success', text: 'Downloaded scraped archive successfully.' });
+        } catch (err: any) {
+            setActionMsg({ type: 'error', text: err.message || 'Failed to export scraped archive.' });
+        } finally {
+            setExportingArchive(false);
+        }
+    };
+
+    // Import Scraped Archive (.tar.gz)
+    const handleImportArchive = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedArchiveFile) {
+            setActionMsg({ type: 'error', text: 'Please select an archive file to upload.' });
+            return;
+        }
+        setImportingArchive(true);
+        setActionMsg(null);
+        setImportResult(null);
+        try {
+            const res = await api.admin.importScrapedArchive(selectedArchiveFile, { triggerIngest: importTriggerIngest });
+            setImportResult(res);
+            setActionMsg({
+                type: 'success',
+                text: res.message || 'Archive successfully uploaded and extracted.'
+            });
+            if (archiveFileInputRef.current) {
+                archiveFileInputRef.current.value = '';
+            }
+            setSelectedArchiveFile(null);
+            if (importTriggerIngest) {
+                fetchStatus();
+                fetchLogs();
+            }
+        } catch (err: any) {
+            setActionMsg({ type: 'error', text: err.message || 'Failed to upload archive: ' + err.message });
+        } finally {
+            setImportingArchive(false);
+        }
+    };
+
     if (authLoading) {
         return (
             <div className="flex h-96 items-center justify-center">
@@ -411,6 +472,30 @@ export default function AdminClickTTPage() {
                                 </div>
                             </div>
 
+                            {/* Quick Transfer Actions */}
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={handleExportArchive}
+                                    disabled={exportingArchive || isRunning}
+                                    className="px-3.5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-2 border border-white/15 transition disabled:opacity-50"
+                                    title="Export and download scraped Click-TT data archive (.tar.gz)"
+                                >
+                                    {exportingArchive ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-purple-400" />}
+                                    <span className="hidden sm:inline">Export Cache</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('transfer')}
+                                    className="px-3.5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-2 border border-white/15 transition"
+                                    title="Open Upload / Import Data Transfer tab"
+                                >
+                                    <Upload className="w-4 h-4 text-blue-400" />
+                                    <span className="hidden sm:inline">Upload Cache</span>
+                                </button>
+                            </div>
+
                             {isRunning && (
                                 <button
                                     type="button"
@@ -499,6 +584,19 @@ export default function AdminClickTTPage() {
                 >
                     <Sliders className="w-4 h-4" />
                     <span>Scraper Configuration</span>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('transfer')}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
+                        activeTab === 'transfer'
+                            ? 'bg-red-600 text-white shadow-md'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                >
+                    <Package className="w-4 h-4" />
+                    <span>Data Transfer &amp; Sync</span>
                 </button>
             </div>
 
@@ -1225,6 +1323,223 @@ export default function AdminClickTTPage() {
                         </div>
                     </div>
                 </form>
+            )}
+
+            {/* TAB 4: Data Transfer & Cache Sync */}
+            {activeTab === 'transfer' && (
+                <div className="space-y-6">
+                    {/* Header Banner */}
+                    <div className="rounded-3xl border border-blue-200 bg-gradient-to-br from-blue-50/70 via-white to-indigo-50/40 dark:border-blue-900/40 dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900/90 dark:to-blue-950/40 p-6 sm:p-7 shadow-sm space-y-3">
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-md">
+                                <HardDrive className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                                    Click-TT Scraped Data & Cache Transfer
+                                </h2>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    Transfer scraped cache, raw JSONL records, and normalized datasets between local dev and remote servers without re-scraping.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Transfer Grid: Export & Import Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* 1. Export Card */}
+                        <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-5 flex flex-col justify-between">
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-9 w-9 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+                                        <Download className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                                            Export Scraped Data Archive
+                                        </h3>
+                                        <span className="text-[11px] text-slate-400 font-mono">
+                                            Target: .tar.gz compressed package
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                                    Packs all raw scraped entity streams (<code>*.jsonl</code>), normalized datasets (<code>data/*.json</code>), and pipeline checkpoints into a single compressed tarball.
+                                </p>
+
+                                <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-3.5 border border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 space-y-1">
+                                    <div className="font-bold text-slate-700 dark:text-slate-300">Archive Contents:</div>
+                                    <ul className="list-disc list-inside space-y-0.5 font-mono text-[10px]">
+                                        <li>storage/clicktt_storage/*.jsonl (clubs, players, leagues, elo)</li>
+                                        <li>storage/clicktt_storage/data/*.json (9 normalized datasets)</li>
+                                        <li>storage/clicktt_storage/checkpoints/ (pipeline checkpoint state)</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={handleExportArchive}
+                                disabled={exportingArchive}
+                                className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white py-3 text-xs font-bold transition shadow-sm disabled:opacity-50"
+                            >
+                                {exportingArchive ? (
+                                    <>
+                                        <RefreshCw className="h-4 w-4 animate-spin" />
+                                        <span>Compressing & Downloading...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Download className="h-4 w-4" />
+                                        <span>Download Scraped Archive (.tar.gz)</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
+                        {/* 2. Import Card */}
+                        <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-5 flex flex-col justify-between">
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                                        <Upload className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                                            Upload Scraped Data Archive
+                                        </h3>
+                                        <span className="text-[11px] text-slate-400 font-mono">
+                                            Extracts directly into storage directory
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                                    Upload an archive generated from your local dev environment to restore datasets on this server instantly.
+                                </p>
+
+                                <form id="importArchiveForm" onSubmit={handleImportArchive} className="space-y-3">
+                                    <input
+                                        ref={archiveFileInputRef}
+                                        type="file"
+                                        accept=".tar.gz,.gz,.tgz,.zip"
+                                        onChange={(e) => setSelectedArchiveFile(e.target.files?.[0] || null)}
+                                        className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-950 dark:file:text-blue-300 hover:file:bg-blue-100 cursor-pointer"
+                                    />
+
+                                    {selectedArchiveFile && (
+                                        <div className="text-[11px] font-mono text-slate-500 flex items-center gap-1.5">
+                                            <FileCheck className="h-3.5 w-3.5 text-emerald-500" />
+                                            <span>Selected: <strong>{selectedArchiveFile.name}</strong> ({formatBytes(selectedArchiveFile.size)})</span>
+                                        </div>
+                                    )}
+
+                                    <label className="flex items-start gap-2.5 cursor-pointer text-xs pt-1">
+                                        <input
+                                            type="checkbox"
+                                            checked={importTriggerIngest}
+                                            onChange={(e) => setImportTriggerIngest(e.target.checked)}
+                                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 mt-0.5"
+                                        />
+                                        <div>
+                                            <span className="font-bold text-slate-900 dark:text-white">
+                                                Automatically Run Database Ingestion (reset-db)
+                                            </span>
+                                            <p className="text-[11px] text-slate-500">
+                                                Immediately loads extracted datasets into PostgreSQL after upload finishes.
+                                            </p>
+                                        </div>
+                                    </label>
+                                </form>
+                            </div>
+
+                            <button
+                                type="submit"
+                                form="importArchiveForm"
+                                disabled={importingArchive || !selectedArchiveFile}
+                                className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white py-3 text-xs font-bold transition shadow-sm disabled:opacity-50"
+                            >
+                                {importingArchive ? (
+                                    <>
+                                        <RefreshCw className="h-4 w-4 animate-spin" />
+                                        <span>Uploading & Extracting...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Upload className="h-4 w-4" />
+                                        <span>Upload & Extract Data Archive</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Extraction Summary Card (if just imported) */}
+                    {importResult?.summary && (
+                        <div className="rounded-3xl border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 p-6 shadow-sm space-y-4">
+                            <div className="flex items-center gap-2.5 text-emerald-800 dark:text-emerald-300 font-bold text-sm">
+                                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                                <span>Archive Extracted Successfully</span>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+                                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
+                                    <div className="text-[10px] text-slate-400 uppercase">Total Files</div>
+                                    <div className="text-base font-bold text-slate-900 dark:text-white">
+                                        {importResult.summary.totalFiles}
+                                    </div>
+                                </div>
+                                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
+                                    <div className="text-[10px] text-slate-400 uppercase">Extracted Size</div>
+                                    <div className="text-base font-bold text-slate-900 dark:text-white">
+                                        {formatBytes(importResult.summary.totalSizeBytes)}
+                                    </div>
+                                </div>
+                                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
+                                    <div className="text-[10px] text-slate-400 uppercase">Checkpoints</div>
+                                    <div className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                                        {importResult.summary.hasCheckpoints ? 'Available' : 'None'}
+                                    </div>
+                                </div>
+                                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/20">
+                                    <div className="text-[10px] text-slate-400 uppercase">Datasets</div>
+                                    <div className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                                        {importResult.summary.hasNormalizedData ? 'Normalized (9)' : 'None'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* CLI Automation Guide */}
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-950 text-slate-200 p-6 shadow-sm space-y-4 font-mono text-xs">
+                        <div className="flex items-center gap-2 text-amber-400 font-bold">
+                            <Terminal className="h-4 w-4" />
+                            <span>Command-Line & Automation Workflow</span>
+                        </div>
+
+                        <p className="text-slate-400 text-xs leading-relaxed">
+                            You can also export and upload data directly from your terminal or CI/CD pipelines using our CLI scripts:
+                        </p>
+
+                        <div className="space-y-3">
+                            <div className="space-y-1">
+                                <div className="text-slate-400 text-[11px]"># 1. Export local scraped cache into archive (.tar.gz):</div>
+                                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-emerald-400 font-mono text-xs select-all">
+                                    npm run clicktt:export
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <div className="text-slate-400 text-[11px]"># 2. Upload archive directly to dev/prod server:</div>
+                                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-emerald-400 font-mono text-xs select-all">
+                                    npm run clicktt:upload -- --url https://dev.areena.ch --token &lt;YOUR_SUPER_ADMIN_TOKEN&gt; --ingest
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Live Streaming Terminal Log Viewer */}
