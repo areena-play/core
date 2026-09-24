@@ -3,7 +3,7 @@ import readline from 'readline';
 import path from 'path';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { prisma } from '../config/prisma';
+import { basePrisma as prisma } from '../config/prisma';
 import { getScraperConfig } from '../scraper/config';
 import {
     AssociationLevel,
@@ -737,24 +737,74 @@ export class ClickTTDbIngestionService {
         const jsonlPath = path.join(config.storageDir, `${entityName}.jsonl`);
         const jsonPath = path.join(config.dataDir, `${entityName}.json`);
 
-        if (fs.existsSync(jsonlPath)) {
-            const fileStream = fs.createReadStream(jsonlPath, { encoding: 'utf-8' });
-            const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
-            for await (const line of rl) {
-                const trimmed = line.trim();
-                if (trimmed) {
+        const targetFile = fs.existsSync(jsonlPath) ? jsonlPath : fs.existsSync(jsonPath) ? jsonPath : null;
+        if (!targetFile) return;
+
+        const fileStream = fs.createReadStream(targetFile, { encoding: 'utf-8' });
+        const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
+
+        let objectBuffer = '';
+        let depth = 0;
+        let inString = false;
+        let escapeNext = false;
+
+        for await (const line of rl) {
+            const trimmed = line.trim();
+            if (!trimmed || (depth === 0 && (trimmed === '[' || trimmed === ']'))) continue;
+
+            // Fast path for single-line JSON objects (covers 99.9% of .jsonl and array .json lines)
+            if (depth === 0) {
+                let cleanLine = trimmed;
+                if (cleanLine.endsWith(',')) cleanLine = cleanLine.slice(0, -1).trim();
+                if (cleanLine.startsWith('{') && cleanLine.endsWith('}')) {
                     try {
-                        yield JSON.parse(trimmed);
-                    } catch {}
+                        yield JSON.parse(cleanLine);
+                        continue;
+                    } catch {
+                        // Fall through to multi-line parser if fast path fails
+                    }
                 }
             }
-        } else if (fs.existsSync(jsonPath)) {
-            const raw = await fs.promises.readFile(jsonPath, 'utf-8');
-            const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed)) {
-                for (const item of parsed) {
-                    yield item;
+
+            // Robust multi-line object accumulator
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (escapeNext) {
+                    escapeNext = false;
+                    objectBuffer += char;
+                    continue;
                 }
+                if (char === '\\' && inString) {
+                    escapeNext = true;
+                    objectBuffer += char;
+                    continue;
+                }
+                if (char === '"') {
+                    inString = !inString;
+                    objectBuffer += char;
+                    continue;
+                }
+                if (!inString) {
+                    if (char === '{') {
+                        depth++;
+                    } else if (char === '}') {
+                        depth--;
+                        if (depth === 0) {
+                            objectBuffer += char;
+                            try {
+                                yield JSON.parse(objectBuffer.trim());
+                            } catch {}
+                            objectBuffer = '';
+                            continue;
+                        }
+                    }
+                }
+                if (depth > 0) {
+                    objectBuffer += char;
+                }
+            }
+            if (depth > 0) {
+                objectBuffer += '\n';
             }
         }
     }
